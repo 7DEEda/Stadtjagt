@@ -5,7 +5,7 @@ welche Zustände und Abläufe es gibt und wo das im Code steht. Den Verlauf der
 Entscheidungen und die Betriebsnotizen (Zugänge, Umgebung, Historie) enthält
 `HANDOFF.md`.
 
-Stand: 19.09.2026, Nachträge 1 bis 18.
+Stand: 19.09.2026, Nachträge 1 bis 19.
 
 ---
 
@@ -65,8 +65,10 @@ löschen.
 Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
 (Zahl der Koffer, Vorgabe 3), `duration_min` (Spieldauer, Vorgabe 180; nur
 Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
-`winner_team_id` (Platz 1, für Altes), `admin_pin`. `duration_min` und
-`case_hint` setzt `admin_set_settings`.
+`winner_team_id` (Platz 1, für Altes), `admin_pin`, `background`
+(`klassisch`, `a`, `b`, `c`; in allen drei Zustandsfunktionen enthalten,
+`admin_set_background`). `duration_min` und `case_hint` setzt
+`admin_set_settings`.
 
 ---
 
@@ -275,6 +277,7 @@ Bewusst akzeptiert oder offen:
 index.html                 die ganze App (HTML, CSS, JS), kein Build
 config.js                  Supabase-URL, Publishable key, Hilfe-Nummer (support.phone)
 kompass-test.html          Diagnoseseite für den Kompass einzelner Geräte
+hintergrund/a.svg, b.svg, c.svg  Hintergrund-Varianten, lädt render() nach; klassisch steht im HTML
 supabase/migrations/*.sql  Schema und Spiellogik, in Dateinamen-Reihenfolge
 supabase/seed-*.sql        Stationen der Prager Route, 100 Testpersonen
 tools/sql.py               SQL über die Supabase Management-API ausführen

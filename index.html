@@ -14,26 +14,83 @@
   --ok:#2E7D4F; --err:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7; --err-btn:#B3261E; --info-bg:#E6EEF4;
   --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  /* Farben der Hintergrund-Varianten A bis C (Werte aus tools/hintergrund/vergleich.py) */
+  --park:#DFEAD6; --baum:#C3D5B8; --strasse:#CBD7C4; --strasse-haupt:#B5C5AE;
+  --ol-braun:#E0CCB3; --ol-gelb:#F3EDD6; --ol-gruen:#DCEAD3; --ol-dicht:#C9DEBD; --ol-schwarz:#A3AFA9;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38;
   --contour:#1C312B; --flag:#FF7A3A; --water:#6FA8D6; --ok:#6CCB8E; --err:#FF8A80; --err-btn:#C5372C;
-  --ok-bg:#16332A; --err-bg:#3A1F1C; --info-bg:#172A36;}}
+  --ok-bg:#16332A; --err-bg:#3A1F1C; --info-bg:#172A36;
+  --park:#142A20; --baum:#1D3A2B; --strasse:#1F352E; --strasse-haupt:#29443A;
+  --ol-braun:#332A21; --ol-gelb:#1E2419; --ol-gruen:#142A1E; --ol-dicht:#1A3524; --ol-schwarz:#3B4C45;}}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);min-height:100vh}
 body.fest{overflow:hidden}
 /* Karte bleibt stehen: fest am Fenster, nicht am Dokument (auch auf iOS, das background-attachment ignoriert) */
-/* Hintergrund wie eine Wanderkarte: Hoehenlinien, Fluss, Wege, Wegpunkte */
+/* Hintergrund: fest am Fenster. "klassisch" steht unten im HTML, A bis C kommen aus hintergrund/*.svg,
+   die Spielleitung wählt im Reiter Stationen. Alle Linien bleiben auf jedem Bildschirm gleich fein. */
 .topo{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%}
+.topo svg{display:block;width:100%;height:100%}
+.topo *{vector-effect:non-scaling-stroke}
+.topo text{vector-effect:none}
+@media (min-width:700px){.topo text{display:none}}   /* Beschriftungen wären am Laptop riesig */
+/* klassisch und A: Wanderkarte */
 .topo .c,.topo .c5{fill:none;stroke:var(--contour);stroke-width:1}
 .topo .c5{stroke-width:1.9}
-.topo .w{fill:none;stroke:var(--water);stroke-width:2.4;opacity:.38}
+.topo .w{fill:none;stroke:var(--water);stroke-width:2.4;opacity:.38;stroke-linecap:round}
 .topo .wl{fill:none;stroke:var(--water);stroke-width:1.1;opacity:.22}
 .topo .t{fill:none;stroke:var(--flag);stroke-width:1.7;stroke-dasharray:8 6;stroke-linecap:round;opacity:.4}
 .topo .t2{stroke-dasharray:3 5;opacity:.3}
 .topo .p{fill:none;stroke:var(--contour);stroke-width:1.7;stroke-linejoin:round;stroke-linecap:round}
 .topo .pf{fill:var(--contour);stroke:none}
+.topo .wald{fill:url(#a-wald)}
+.topo .baum{fill:var(--baum)}
+.topo .gitter{fill:none;stroke:var(--contour);stroke-width:.6}
+.topo .gl,.topo .hz{font:600 8px var(--body);fill:var(--muted);opacity:.5}
+.topo .hz{font-weight:500;opacity:.6}
+.topo .nord path{fill:var(--muted);opacity:.45}
+.topo .nord text{font:700 10px var(--head);fill:var(--muted);opacity:.55;text-anchor:middle}
+.topo .mass path{fill:none;stroke:var(--muted);opacity:.45}
+.topo .mass text{font:500 8px var(--body);fill:var(--muted);opacity:.55}
+/* B: Prag-Stadtplan aus OpenStreetMap */
+.topo .park{fill:var(--park)}
+.topo .wasser{fill:var(--water);fill-opacity:.16;stroke:var(--water);stroke-opacity:.35;stroke-width:.7}
+.topo .bach{fill:none;stroke:var(--water);stroke-width:.8;opacity:.35}
+.topo .bahn-gl{fill:none;stroke:var(--muted);stroke-width:1;stroke-dasharray:4 3;opacity:.3}
+.topo [class^="st"]{fill:none;stroke:var(--strasse);stroke-linecap:round;stroke-linejoin:round}
+.topo .st-fuss{stroke-width:.6;stroke-dasharray:1.5 2}
+.topo .st{stroke-width:1}
+.topo .st-mittel{stroke-width:1.5}
+.topo .st-haupt{stroke-width:2.1;stroke:var(--strasse-haupt)}
+.topo .fl{font:italic 600 11px var(--head);letter-spacing:.3em;fill:var(--water);opacity:.55}
+.topo .vl{font:600 8.5px var(--head);letter-spacing:.2em;text-transform:uppercase;fill:var(--muted);opacity:.55;text-anchor:middle}
+.topo .osm{font:500 6px var(--body);fill:var(--muted);opacity:.7;text-anchor:end}
+/* C: Orientierungslauf-Karte */
+.topo .ol-offen{fill:var(--ol-gelb)}
+.topo .ol-gruen{fill:var(--ol-gruen)}
+.topo .ol-gruen2{fill:url(#c-dicht)}
+.topo .dicht{stroke:var(--ol-dicht);stroke-width:1.4}
+.topo .ol-sumpf{fill:url(#c-sumpf)}
+.topo .sumpf{stroke:var(--water);stroke-width:1;opacity:.45}
+.topo .ol-c,.topo .ol-c5,.topo .ol-form{fill:none;stroke:var(--ol-braun);stroke-width:.9}
+.topo .ol-c5{stroke-width:1.7}
+.topo .ol-form{stroke-width:.7;stroke-dasharray:5 3}
+.topo .ol-w{fill:none;stroke:var(--water);stroke-width:2.2;opacity:.45;stroke-linecap:round}
+.topo .ol-wl{fill:none;stroke:var(--water);stroke-width:.9;opacity:.4}
+.topo .ol-stein{stroke:var(--ol-schwarz);stroke-width:3.4;stroke-linecap:round}
+.topo .ol-wand{fill:none;stroke:var(--ol-schwarz);stroke-width:1.1}
+.topo .ol-weg,.topo .ol-pfad,.topo .ol-spur{fill:none;stroke:var(--ol-schwarz);stroke-width:1.3}
+.topo .ol-pfad{stroke-width:1;stroke-dasharray:5 2.5}
+.topo .ol-spur{stroke-width:.8;stroke-dasharray:2 2.5}
+.topo .ol-nord{stroke:var(--water);stroke-width:.6;opacity:.3}
+.topo .bahn{fill:none;stroke:var(--flag);stroke-width:1.6;opacity:.6}
+.topo .bahn-n{font:700 12px var(--head);fill:var(--flag);opacity:.75}
+/* Freier Text ohne Karte darunter bekommt einen Lichthof in Papierfarbe, wie Beschriftungen auf einer Landkarte.
+   text-shadow erbt sich in die Kinder; Knöpfe, Felder und Karten setzen ihn zurück. */
+main > :not(.panel):not(.msg):not(#map):not(.overlay):not(.hochhalten){text-shadow:0 0 3px var(--paper),0 0 6px var(--paper),0 0 12px var(--paper),0 0 18px var(--paper)}
+.btn,.chip,.tchip,input,select,textarea,.panel,.msg,.dialog,.hochhalten{text-shadow:none}
 main{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:20px 16px 70px}
 main.wide{max-width:900px}
 h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
@@ -195,7 +252,7 @@ a.btn{text-decoration:none;text-align:center}
 </style>
 </head>
 <body>
-<svg class="topo" viewBox="0 0 400 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+<div id="topo" class="topo" aria-hidden="true"><svg viewBox="0 0 400 900" preserveAspectRatio="xMidYMid slice">
   <path class="c" d="M92 150C92 152 93 154 93 156C92 157 91 160 90 161C88 162 85 162 83 162C80 163 79 163 76 163C74 163 72 163 70 162C68 162 67 160 65 158C64 156 62 155 61 153C61 151 60 149 61 147C62 145 65 144 67 143C68 142 69 140 71 139C72 138 74 136 76 135C78 135 81 136 83 137C85 137 87 138 89 139C91 141 93 142 93 144C94 146 93 148 92 150Z"/>
   <path class="c5" d="M104 150C104 153 105 157 104 160C104 163 102 168 99 170C96 172 90 171 86 172C82 173 79 174 75 174C71 174 66 174 63 173C59 171 58 167 55 164C52 162 49 159 48 156C46 152 46 147 48 144C49 141 55 140 58 137C61 135 62 132 65 130C67 128 71 124 75 123C78 123 83 125 87 126C91 127 95 128 98 131C102 133 105 136 106 139C107 143 104 147 104 150Z"/>
   <path class="c" d="M115 150C114 155 117 160 116 165C115 170 113 177 109 180C105 182 96 181 90 182C84 182 79 184 74 184C68 185 61 185 56 183C51 181 48 175 45 171C41 167 35 163 34 158C32 153 31 146 34 142C36 138 45 136 49 132C54 129 55 125 59 121C63 118 68 112 73 111C79 110 85 114 91 115C97 117 103 118 108 122C112 125 117 130 118 135C120 139 115 145 115 150Z"/>
@@ -235,7 +292,7 @@ a.btn{text-decoration:none;text-align:center}
   <circle class="p" cx="152" cy="330" r="6"/><circle class="pf" cx="152" cy="330" r="1.8"/>
   <path class="p" d="M293 790h14M293 794h14M295 790v5M305 790v5"/>
   <path class="p" d="M60 661L67 673L53 673Z"/>
-</svg>
+</svg></div>
 <main id="app"></main>
 
 <script src="config.js"></script>
@@ -958,6 +1015,9 @@ function viewAdmin() {
         <div class="small muted" style="align-self:end;padding-bottom:12px">Ab „Spiel starten“ zählen alle Handys herunter${st.endsAt ? `, aktuell bis ${uhrzeit(st.endsAt)}` : ""}. Das Spiel endet trotzdem erst mit „Spiel beenden“.</div></div>
       <div style="margin-top:8px"><label for="a-koffer">Hinweis auf dem Koffer-Bildschirm</label><textarea id="a-koffer">${esc(st.caseHint || "")}</textarea></div>
       <button class="btn sm" data-act="a-settings">Speichern</button>${msgBox("settings")}</div>`;
+    out += `<div class="panel"><h3>Hintergrund</h3>
+      <p class="small muted">Gilt für alle Handys und dieses Tablet, hell und dunkel. Die Entwürfe zum Vergleich liegen in mockups/hintergrund-varianten.html.</p>
+      <div class="wahl">${Object.entries(HINTERGRUENDE).map(([k, v]) => `<button class="btn sm ${st.background === k ? "" : "alt"}" data-act="a-bg" data-bg="${k}" aria-pressed="${st.background === k}">${v}</button>`).join("")}</div>${msgBox("bg")}</div>`;
     out += `<div class="panel ${st.testMode ? "danger" : ""}"><h3>Testmodus</h3>
       <p class="small muted">Zum Durchklicken ohne hinzulaufen: Check-in ohne Entfernungsprüfung, auch ohne GPS,
       und jede Antwort zählt. Den Koffer-Code prüft die App weiter. Vor dem Event unbedingt ausschalten.</p>
@@ -1488,6 +1548,10 @@ const ACT = {
     S.msg = { type: "ok", text: neu && neu.teamName ? `${neu.name} ist jetzt in Team ${neu.teamName}.` : `${name.trim()} ist angemeldet.` };
   },
   async "a-unlock"(d) { S.admin.state = await rpc("admin_unlock_station", { p_pin: S.admin.pin, p_team: d.id }); },
+  async "a-bg"(d) {
+    S.admin.state = await rpc("admin_set_background", { p_pin: S.admin.pin, p_background: d.bg });
+    S.msg = { type: "ok", ort: "bg", text: `Hintergrund: ${HINTERGRUENDE[d.bg]}. Die Handys übernehmen das mit der nächsten Abfrage.` };
+  },
   async "a-settings"() {
     const min = parseInt(val("a-dauer"), 10);
     if (!(min >= 10 && min <= 720)) { S.msg = { type: "err", ort: "settings", text: "Die Spieldauer muss zwischen 10 und 720 Minuten liegen." }; return; }
@@ -1884,9 +1948,29 @@ async function refresh() {
   }
   render();
 }
+/* ---------- Hintergrund ---------- */
+const HINTERGRUENDE = { klassisch: "Klassisch (Wanderkarte)", a: "A: Wanderkarte fein", b: "B: Prag-Stadtplan", c: "C: Orientierungslauf" };
+const KLASSISCH = $("#topo").innerHTML;
+let hintergrundAktiv = "klassisch", hintergrundLaeuft = null;
+// Vom Server gewählter Hintergrund: A bis C aus hintergrund/<x>.svg nachladen, klassisch steht im HTML.
+// Die Wahl bleibt im Speicher, damit der nächste Aufruf gleich richtig startet.
+function hintergrundSetzen(name) {
+  if (!HINTERGRUENDE[name] || name === hintergrundAktiv || hintergrundLaeuft === name) return;
+  try { localStorage.setItem("sj.bg", name); } catch { /* egal */ }
+  if (name === "klassisch") { $("#topo").innerHTML = KLASSISCH; hintergrundAktiv = name; return; }
+  hintergrundLaeuft = name;
+  fetch(`hintergrund/${name}.svg`).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+    .then(svg => { $("#topo").innerHTML = svg; hintergrundAktiv = name; })
+    .catch(() => { /* Funkloch oder Datei fehlt: der bisherige Hintergrund bleibt */ })
+    .finally(() => { hintergrundLaeuft = null; });
+}
+try { const bg = localStorage.getItem("sj.bg"); if (bg) hintergrundSetzen(bg); } catch { /* egal */ }
+
 function render() {
   const app = $("#app");
   app.className = S.view === "admin" && S.admin.pin ? "wide" : "";
+  const stand = S.view === "admin" ? S.admin.state : S.view === "team" ? S.team.state : S.pub;
+  if (stand && stand.background) hintergrundSetzen(stand.background);
   // Liegt ein Dialog oder die Hochhalten-Ansicht darüber, scrollt die Seite dahinter nicht mit
   document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full));
   app.innerHTML = (!cfg.url || !cfg.key) ? viewSetup()

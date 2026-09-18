@@ -62,6 +62,8 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260919060000_start_im_testmodus.sql  Starten im Testmodus wieder erlaubt, mit Warnung
   20260919070000_koffer_hinweis_spieldauer.sql  Koffer-Hinweis, Spieldauer mit Countdown, Tipp je Station
   20260919080000_leitung_ohne_code.sql  Teamleitung loggt sich über den Geräte-Schlüssel ein (leader_code)
+  20260919090000_hintergrund.sql  Hintergrund umschaltbar (game_state.background, admin_set_background)
+hintergrund/a.svg, b.svg, c.svg  die drei Hintergrund-Varianten, werden nachgeladen
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -419,10 +421,24 @@ Getestet am 18.09.2026 lokal: 25 Prüfungen zum Testmodus, dazu erneut die 26
 Koffer-Prüfungen, und ein Durchlauf aller fünf Stationen in der Oberfläche ohne
 GPS und mit leeren Antworten.
 
-## Hintergrund: neue Varianten (offen)
+## Hintergrund: Varianten umschaltbar (Nachtrag 19, 19.09.2026)
 
-Am 18.09.2026 sind drei detailliertere Hintergründe entstanden, entschieden ist
-noch nichts. Vergleich zum Anklicken, hell und dunkel, Handy und Laptop:
+Die drei Entwürfe vom 18.09.2026 sind eingebaut: `hintergrund/a.svg`, `b.svg`,
+`c.svg` im Repo, „klassisch“ ist die bisherige Wanderkarte im HTML. Die
+Spielleitung wählt im Reiter Stationen („Hintergrund“, `admin_set_background`,
+`game_state.background`); `public_state`, `team_state` und `admin_state` tragen
+das Feld, `render()` lädt die Datei nach (`hintergrundSetzen`) und merkt sich
+die Wahl als `sj.bg`, damit der nächste Aufruf gleich richtig startet. Alle
+Linien sind `vector-effect: non-scaling-stroke`, Beschriftungen fallen ab 700 px
+Breite weg. Freier Text ohne Karte darunter (Kopfzeile, Reiter, „Mitglieder“,
+„Hilfe von der Spielleitung“, Links) hat einen Lichthof in Papierfarbe
+(`text-shadow`), damit er auf jeder Variante lesbar bleibt; Knöpfe, Felder und
+Karten setzen ihn zurück. Geprüft hell und dunkel auf allen vier.
+
+Variante B zeigt noch den Altstadt-Ausschnitt; Route und Stationsmarken wurden
+beim Kopieren entfernt, weil sie die alte Route zeigten. Für die Holešovice-
+Route müsste `tools/hintergrund/hintergrund.py` mit neuem Ausschnitt laufen
+(siehe unten). Vergleich zum Anklicken weiterhin:
 `mockups/hintergrund-varianten.html`.
 
 | | Variante | Größe, ausgeliefert |
