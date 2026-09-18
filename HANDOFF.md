@@ -925,6 +925,37 @@ oder einen Tunnel.
    gedrückt: „Spiel fortsetzen“, nichts geht verloren.
 11. **Danach:** Zeitachse und Routen ansehen, dann „Standortdaten löschen“.
 
+## Ideen für ein kniffligeres Spiel (19.09.2026, gespeichert, nicht gebaut)
+
+Befund: Das Spiel ist heute ein Geocache, „von A nach B“: Ortshinweis,
+hinlaufen, einchecken, Zählaufgabe, Ziffer ablesen. Die App zeigt die
+Entfernung zum Ziel, das nimmt dem Suchen die Spannung. Rahmen: ~100 Leute in
+einem Raum, Anmeldung, Gruppen finden, gemeinsamer Start vom Hotel. Drei
+Änderungen, die das drehen, ohne die Kernlogik anzufassen; Entscheidung offen:
+
+- **A. Der Ort ist selbst das Rätsel.** Ortshinweis als Rätsel (Bildausschnitt,
+  verschlüsselte Beschreibung, Rechenaufgabe mit Koordinaten). Dafür je Station
+  ein Schalter „Entfernung erst unter 150 m zeigen“, sonst verrät die App den
+  Ort. Check-in bleibt.
+- **B. Hinweise sammeln statt Ziffern ablesen.** Jede Station gibt einen
+  *Hinweis* (Wort, Zahl, Symbol) statt der sichtbaren Ziffer; am Ende ein
+  **Schlussrätsel** (`game_state`), das die fünf Hinweise zum Koffer-Code
+  verbindet. Koffer-Ansicht zeigt gesammelte Hinweise plus Schlussrätsel statt
+  der Ziffernräder; die Code-Prüfung bleibt. Technisch: `stations.clue`,
+  `game_state.final_riddle`.
+- **C. Versetzte Reihenfolge.** Heute laufen alle Teams dieselbe Route in
+  derselben Reihenfolge: 100 Leute gleichzeitig vor dem Planetarium, Abschreiben
+  beim Nachbarteam. Jedes Team startet bei einer anderen Station und geht im
+  Kreis weiter. Technisch: Versatz je Team beim Auslosen (`teams.start_offset`),
+  `current_station` läuft rotiert; Ziffern bleiben nach Stationsnummer sortiert,
+  der Code ist für alle gleich.
+- Dazu: **Kompass entschärfen** (Einmess-Aufforderung weg, Knopf „In Karten-App
+  öffnen“), Zeitachse nicht weiter ausbauen.
+
+Inhalte, die kein Code ersetzt: Rätsel, die nur vor Ort lösbar sind und mehr
+als Zählen verlangen (Jahreszahl auf einer Inschrift minus etwas; Chiffre mit
+Schlüssel am Ort; Frage, die das Herumgehen ums Objekt verlangt).
+
 ## Offene Punkte
 
 - **Probelauf draußen** mit einem echten Handy steht aus. Ablauf: auslosen,

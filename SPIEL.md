@@ -416,3 +416,7 @@ node -e 'const h=require("fs").readFileSync("index.html","utf8");[...h.matchAll(
 - Hintergrund-Variante wählen (`mockups/hintergrund-varianten.html`).
 - Testumgebung und Testskripte ins Repo übernehmen.
 - Probelauf draußen mit echten Handys.
+- Gespeicherte Ideen für ein kniffligeres Spiel (Ort als Rätsel mit verborgener
+  Entfernung, Hinweise plus Schlussrätsel statt sichtbarer Ziffern, versetzte
+  Stationsreihenfolge je Team, Kompass entschärfen): siehe HANDOFF.md
+  „Ideen für ein kniffligeres Spiel“. Entscheidung offen.
