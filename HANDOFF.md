@@ -60,6 +60,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260919040000_leitung_und_mitlesen.sql  Teamleitung zuweisen und abgeben, Mitlese-Link je Team
   20260919050000_review.sql       name_key nachgezogen, Fehlversuche unter Zeilensperre (Code-Review)
   20260919060000_start_im_testmodus.sql  Starten im Testmodus wieder erlaubt, mit Warnung
+  20260919070000_koffer_hinweis_spieldauer.sql  Koffer-Hinweis, Spieldauer mit Countdown, Tipp je Station
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -596,6 +597,40 @@ der Spielleitung (Konstante `START` in `index.html`, nicht in der Datenbank).
 Getestet lokal (`test_leitung.py`, 18 Prüfungen) und im Browser: Link öffnen
 auf einem fremden Handy zeigt das Team, Leitung abgeben, Leitung im Admin
 wählen, Mitlese-Link kopieren, Haus auf der Karte.
+
+## Durchgang aus Sicht der Teams (Nachtrag 17, 19.09.2026)
+
+Ablauf und Oberfläche aus Sicht von Teilnehmenden und Teamleitung durchgegangen
+(SPIEL.md 5.1 bis 5.6). Sieben Punkte, alle umgesetzt:
+
+1. **Einstieg für die Teamleitung:** Erkennt das Handy, dass es der Teamleitung
+   gehört (Name aus Anmeldung oder Mitlesen = Leitung), zeigt die Team-Karte
+   oben „Du bist Teamleitung: Code eingeben“ (Link zu `#/team`). Liest die
+   Leitung nur mit, steht derselbe Hinweis über der Team-Ansicht.
+2. **Mitlese-Link vor dem Start ganz oben:** direkt unter „Ihr seid startklar“,
+   mit „Schick den Link jetzt in eure Team-Gruppe“. Im Spiel bleibt er unten.
+3. **Eigener Koffer-Hinweis:** `game_state.case_hint` statt Ortshinweis von
+   Station 5; im Reiter Stationen pflegbar (`admin_set_settings`).
+4. **Feste Spieldauer:** `game_state.duration_min` (Vorgabe 180), im Reiter
+   Stationen einstellbar, auch während des Spiels. Ab „Spiel starten“ zeigen
+   Teamleitung, Mitlesende und Spielleitung im Kopf „Noch 1:45 h“, in den
+   letzten 15 Minuten rot, danach „Zeit ist um, zurück zum Ziel“. Reine
+   Information: Eingaben bleiben möglich, das Spiel endet erst mit „Spiel
+   beenden“ (`endsAt` = `started_at` + Dauer, Countdown im 1-s-Takt).
+5. **Tipp je Station:** `stations.tip` (optional, Feld im Stationsformular).
+   Nach der ersten Denkpause (`progress.pauses`) kann die Teamleitung ihn
+   aufdecken (`reveal_tip`, `progress.tip_at`); danach sehen ihn alle im Team.
+   Die Meldung beim dritten Fehlversuch sagt das an. `admin_save_station` hat
+   dafür `p_tip` (mit Vorgabe, die alte Signatur ist entfernt).
+6. **Rangliste nach dem Ende** auch in der Team-Ansicht, eigenes Team fett
+   (`ranglisteHTML`, `public_state` wird im Zustand `finished` mitgeholt).
+7. **Hinweis für Mitlesende** unter „Standort und Kompass aktivieren“:
+   freiwillig, den Weg findet die Teamleitung.
+
+Getestet lokal (`test_einstellungen.py`, 26 Prüfungen) und im Browser: Knopf
+auf der Team-Karte der Leitung, Mitlese-Panel vor dem Start, Countdown im
+Kopf, Tipp nach drei Fehlversuchen, Koffer-Hinweis aus den Einstellungen,
+Rangliste nach dem Ende, Einstellungen im Admin.
 
 ## Code-Review (19.09.2026)
 

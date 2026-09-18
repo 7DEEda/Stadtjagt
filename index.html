@@ -106,6 +106,9 @@ ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line
 .chip{display:inline-block;padding:4px 10px;border-radius:99px;font:600 13px var(--body);background:var(--paper);border:1px solid var(--line)}
 .chip.live{background:var(--flag);color:var(--flag-ink);border-color:var(--flag)}
 .chip.test{background:var(--err-bg);color:var(--err);border-color:var(--err);margin-left:6px}
+/* Restzeit: neutral, in den letzten 15 Minuten und danach rot */
+.chip.uhr{white-space:nowrap;margin-left:6px}
+.chip.uhr.knapp{background:var(--err-bg);color:var(--err);border-color:var(--err)}
 table{width:100%;border-collapse:collapse;font-size:15px}
 td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 th{font:600 14px var(--body);color:var(--muted)}
@@ -515,19 +518,14 @@ function viewPublic() {
   const mit = S.mit && S.mit.team && (p.status === "running" || p.status === "finished") ? S.mit : null;
   if (mit) out = teamAnsicht(mit, true);
 
-  const ziel = (p.ranking || []).filter(r => r.place), vorbei = p.status === "finished";
-  if (vorbei || ziel.length) {
-    const prizes = p.prizeCount ?? 3;
-    out += `<div class="panel"><h2>${vorbei ? "Rangliste" : "Zieleinlauf"}</h2>
-      ${vorbei ? "" : `<p class="small muted">Das Spiel läuft noch. Jedes Team erscheint hier, sobald es den Koffer-Code eingegeben hat.</p>`}
-      <table><tr><th>Platz</th><th>Team</th><th>${vorbei ? "Stand" : "Im Ziel"}</th></tr>
-      ${(vorbei ? p.ranking || [] : ziel).map(r => `<tr><td style="white-space:nowrap">${r.place ? platzZeichen(r.place, prizes) : "-"}</td>
-        <td>${teamEmoji(r.teamName)} ${esc(r.teamName)}</td>
-        <td style="white-space:nowrap">${r.place ? (vorbei ? "im Ziel " : "") + uhrzeit(r.finishedAt) : r.solved + " / " + p.stationCount}</td></tr>`).join("")}</table></div>`;
-  }
+  const vorbei = p.status === "finished";
+  out += ranglisteHTML(p, mit ? mit.team.name : null);
   // Eigenes Team: über den Namen gefunden, oder über Geräte- bzw. Mitlese-Schlüssel bekannt
   const t = S.lookup || (S.mit && S.mit.team ? { name: S.mit.team.name, leaderName: S.mit.team.leaderName, members: S.mit.team.members } : null);
   const eigen = S.lookup ? S.lookupEigen : !!t;
+  // Gehört dieses Handy der Teamleitung? Dann steht der Einstieg zur Code-Eingabe groß da
+  const ich = S.myName || (S.mit && S.mit.name);
+  const ichLeite = !!(t && ich && t.leaderName === ich);
   if (t) {
     // Farbe wie auf der Karte der Spielleitung: beide sortieren die Teams nach Namen
     const farbe = teamColor(Math.max(0, (p.teams || []).findIndex(x => x.name === t.name)));
@@ -537,7 +535,9 @@ function viewPublic() {
       <div class="kreis" data-act="pub-hoch" role="button" aria-label="Team-Zeichen groß zeigen" title="Antippen zum Hochhalten">${teamEmoji(t.name)}</div>
       <h1>Team ${esc(t.name)}</h1>
       <p>Sucht die anderen mit ${teamEmoji(t.name)}. Teamleitung: <b>${esc(t.leaderName || "offen")}</b></p>
-      <button class="btn" data-act="pub-hoch">Zum Hochhalten</button>
+      ${ichLeite ? `<a class="btn" href="#/team">Du bist Teamleitung: Code eingeben</a>
+        <p class="small muted">Den Team-Code bekommst du von der Spielleitung.</p>` : ""}
+      <button class="btn ${ichLeite ? "alt" : ""}" data-act="pub-hoch">Zum Hochhalten</button>
       ${!eigen && !S.myName ? `<button class="btn alt" data-act="pub-ich">Das bin ich, merken</button>` : ""}
       <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`
       // vor dem Start: Standort und Kompass schon freigeben, am Übungsziel ausprobieren
@@ -574,6 +574,30 @@ function viewPublic() {
 function pauseText(bis) {
   const rest = Math.max(0, Math.ceil((new Date(bis).getTime() - Date.now()) / 1000));
   return `Denkpause: noch ${rest} ${rest === 1 ? "Sekunde" : "Sekunden"}. Danach habt ihr wieder drei Versuche.`;
+}
+// Restzeit der festen Spieldauer, ab dem Start heruntergezählt; die Logik hängt nicht daran
+function uhrText(ende) {
+  const s = Math.round((new Date(ende).getTime() - Date.now()) / 1000);
+  if (s <= 0) return "Zeit ist um, zurück zum Ziel";
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return "Noch " + (h ? `${h}:${String(m).padStart(2, "0")} h` : s >= 60 ? `${m} min` : `${s} s`);
+}
+const uhrKnapp = ende => new Date(ende).getTime() - Date.now() < 15 * 60000;
+function uhrHTML(st) {
+  if (st.status !== "running" || !st.endsAt) return "";
+  return `<span class="chip uhr ${uhrKnapp(st.endsAt) ? "knapp" : ""}" id="uhr" data-ende="${esc(st.endsAt)}">${uhrText(st.endsAt)}</span>`;
+}
+// Rangliste, auf der Anmeldeseite und nach dem Ende auch bei der Teamleitung
+function ranglisteHTML(p, eigenes) {
+  const ziel = (p.ranking || []).filter(r => r.place), vorbei = p.status === "finished";
+  if (!vorbei && !ziel.length) return "";
+  const prizes = p.prizeCount ?? 3;
+  return `<div class="panel"><h2>${vorbei ? "Rangliste" : "Zieleinlauf"}</h2>
+    ${vorbei ? "" : `<p class="small muted">Das Spiel läuft noch. Jedes Team erscheint hier, sobald es den Koffer-Code eingegeben hat.</p>`}
+    <table><tr><th>Platz</th><th>Team</th><th>${vorbei ? "Stand" : "Im Ziel"}</th></tr>
+    ${(vorbei ? p.ranking || [] : ziel).map(r => `<tr ${r.teamName === eigenes ? 'style="font-weight:700"' : ""}><td style="white-space:nowrap">${r.place ? platzZeichen(r.place, prizes) : "-"}</td>
+      <td>${teamEmoji(r.teamName)} ${esc(r.teamName)}${r.teamName === eigenes ? " (ihr)" : ""}</td>
+      <td style="white-space:nowrap">${r.place ? (vorbei ? "im Ziel " : "") + uhrzeit(r.finishedAt) : r.solved + " / " + p.stationCount}</td></tr>`).join("")}</table></div>`;
 }
 function lockHTML(st, klein) {
   const d = st.digits || [];
@@ -657,14 +681,22 @@ function teamAnsicht(st, lesen) {
   const ende = lesen ? "" : leitungHTML(st) + abmeldenHTML() + nav();
   let out = `<div class="bar"><div>${FLAG}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
     <div class="muted small">${lesen ? `Teamleitung: ${esc(st.team.leaderName || "offen")}`
-      : `${esc(st.team.code)}, Leitung ${esc(st.team.leaderName || "offen")}`}</div></div></div>`;
+      : `${esc(st.team.code)}, Leitung ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}</div></div></div>`;
 
   if (st.testMode) out += `<div class="msg err">Testmodus: Entfernung und Antworten werden nicht geprüft.</div>`;
+  // Liest die Teamleitung selbst nur mit, fehlt ihr der Einstieg zur Eingabe
+  if (lesen && st.name && st.name === st.team.leaderName && st.status !== "finished")
+    out += `<div class="panel"><h3>Du bist Teamleitung</h3>
+      <p class="small muted">Hier siehst du nur mit. Eingeben (einchecken, antworten, Koffer-Code) kannst du unter Teamleitung mit dem Team-Code von der Spielleitung.</p>
+      <a class="btn" href="#/team">Zur Teamleitung, Code eingeben</a></div>`;
 
   if (st.status === "drawn") return out + `<div class="panel"><h3>Ihr seid startklar</h3>
     <p>Alle Teams starten gleichzeitig. Wartet auf das Signal der Spielleitung.</p>
     <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>`
-    + vorbereitenHTML() + helpBtn(`Stadtjagd: Hier ist ${kennung}. Wir haben eine Frage vor dem Start.`) + ende;
+    // vor dem Start ist der Mitlese-Link der wichtigste Handgriff: einmal in die Gruppe, dann sehen alle mit
+    + (lesen ? "" : mitlesePanelHTML(st, "Schick den Link jetzt in eure Team-Gruppe. Wer ihn öffnet, sieht ab dem Start auf dem eigenen Handy alles, was du hier siehst. Eingeben kannst nur du."))
+    + vorbereitenHTML() + helpBtn(`Stadtjagd: Hier ist ${kennung}. Wir haben eine Frage vor dem Start.`)
+    + (lesen ? "" : leitungHTML(st, true) + abmeldenHTML() + nav());
 
   // Unterwegs zählt die Station: das Schloss steht dann klein unter ihr,
   // groß erst wieder beim Koffer und am Ende (Entscheidung 18.09.2026, Variante B)
@@ -679,10 +711,13 @@ function teamAnsicht(st, lesen) {
       <h2>Platz ${st.place}</h2>
       <p>${koffer ? "Ihr habt einen Koffer gewonnen. Zeigt diesen Bildschirm der Spielleitung am Koffer."
         : "Ihr seid im Ziel. Die Koffer sind schon vergeben, euer Platz steht in der Rangliste."}</p></div>`
+      // nach dem Ende auch hier die Rangliste, das eigene Team hervorgehoben
+      + (st.status === "finished" && !lesen && S.pub ? ranglisteHTML(S.pub, st.team.name) : "")
       + (koffer ? helpBtn(`Stadtjagd: ${kennung} hat Platz ${st.place}.`) : "") + ende;
   }
   if (st.status === "finished") return out + `<div class="panel"><h2>Das Spiel ist vorbei</h2>
-    <p>Die Spielleitung hat das Spiel beendet. ${lesen ? "Die Rangliste steht unten." : "Die Rangliste steht auf der Anmeldeseite."}</p></div>` + ende;
+    <p>Die Spielleitung hat das Spiel beendet. ${lesen ? "Die Rangliste steht unten." : "Danke fürs Mitspielen."}</p></div>`
+    + (lesen ? "" : (S.pub ? ranglisteHTML(S.pub, st.team.name) : `<div class="panel"><p class="muted">Rangliste wird geladen …</p></div>`)) + ende;
 
   if (st.allSolved) {
     const left = st.prizesLeft ?? 0;
@@ -712,7 +747,8 @@ function teamAnsicht(st, lesen) {
         <text class="nq" x="39" y="48" text-anchor="middle">?</text></svg><div class="cap">Richtung</div></div>
         <div><div class="muted small">Entfernung</div><div class="dist" id="dist">${dist}</div><div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div></div></div>
       ${!hasTarget ? `<div class="msg err">Für diese Station fehlen die Koordinaten. Die Spielleitung muss sie setzen.</div>` : ""}
-      ${!g.on ? `<button class="btn alt" data-act="t-gps">Standort und Kompass aktivieren</button>` : ""}
+      ${!g.on ? `<button class="btn alt" data-act="t-gps">Standort und Kompass aktivieren</button>
+        ${lesen ? `<p class="small muted" style="margin-top:6px">Freiwillig: dann zeigt dein Handy Richtung und Entfernung. Den Weg finden muss ${esc(leitung)}, eingecheckt wird dort.</p>` : ""}` : ""}
       ${kalOk}
       ${g.on && ["fehlt", "relativ"].includes(g.kompass) && g.gpsHeading == null ? `<div class="msg info">Dieses Handy hat keinen Kompass.
         Kein Problem: Der Pfeil richtet sich nach eurer Laufrichtung. Geht ein paar Schritte geradeaus
@@ -737,8 +773,12 @@ function teamAnsicht(st, lesen) {
   } else {
     // Nach drei Fehlversuchen: Feld sperren und die Pause sichtbar herunterzählen
     const pause = !st.testMode && st.lockedUntil && new Date(st.lockedUntil).getTime() > Date.now();
+    // Tipp: nach der ersten Denkpause aufdeckbar, danach für alle im Team sichtbar
+    const tipp = s.tip ? `<div class="msg info"><b>Tipp:</b> ${esc(s.tip)}</div>`
+      : s.tipAvailable ? (lesen ? `<p class="small muted">${esc(leitung)} kann jetzt einen Tipp aufdecken.</p>`
+        : `<button class="btn alt" data-act="t-tip">Tipp aufdecken</button>`) : "";
     out += `<div class="panel"><p class="muted small">Station ${s.position}: ${esc(s.name)}</p>
-      <p class="riddle" style="margin-top:8px">${esc(s.riddle || "")}</p>
+      <p class="riddle" style="margin-top:8px">${esc(s.riddle || "")}</p>${tipp}
       ${lesen ? `<p class="small" style="margin-top:12px">Die Antwort gibt <b>${esc(leitung)}</b> ein. Überlegt gemeinsam.</p>`
         : `<div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans" autocomplete="off" enterkeyhint="send" ${pause ? "disabled" : ""}></div>
       <button class="btn" data-act="t-answer" data-wait="Wird geprüft …" ${S.busy || pause ? "disabled" : ""}>Antwort prüfen</button>`}
@@ -753,12 +793,15 @@ function teamAnsicht(st, lesen) {
     + (s ? `Wir brauchen Hilfe bei Station ${s.position}.` : "Wir brauchen Hilfe."));
   return out + ende;
 }
-// Nur für die Teamleitung: Mitlese-Link fürs Team und die Leitung abgeben
-function leitungHTML(st) {
-  let h = "";
-  if (st.team.readToken) h += `<div class="panel"><h3>Mitlesen fürs Team</h3>
-    <p class="small muted">Wer diesen Link öffnet, sieht auf dem eigenen Handy alles, was ihr hier seht: Station, Rätsel, Ziffern. Eingeben könnt nur ihr.</p>
+// Mitlese-Link fürs Team, mit passendem Satz je nach Phase
+function mitlesePanelHTML(st, text) {
+  if (!st.team.readToken) return "";
+  return `<div class="panel"><h3>Mitlesen fürs Team</h3><p class="small muted">${text}</p>
     <div class="row2"><button class="btn alt" data-act="t-mit-teilen">Link teilen</button><button class="btn alt" data-act="t-mit-kopieren">Link kopieren</button></div>${msgBox("mit")}</div>`;
+}
+// Nur für die Teamleitung: Mitlese-Link fürs Team (außer er steht schon oben) und die Leitung abgeben
+function leitungHTML(st, ohneMit) {
+  let h = ohneMit ? "" : mitlesePanelHTML(st, "Wer diesen Link öffnet, sieht auf dem eigenen Handy alles, was ihr hier seht: Station, Rätsel, Ziffern. Eingeben könnt nur ihr.");
   const andere = (st.team.members || []).filter(m => m !== st.team.leaderName);
   if (!andere.length) return h;
   return h + (S.team.abgeben
@@ -815,7 +858,7 @@ function viewAdmin() {
   if (st.status === "running") actions += `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
   if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-resume">Spiel fortsetzen</button>`;
 
-  let out = `<div class="bar"><div class="brand" style="margin:0">${FLAG}<div><h1>Spielleitung</h1><div>${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}</div></div></div><div>${actions}</div></div>${msgBox()}`;
+  let out = `<div class="bar"><div class="brand" style="margin:0">${FLAG}<div><h1>Spielleitung</h1><div>${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}</div></div></div><div>${actions}</div></div>${msgBox()}`;
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
   if (missing.length) out += `<div class="msg err">Ohne Koordinaten kann dort niemand einchecken. Betroffen: Station ${missing.map(s => s.position).join(", ")}.</div>`;
 
@@ -907,6 +950,12 @@ function viewAdmin() {
         <button class="btn sm alt del" data-act="a-danger" data-key="person" data-id="${p.id}" data-name="${esc(p.name)}" title="Diese Person löschen" aria-label="${esc(p.name)} löschen">×</button></li>`).join("")}</ul></div>`;
   }
   if (A.tab === "stations") {
+    out += `<div class="panel"><h3>Spieldauer und Koffer-Hinweis</h3>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:8px">
+        <div><label for="a-dauer">Spieldauer, Minuten</label><input id="a-dauer" inputmode="numeric" value="${st.durationMin ?? 180}"></div>
+        <div class="small muted" style="align-self:end;padding-bottom:12px">Ab „Spiel starten“ zählen alle Handys herunter${st.endsAt ? `, aktuell bis ${uhrzeit(st.endsAt)}` : ""}. Das Spiel endet trotzdem erst mit „Spiel beenden“.</div></div>
+      <div style="margin-top:8px"><label for="a-koffer">Hinweis auf dem Koffer-Bildschirm</label><textarea id="a-koffer">${esc(st.caseHint || "")}</textarea></div>
+      <button class="btn sm" data-act="a-settings">Speichern</button>${msgBox("settings")}</div>`;
     out += `<div class="panel ${st.testMode ? "danger" : ""}"><h3>Testmodus</h3>
       <p class="small muted">Zum Durchklicken ohne hinzulaufen: Check-in ohne Entfernungsprüfung, auch ohne GPS,
       und jede Antwort zählt. Den Koffer-Code prüft die App weiter. Vor dem Event unbedingt ausschalten.</p>
@@ -925,6 +974,7 @@ function viewAdmin() {
             <div><label>Ziffer</label><input id="e-digit" inputmode="numeric" maxlength="1" value="${s.digit}" required></div>
             <div><label>Radius m</label><input id="e-radius" inputmode="numeric" value="${s.radiusM}"></div></div>
           <p class="small muted" style="margin-top:6px">Mehrere richtige Antworten mit | trennen, etwa „5|fünf“. Groß und klein, Umlaute und Satzzeichen zählen nicht.</p>
+          <div style="margin-top:8px"><label>Tipp (optional, aufdeckbar nach der ersten Denkpause)</label><textarea id="e-tip">${esc(s.tip || "")}</textarea></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
             <div><label>Breite</label><input id="e-lat" inputmode="decimal" value="${s.lat ?? ""}"></div>
             <div><label>Länge</label><input id="e-lng" inputmode="decimal" value="${s.lng ?? ""}"></div></div>
@@ -938,7 +988,7 @@ function viewAdmin() {
           <div style="flex:1"><h3>${esc(s.name)}</h3>
             <p class="small">Ortshinweis: ${offen(s.locationHint) ? '<span class="fehlt">fehlt</span>' : esc(s.locationHint)}</p>
             <p class="small">Rätsel: ${offen(s.riddle) ? '<span class="fehlt">fehlt</span>' : esc(s.riddle)}</p>
-            <p class="small muted">Lösung: ${offen(s.answer) ? '<span class="fehlt">fehlt</span>' : esc(s.answer)}, Ziffer ${s.digit}, Radius ${s.radiusM} m<br>
+            <p class="small muted">Lösung: ${offen(s.answer) ? '<span class="fehlt">fehlt</span>' : esc(s.answer)}, Ziffer ${s.digit}, Radius ${s.radiusM} m${s.tip ? `, Tipp: ${esc(s.tip)}` : ""}<br>
             Koordinaten: ${s.lat != null ? Number(s.lat).toFixed(5) + ", " + Number(s.lng).toFixed(5) : "fehlen noch"}</p></div>
           <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
         </div>`).join("")}
@@ -1344,6 +1394,10 @@ const ACT = {
     const r = await rpc("submit_answer", { p_code: S.team.code, p_answer: val("tans") });
     S.team.state = r.state; S.msg = { type: r.ok ? "ok" : "err", text: r.message };
   },
+  async "t-tip"() {
+    const r = await rpc("reveal_tip", { p_code: S.team.code });
+    S.team.state = r.state; S.msg = r.ok ? null : { type: "err", text: r.message };
+  },
   // Den Koffer-Code gibt man am Koffer ein: die Datenbank prüft die Position wie beim Check-in
   async "t-final"() {
     const pos = await standortFuerEingabe();
@@ -1432,6 +1486,12 @@ const ACT = {
     S.msg = { type: "ok", text: neu && neu.teamName ? `${neu.name} ist jetzt in Team ${neu.teamName}.` : `${name.trim()} ist angemeldet.` };
   },
   async "a-unlock"(d) { S.admin.state = await rpc("admin_unlock_station", { p_pin: S.admin.pin, p_team: d.id }); },
+  async "a-settings"() {
+    const min = parseInt(val("a-dauer"), 10);
+    if (!(min >= 10 && min <= 720)) { S.msg = { type: "err", ort: "settings", text: "Die Spieldauer muss zwischen 10 und 720 Minuten liegen." }; return; }
+    S.admin.state = await rpc("admin_set_settings", { p_pin: S.admin.pin, p_duration_min: min, p_case_hint: val("a-koffer") });
+    S.msg = { type: "ok", ort: "settings", text: `Gespeichert: ${min} Minuten Spieldauer.` };
+  },
   // Teamleitung im Reiter Teams per Auswahlfeld setzen
   async "a-leader"(d) {
     S.admin.state = await rpc("admin_set_leader", { p_pin: S.admin.pin, p_team: d.id, p_participant: d.value });
@@ -1466,7 +1526,7 @@ const ACT = {
       p_pin: S.admin.pin, p_id: d.id, p_name: val("e-name"),
       p_lat: isNaN(lat) ? null : lat, p_lng: isNaN(lng) ? null : lng,
       p_radius: parseInt(val("e-radius"), 10) || 50, p_hint: val("e-hint"),
-      p_riddle: val("e-riddle"), p_answer: val("e-answer"), p_digit: Number(ziffer)
+      p_riddle: val("e-riddle"), p_answer: val("e-answer"), p_digit: Number(ziffer), p_tip: val("e-tip")
     });
     S.admin.edit = null; S.msg = { type: "ok", text: "Station gespeichert." };
   }
@@ -1785,6 +1845,11 @@ function teamStandSetzen(s) {
   if (S.team.state && phaseKey(S.team.state) !== phaseKey(s)) S.msg = null;
   S.team.state = s;
 }
+// Nach dem Ende zeigt auch die Teamleitung die Rangliste: dafür die öffentliche Sicht dazuholen
+async function ranglisteHolen() {
+  if (!S.team.state || S.team.state.status !== "finished") return;
+  try { S.pub = await rpc("public_state", {}); } catch { /* beim nächsten Mal */ }
+}
 // Nach einem Neu-Auslosen gilt der alte Team-Code nicht mehr: abmelden und das sagen,
 // statt still das alte Team weiter zu zeigen
 function codeUngueltig() {
@@ -1796,7 +1861,7 @@ async function refresh() {
   if (!cfg.url || !cfg.key) return render();
   try {
     if (S.view === "public") { S.pub = await rpc("public_state", {}); await nameNochDa(); teamNachziehen(); await eigenesTeam(); await mitlesen(); }
-    if (S.view === "team" && S.team.code) teamStandSetzen(await rpc("team_state", { p_code: S.team.code }));
+    if (S.view === "team" && S.team.code) { teamStandSetzen(await rpc("team_state", { p_code: S.team.code })); await ranglisteHolen(); }
     if (S.view === "admin" && S.admin.pin) S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin });
   } catch (e) {
     if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); return render(); }
@@ -1897,6 +1962,8 @@ document.addEventListener("change", async e => {
 });
 // Denkpause sekundengenau herunterzählen, am Ende das Feld wieder freigeben
 setInterval(() => {
+  // Restzeit im Kopf mitlaufen lassen, ohne alles neu zu zeichnen
+  const u = $("#uhr"); if (u) { u.textContent = uhrText(u.dataset.ende); u.classList.toggle("knapp", uhrKnapp(u.dataset.ende)); }
   const p = $("#pause"); if (!p) return;
   if (new Date(p.dataset.bis).getTime() <= Date.now()) render(); else p.textContent = pauseText(p.dataset.bis);
 }, 1000);
@@ -1912,7 +1979,7 @@ setInterval(() => {
     return;
   }
   if (busyTyping) return;
-  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(s => { teamStandSetzen(s); render(); })
+  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(async s => { teamStandSetzen(s); await ranglisteHolen(); render(); })
     .catch(e => { if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); render(); } });
   // Beim Hochhalten nicht neu zeichnen: die Vollbild-Ansicht würde jedes Mal neu einblenden und flackern.
   // Die Daten kommen trotzdem, beim Schließen ist alles aktuell.

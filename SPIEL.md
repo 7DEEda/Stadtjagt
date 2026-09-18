@@ -5,7 +5,7 @@ welche Zustände und Abläufe es gibt und wo das im Code steht. Den Verlauf der
 Entscheidungen und die Betriebsnotizen (Zugänge, Umgebung, Historie) enthält
 `HANDOFF.md`.
 
-Stand: 19.09.2026, Nachträge 1 bis 16.
+Stand: 19.09.2026, Nachträge 1 bis 17.
 
 ---
 
@@ -63,8 +63,10 @@ löschen.
 | `finished` | Keine Eingaben mehr, keine Positionen. Rangliste öffentlich. Routen bleiben bis zum Löschen. |
 
 Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
-(Zahl der Koffer, Vorgabe 3), `winner_team_id` (Platz 1, für Altes),
-`admin_pin`.
+(Zahl der Koffer, Vorgabe 3), `duration_min` (Spieldauer, Vorgabe 180; nur
+Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
+`winner_team_id` (Platz 1, für Altes), `admin_pin`. `duration_min` und
+`case_hint` setzt `admin_set_settings`.
 
 ---
 
@@ -89,8 +91,11 @@ Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
   (`admin_solve_station`: Check-in und gelöst in einem).
 - Richtig: `progress.solved_at`, Ziffer frei.
 - Falsch: `failed_attempts` +1; beim dritten Fehlversuch 2 Minuten Sperre
-  (`locked_until`), Zähler zurück auf 0. Die App zeigt einen Countdown und
-  sperrt Feld und Knopf.
+  (`locked_until`), Zähler zurück auf 0, `pauses` +1. Die App zeigt einen
+  Countdown und sperrt Feld und Knopf.
+- Tipp (`stations.tip`, optional): nach der ersten Pause kann die Teamleitung
+  ihn aufdecken (`reveal_tip` setzt `progress.tip_at`), danach steht er für
+  alle im Team in `station.tip`; vorher nur `station.tipAvailable`.
 
 ### Ziffern und Koffer-Code
 - Jede Station hat `digit` (0 bis 9). Die sechste Ziffer ist
@@ -157,6 +162,10 @@ Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
 - Teamleitung und Mitglieder mit Token: „Schon mal vorbereiten“, also
   Standort und Kompass freigeben, Kompass einmessen, Übungsziel TSE AG Berlin
   (`PROBEZIEL`).
+- Gehört das Handy der Teamleitung (Name = `leaderName`), steht auf der
+  Team-Karte „Du bist Teamleitung: Code eingeben“ (Link zu `#/team`).
+- Ab dem Start zeigen alle Ansichten im Kopf die Restzeit (`endsAt`, aus
+  `duration_min`), rot in den letzten 15 Minuten, danach „Zeit ist um“.
 - Nachzügler: nur über die Spielleitung (Hilfe-Knöpfe auf der Anmeldeseite).
   Zum Mitlesen bekommen sie den Mitlese-Link ihres Teams (Reiter Teams oder
   von der Teamleitung).
@@ -176,9 +185,9 @@ Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
   werten“ zählt die Station als gelöst (`admin_solve_station`, fragt nach).
 
 ### 5.5 Ziel
-- Alle fünf Ziffern: großes Zahlenschloss, Koffer-Hinweis (Ortshinweis der
-  Station 5), Code-Eingabe nur bei der Teamleitung und nur am Koffer (die
-  Meldung nennt sonst die Restentfernung).
+- Alle fünf Ziffern: großes Zahlenschloss, Koffer-Hinweis
+  (`game_state.case_hint`), Code-Eingabe nur bei der Teamleitung und nur am
+  Koffer (die Meldung nennt sonst die Restentfernung).
 - Nach richtigem Code: Platz-Bildschirm mit Medaille (1 bis 3) oder 🏁, auf
   allen Handys des Teams. Die Aufsicht am Koffer gibt nach Platz frei.
 
@@ -324,15 +333,15 @@ Endpunkte:
 - öffentlich: `public_state`, `register_participant`, `lookup_participant`
   (auch Namensteile, bis zu acht Vorschläge), `member_state`,
   `member_state_by_team`
-- Teamleitung: `team_state`, `check_in`, `submit_answer`, `submit_final`,
-  `report_position`, `team_set_leader`
+- Teamleitung: `team_state`, `check_in`, `submit_answer`, `reveal_tip`,
+  `submit_final`, `report_position`, `team_set_leader`
 - Spielleitung: `admin_state`, `admin_tracks`, `admin_draw`, `admin_start`,
   `admin_finish`, `admin_resume`, `admin_reset`, `admin_clear_positions`,
   `admin_clear_participants`, `admin_add_participant`,
   `admin_add_participants`, `admin_delete_test_participants`,
   `admin_rename_participant`, `admin_delete_participant`, `admin_set_leader`,
   `admin_save_station`, `admin_unlock_station`, `admin_solve_station`,
-  `admin_set_pin`, `admin_set_test_mode`
+  `admin_set_pin`, `admin_set_test_mode`, `admin_set_settings`
 - intern (für `anon` gesperrt): `norm`, `answer_ok`, `dist_m`, `team_by_code`,
   `current_station`, `require_admin`
 
