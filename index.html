@@ -47,7 +47,11 @@ textarea{min-height:64px;font-size:16px}
 .btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 18px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);margin-top:12px}
 .btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
 .btn.sm{display:inline-block;width:auto;padding:8px 12px;font-size:15px;margin:0 6px 6px 0;min-height:42px}
-.btn:disabled{opacity:.45;cursor:not-allowed}
+/* Gesperrt sieht nach "noch nicht" aus, nicht nach einem blassen Orange */
+.btn:disabled{background:var(--line);color:var(--muted);cursor:not-allowed}
+.btn.alt:disabled{background:transparent;opacity:.5}
+#gnote,#gstat{white-space:pre-line}
+.compass .cap{font-size:12px;color:var(--muted);text-align:center;margin-top:2px}
 .msg{border-radius:10px;padding:10px 12px;margin-top:12px;font-size:15px}
 .msg.err{background:var(--err-bg);color:var(--err)}.msg.ok{background:var(--ok-bg);color:var(--ok)}
 .msg.info{background:var(--info-bg);color:var(--ink)}
@@ -621,7 +625,8 @@ function kalOkHTML() {
 function gpsNote() {
   const g = S.gps;
   if (!g.on) return "";
-  return (g.pos ? `GPS ±${Math.round(g.acc)} m` : "Warte auf GPS …") + ", " + kompassText();
+  // zwei Zeilen (white-space: pre-line), sonst wird daraus ein Bandwurmsatz
+  return (g.pos ? `GPS ±${Math.round(g.acc)} m` : "Warte auf GPS …") + "\n" + kompassText();
 }
 function viewTeam() {
   if (!S.team.code) return brand("Teamleitung") + `<div class="panel">
@@ -677,8 +682,8 @@ function teamAnsicht(st, lesen) {
       ${lesen ? `<p class="small" style="margin-top:12px">Den Koffer-Code gibt <b>${esc(leitung)}</b> ein. Er steht oben im Zahlenschloss.</p>`
         : `<div style="margin-top:12px"><label for="tfin">Koffer-Code, 6 Stellen</label><input id="tfin" inputmode="numeric" maxlength="6"></div>
       <p class="small muted">Gebt ihn ein, wenn ihr am Koffer steht. Die App prüft dabei euren Standort.</p>
-      <button class="btn" data-act="t-final" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Code eingeben"}</button>${msgBox()}`}</div>`;
-    return out + ende;
+      <button class="btn" data-act="t-final" data-wait="Standort wird bestimmt …" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Code eingeben"}</button>${msgBox()}`}</div>`;
+    return out + helpBtn(`Stadtjagd: Hier ist ${kennung}. Wir stehen am Koffer und brauchen Hilfe.`) + ende;
   }
 
   const s = st.station;
@@ -691,10 +696,10 @@ function teamAnsicht(st, lesen) {
     out += `<div class="panel"><p class="muted small">Station ${s.position} von ${st.totalStations}</p>
       <h2>${esc(s.name)}</h2><p class="hint" style="margin-top:8px">${esc(s.locationHint)}</p>`;
     if (g.kal && hasTarget) out += kalHTML();
-    else out += `<div class="compass ${richtungBekannt() ? "" : "unsicher"}"><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
+    else out += `<div class="compass ${richtungBekannt() ? "" : "unsicher"}"><div><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
         <polygon class="needle" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/>
-        <text class="nq" x="39" y="48" text-anchor="middle">?</text></svg>
-        <div><div class="dist" id="dist">${dist}</div><div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div></div></div>
+        <text class="nq" x="39" y="48" text-anchor="middle">?</text></svg><div class="cap">Richtung</div></div>
+        <div><div class="muted small">Entfernung</div><div class="dist" id="dist">${dist}</div><div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div></div></div>
       ${!hasTarget ? `<div class="msg err">Für diese Station fehlen die Koordinaten. Die Spielleitung muss sie setzen.</div>` : ""}
       ${!g.on ? `<button class="btn alt" data-act="t-gps">Standort und Kompass aktivieren</button>` : ""}
       ${kalOk}
@@ -710,7 +715,8 @@ function teamAnsicht(st, lesen) {
         Schwenkt das Handy ein paar Mal in einer liegenden Acht, dann fängt sich der Pfeil.
         <button class="btn alt" data-act="t-kal">Jetzt einmessen</button></div>` : ""}
       ${lesen ? `<p class="small muted" style="margin-top:12px">Einchecken macht <b>${esc(leitung)}</b>, sobald ihr da seid. Dann erscheint hier das Rätsel.</p>`
-        : `<button class="btn" data-act="t-check" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>Wir sind da</button>`}
+        : `<button class="btn" data-act="t-check" data-wait="Standort wird bestimmt …" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>Wir sind da</button>
+      ${!st.testMode && hasTarget && g.on && !g.pos ? `<p class="small muted" style="text-align:center;margin-top:6px">Sobald der Standort da ist, könnt ihr einchecken.</p>` : ""}`}
       ${msgBox()}
       ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
       ${kompassDa() && (g.kompass !== "kalibrieren" || kalOk) ? `<button class="link" data-act="t-kal">Kompass neu einmessen</button>` : ""}`;
@@ -724,7 +730,7 @@ function teamAnsicht(st, lesen) {
       <p class="riddle" style="margin-top:8px">${esc(s.riddle || "")}</p>
       ${lesen ? `<p class="small" style="margin-top:12px">Die Antwort gibt <b>${esc(leitung)}</b> ein. Überlegt gemeinsam.</p>`
         : `<div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans" autocomplete="off" enterkeyhint="send" ${pause ? "disabled" : ""}></div>
-      <button class="btn" data-act="t-answer" ${S.busy || pause ? "disabled" : ""}>Antwort prüfen</button>`}
+      <button class="btn" data-act="t-answer" data-wait="Wird geprüft …" ${S.busy || pause ? "disabled" : ""}>Antwort prüfen</button>`}
       ${pause ? `<div class="msg err" id="pause" data-bis="${esc(st.lockedUntil)}">${pauseText(st.lockedUntil)}</div>`
         : msgBox() + `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
           : `Fehlversuche: ${st.failedAttempts} von 3, danach 2 Minuten Pause.`}</p>`}</div>`;
@@ -844,7 +850,7 @@ function viewAdmin() {
       ${reihe.map(t => `<tr><td><b>${teamEmoji(t.name)} ${esc(t.name)}</b><br><span class="small muted">Leitung ${esc(t.leaderName || "offen")}, ${t.memberCount} Pers.</span></td>
         <td class="small">${esc(t.code)}</td>
         <td><div class="prog"><span style="width:${(t.solved / Math.max(1, (st.stations || []).length)) * 100}%"></span></div>
-          <span class="small muted">${t.solved} / ${(st.stations || []).length}, ${ago(t.lastActivity)}</span>
+          <span class="small muted">${t.solved} / ${(st.stations || []).length} gelöst${st.status === "running" && t.currentPosition && !t.place ? `, bei Station ${t.currentPosition}` : ""}${t.lastActivity ? ", zuletzt " + ago(t.lastActivity) : ", noch keine Aktivität"}</span>
           ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}</td>
         <td>${st.status === "running" && t.currentPosition ? `<div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm alt" data-act="a-unlock" data-id="${t.id}">Freischalten</button>
           <button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-name="${esc(t.name)}">Rätsel werten</button></div>` : ""}</td></tr>`).join("")}
@@ -1681,6 +1687,14 @@ async function nameNochDa() {
   if (S.lookupEigen) { S.lookup = null; S.lookupName = null; S.hoch = false; }
   return true;
 }
+// Eine Meldung gehört zu ihrer Phase (Station, Rätsel, Koffer). Springt der Stand weiter, etwa weil
+// die Spielleitung freigeschaltet hat, darf "Leider falsch" nicht auf dem nächsten Bildschirm stehen.
+const phaseKey = st => !st ? "" : st.place ? "platz" : st.allSolved ? "koffer"
+  : st.station ? st.station.position + (st.checkedIn ? "r" : "c") : st.status;
+function teamStandSetzen(s) {
+  if (S.team.state && phaseKey(S.team.state) !== phaseKey(s)) S.msg = null;
+  S.team.state = s;
+}
 // Nach einem Neu-Auslosen gilt der alte Team-Code nicht mehr: abmelden und das sagen,
 // statt still das alte Team weiter zu zeigen
 function codeUngueltig() {
@@ -1692,7 +1706,7 @@ async function refresh() {
   if (!cfg.url || !cfg.key) return render();
   try {
     if (S.view === "public") { S.pub = await rpc("public_state", {}); await nameNochDa(); teamNachziehen(); await eigenesTeam(); await mitlesen(); }
-    if (S.view === "team" && S.team.code) S.team.state = await rpc("team_state", { p_code: S.team.code });
+    if (S.view === "team" && S.team.code) teamStandSetzen(await rpc("team_state", { p_code: S.team.code }));
     if (S.view === "admin" && S.admin.pin) S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin });
   } catch (e) {
     if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); return render(); }
@@ -1753,6 +1767,8 @@ document.addEventListener("click", async e => {
     if (!S.msg || S.msg.type !== "err") return;
     Object.keys(getippt).forEach(id => { const el = document.getElementById(id); if (el && !el.disabled) el.value = getippt[id]; });
   };
+  // Dauert es (Standort holen, Funk), sagt der Knopf selbst, was gerade passiert
+  if (a.dataset.wait) { a.textContent = a.dataset.wait; a.setAttribute("aria-busy", "true"); }
   try {
     const r = await fn(a.dataset);
     S.busy = false;
@@ -1793,7 +1809,7 @@ setInterval(() => {
     return;
   }
   if (busyTyping) return;
-  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(s => { S.team.state = s; render(); })
+  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(s => { teamStandSetzen(s); render(); })
     .catch(e => { if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); render(); } });
   // Beim Hochhalten nicht neu zeichnen: die Vollbild-Ansicht würde jedes Mal neu einblenden und flackern.
   // Die Daten kommen trotzdem, beim Schließen ist alles aktuell.
