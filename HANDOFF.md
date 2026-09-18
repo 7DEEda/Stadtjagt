@@ -112,8 +112,7 @@ der Auswertung löschen.
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
 Erledigt: Migration ist im Supabase-Projekt eingespielt, Schema und Funktionen stehen, Status `registration`.
-Nachtrag 1 (`supabase/migrations/20260918150000_where_clauses.sql`, 18.09.2026) muss zusätzlich im SQL-Editor eingespielt sein, sonst schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl.
-Nachtrag 2 (`20260918160000_routes.sql`) danach einspielen, er bringt die Routen und die Zeitachse. Reihenfolge einhalten.
+Nachtrag 1 (`20260918150000_where_clauses.sql`) und Nachtrag 2 (`20260918160000_routes.sql`) sind am 18.09.2026 eingespielt, geprüft über `pg_proc` und einen Aufruf von `admin_tracks`. Wer die Datenbank neu aufsetzt, spielt sie in dieser Reihenfolge nach der Init-Migration ein: ohne Nachtrag 1 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne Nachtrag 2 fehlen Routen und Zeitachse.
 GitHub Pages läuft über Actions, erstes Deployment grün.
 
 Wichtig für die Weiterarbeit:
