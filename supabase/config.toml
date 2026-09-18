@@ -1,0 +1,8 @@
+# Minimale Konfiguration fuer die Supabase CLI.
+# project_id ist nur ein lokaler Name; die Verbindung zum Cloud-Projekt
+# entsteht ueber "supabase link --project-ref <ref>".
+project_id = "stadtjagd"
+
+[db]
+port = 54322
+major_version = 15

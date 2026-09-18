@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stadtjagd</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF;
+  --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#FFFFFF; --water:#2F6E9E;
+  --ok:#2E7D4F; --err:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38;
+  --contour:#1C312B; --flag:#FF7A3A; --water:#6FA8D6; --ok:#6CCB8E; --err:#FF8A80;
+  --ok-bg:#16332A; --err-bg:#3A1F1C;}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);min-height:100vh}
+.contours{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%}
+.contours path{fill:none;stroke:var(--contour);stroke-width:1.4}
+main{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:20px 16px 70px}
+main.wide{max-width:900px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+h1{font-size:32px;font-weight:700}h2{font-size:24px;font-weight:700}h3{font-size:19px;font-weight:600}
+p{margin:.4em 0 0}
+.muted{color:var(--muted)}.small{font-size:14px}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:16px}
+.flag{width:32px;height:32px;flex:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
+input,textarea,select{width:100%;font:500 17px var(--body);padding:11px 13px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink)}
+textarea{min-height:64px;font-size:16px}
+.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 18px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);margin-top:12px}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.sm{display:inline-block;width:auto;padding:8px 12px;font-size:15px;margin:0 6px 6px 0}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.msg{border-radius:10px;padding:10px 12px;margin-top:12px;font-size:15px}
+.msg.err{background:var(--err-bg);color:var(--err)}.msg.ok{background:var(--ok-bg);color:var(--ok)}
+.count{font:700 42px var(--head);line-height:1}
+ul.names{list-style:none;padding:0;margin:10px 0 0;columns:2;column-gap:14px;font-size:15px}
+ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line)}
+.leader{color:var(--flag);font-weight:600}
+.lock{display:flex;gap:6px;justify-content:center;margin:4px 0}
+.wheel{width:44px;height:58px;border-radius:8px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font:700 32px var(--head)}
+.wheel.empty{color:color-mix(in srgb,var(--paper) 30%,transparent)}
+.route{display:flex;align-items:center;margin:12px 2px 2px}
+.route i{flex:1;height:3px;background:var(--line)}.route i.done{background:var(--flag)}
+.route b{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--line);display:grid;place-items:center;font:700 14px var(--head);background:var(--card);color:var(--muted)}
+.route b.done{background:var(--flag);border-color:var(--flag);color:var(--flag-ink)}
+.route b.now{border-color:var(--flag);color:var(--flag)}
+.compass{display:flex;gap:16px;align-items:center;margin-top:12px}
+.compass svg{width:78px;height:78px;flex:none}
+.ring{fill:none;stroke:var(--line);stroke-width:3}
+.needle{fill:var(--flag);transform-origin:39px 39px}
+.dist{font:700 38px var(--head);line-height:1}
+.hint{font-size:19px;font-weight:500}
+.riddle{font-size:19px;border-left:4px solid var(--flag);padding-left:12px}
+.share{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin-top:10px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--flag);flex:none}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-top:14px;overflow-x:auto}
+.tabs button{background:none;border:0;padding:10px 12px;font:600 17px var(--head);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--flag)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.chip{display:inline-block;padding:4px 10px;border-radius:99px;font:600 13px var(--body);background:var(--paper);border:1px solid var(--line)}
+.chip.live{background:var(--flag);color:var(--flag-ink);border-color:var(--flag)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font:600 14px var(--body);color:var(--muted)}
+.prog{height:8px;border-radius:4px;background:var(--line);min-width:80px;overflow:hidden}
+.prog span{display:block;height:100%;background:var(--flag)}
+#map{height:62vh;min-height:320px;border-radius:12px;border:1px solid var(--line);margin-top:12px;background:var(--paper)}
+#map.full{position:fixed;inset:0;height:100vh;z-index:50;border-radius:0;margin:0}
+.mapbadge{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--flag);color:#fff;font:700 15px var(--head);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.mapbadge.team{background:var(--water)}
+.mapbadge.stale{background:#8b9c95}
+.nav{display:flex;gap:6px;justify-content:center;margin-top:24px;font-size:14px}
+.nav a{color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<svg class="contours" viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <path d="M-20 120 C60 80 120 160 200 120 S340 60 420 110"/>
+  <path d="M-20 150 C70 110 120 190 210 150 S330 95 420 140"/>
+  <path d="M-20 330 C40 300 110 380 180 340 S300 280 420 330"/>
+  <path d="M-20 360 C50 330 120 410 190 372 S310 315 420 362"/>
+  <path d="M-20 392 C60 362 130 440 200 404 S320 350 420 396"/>
+  <path d="M60 560 C100 510 190 520 210 570 S150 650 100 630 S30 600 60 560Z"/>
+  <path d="M80 568 C110 535 175 545 188 575 S145 625 110 612 S62 592 80 568Z"/>
+  <path d="M-20 720 C80 690 160 760 260 720 S380 680 420 700"/>
+</svg>
+<main id="app"></main>
+
+<script src="config.js"></script>
+<script>
+/* ===========================================================
+   KONFIGURATION – hier eintragen, bevor die Datei online geht.
+   Beides findest du in Supabase unter Project Settings, API.
+   Der anon-Key ist öffentlich und darf im Quelltext stehen.
+   Der service_role-Key gehört NIEMALS hierher.
+   =========================================================== */
+// Die Werte stehen in config.js, die vor diesem Skript geladen wird.
+const cfg = {
+  url: (window.SJ_CONFIG && window.SJ_CONFIG.url) || localStorage.getItem("sj.url") || "",
+  key: (window.SJ_CONFIG && window.SJ_CONFIG.key) || localStorage.getItem("sj.key") || ""
+};
+
+/* ---------- Grundlagen ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const val = id => ($("#" + id)?.value || "").trim();
+const rad = x => x * Math.PI / 180, deg = x => x * 180 / Math.PI;
+const R_E = 6371000;
+
+function haversine(a, b) {
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R_E * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+function bearingTo(a, b) {
+  const y = Math.sin(rad(b.lng - a.lng)) * Math.cos(rad(b.lat));
+  const x = Math.cos(rad(a.lat)) * Math.sin(rad(b.lat)) - Math.sin(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.cos(rad(b.lng - a.lng));
+  return (deg(Math.atan2(y, x)) + 360) % 360;
+}
+const fmtDist = m => m < 1000 ? Math.round(m) + " m" : (m / 1000).toFixed(2).replace(".", ",") + " km";
+function ago(ts) {
+  if (!ts) return "nie";
+  const s = Math.max(0, Math.round((Date.now() - new Date(ts).getTime()) / 1000));
+  if (s < 60) return "vor " + s + " s";
+  if (s < 3600) return "vor " + Math.round(s / 60) + " min";
+  return "vor " + Math.round(s / 3600) + " h";
+}
+
+async function rpc(fn, args) {
+  if (!cfg.url || !cfg.key) throw new Error("Die App ist noch nicht mit Supabase verbunden.");
+  const res = await fetch(cfg.url.replace(/\/$/, "") + "/rest/v1/rpc/" + fn, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: cfg.key, Authorization: "Bearer " + cfg.key },
+    body: JSON.stringify(args || {})
+  });
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  if (!res.ok) throw new Error((data && data.message) || "Fehler " + res.status);
+  if (typeof data === "string") throw new Error("Unerwartete Antwort vom Server.");
+  return data;
+}
+
+/* ---------- Zustand ---------- */
+const S = {
+  view: (location.hash.replace("#/", "") || "public"),
+  msg: null, busy: false,
+  pub: null, myName: localStorage.getItem("sj.name") || null, lookup: null,
+  team: { code: localStorage.getItem("sj.code") || null, state: null },
+  gps: { pos: null, acc: null, heading: null, gpsHeading: null, needle: 0, on: false, err: null, compass: false, lastSent: 0, lastSentPos: null, sentAt: null },
+  admin: { pin: sessionStorage.getItem("sj.pin") || null, state: null, tab: "map", edit: null, full: false }
+};
+const FLAG = '<svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="1" width="22" height="22" fill="#fff" stroke="currentColor" stroke-width="1.2"/><polygon points="1,1 23,1 23,23" fill="var(--flag)"/></svg>';
+const brand = sub => `<div class="brand">${FLAG}<div><h1>Stadtjagd</h1><div class="muted small">${esc(sub)}</div></div></div>`;
+const msgBox = () => S.msg ? `<div class="msg ${S.msg.type}" role="status">${esc(S.msg.text)}</div>` : "";
+const nav = () => `<div class="nav"><a href="#/public">Anmeldung</a> | <a href="#/team">Team</a> | <a href="#/admin">Spielleitung</a></div>`;
+
+/* ---------- Setup-Ansicht, falls nicht konfiguriert ---------- */
+function viewSetup() {
+  return brand("Einrichtung") + `<div class="panel">
+    <h2>Mit Supabase verbinden</h2>
+    <p class="muted small">Trag die Werte aus Supabase unter Project Settings, API ein. Für den Dauerbetrieb schreibst du sie oben in die Datei, dann entfällt dieser Schritt für alle anderen.</p>
+    <div style="margin-top:12px"><label for="surl">Project URL</label><input id="surl" placeholder="https://xxxx.supabase.co" value="${esc(cfg.url)}"></div>
+    <div style="margin-top:12px"><label for="skey">anon public key</label><input id="skey" value="${esc(cfg.key)}"></div>
+    <button class="btn" data-act="cfg-save">Speichern</button>${msgBox()}</div>`;
+}
+
+/* ---------- Öffentliche Ansicht ---------- */
+function viewPublic() {
+  const p = S.pub;
+  if (!p) return brand("Teamfahrt") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
+  let out = brand(p.status === "registration" ? "Anmeldung offen" : p.status === "finished" ? "Spiel beendet" : "Die Teams stehen");
+
+  if (p.status === "registration") {
+    out += S.myName
+      ? `<div class="panel"><h2>Du bist dabei, ${esc(S.myName)}.</h2>
+         <p>Sobald die Spielleitung auslost, siehst du hier dein Team.</p></div>
+         <button class="btn alt" data-act="pub-again">Weitere Person anmelden</button>`
+      : `<div class="panel"><h2>Mitmachen</h2><p class="muted">Trag deinen Namen ein. Die Teams werden später zufällig ausgelost.</p>
+         <div style="margin-top:12px"><label for="pname">Vor- und Nachname</label><input id="pname" autocomplete="name"></div>
+         <button class="btn" data-act="pub-reg" ${S.busy ? "disabled" : ""}>Anmelden</button>${msgBox()}</div>`;
+    out += `<div class="panel"><div class="count">${p.participantCount}</div><div class="muted small">Personen angemeldet</div></div>`;
+    return out + nav();
+  }
+
+  if (p.winnerTeamId) {
+    const w = (p.teams || []).find(t => t.id === p.winnerTeamId);
+    out += `<div class="panel"><h2>Team ${esc(w ? w.name : "?")} hat den Koffer geöffnet</h2>
+      <table><tr><th>Platz</th><th>Team</th><th>Stationen</th></tr>
+      ${(p.ranking || []).map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.teamName)}</td><td>${r.solved} / ${p.stationCount}</td></tr>`).join("")}</table></div>`;
+  }
+  const t = S.lookup;
+  if (t) out += `<div class="panel"><p class="muted small">Gefundenes Team</p><h2>Team ${esc(t.name)}</h2>
+    <p>Leitung: ${esc(t.leaderName || "offen")}</p>
+    <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`;
+  out += `<div class="panel"><label for="plook">In welchem Team bin ich?</label>
+    <input id="plook" value="${esc(S.myName || "")}">
+    <button class="btn" data-act="pub-look">Team anzeigen</button>${msgBox()}</div>`;
+  return out + nav();
+}
+
+/* ---------- Team-Ansicht ---------- */
+function lockHTML(st) {
+  const d = st.digits || [];
+  let h = '<div class="lock">';
+  for (let k = 0; k < 6; k++) {
+    const v = k < 5 ? d[k] : st.finalDigit;
+    h += `<div class="wheel ${v == null ? "empty" : ""}">${v == null ? "?" : v}</div>`;
+  }
+  return h + "</div>";
+}
+function routeHTML(st) {
+  let h = '<div class="route">';
+  for (let k = 0; k < (st.totalStations || 5); k++) {
+    if (k) h += `<i class="${k <= st.solvedCount ? "done" : ""}"></i>`;
+    h += `<b class="${k < st.solvedCount ? "done" : k === st.solvedCount ? "now" : ""}">${k + 1}</b>`;
+  }
+  return h + "</div>";
+}
+function gpsNote() {
+  const g = S.gps;
+  if (!g.on) return "";
+  const a = g.pos ? `GPS ±${Math.round(g.acc)} m` : "Warte auf GPS …";
+  const h = g.heading != null ? "Kompass aktiv" : g.gpsHeading != null ? "Richtung aus Laufrichtung" : "kein Kompass, Pfeil zeigt relativ zu Norden";
+  return a + ", " + h;
+}
+function viewTeam() {
+  if (!S.team.code) return brand("Teamleitung") + `<div class="panel">
+    <h2>Team-Code eingeben</h2><p class="muted">Den Code bekommt die Teamleitung von der Spielleitung.</p>
+    <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" placeholder="FUCHS-1234"></div>
+    <button class="btn" data-act="t-login" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox()}</div>` + nav();
+  const st = S.team.state;
+  if (!st) return brand("Teamleitung") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
+
+  let out = `<div class="bar"><div>${FLAG}</div><div style="flex:1"><h1>Team ${esc(st.team.name)}</h1>
+    <div class="muted small">${esc(st.team.code)}, Leitung ${esc(st.team.leaderName || "offen")}</div></div></div>`;
+
+  if (st.status === "drawn") return out + `<div class="panel"><h3>Ihr seid startklar</h3>
+    <p>Alle Teams starten gleichzeitig. Wartet auf das Signal der Spielleitung.</p>
+    <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>` + nav();
+
+  out += `<div class="panel">${lockHTML(st)}${routeHTML(st)}
+    <p class="small muted" style="text-align:center">Die 6. Ziffer ist die Einerstelle der Summe eurer fünf Ziffern.</p></div>`;
+
+  if (st.isWinner) return out + `<div class="panel" style="text-align:center"><h2>Ihr habt gewonnen</h2>
+    <p>Zeigt diesen Bildschirm der Spielleitung am Koffer.</p></div>` + nav();
+  if (st.winnerTeamId) return out + `<div class="panel"><h2>Ein anderes Team war schneller</h2>
+    <p>Kommt zum Koffer, dort gibt es die Auflösung.</p></div>` + nav();
+
+  if (st.allSolved) {
+    out += `<div class="panel"><h2>Der Koffer</h2><p class="hint">${esc(st.caseHint || "")}</p>
+      <div style="margin-top:12px"><label for="tfin">Koffer-Code, 6 Stellen</label><input id="tfin" inputmode="numeric" maxlength="6"></div>
+      <button class="btn" data-act="t-final" ${S.busy ? "disabled" : ""}>Koffer öffnen</button>${msgBox()}</div>`;
+    return out + nav();
+  }
+
+  const s = st.station;
+  if (!s) return out + `<div class="panel"><p>Das Spiel läuft gerade nicht.</p></div>` + nav();
+
+  if (!st.checkedIn) {
+    const g = S.gps, hasTarget = s.lat != null && s.lng != null;
+    const dist = hasTarget && g.pos ? fmtDist(haversine(g.pos, { lat: s.lat, lng: s.lng })) : "– –";
+    out += `<div class="panel"><p class="muted small">Station ${s.position} von ${st.totalStations}</p>
+      <h2>${esc(s.name)}</h2><p class="hint" style="margin-top:8px">${esc(s.locationHint)}</p>
+      <div class="compass"><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
+        <polygon class="needle" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/></svg>
+        <div><div class="dist" id="dist">${dist}</div><div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div></div></div>
+      ${!hasTarget ? `<div class="msg err">Für diese Station fehlen die Koordinaten. Die Spielleitung muss sie setzen.</div>` : ""}
+      ${!g.on ? `<button class="btn alt" data-act="t-gps">Standort und Kompass aktivieren</button>` : ""}
+      <button class="btn" data-act="t-check" ${S.busy || !hasTarget || !g.pos ? "disabled" : ""}>Wir sind da</button>
+      ${msgBox()}
+      ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
+      ${g.on && st.status === "running" ? `<div class="share"><span class="dot"></span><span>Standort wird mit der Spielleitung geteilt${S.gps.sentAt ? ", zuletzt " + S.gps.sentAt : ""}</span></div>` : ""}
+      </div>`;
+  } else {
+    out += `<div class="panel"><p class="muted small">Station ${s.position}: ${esc(s.name)}</p>
+      <p class="riddle" style="margin-top:8px">${esc(s.riddle || "")}</p>
+      <div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans"></div>
+      <button class="btn" data-act="t-answer" ${S.busy ? "disabled" : ""}>Antwort prüfen</button>
+      ${msgBox()}<p class="small muted">Fehlversuche: ${st.failedAttempts}/3, danach 2 Minuten Pause.</p></div>`;
+  }
+  out += `<p class="small muted" style="text-align:center;margin-top:12px">Mitglieder: ${(st.team.members || []).map(esc).join(", ")}</p>`;
+  out += `<button class="btn alt" data-act="t-logout">Abmelden</button>`;
+  return out + nav();
+}
+
+/* ---------- Spielleitung ---------- */
+function viewAdmin() {
+  const A = S.admin;
+  if (!A.pin) return brand("Spielleitung") + `<div class="panel"><h2>PIN</h2>
+    <div style="margin-top:12px"><input id="apin" type="password" inputmode="numeric"></div>
+    <button class="btn" data-act="a-login" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox()}</div>` + nav();
+  const st = A.state;
+  if (!st) return brand("Spielleitung") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
+
+  const status = st.winnerTeamId ? '<span class="chip">Beendet</span>'
+    : st.status === "running" ? '<span class="chip live">Läuft</span>'
+      : st.status === "drawn" ? '<span class="chip">Teams ausgelost</span>' : '<span class="chip">Anmeldung offen</span>';
+  let actions = "";
+  if (st.status === "registration" || st.status === "drawn") actions += `<button class="btn sm alt" data-act="a-draw">${st.status === "drawn" ? "Neu auslosen" : "Teams auslosen"}</button>`;
+  if (st.status === "drawn") actions += `<button class="btn sm" data-act="a-start">Spiel starten</button>`;
+  if (st.status === "running") actions += `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
+  if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-reset">Zurücksetzen</button>`;
+
+  let out = `<div class="bar"><div class="brand" style="margin:0">${FLAG}<div><h1>Spielleitung</h1><div>${status}</div></div></div><div>${actions}</div></div>${msgBox()}`;
+  const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
+  if (missing.length) out += `<div class="msg err">Ohne Koordinaten kann dort niemand einchecken. Betroffen: Station ${missing.map(s => s.position).join(", ")}.</div>`;
+
+  const tabs = [["map", "Karte"], ["teams", "Teams"], ["people", "Teilnehmende"], ["stations", "Stationen"]];
+  out += `<div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${A.tab === k}" data-act="a-tab" data-tab="${k}">${l}</button>`).join("")}</div>`;
+
+  if (A.tab === "map") {
+    const withPos = (st.teams || []).filter(t => t.position);
+    out += `<div id="map"></div>
+      <div class="bar" style="margin-top:8px"><span class="small muted">${withPos.length} von ${(st.teams || []).length} Teams melden eine Position. Aktualisierung alle 10 Sekunden.</span>
+      <span><button class="btn sm alt" data-act="a-full">Vollbild</button><button class="btn sm alt" data-act="a-clearpos">Standortdaten löschen</button></span></div>`;
+    const without = (st.teams || []).filter(t => !t.position);
+    if (without.length) out += `<p class="small muted">Ohne Position: ${without.map(t => esc(t.name)).join(", ")}</p>`;
+  }
+  if (A.tab === "teams") {
+    out += `<div class="panel"><table><tr><th>Team</th><th>Code</th><th>Stand</th><th></th></tr>
+      ${(st.teams || []).map(t => `<tr><td><b>${esc(t.name)}</b><br><span class="small muted">Leitung ${esc(t.leaderName || "offen")}, ${t.memberCount} Pers.</span></td>
+        <td class="small">${esc(t.code)}</td>
+        <td><div class="prog"><span style="width:${(t.solved / Math.max(1, (st.stations || []).length)) * 100}%"></span></div>
+          <span class="small muted">${t.solved} / ${(st.stations || []).length}, ${ago(t.lastActivity)}</span></td>
+        <td>${st.status === "running" && t.currentPosition ? `<button class="btn sm alt" data-act="a-unlock" data-id="${t.id}">Freischalten</button>` : ""}</td></tr>`).join("")}
+      </table><p class="small muted">„Freischalten“ ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.</p></div>`;
+  }
+  if (A.tab === "people") {
+    out += `<div class="panel"><div class="bar"><div><span class="count">${(st.participants || []).length}</span> <span class="muted">angemeldet</span></div></div>
+      <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
+      <ul class="names">${(st.participants || []).map(p => `<li>${esc(p.name)}${p.teamName ? ` <span class="small muted">${esc(p.teamName)}</span>` : ""}
+        <button class="btn sm alt" style="padding:2px 6px;font-size:13px" data-act="a-del" data-id="${p.id}">×</button></li>`).join("")}</ul></div>`;
+  }
+  if (A.tab === "stations") {
+    out += `<div class="panel"><p class="small muted">Lauf die Route einmal ab und drück an jeder Station „Meinen Standort übernehmen“. Ein Paar wie 52.51631, 13.37770 kannst du auch ins Feld Breite einfügen.</p>
+      ${(st.stations || []).map(s => S.admin.edit === s.id ? `
+        <div class="stack" style="border-top:1px solid var(--line);padding-top:12px;margin-top:12px">
+          <h3>Station ${s.position}</h3>
+          <div style="margin-top:8px"><label>Name</label><input id="e-name" value="${esc(s.name)}"></div>
+          <div style="margin-top:8px"><label>Ortshinweis</label><textarea id="e-hint">${esc(s.locationHint)}</textarea></div>
+          <div style="margin-top:8px"><label>Rätsel</label><textarea id="e-riddle">${esc(s.riddle)}</textarea></div>
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-top:8px">
+            <div><label>Lösung</label><input id="e-answer" value="${esc(s.answer)}"></div>
+            <div><label>Ziffer</label><input id="e-digit" inputmode="numeric" maxlength="1" value="${s.digit}"></div>
+            <div><label>Radius m</label><input id="e-radius" inputmode="numeric" value="${s.radiusM}"></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <div><label>Breite</label><input id="e-lat" inputmode="decimal" value="${s.lat ?? ""}"></div>
+            <div><label>Länge</label><input id="e-lng" inputmode="decimal" value="${s.lng ?? ""}"></div></div>
+          <div style="margin-top:10px"><button class="btn sm alt" data-act="a-here">Meinen Standort übernehmen</button>
+            <span class="small muted" id="e-here"></span></div>
+          <div style="margin-top:6px"><button class="btn sm" data-act="a-save" data-id="${s.id}">Speichern</button>
+            <button class="btn sm alt" data-act="a-cancel">Abbrechen</button></div>
+        </div>` : `
+        <div style="border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px">
+          <b style="font:700 22px var(--head);color:var(--flag);width:20px">${s.position}</b>
+          <div style="flex:1"><h3>${esc(s.name)}</h3><p class="small">${esc(s.riddle)}</p>
+            <p class="small muted">Lösung: ${esc(s.answer)}, Ziffer ${s.digit}, Radius ${s.radiusM} m<br>
+            Koordinaten: ${s.lat != null ? Number(s.lat).toFixed(5) + ", " + Number(s.lng).toFixed(5) : "fehlen noch"}</p></div>
+          <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
+        </div>`).join("")}
+      <p class="small" style="border-top:1px solid var(--line);padding-top:12px">Koffer-Code: <b>${esc(st.caseCode || "")}</b></p></div>`;
+  }
+  return out + nav();
+}
+
+/* ---------- Karte ---------- */
+let map = null, layers = { stations: [], teams: {} }, leafletReady = null;
+function loadLeaflet() {
+  if (leafletReady) return leafletReady;
+  leafletReady = new Promise((res, rej) => {
+    const css = document.createElement("link");
+    css.rel = "stylesheet"; css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(css);
+    const js = document.createElement("script");
+    js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    js.onload = res; js.onerror = () => rej(new Error("Karte konnte nicht geladen werden."));
+    document.head.appendChild(js);
+  });
+  return leafletReady;
+}
+async function drawMap(first) {
+  const el = $("#map"); if (!el || !S.admin.state) return;
+  try { await loadLeaflet(); } catch (e) { el.innerHTML = `<p class="msg err">${esc(e.message)}</p>`; return; }
+  const st = S.admin.state;
+  if (!map || !el.contains(map.getContainer())) {
+    map = L.map(el, { zoomControl: true }).setView([52.52, 13.405], 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    layers = { stations: [], teams: {} };
+    first = true;
+  }
+  layers.stations.forEach(l => map.removeLayer(l));
+  layers.stations = [];
+  const pts = [];
+  (st.stations || []).forEach(s => {
+    if (s.lat == null || s.lng == null) return;
+    const icon = L.divIcon({ html: `<div class="mapbadge">${s.position}</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] });
+    const m = L.marker([s.lat, s.lng], { icon }).bindPopup(`<b>Station ${s.position}</b><br>${esc(s.name)}`);
+    const c = L.circle([s.lat, s.lng], { radius: s.radiusM, color: "#EE5F1B", weight: 1, fillOpacity: .08 });
+    m.addTo(map); c.addTo(map); layers.stations.push(m, c); pts.push([s.lat, s.lng]);
+  });
+  const seen = new Set();
+  (st.teams || []).forEach(t => {
+    if (!t.position) return;
+    seen.add(t.id);
+    const stale = (Date.now() - new Date(t.position.updatedAt).getTime()) > 180000;
+    const ll = [t.position.lat, t.position.lng];
+    pts.push(ll);
+    const html = `<div class="mapbadge team ${stale ? "stale" : ""}">${esc(t.name[0])}</div>`;
+    const popup = `<b>${esc(t.name)}</b><br>${esc(t.code)}<br>Station ${t.currentPosition ?? "–"}, ${t.solved} gelöst<br>${stale ? "keine aktuelle Position" : "Position " + ago(t.position.updatedAt)}`;
+    if (layers.teams[t.id]) {
+      layers.teams[t.id].setLatLng(ll);
+      layers.teams[t.id].setIcon(L.divIcon({ html, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }));
+      layers.teams[t.id].setPopupContent(popup);
+    } else {
+      layers.teams[t.id] = L.marker(ll, { icon: L.divIcon({ html, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) })
+        .bindPopup(popup).addTo(map);
+    }
+  });
+  Object.keys(layers.teams).forEach(id => { if (!seen.has(id)) { map.removeLayer(layers.teams[id]); delete layers.teams[id]; } });
+  if (first && pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.25));
+  setTimeout(() => map.invalidateSize(), 60);
+}
+
+/* ---------- Aktionen ---------- */
+const ACT = {
+  async "cfg-save"() {
+    cfg.url = val("surl"); cfg.key = val("skey");
+    localStorage.setItem("sj.url", cfg.url); localStorage.setItem("sj.key", cfg.key);
+    S.msg = null; await refresh();
+  },
+  async "pub-reg"() {
+    const r = await rpc("register_participant", { p_name: val("pname") });
+    S.myName = r.name; localStorage.setItem("sj.name", r.name); S.msg = null; await refresh();
+  },
+  "pub-again"() { S.myName = null; localStorage.removeItem("sj.name"); },
+  async "pub-look"() {
+    const r = await rpc("lookup_participant", { p_name: val("plook") });
+    if (!r.found) { S.lookup = null; S.msg = { type: "err", text: "Kein Name gefunden. Prüfe die Schreibweise." }; return; }
+    if (!r.team) { S.lookup = null; S.msg = { type: "ok", text: r.name + " ist angemeldet, aber noch keinem Team zugeteilt." }; return; }
+    S.lookup = r.team; S.msg = { type: "ok", text: r.name + " ist in Team " + r.team.name + "." };
+  },
+  async "t-login"() {
+    const code = val("tcode");
+    const st = await rpc("team_state", { p_code: code });
+    S.team.code = st.team.code; S.team.state = st; localStorage.setItem("sj.code", st.team.code); S.msg = null;
+  },
+  "t-logout"() { S.team.code = null; S.team.state = null; localStorage.removeItem("sj.code"); stopGps(); },
+  "t-gps"() { startGps(); },
+  async "t-check"() {
+    const g = S.gps;
+    const pos = await freshPosition();
+    S.gps.pos = { lat: pos.lat, lng: pos.lng }; S.gps.acc = pos.acc;
+    const r = await rpc("check_in", { p_code: S.team.code, p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc });
+    S.team.state = r.state;
+    S.msg = { type: r.ok ? "ok" : "err", text: r.message + (!r.ok && pos.acc > 40 ? ` GPS ist gerade ungenau (±${Math.round(pos.acc)} m).` : "") };
+  },
+  async "t-answer"() {
+    const r = await rpc("submit_answer", { p_code: S.team.code, p_answer: val("tans") });
+    S.team.state = r.state; S.msg = { type: r.ok ? "ok" : "err", text: r.message };
+  },
+  async "t-final"() {
+    const r = await rpc("submit_final", { p_code: S.team.code, p_value: val("tfin") });
+    S.team.state = r.state; S.msg = { type: r.won ? "ok" : "err", text: r.message };
+  },
+  async "a-login"() {
+    const pin = val("apin");
+    S.admin.state = await rpc("admin_state", { p_pin: pin });
+    S.admin.pin = pin; sessionStorage.setItem("sj.pin", pin); S.msg = null;
+  },
+  "a-tab"(d) { S.admin.tab = d.tab; S.admin.edit = null; S.msg = null; },
+  "a-full"() { S.admin.full = !S.admin.full; $("#map")?.classList.toggle("full"); setTimeout(() => map && map.invalidateSize(), 80); return false; },
+  async "a-draw"() {
+    S.admin.state = await rpc("admin_draw", { p_pin: S.admin.pin });
+    S.admin.tab = "teams"; S.msg = { type: "ok", text: "Ausgelost. Gib jeder Teamleitung ihren Code." };
+  },
+  async "a-start"() {
+    const r = await rpc("admin_start", { p_pin: S.admin.pin });
+    S.admin.state = r.state; S.admin.tab = "map";
+    S.msg = r.warning ? { type: "err", text: r.warning } : { type: "ok", text: "Das Spiel läuft." };
+  },
+  async "a-finish"() {
+    S.admin.state = await rpc("admin_finish", { p_pin: S.admin.pin });
+    S.msg = { type: "ok", text: "Spiel beendet, Standortdaten gelöscht." };
+  },
+  async "a-reset"() {
+    if (!confirm("Fortschritt aller Teams löschen?")) return false;
+    S.admin.state = await rpc("admin_reset", { p_pin: S.admin.pin });
+  },
+  async "a-clearpos"() {
+    if (!confirm("Alle gespeicherten Standortdaten löschen?")) return false;
+    S.admin.state = await rpc("admin_clear_positions", { p_pin: S.admin.pin });
+    S.msg = { type: "ok", text: "Standortdaten gelöscht." };
+  },
+  async "a-add"() { S.admin.state = await rpc("admin_add_participant", { p_pin: S.admin.pin, p_name: val("aadd") }); },
+  async "a-del"(d) { S.admin.state = await rpc("admin_delete_participant", { p_pin: S.admin.pin, p_id: d.id }); },
+  async "a-unlock"(d) { S.admin.state = await rpc("admin_unlock_station", { p_pin: S.admin.pin, p_team: d.id }); },
+  "a-edit"(d) { S.admin.edit = d.id; },
+  "a-cancel"() { S.admin.edit = null; },
+  "a-here"() {
+    const info = $("#e-here"); if (info) info.textContent = "Suche Standort …";
+    navigator.geolocation.getCurrentPosition(p => {
+      $("#e-lat").value = p.coords.latitude.toFixed(6);
+      $("#e-lng").value = p.coords.longitude.toFixed(6);
+      const i = $("#e-here"); if (i) i.textContent = `übernommen (±${Math.round(p.coords.accuracy)} m), jetzt speichern`;
+    }, e => { const i = $("#e-here"); if (i) i.textContent = e.code === 1 ? "Standortzugriff abgelehnt." : "Standort nicht verfügbar."; },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+    return false;
+  },
+  async "a-save"(d) {
+    let la = val("e-lat"), lo = val("e-lng");
+    if (la.includes(",") && !lo) { const parts = la.split(","); la = parts[0].trim(); lo = (parts[1] || "").trim(); }
+    const lat = parseFloat(la.replace(",", ".")), lng = parseFloat(lo.replace(",", "."));
+    S.admin.state = await rpc("admin_save_station", {
+      p_pin: S.admin.pin, p_id: d.id, p_name: val("e-name"),
+      p_lat: isNaN(lat) ? null : lat, p_lng: isNaN(lng) ? null : lng,
+      p_radius: parseInt(val("e-radius"), 10) || 50, p_hint: val("e-hint"),
+      p_riddle: val("e-riddle"), p_answer: val("e-answer"), p_digit: parseInt(val("e-digit"), 10) || 0
+    });
+    S.admin.edit = null; S.msg = { type: "ok", text: "Station gespeichert." };
+  }
+};
+
+/* ---------- GPS und Kompass ---------- */
+let watchId = null, orientOn = false, raf = 0;
+function setNeedle(target) {
+  const g = S.gps;
+  g.needle += ((target - g.needle) % 360 + 540) % 360 - 180;
+  const n = $("#needle");
+  if (n) { n.style.transition = "transform .25s linear"; n.style.transform = `rotate(${g.needle}deg)`; }
+}
+function liveUpdate() {
+  const g = S.gps, st = S.team.state, s = st && st.station;
+  const note = $("#gnote"); if (note && s && s.lat != null) note.textContent = gpsNote();
+  if (!g.pos || !s || s.lat == null) return;
+  const t = { lat: s.lat, lng: s.lng };
+  const d = $("#dist"); if (d) d.textContent = fmtDist(haversine(g.pos, t));
+  setNeedle(bearingTo(g.pos, t) - (g.heading ?? g.gpsHeading ?? 0));
+}
+function addOrient() {
+  if (orientOn) return; orientOn = true;
+  const h = e => {
+    let hd = null;
+    if (typeof e.webkitCompassHeading === "number") hd = e.webkitCompassHeading;
+    else if (e.absolute && e.alpha != null) hd = 360 - e.alpha;
+    if (hd == null) return;
+    const so = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+    S.gps.heading = (hd + so + 360) % 360;
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; liveUpdate(); });
+  };
+  if ("ondeviceorientationabsolute" in window) window.addEventListener("deviceorientationabsolute", h);
+  else window.addEventListener("deviceorientation", h);
+}
+async function startGps() {
+  const g = S.gps;
+  if (!navigator.geolocation) { g.err = "Dieses Gerät liefert keinen Standort."; render(); return; }
+  try {
+    const DOE = window.DeviceOrientationEvent;
+    if (DOE && typeof DOE.requestPermission === "function") {
+      const r = await DOE.requestPermission();
+      if (r === "granted") addOrient();
+    } else addOrient();
+  } catch { /* Kompass bleibt aus, Laufrichtung reicht */ }
+  g.on = true; g.err = null;
+  let last = null;
+  watchId = navigator.geolocation.watchPosition(p => {
+    const next = { lat: p.coords.latitude, lng: p.coords.longitude };
+    if (last && haversine(last, next) > 6 && S.gps.heading == null) S.gps.gpsHeading = bearingTo(last, next);
+    last = next;
+    const firstFix = !S.gps.pos;
+    S.gps.pos = next; S.gps.acc = p.coords.accuracy ?? 999; S.gps.err = null;
+    maybeReport();
+    if (firstFix) render(); else liveUpdate();
+  }, e => {
+    if (e.code === 3) { S.gps.err = "GPS-Signal ist schwach, die App sucht weiter."; render(); return; }
+    S.gps.err = e.code === 1 ? "Standortzugriff wurde abgelehnt. Erlaube ihn in den Browser-Einstellungen." : "Standort nicht verfügbar.";
+    render();
+  }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+  render();
+}
+function stopGps() {
+  if (watchId != null) navigator.geolocation.clearWatch(watchId);
+  watchId = null; S.gps.on = false; S.gps.pos = null;
+}
+function freshPosition() {
+  return new Promise((res, rej) => navigator.geolocation.getCurrentPosition(
+    p => res({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy ?? 999 }),
+    e => rej(new Error(e.message || "Standort nicht verfügbar.")),
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }));
+}
+async function maybeReport() {
+  const g = S.gps, st = S.team.state;
+  if (!st || st.status !== "running" || !S.team.code || !g.pos) return;
+  const moved = !g.lastSentPos || haversine(g.lastSentPos, g.pos) > 20;
+  const oldEnough = Date.now() - g.lastSent > 60000;
+  if (!moved && !oldEnough) return;
+  g.lastSent = Date.now(); g.lastSentPos = { ...g.pos };
+  try {
+    await rpc("report_position", { p_code: S.team.code, p_lat: g.pos.lat, p_lng: g.pos.lng, p_acc: g.acc });
+    g.sentAt = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  } catch { /* Funkloch: beim nächsten Mal erneut */ }
+}
+
+/* ---------- Laden und Rendern ---------- */
+async function refresh() {
+  if (!cfg.url || !cfg.key) return render();
+  try {
+    if (S.view === "public") S.pub = await rpc("public_state", {});
+    if (S.view === "team" && S.team.code) S.team.state = await rpc("team_state", { p_code: S.team.code });
+    if (S.view === "admin" && S.admin.pin) S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin });
+  } catch (e) {
+    if (String(e.message).includes("Unbekannter Team-Code")) { S.team.code = null; localStorage.removeItem("sj.code"); }
+    if (String(e.message).includes("Falsche PIN")) { S.admin.pin = null; sessionStorage.removeItem("sj.pin"); }
+    S.msg = { type: "err", text: e.message };
+  }
+  render();
+}
+function render() {
+  const app = $("#app");
+  app.className = S.view === "admin" && S.admin.pin ? "wide" : "";
+  app.innerHTML = (!cfg.url || !cfg.key) ? viewSetup()
+    : S.view === "team" ? viewTeam()
+      : S.view === "admin" ? viewAdmin() : viewPublic();
+  if (S.view === "admin" && S.admin.pin && S.admin.tab === "map") drawMap(true);
+  if (S.view === "team") liveUpdate();
+}
+document.addEventListener("click", async e => {
+  const a = e.target.closest("[data-act]");
+  if (!a || a.disabled) return;
+  const fn = ACT[a.dataset.act]; if (!fn) return;
+  S.busy = true;
+  a.disabled = true;
+  try {
+    const r = await fn(a.dataset);
+    S.busy = false;
+    if (r !== false) render(); else a.disabled = false;
+  } catch (err) {
+    S.busy = false;
+    S.msg = { type: "err", text: err.message || "Etwas ist schiefgelaufen." };
+    render();
+  }
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
+  const box = e.target.closest(".stack") || e.target.closest(".panel");
+  const btn = box && box.querySelector(".btn[data-act]");
+  if (btn && !btn.disabled) btn.click();
+});
+window.addEventListener("hashchange", () => {
+  S.view = location.hash.replace("#/", "") || "public";
+  S.msg = null; refresh();
+});
+setInterval(() => {
+  if (document.hidden) return;
+  const busyTyping = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
+  if (S.view === "admin" && S.admin.pin) {
+    rpc("admin_state", { p_pin: S.admin.pin }).then(s => {
+      S.admin.state = s;
+      if (S.admin.tab === "map") drawMap(false);
+      else if (!busyTyping && !S.admin.edit) render();
+    }).catch(() => { });
+    return;
+  }
+  if (busyTyping) return;
+  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(s => { S.team.state = s; render(); }).catch(() => { });
+  if (S.view === "public") rpc("public_state", {}).then(s => { S.pub = s; render(); }).catch(() => { });
+}, 10000);
+refresh();
+</script>
+</body>
+</html>
