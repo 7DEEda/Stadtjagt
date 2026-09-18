@@ -5,7 +5,7 @@ welche Zustände und Abläufe es gibt und wo das im Code steht. Den Verlauf der
 Entscheidungen und die Betriebsnotizen (Zugänge, Umgebung, Historie) enthält
 `HANDOFF.md`.
 
-Stand: 18.09.2026, Nachträge 1 bis 12.
+Stand: 18.09.2026, Nachträge 1 bis 13.
 
 ---
 
@@ -42,10 +42,15 @@ persönlich.
 
 ```
 registration ──admin_draw──▶ drawn ──admin_start──▶ running ──admin_finish──▶ finished
-      ▲                        │  ▲                    │                        │
+      ▲                        │  ▲                    │  ▲                     │
+      │                        │  │                    │  └────admin_resume─────┤
       │                        │  └────admin_reset─────┴────────────────────────┘
       └──admin_clear_participants (von überall)
 ```
+
+`admin_start` geht nur aus `drawn` und nur mit Testmodus aus. `admin_resume`
+(Nachtrag 13) holt ein versehentlich beendetes Spiel zurück, ohne etwas zu
+löschen.
 
 | Zustand | Was gilt |
 |---|---|
@@ -73,8 +78,12 @@ Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
 - Danach ist das Rätsel frei (`team_state.station.riddle`).
 
 ### Rätsel (`submit_answer`)
-- Vergleich über `norm()`: klein, Umlaute und Sonderzeichen vereinheitlicht.
-- Leere Lösung in der Datenbank zählt nie als richtig (Platzhalter).
+- Vergleich über `norm()`: klein, Umlaute und Sonderzeichen vereinheitlicht
+  (auch Großbuchstaben mit Umlaut, unabhängig von der Locale).
+- Mehrere Lösungen mit `|` getrennt (`5|fünf`), geprüft von `answer_ok`.
+  Leere Lösung oder leere Teile zählen nie als richtig (Platzhalter).
+- Klemmt ein Rätsel, wertet die Spielleitung die Station für das Team
+  (`admin_solve_station`: Check-in und gelöst in einem).
 - Richtig: `progress.solved_at`, Ziffer frei.
 - Falsch: `failed_attempts` +1; beim dritten Fehlversuch 2 Minuten Sperre
   (`locked_until`), Zähler zurück auf 0. Die App zeigt einen Countdown und
@@ -87,9 +96,13 @@ Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
   alle fünf gelöst sind.
 
 ### Plätze (`submit_final`, Nachtrag 6)
-- Nur `running`, nur mit allen Ziffern, nur mit richtigem Code. Verglichen
-  werden nur die Ziffern der Eingabe, alles andere (Leerzeichen, Bindestriche)
-  fällt weg.
+- Nur `running`, nur mit allen Ziffern, nur am Koffer, nur mit richtigem Code.
+- Am Koffer heißt (Nachtrag 13): Position im Radius der letzten Station plus
+  GPS-Toleranz wie beim Check-in, im Testmodus nicht geprüft. Die App holt eine
+  frische Position. Sonst könnte ein Team mit Ziffern aus einer Nachricht von
+  überall einen Platz holen.
+- Verglichen werden nur die Ziffern der Eingabe, alles andere (Leerzeichen,
+  Bindestriche) fällt weg.
 - Vergibt den nächsten Platz in `finishes`. Gleichzeitige Eingaben laufen
   nacheinander (`select … for update` auf `game_state`), `finishes.place` ist
   zusätzlich `unique`.
@@ -118,7 +131,11 @@ Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
 4. Die Spielleitung kann zusätzlich einzeln (`admin_add_participant`) oder
    viele auf einmal (`admin_add_participants`, eine Zeile pro Name, auch
    „Testdaten einfügen“ mit 90 Namen „… (Test)“) eintragen. Diese haben keinen
-   Token.
+   Token. „Testdaten entfernen“ (`admin_delete_test_participants`) löscht nur
+   die Namen mit „(Test)“.
+5. Umbenennen (`admin_rename_participant`) folgt denselben Regeln wie die
+   Anmeldung. Das Handy der Person übernimmt den neuen Namen über den Token
+   (`namenUebernehmen`), statt sich abzumelden.
 
 ### 5.2 Auslosen (`admin_draw(p_pin, p_teams, p_size)`)
 - Entweder Personen pro Team oder Anzahl Teams, höchstens 16 Teams (so viele
@@ -148,17 +165,19 @@ Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
   Kompass und Entfernung mit dem eigenen GPS, keine Positionsmeldung.
 - Öffentliche Seite: „Zieleinlauf“ live, sobald das erste Team im Ziel ist.
 - Spielleitung: Karte mit Routen, Zeitachse, Teams nach Platz und Fortschritt,
-  „Freischalten“ ersetzt einen Check-in (`admin_unlock_station`).
+  „Freischalten“ ersetzt einen Check-in (`admin_unlock_station`), „Rätsel
+  werten“ zählt die Station als gelöst (`admin_solve_station`, fragt nach).
 
 ### 5.5 Ziel
 - Alle fünf Ziffern: großes Zahlenschloss, Koffer-Hinweis (Ortshinweis der
-  Station 5), Code-Eingabe nur bei der Teamleitung.
+  Station 5), Code-Eingabe nur bei der Teamleitung und nur am Koffer (die
+  Meldung nennt sonst die Restentfernung).
 - Nach richtigem Code: Platz-Bildschirm mit Medaille (1 bis 3) oder 🏁, auf
   allen Handys des Teams. Die Aufsicht am Koffer gibt nach Platz frei.
 
 ### 5.6 Ende (`finished`)
 - `admin_finish` (fragt nach). Rangliste öffentlich; Teams ohne Platz nach
-  gelösten Stationen.
+  gelösten Stationen. Zu früh gedrückt: „Spiel fortsetzen“ (`admin_resume`).
 - Danach: Routen auswerten, „Standortdaten löschen“ (`admin_clear_positions`).
 
 ---
@@ -206,8 +225,13 @@ Bewusst akzeptiert oder offen:
 - Vor dem Auslosen kann jemand einen erfundenen Namen zusätzlich anmelden
   (Abhilfe: Zahl mit der Gästeliste abgleichen, steht im Admin beim Auslosen).
 - Mitglieder können Ziffern an andere Teams weitergeben (nicht technisch zu
-  verhindern).
-- Admin-PIN im Klartext in `game_state.admin_pin`.
+  verhindern). Seit Nachtrag 13 bringt das nur noch den Weg ab, nicht den
+  Platz: den Code muss man am Koffer eingeben.
+- Admin-PIN im Klartext in `game_state.admin_pin`, ohne Bremse gegen
+  Durchprobieren. Die Vorgabe `2026` steht im öffentlichen Repo: live eine
+  lange PIN setzen.
+- Team-Codes (16 Tiere × 9000 Zahlen) lassen sich mit vielen Anfragen raten;
+  unter Kollegen hingenommen.
 - **Offen und vor dem Event zu lösen:** Das Repo ist öffentlich, und GitHub
   Pages liefert es zusätzlich komplett aus (`path: .` in
   `.github/workflows/pages.yml`). Damit sind `supabase/seed-stationen-prag.sql`
@@ -285,11 +309,14 @@ Endpunkte:
 - Teamleitung: `team_state`, `check_in`, `submit_answer`, `submit_final`,
   `report_position`
 - Spielleitung: `admin_state`, `admin_tracks`, `admin_draw`, `admin_start`,
-  `admin_finish`, `admin_reset`, `admin_clear_positions`,
+  `admin_finish`, `admin_resume`, `admin_reset`, `admin_clear_positions`,
   `admin_clear_participants`, `admin_add_participant`,
-  `admin_add_participants`, `admin_rename_participant`,
-  `admin_delete_participant`, `admin_save_station`, `admin_unlock_station`,
+  `admin_add_participants`, `admin_delete_test_participants`,
+  `admin_rename_participant`, `admin_delete_participant`,
+  `admin_save_station`, `admin_unlock_station`, `admin_solve_station`,
   `admin_set_pin`, `admin_set_test_mode`
+- intern (für `anon` gesperrt): `norm`, `answer_ok`, `dist_m`, `team_by_code`,
+  `current_station`, `require_admin`
 
 Neue Funktionen immer mit `create or replace`, Rechte mit `grant execute … to
 anon, authenticated`, am Ende `notify pgrst, 'reload schema';`.
@@ -311,10 +338,12 @@ anon, authenticated`, am Ende `notify pgrst, 'reload schema';`.
 - Reihenfolge beim Ausliefern: erst die Datenbank, dann die App.
 
 ### Testmodus und Testdaten
-- `admin_set_test_mode` (Reiter Stationen): Check-in ohne Entfernung, jede
-  Antwort zählt, keine Denkpause; der Koffer-Code wird weiter geprüft. Rotes
-  „Testmodus an“ in Admin und Team-Ansicht. Vor dem Event ausschalten.
-- „Testdaten einfügen“ im Reiter Teilnehmende: 90 Namen mit „(Test)“.
+- `admin_set_test_mode` (Reiter Stationen): Check-in und Koffer-Code ohne
+  Entfernung, jede Antwort zählt, keine Denkpause; der Koffer-Code selbst wird
+  weiter geprüft. Rotes „Testmodus an“ in Admin und Team-Ansicht.
+  „Spiel starten“ verweigert, solange er an ist.
+- „Testdaten einfügen“ im Reiter Teilnehmende: 90 Namen mit „(Test)“;
+  „Testdaten entfernen“ nimmt genau die wieder raus.
 
 ### Lokal testen
 Bisher genutzt, liegt noch nicht im Repo:
@@ -346,8 +375,11 @@ node -e 'const h=require("fs").readFileSync("index.html","utf8");[...h.matchAll(
 - Rätsel, Lösungen und Ortshinweise der fünf Stationen fehlen (Platzhalter).
 - Öffentliche Auslieferung des ganzen Repos (siehe 7.), neuer Koffer-Code.
 - Echte Nummer für die Hilfe-Knöpfe statt `491720000000`.
-- Nachzügler aus dem Admin lesen nicht mit (Idee: Mitlese-QR von der
-  Teamleitung).
+- Mitlesen nur auf dem Gerät der Anmeldung: Nachzügler aus dem Admin, wer sich
+  am Rechner angemeldet hat oder die Seite in einem anderen Browser öffnet,
+  liest nicht mit (Idee: Mitlese-QR oder -Link von der Teamleitung mit einem
+  Lese-Token je Team).
+- Live-PIN prüfen und verlängern (siehe 7.).
 - Hintergrund-Variante wählen (`mockups/hintergrund-varianten.html`).
 - Testumgebung und Testskripte ins Repo übernehmen.
 - Probelauf draußen mit echten Handys.

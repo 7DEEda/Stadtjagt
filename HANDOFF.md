@@ -56,6 +56,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260919000000_nachmelden.sql   Nachzügler melden sich selbst an
   20260919010000_mitlesen.sql     das ganze Team liest mit (Geräte-Schlüssel)
   20260919020000_anmeldung_bis_auslosen.sql  Selbstanmeldung wieder nur bis zum Auslosen
+  20260919030000_wasserdicht.sql  Koffer-Code nur am Ziel, Fortsetzen, Rätsel werten, mehrere Lösungen, Testdaten entfernen
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -520,6 +521,48 @@ kein Knopf. **Die Nummer wird öffentlich**: sie steht im Quelltext der Seite un
 im öffentlichen Repo, dessen Historie sie dauerhaft behält. Nimm eine, bei der
 das in Ordnung ist, am besten ein Diensthandy.
 
+## Randfälle abgedichtet (Nachtrag 13, 18.09.2026)
+
+Ergebnis eines Durchgangs durch alle Randfälle des Konzepts (Anmeldung,
+Auslosen, Spiel, Ziel, Ende, Spielleitung). Eingebaut:
+
+- **Koffer-Code nur am Koffer:** `submit_final` bekommt wie `check_in` eine
+  Position und prüft sie gegen die letzte Station (Radius plus GPS-Toleranz,
+  im Testmodus nicht). Vorher konnte ein Team, das die Ziffern per Nachricht
+  bekam, von überall einen Platz holen. Die App holt dafür eine frische
+  Position; die Meldung nennt die Restentfernung.
+- **Versehentlich beendet:** „Spiel fortsetzen“ (`admin_resume`) bringt
+  `finished` zurück auf `running`, ohne etwas zu löschen. Vorher gab es nur
+  „Fortschritt zurücksetzen“, das alles wegwarf.
+- **Starten nur aus `drawn` und nur mit Testmodus aus:** `admin_start` prüft
+  das jetzt selbst, nicht nur der Knopf. Mit Testmodus an bricht es ab.
+- **Rätsel werten:** im Reiter Teams neben „Freischalten“. Zählt die aktuelle
+  Station eines Teams als gelöst (`admin_solve_station`), wenn ein Rätsel
+  klemmt. Fragt nach, löscht nichts.
+- **Mehrere Lösungen je Rätsel:** im Feld Lösung mit `|` trennen
+  („5|fünf“). Leere Teile zählen nie. `norm` faltet Großbuchstaben mit Umlaut
+  jetzt selbst, unabhängig von der Locale der Datenbank.
+- **Testdaten entfernen:** löscht nur Namen mit „(Test)“, echte Anmeldungen
+  bleiben. Im Reiter Teilnehmende und unter Daten löschen. Vorher hätte
+  „Alle löschen“ auch die echten Anmeldungen samt Geräte-Schlüssel entfernt.
+- **Umbenennen** durch die Spielleitung: gleiche Regeln wie die Anmeldung
+  (2 bis 60 Zeichen, keine Doppelten). Das Handy der umbenannten Person
+  übernimmt den neuen Namen über den Geräte-Schlüssel, statt sich abzumelden
+  (`nameNochDa` prüft mit Schlüssel über `member_state`, ohne Schlüssel wie
+  bisher über den Namen).
+- Ziffer im Stationsformular ist Pflicht (vorher wurde leer still zur 0).
+
+Bewusst nicht geändert: Team-Codes bleiben Tier plus vier Ziffern; wer den
+Code hat, spielt für das Team. Die drei Koffer haben weiter einen Code, die
+Aufsicht am Koffer entscheidet nach dem Platz-Bildschirm. Offen bleibt der
+Mitlese-Link für Leute, die sich auf einem anderen Gerät angemeldet haben
+(siehe Offene Punkte).
+
+Getestet gegen das lokale PostgreSQL (Skript `test_wasserdicht.py`, 40
+Prüfungen) und im Browser: Rätsel werten, Testdaten entfernen, Pflicht-Ziffer,
+Beenden und Fortsetzen, Koffer-Code aus 31 km Entfernung abgelehnt und am Ziel
+Platz 1, umbenannte Person bleibt angemeldet.
+
 ## GPS und Kompass
 
 - Entfernung per Haversine, Richtung per Kurswinkel, beides in `index.html`.
@@ -720,26 +763,29 @@ oder einen Tunnel.
 ## Ablauf am Eventtag
 
 1. **Vorher: Testmodus aus!** Reiter Stationen, oben. Im Kopf der Spielleitung
-   darf kein rotes „Testmodus an“ mehr stehen. Testdaten wegräumen: im Reiter
-   Teilnehmende nach „Test“ suchen oder „Alle löschen“.
+   darf kein rotes „Testmodus an“ mehr stehen („Spiel starten“ verweigert es
+   sonst). Testdaten wegräumen: „Testdaten entfernen“ im Reiter Teilnehmende.
 2. **Vorher:** Route ablaufen, jede Station im Reiter Stationen prüfen, Rätsel
    und Antworten vor Ort bestätigen, notfalls „Meinen Standort übernehmen“
    drücken. Alle drei Koffer auf den Code aus dem Reiter Stationen stellen und
    an die letzte Station bringen.
 3. **Vorher:** Support-Nummer in `config.js` eintragen und pushen.
 4. Anmeldelink verteilen, Teilnehmende tragen sich ein.
-5. Vor dem Start: Testeinträge über „Alle löschen“ im Reiter Teilnehmende
-   entfernen, damit nur echte Namen übrig bleiben.
+5. Vor dem Auslosen: Zahl der Angemeldeten mit der Gästeliste abgleichen,
+   Testeinträge über „Testdaten entfernen“ wegräumen.
 6. Am Treffpunkt: Reiter Teams, Teamgröße wählen, auslosen, Codes an die
    Teamleitungen geben. Den Teams sagen, dass der Weg aufgezeichnet wird.
 7. „Spiel starten“, danach die Karte offen lassen.
 8. Wenn ein Team hängt: „Freischalten“ im Reiter Teams ersetzt den Check-in, das
-   Rätsel bleibt.
-9. An den Koffern: Jedes Team zeigt seinen Platz-Bildschirm, die Aufsicht
+   Rätsel bleibt. Klemmt das Rätsel selbst: „Rätsel werten“ daneben.
+9. An den Koffern: Den Code gibt die Teamleitung erst am Koffer ein, die App
+   prüft den Standort. Jedes Team zeigt seinen Platz-Bildschirm, die Aufsicht
    gibt Koffer 1, 2 oder 3 frei. Der Zieleinlauf steht live auf der
-   Anmeldeseite.
+   Anmeldeseite. Fällt das Handy eines Teams aus, kann die Spielleitung am
+   Tablet unter `#/team` mit dem Team-Code für das Team eingeben.
 10. Wenn alle da sind oder die Zeit um ist: „Spiel beenden“. Die Rangliste
-   erscheint öffentlich, die Routen bleiben zum Auswerten erhalten.
+   erscheint öffentlich, die Routen bleiben zum Auswerten erhalten. Zu früh
+   gedrückt: „Spiel fortsetzen“, nichts geht verloren.
 11. **Danach:** Zeitachse und Routen ansehen, dann „Standortdaten löschen“.
 
 ## Offene Punkte
@@ -767,6 +813,15 @@ oder einen Tunnel.
   Event durch die echte Nummer der Spielleitung ersetzen und pushen.
 - An den Koffern muss jemand von der Spielleitung stehen: alle drei haben
   denselben Code, erst der Platz-Bildschirm entscheidet, welcher Koffer dran ist.
+- **Admin-PIN:** Die Vorgabe `2026` steht in der Init-Migration im
+  öffentlichen Repo, und es gibt keine Bremse gegen Durchprobieren. Vor dem
+  Event prüfen, dass live nicht mehr `2026` gilt, und eine lange PIN setzen
+  (Passphrase, 12 und mehr Zeichen, Reiter Daten löschen oder `admin_set_pin`).
+- **Mitlese-Link:** Wer sich am Rechner angemeldet hat oder die Seite in
+  einem anderen Browser öffnet (Safari statt WhatsApp-Ansicht, „Zum
+  Home-Bildschirm“), hat auf dem Handy keinen Geräte-Schlüssel und liest nicht
+  mit. Idee: QR oder Link auf dem Handy der Teamleitung mit einem Lese-Token
+  je Team. Nicht gebaut.
 - Optional: Startreihenfolge versetzen, Team-Chat, Fotoaufgaben.
 
 ## Historie und Entscheidungen

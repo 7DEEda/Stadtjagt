@@ -371,6 +371,32 @@ const DANGER = {
       return "Alles geleert. Die Anmeldung ist wieder offen.";
     }
   },
+  testdaten: {
+    when: st => (st.participants || []).some(p => /\(Test\)$/.test(p.name)),
+    wort: false,
+    title: "Testdaten entfernen",
+    lead: st => `Die ${(st.participants || []).filter(p => /\(Test\)$/.test(p.name)).length} Namen mit „(Test)“ werden gelöscht. Teams, in denen sie waren, bleiben mit den echten Personen bestehen.`,
+    keeps: "Echte Anmeldungen, Teams, Fortschritt und Stationen bleiben.",
+    btn: "Testdaten entfernen",
+    async run() {
+      const r = await rpc("admin_delete_test_participants", { p_pin: S.admin.pin });
+      S.admin.state = r.state;
+      return `${r.deleted} Testnamen entfernt.`;
+    }
+  },
+  // Rätsel für ein Team werten: kein Löschen, aber ein Eingriff ins Spiel, darum die Rückfrage
+  solve: {
+    when: () => false,   // kommt über den Knopf im Reiter Teams
+    wort: false,
+    title: "Rätsel werten",
+    lead: "Team $NAME bekommt die aktuelle Station als gelöst, mit Check-in und Ziffer. Das Team sieht sofort die nächste Station.",
+    keeps: "Nichts wird gelöscht.",
+    btn: "Als gelöst werten",
+    async run(c) {
+      S.admin.state = await rpc("admin_solve_station", { p_pin: S.admin.pin, p_team: c.id });
+      return `Rätsel für Team ${c.name} gewertet.`;
+    }
+  },
   finish: {
     when: () => false,   // kommt über den Knopf oben, nicht als Kachel
     wort: false,
@@ -650,6 +676,7 @@ function teamAnsicht(st, lesen) {
         : "Alle Koffer sind vergeben. Gebt den Code trotzdem ein, dann steht ihr mit Platz in der Rangliste."}</p>
       ${lesen ? `<p class="small" style="margin-top:12px">Den Koffer-Code gibt <b>${esc(leitung)}</b> ein. Er steht oben im Zahlenschloss.</p>`
         : `<div style="margin-top:12px"><label for="tfin">Koffer-Code, 6 Stellen</label><input id="tfin" inputmode="numeric" maxlength="6"></div>
+      <p class="small muted">Gebt ihn ein, wenn ihr am Koffer steht. Die App prüft dabei euren Standort.</p>
       <button class="btn" data-act="t-final" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Code eingeben"}</button>${msgBox()}`}</div>`;
     return out + ende;
   }
@@ -754,6 +781,7 @@ function viewAdmin() {
   if (st.status === "registration") actions += `<button class="btn sm alt" data-act="a-draw">Teams auslosen</button>`;
   if (st.status === "drawn") actions += `<button class="btn sm" data-act="a-start">Spiel starten</button>`;
   if (st.status === "running") actions += `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
+  if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-resume">Spiel fortsetzen</button>`;
 
   let out = `<div class="bar"><div class="brand" style="margin:0">${FLAG}<div><h1>Spielleitung</h1><div>${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}</div></div></div><div>${actions}</div></div>${msgBox()}`;
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
@@ -818,8 +846,10 @@ function viewAdmin() {
         <td><div class="prog"><span style="width:${(t.solved / Math.max(1, (st.stations || []).length)) * 100}%"></span></div>
           <span class="small muted">${t.solved} / ${(st.stations || []).length}, ${ago(t.lastActivity)}</span>
           ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}</td>
-        <td>${st.status === "running" && t.currentPosition ? `<button class="btn sm alt" data-act="a-unlock" data-id="${t.id}">Freischalten</button>` : ""}</td></tr>`).join("")}
-      </table><p class="small muted">„Freischalten“ ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.</p>${spaeter}</div>`;
+        <td>${st.status === "running" && t.currentPosition ? `<div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm alt" data-act="a-unlock" data-id="${t.id}">Freischalten</button>
+          <button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-name="${esc(t.name)}">Rätsel werten</button></div>` : ""}</td></tr>`).join("")}
+      </table><p class="small muted">„Freischalten“ ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.
+        „Rätsel werten“ zählt die aktuelle Station als gelöst, wenn ein Rätsel klemmt.</p>${spaeter}</div>`;
   }
   if (A.tab === "people") {
     out += `<div class="panel"><h3>Mehrere auf einmal</h3>
@@ -829,9 +859,10 @@ function viewAdmin() {
       <div class="row2" style="margin-top:8px"><button class="btn alt" data-act="a-viele">Alle eintragen</button>
         <button class="btn alt" data-act="a-testdaten">Testdaten einfügen</button></div>
       <p class="small muted">„Testdaten einfügen“ trägt 90 erfundene Namen mit dem Zusatz „(Test)“ ein. Die Suche findet sie mit „Test“,
-        alle zusammen löscht „Alle löschen“.</p></div>`;
+        „Testdaten entfernen“ löscht genau diese wieder und lässt echte Anmeldungen stehen.</p></div>`;
     out += `<div class="panel"><div class="bar"><div><span class="count">${(st.participants || []).length}</span> <span class="muted">angemeldet</span></div>
-      ${(st.participants || []).length ? `<button class="btn sm alt" data-act="a-danger" data-key="people">Alle löschen</button>` : ""}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${DANGER.testdaten.when(st) ? `<button class="btn sm alt" data-act="a-danger" data-key="testdaten">Testdaten entfernen</button>` : ""}
+      ${(st.participants || []).length ? `<button class="btn sm alt" data-act="a-danger" data-key="people">Alle löschen</button>` : ""}</div></div>
       <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen" autocapitalize="words"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
       <div style="margin-top:8px"><input id="asuche" placeholder="Name oder Team suchen" autocomplete="off" value="${esc(A.suche || "")}"></div>
       <ul class="names">${(st.participants || []).map(p => `<li data-such="${esc((p.name + " " + (p.teamName || "")).toLowerCase())}" ${treffer(p) ? "" : "hidden"}>${esc(p.name)}${p.teamName ? ` <span class="small muted">${esc(p.teamName)}</span>` : ""}
@@ -852,9 +883,10 @@ function viewAdmin() {
           <div style="margin-top:8px"><label>Ortshinweis</label><textarea id="e-hint">${esc(s.locationHint)}</textarea></div>
           <div style="margin-top:8px"><label>Rätsel</label><textarea id="e-riddle">${esc(s.riddle)}</textarea></div>
           <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-top:8px">
-            <div><label>Lösung</label><input id="e-answer" value="${esc(s.answer)}"></div>
-            <div><label>Ziffer</label><input id="e-digit" inputmode="numeric" maxlength="1" value="${s.digit}"></div>
+            <div><label>Lösung</label><input id="e-answer" value="${esc(s.answer)}" placeholder="mehrere mit | trennen"></div>
+            <div><label>Ziffer</label><input id="e-digit" inputmode="numeric" maxlength="1" value="${s.digit}" required></div>
             <div><label>Radius m</label><input id="e-radius" inputmode="numeric" value="${s.radiusM}"></div></div>
+          <p class="small muted" style="margin-top:6px">Mehrere richtige Antworten mit | trennen, etwa „5|fünf“. Groß und klein, Umlaute und Satzzeichen zählen nicht.</p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
             <div><label>Breite</label><input id="e-lat" inputmode="decimal" value="${s.lat ?? ""}"></div>
             <div><label>Länge</label><input id="e-lng" inputmode="decimal" value="${s.lng ?? ""}"></div></div>
@@ -1235,22 +1267,21 @@ const ACT = {
   "t-kal"() { kalStart(); },
   "t-kal-skip"() { kalEnde(false); },
   async "t-check"() {
-    // Im Testmodus zählt der Ort nicht: dann auch ohne GPS einchecken
-    const test = S.team.state && S.team.state.testMode;
-    const pos = !test ? await freshPosition()
-      : S.gps.pos ? { ...S.gps.pos, acc: S.gps.acc } : { lat: null, lng: null, acc: null };
-    if (pos.lat != null) { S.gps.pos = { lat: pos.lat, lng: pos.lng }; S.gps.acc = pos.acc; }
+    const pos = await standortFuerEingabe();
     const r = await rpc("check_in", { p_code: S.team.code, p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc });
     S.team.state = r.state;
-    S.msg = { type: r.ok ? "ok" : "err", text: r.message + (!r.ok && pos.acc > 40 ? ` GPS ist gerade ungenau (±${Math.round(pos.acc)} m).` : "") };
+    S.msg = { type: r.ok ? "ok" : "err", text: r.message + ungenauHinweis(r, pos) };
   },
   async "t-answer"() {
     const r = await rpc("submit_answer", { p_code: S.team.code, p_answer: val("tans") });
     S.team.state = r.state; S.msg = { type: r.ok ? "ok" : "err", text: r.message };
   },
+  // Den Koffer-Code gibt man am Koffer ein: die Datenbank prüft die Position wie beim Check-in
   async "t-final"() {
-    const r = await rpc("submit_final", { p_code: S.team.code, p_value: val("tfin") });
-    S.team.state = r.state; S.msg = { type: r.ok ? "ok" : "err", text: r.message };
+    const pos = await standortFuerEingabe();
+    const r = await rpc("submit_final", { p_code: S.team.code, p_value: val("tfin"), p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc });
+    S.team.state = r.state;
+    S.msg = { type: r.ok ? "ok" : "err", text: r.message + ungenauHinweis(r, pos) };
   },
   async "a-test"(d) {
     S.admin.state = await rpc("admin_set_test_mode", { p_pin: S.admin.pin, p_on: d.on === "1" });
@@ -1295,6 +1326,11 @@ const ACT = {
     const r = await rpc("admin_start", { p_pin: S.admin.pin });
     S.admin.state = r.state; S.admin.tab = "map";
     S.msg = r.warning ? { type: "err", text: r.warning } : { type: "ok", text: "Das Spiel läuft." };
+  },
+  // Versehentlich beendet: weiter geht es ohne Verlust, Plätze und Fortschritt bleiben
+  async "a-resume"() {
+    S.admin.state = await rpc("admin_resume", { p_pin: S.admin.pin });
+    S.msg = { type: "ok", text: "Das Spiel läuft weiter. Plätze und Fortschritt sind geblieben." };
   },
   // Beenden ist endgültig für alle Teams: erst der Dialog
   "a-finish"() { S.admin.confirm = { key: "finish" }; S.msg = null; },
@@ -1344,11 +1380,14 @@ const ACT = {
     let la = val("e-lat"), lo = val("e-lng");
     if (la.includes(",") && !lo) { const parts = la.split(","); la = parts[0].trim(); lo = (parts[1] || "").trim(); }
     const lat = parseFloat(la.replace(",", ".")), lng = parseFloat(lo.replace(",", "."));
+    // Eine leere Ziffer würde still zur 0: lieber nachfragen
+    const ziffer = val("e-digit").trim();
+    if (!/^[0-9]$/.test(ziffer)) { S.msg = { type: "err", text: "Bitte eine Ziffer von 0 bis 9 eintragen." }; return; }
     S.admin.state = await rpc("admin_save_station", {
       p_pin: S.admin.pin, p_id: d.id, p_name: val("e-name"),
       p_lat: isNaN(lat) ? null : lat, p_lng: isNaN(lng) ? null : lng,
       p_radius: parseInt(val("e-radius"), 10) || 50, p_hint: val("e-hint"),
-      p_riddle: val("e-riddle"), p_answer: val("e-answer"), p_digit: parseInt(val("e-digit"), 10) || 0
+      p_riddle: val("e-riddle"), p_answer: val("e-answer"), p_digit: Number(ziffer)
     });
     S.admin.edit = null; S.msg = { type: "ok", text: "Station gespeichert." };
   }
@@ -1544,6 +1583,16 @@ function freshPosition() {
     e => rej(new Error(e.message || "Standort nicht verfügbar.")),
     { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }));
 }
+// Frische Position für Check-in und Koffer-Code. Im Testmodus zählt der Ort nicht: dann geht es auch ohne GPS.
+async function standortFuerEingabe() {
+  const test = S.team.state && S.team.state.testMode;
+  const pos = !test ? await freshPosition()
+    : S.gps.pos ? { ...S.gps.pos, acc: S.gps.acc } : { lat: null, lng: null, acc: null };
+  if (pos.lat != null) { S.gps.pos = { lat: pos.lat, lng: pos.lng }; S.gps.acc = pos.acc; }
+  return pos;
+}
+// Scheitert eine Eingabe an der Entfernung, sagen, wenn das GPS gerade grob ist
+const ungenauHinweis = (r, pos) => !r.ok && r.distance != null && pos.acc > 40 ? ` GPS ist gerade ungenau (±${Math.round(pos.acc)} m).` : "";
 async function maybeReport() {
   const g = S.gps, st = S.team.state;
   if (!st || st.status !== "running" || !S.team.code || !g.pos) return;
@@ -1590,11 +1639,17 @@ function teamNachziehen() {
 async function mitlesen() {
   const tok = localStorage.getItem("sj.token");
   if (!tok || !S.pub || S.pub.status === "registration") { S.mit = null; return; }
-  try { S.mit = await rpc("member_state", { p_token: tok }); }
+  try { S.mit = await rpc("member_state", { p_token: tok }); namenUebernehmen(S.mit.name); }
   catch (e) {
     if (String(e.message).includes("Unbekanntes Gerät")) localStorage.removeItem("sj.token");
     S.mit = null;
   }
+}
+// Die Spielleitung kann Namen berichtigen: den neuen Namen übernehmen, damit Anrede und Team-Karte stimmen
+function namenUebernehmen(neu) {
+  if (!neu || neu === S.myName) return;
+  if (S.lookupName === S.myName) S.lookupName = neu;
+  S.myName = neu; localStorage.setItem("sj.name", neu);
 }
 // Nach "Alle löschen" steht der eigene Name nur noch im Handy: dann wieder das Anmeldeformular zeigen.
 // Geprüft wird beim ersten Laden und immer, wenn die Zahl der Angemeldeten sinkt.
@@ -1606,14 +1661,25 @@ async function nameNochDa() {
   S.letzteAnzahl = p.participantCount;
   if (!weniger && !erstesMal) return false;
   S.nameGeprueft = true;
+  const tok = localStorage.getItem("sj.token");
   try {
+    if (tok) {
+      // Mit Geräte-Schlüssel zählt die Anmeldung selbst, nicht die Schreibweise: wer von der
+      // Spielleitung umbenannt wurde, bleibt angemeldet und bekommt den neuen Namen
+      const r = await rpc("member_state", { p_token: tok });
+      namenUebernehmen(r.name);
+      return false;
+    }
     const r = await rpc("lookup_participant", { p_name: S.myName });
     // die Suche findet auch Namensteile, hier zählt nur genau der eigene Name
     if (r.found && r.name.trim().toLowerCase() === S.myName.trim().toLowerCase()) return false;
-    S.myName = null; localStorage.removeItem("sj.name"); localStorage.removeItem("sj.token"); S.mit = null;
-    if (S.lookupEigen) { S.lookup = null; S.lookupName = null; S.hoch = false; }
-    return true;
-  } catch { return false; }
+  } catch (e) {
+    if (!String(e.message).includes("Unbekanntes Gerät")) return false;   // Funkloch: beim nächsten Mal
+  }
+  // Name oder Schlüssel gibt es nicht mehr (etwa nach "Alle löschen"): zurück zur Anmeldung
+  S.myName = null; localStorage.removeItem("sj.name"); localStorage.removeItem("sj.token"); S.mit = null;
+  if (S.lookupEigen) { S.lookup = null; S.lookupName = null; S.hoch = false; }
+  return true;
 }
 // Nach einem Neu-Auslosen gilt der alte Team-Code nicht mehr: abmelden und das sagen,
 // statt still das alte Team weiter zu zeigen
