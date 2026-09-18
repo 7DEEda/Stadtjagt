@@ -46,6 +46,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260918190000_anmeldung_leeren.sql  alle Teilnehmenden auf einmal löschen
   20260918200000_drei_koffer.sql  Plätze 1 bis 3 statt eines Siegers
   20260918210000_testmodus.sql    Durchklicken ohne Entfernung und Rätsel
+  20260918220000_durchsicht.sql   Code ohne Bindestrich, Namenssuche, Positionsprüfung
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -130,7 +131,10 @@ Hilfsfunktionen ohne Ausführungsrecht für `anon`: `norm`, `dist_m`,
 - `#/team` – Login per Team-Code, Zahlenschloss, Ortshinweis, Kompass mit
   Entfernung, Check-in, Rätsel, Endcode
 - `#/admin` – Karte, Teams, Teilnehmende, Stationen, Daten löschen; oben
-  Auslosen, Starten, Beenden
+  Auslosen, Starten, Beenden. **Seit 18.09.2026 nicht mehr in der Fußzeile der
+  Teilnehmenden verlinkt:** die Spielleitung öffnet
+  https://7deeda.github.io/Stadtjagt/#/admin direkt, am besten als Lesezeichen
+  auf dem Tablet.
 
 Jedes Team hat ein Tier-Emoji, passend zum Namen. Die Namen kommen aus
 `admin_draw`, die Emoji aus `TEAM_EMOJI` in `index.html`. Beide Listen müssen
@@ -207,6 +211,56 @@ gleichzeitig (Plätze 1 bis 10 je genau einmal). Dazu die Oberfläche im Browser
 über eine lokale Nachbildung der Supabase-Schnittstelle. Nach dem Einspielen
 live geprüft: `public_state` liefert `prizeCount` und Plätze, `finishes` ist
 für `anon` gesperrt. Die Testskripte liegen nicht im Repo.
+
+## Durchsicht der Bedienung (18.09.2026)
+
+Alle Ansichten durchgeklickt: Teilnehmende auf iPhone SE, 360 und 320 px,
+Spielleitung auf dem Tablet hoch und quer, hell und dunkel. Behoben:
+
+- **„Spiel beenden“ fragt nach** (Dialog wie beim Löschen, ohne getipptes Wort).
+  Vorher beendete ein Tipp das Spiel für alle, danach nahm die App keine
+  Koffer-Codes mehr an.
+- **Abmelden** ist ein kleiner Link mit Rückfrage und steht jetzt in jeder
+  Team-Ansicht, auch vor dem Start, am Koffer und nach dem Ende.
+- **Denkpause** nach drei Fehlversuchen: Feld und Knopf gesperrt, Countdown in
+  Sekunden, danach wieder frei. Vorher stand dort „Fehlversuche 0/3“.
+- **Eingaben bleiben stehen**, wenn etwas schiefgeht (Anmeldung, Teamsuche,
+  Team-Code, Antwort, Koffer-Code). Vorher leerte das Neuzeichnen das Feld.
+- **Team-Code** geht auch ohne Bindestrich und klein (Nachtrag 8), das Feld hat
+  keine Autokorrektur mehr.
+- **Teamsuche** findet Namensteile; bei mehreren Treffern kommen bis zu acht
+  Namen zum Antippen. Nach dem Auslosen zeigt die Anmeldeseite das eigene Team
+  von selbst („Dein Team“), der Name ist von der Anmeldung bekannt.
+- **Wartebildschirm** vor dem Start: „Standort und Kompass freigeben“, das
+  Einmessen läuft dort schon, beim Startsignal ist alles bereit.
+- **Kompass** zeigt ein Fragezeichen statt eines grauen Pfeils, solange keine
+  Richtung bekannt ist.
+- **Positionen:** App und Datenbank verwerfen 0/0, Genauigkeit 0 und schlechter
+  als 1 km; die Karte der Spielleitung ignoriert Punkte über 30 km von der
+  Route. Vorher zog ein einziger 0/0-Punkt die Karte auf den halben Globus.
+- **Karte:** Stationsmarken liegen über den Team-Symbolen.
+- **Zeitachse:** kurze Platzmarke (Medaille), am rechten Rand nach innen
+  gezogen, statt in die Zeitspalte zu laufen.
+- **Reiter Teams:** im Spiel nach Platz und Fortschritt sortiert; der große
+  rote „Fortschritt zurücksetzen“ steht nicht mehr oben, nur noch im Reiter
+  Daten löschen.
+- **Reiter Stationen:** fehlender Ortshinweis, Rätsel, Lösung oder Standort ist
+  rot markiert, oben steht, welche Stationen noch nicht fertig sind. Die
+  Platzhalter „Ortshinweis folgt“ und „Rätsel folgt“ zählen als fehlend.
+- **Reiter Teilnehmende:** Suche nach Name oder Team, × in Fingergröße,
+  beim Nachzügler die Rückmeldung, in welches Team er gekommen ist.
+- **Tippziele** mindestens 42 px (kleine Knöpfe, Links, Fußzeile).
+- **Texte:** „Noch 1 Versuch.“, freundlicher Hinweis bei doppeltem Namen,
+  Erfolgsmeldungen verschwinden nach etwa zehn Sekunden, bei ignorierter
+  GPS-Erlaubnis ein passender Hinweis statt „Signal schwach“.
+
+Offen aus der Durchsicht: die Reihenfolge der Team-Ansicht unterwegs
+(Entfernung und Pfeil nach oben, Zahlenschloss kompakter), dazu gibt es ein
+Mockup zur Entscheidung.
+
+Getestet lokal gegen PostgreSQL 15 (21 Prüfungen zu Nachtrag 8, dazu wieder
+Koffer und Testmodus) und in der Oberfläche; Nachtrag 8 live eingespielt und
+über die öffentliche Schnittstelle geprüft.
 
 ## Testmodus
 
@@ -440,7 +494,7 @@ wird, und nach der Auswertung löschen.
 | Publishable key | `sb_publishable_7uEQEkFwi27XJdGLSoso5w_TMxHJYUq` (steht in `config.js`, darf öffentlich sein) |
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
-Init-Migration und Nachträge 1 bis 7 sind eingespielt, geprüft über `pg_proc`
+Init-Migration und Nachträge 1 bis 8 sind eingespielt, geprüft über `pg_proc`
 und Aufrufe der Endpunkte. Wer die Datenbank neu aufsetzt, spielt sie in der
 Reihenfolge ein, in der sie unter „Alle Dateien“ stehen: ohne Nachtrag 1
 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne
@@ -458,7 +512,9 @@ Wichtig für die Weiterarbeit:
   heißt.
 - **Auf dem Arbeitsrechner sind weder Node.js noch die GitHub CLI installiert**,
   und Adminrechte fehlen. Also keine Lösungen vorschlagen, die `npx`, `npm` oder
-  `gh` voraussetzen. Python ist vorhanden, Git läuft über VS Code, SQL über
+  `gh` für den Betrieb voraussetzen. Auf dem Privatrechner (Adminrechte) ist
+  Node 24 installiert; dort lässt es sich für Prüfungen nutzen, etwa zur
+  Syntaxprüfung von `index.html`, das Projekt selbst braucht es aber nicht. Python ist vorhanden, Git läuft über VS Code, SQL über
   `tools/sql.py` oder den SQL-Editor.
 - **Das Projekt lag zunächst unter OneDrive.** Wenn es dort noch liegt: nach
   außerhalb verschieben, OneDrive synchronisiert den `.git`-Ordner mit und

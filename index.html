@@ -46,13 +46,13 @@ input,textarea,select{width:100%;font:500 17px var(--body);padding:11px 13px;bor
 textarea{min-height:64px;font-size:16px}
 .btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 18px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);margin-top:12px}
 .btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
-.btn.sm{display:inline-block;width:auto;padding:8px 12px;font-size:15px;margin:0 6px 6px 0}
+.btn.sm{display:inline-block;width:auto;padding:8px 12px;font-size:15px;margin:0 6px 6px 0;min-height:42px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .msg{border-radius:10px;padding:10px 12px;margin-top:12px;font-size:15px}
 .msg.err{background:var(--err-bg);color:var(--err)}.msg.ok{background:var(--ok-bg);color:var(--ok)}
 .msg.info{background:var(--info-bg);color:var(--ink)}
 .msg .btn{margin-top:10px}
-.link{background:none;border:0;padding:6px 0;margin-top:8px;font:600 15px var(--body);color:var(--muted);text-decoration:underline;cursor:pointer}
+.link{background:none;border:0;padding:10px 4px;min-height:42px;margin-top:4px;font:600 15px var(--body);color:var(--muted);text-decoration:underline;cursor:pointer}
 .count{font:700 42px var(--head);line-height:1}
 ul.names{list-style:none;padding:0;margin:10px 0 0;columns:2;column-gap:14px;font-size:15px}
 ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line)}
@@ -69,7 +69,14 @@ ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line
 .compass svg{width:78px;height:78px;flex:none}
 .ring{fill:none;stroke:var(--line);stroke-width:3}
 .needle{fill:var(--flag);transform-origin:39px 39px}
-.needle.unsicher{fill:var(--line)}   /* noch keine Richtung bekannt */
+/* Richtung noch unbekannt: kein Pfeil, der etwas vortäuscht, sondern ein Fragezeichen */
+.compass .nq{display:none;font:700 26px var(--head);fill:var(--muted)}
+.compass.unsicher .nq{display:inline}
+.compass.unsicher .needle{display:none}
+.names .del{min-width:40px;min-height:40px;padding:0;margin:0 0 0 6px;font-size:18px;line-height:1}
+.fehlt{color:var(--err);font-weight:600}
+.row2{display:flex;gap:8px}.row2 .btn{flex:1}
+.wahl{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 /* Kompass einmessen: Handy fährt eine liegende Acht ab */
 .acht{display:block;width:100%;max-width:260px;height:auto;margin:10px auto 0}
 .acht .bahn{fill:none;stroke:var(--line);stroke-width:3;stroke-dasharray:6 6}
@@ -118,7 +125,8 @@ th{font:600 14px var(--body);color:var(--muted)}
 .tl-bar .seg{position:absolute;top:4px;height:14px;border-radius:3px;background:var(--c)}
 .tl-bar .seg.solve{background:repeating-linear-gradient(135deg,var(--c) 0 3px,transparent 3px 6px);opacity:.55}
 .tl-bar .st{position:absolute;top:2px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--card);border:2px solid var(--c);color:var(--ink);font:700 11px var(--head);display:grid;place-items:center;font-style:normal;z-index:1}
-.tl-bar .win{position:absolute;top:1px;margin-left:14px;font:700 13px var(--head);color:var(--flag);white-space:nowrap}
+.tl-bar .win{position:absolute;top:1px;margin-left:12px;font:700 13px var(--head);color:var(--flag);white-space:nowrap}
+.tl-bar .win.links{margin-left:-12px;transform:translateX(-100%)}   /* am rechten Rand nach innen */
 .tl-total{font:700 15px var(--head);text-align:right;white-space:nowrap}
 .tl-total small{display:block;font:500 12px var(--body);color:var(--muted)}
 .tl-axis{position:relative;height:18px;margin:0 90px 0 114px;font:500 12px var(--body);color:var(--muted)}
@@ -147,7 +155,8 @@ a.btn{text-decoration:none;text-align:center}
 .btn.help{display:flex;align-items:center;justify-content:center;gap:9px}
 .btn.help svg{width:19px;height:19px;flex:none}
 .nav{display:flex;gap:6px;justify-content:center;margin-top:24px;font-size:14px}
-.nav a{color:var(--muted)}
+.nav a{color:var(--muted);display:inline-block;padding:10px 8px;min-height:42px}
+.nav span{color:var(--line);align-self:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -336,6 +345,20 @@ const DANGER = {
       return "Alles geleert. Die Anmeldung ist wieder offen.";
     }
   },
+  finish: {
+    when: () => false,   // kommt über den Knopf oben, nicht als Kachel
+    wort: false,
+    title: "Spiel beenden",
+    lead: "Danach nimmt die App keine Koffer-Codes mehr an. Teams, die noch unterwegs sind, kommen nicht mehr ins Ziel. Die Rangliste erscheint öffentlich.",
+    keeps: "Plätze, Fortschritt und Routen bleiben erhalten.",
+    btn: "Spiel beenden",
+    async run() {
+      S.admin.state = await rpc("admin_finish", { p_pin: S.admin.pin });
+      S.admin.cursor = null; stopPlay();
+      await syncTracks(true).catch(() => { });
+      return "Spiel beendet. Die Routen bleiben, bis du die Standortdaten löschst.";
+    }
+  },
   person: {
     when: () => false,   // erscheint nicht als Kachel, nur über das × bei den Teilnehmenden
     wort: false,         // eine Person löscht man oft, da reicht die Rückfrage ohne Tippen
@@ -372,8 +395,17 @@ function helpBtn(text, klasse) {
   return `<a class="btn ${klasse || "alt"} help" href="${href}" target="_blank" rel="noopener">${CHAT}Hilfe von ${esc(name)}</a>`;
 }
 const brand = sub => `<div class="brand">${FLAG}<div><h1>Stadtjagd</h1><div class="muted small">${esc(sub)}</div></div></div>`;
-const msgBox = () => S.msg ? `<div class="msg ${S.msg.type}" role="status">${esc(S.msg.text)}</div>` : "";
-const nav = () => `<div class="nav"><a href="#/public">Anmeldung</a> | <a href="#/team">Team</a> | <a href="#/admin">Spielleitung</a></div>`;
+const msgBox = () => {
+  if (!S.msg) return "";
+  S.msg.at = S.msg.at || Date.now();
+  // Erfolgsmeldungen verschwinden nach einer Weile, sonst hängen sie noch an der nächsten Station
+  if (S.msg.type === "ok" && Date.now() - S.msg.at > 12000) return "";
+  return `<div class="msg ${S.msg.type}" role="status">${esc(S.msg.text)}</div>`;
+};
+// Die Spielleitung öffnet #/admin direkt, Teilnehmende sehen nur, was sie brauchen
+const nav = () => `<div class="nav">${[["#/public", "Anmeldung"], ["#/team", "Teamleitung"]]
+  .concat(S.view === "admin" ? [["#/admin", "Spielleitung"]] : [])
+  .map(([h, t]) => `<a href="${h}">${t}</a>`).join("<span>|</span>")}</div>`;
 
 /* ---------- Setup-Ansicht, falls nicht konfiguriert ---------- */
 function viewSetup() {
@@ -397,7 +429,7 @@ function viewPublic() {
          <p>Sobald die Spielleitung auslost, siehst du hier dein Team.</p></div>
          <button class="btn alt" data-act="pub-again">Weitere Person anmelden</button>`
       : `<div class="panel"><h2>Mitmachen</h2><p class="muted">Trag deinen Namen ein. Die Teams werden später zufällig ausgelost.</p>
-         <div style="margin-top:12px"><label for="pname">Vor- und Nachname</label><input id="pname" autocomplete="name"></div>
+         <div style="margin-top:12px"><label for="pname">Vor- und Nachname</label><input id="pname" autocomplete="name" autocapitalize="words" enterkeyhint="send"></div>
          <button class="btn" data-act="pub-reg" ${S.busy ? "disabled" : ""}>Anmelden</button>${msgBox()}</div>`;
     out += `<div class="panel"><div class="count">${p.participantCount}</div><div class="muted small">Personen angemeldet</div></div>`;
     out += helpBtn("Stadtjagd: Ich komme bei der Anmeldung nicht weiter.");
@@ -415,17 +447,22 @@ function viewPublic() {
         <td style="white-space:nowrap">${r.place ? (vorbei ? "im Ziel " : "") + uhrzeit(r.finishedAt) : r.solved + " / " + p.stationCount}</td></tr>`).join("")}</table></div>`;
   }
   const t = S.lookup;
-  if (t) out += `<div class="panel"><p class="muted small">Gefundenes Team</p><h2>${teamEmoji(t.name)} Team ${esc(t.name)}</h2>
+  if (t) out += `<div class="panel"><p class="muted small">${S.lookupEigen ? `Dein Team, ${esc(S.myName)}` : "Gefundenes Team"}</p><h2>${teamEmoji(t.name)} Team ${esc(t.name)}</h2>
     <p>Leitung: ${esc(t.leaderName || "offen")}</p>
     <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`;
   out += `<div class="panel"><label for="plook">In welchem Team bin ich?</label>
-    <input id="plook" value="${esc(S.myName || "")}">
-    <button class="btn" data-act="pub-look">Team anzeigen</button>${msgBox()}</div>`;
+    <input id="plook" value="${esc(S.myName || "")}" autocapitalize="words" enterkeyhint="search">
+    <button class="btn" data-act="pub-look">Team anzeigen</button>${msgBox()}
+    ${S.kandidaten ? `<div class="wahl">${S.kandidaten.map(n => `<button class="btn sm alt" data-act="pub-look" data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : ""}</div>`;
   out += helpBtn("Stadtjagd: Ich finde mein Team nicht.");
   return out + nav();
 }
 
 /* ---------- Team-Ansicht ---------- */
+function pauseText(bis) {
+  const rest = Math.max(0, Math.ceil((new Date(bis).getTime() - Date.now()) / 1000));
+  return `Denkpause: noch ${rest} ${rest === 1 ? "Sekunde" : "Sekunden"}. Danach habt ihr wieder drei Versuche.`;
+}
 function lockHTML(st) {
   const d = st.digits || [];
   let h = '<div class="lock">';
@@ -492,7 +529,7 @@ function gpsNote() {
 function viewTeam() {
   if (!S.team.code) return brand("Teamleitung") + `<div class="panel">
     <h2>Team-Code eingeben</h2><p class="muted">Den Code bekommt die Teamleitung von der Spielleitung.</p>
-    <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" placeholder="FUCHS-1234"></div>
+    <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="FUCHS-1234"></div>
     <button class="btn" data-act="t-login" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox()}</div>`
     + helpBtn("Stadtjagd: Wir haben keinen Team-Code.") + nav();
   const st = S.team.state;
@@ -506,7 +543,7 @@ function viewTeam() {
   if (st.status === "drawn") return out + `<div class="panel"><h3>Ihr seid startklar</h3>
     <p>Alle Teams starten gleichzeitig. Wartet auf das Signal der Spielleitung.</p>
     <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>`
-    + helpBtn(`Stadtjagd: Hier ist Team ${st.team.name} (${st.team.code}). Wir haben eine Frage vor dem Start.`) + nav();
+    + vorbereitenHTML() + helpBtn(`Stadtjagd: Hier ist Team ${st.team.name} (${st.team.code}). Wir haben eine Frage vor dem Start.`) + abmeldenHTML() + nav();
 
   out += `<div class="panel">${lockHTML(st)}${routeHTML(st)}
     <p class="small muted" style="text-align:center">Die 6. Ziffer ist die Einerstelle der Summe eurer fünf Ziffern.</p></div>`;
@@ -518,10 +555,10 @@ function viewTeam() {
       <h2>Platz ${st.place}</h2>
       <p>${koffer ? "Ihr habt einen Koffer gewonnen. Zeigt diesen Bildschirm der Spielleitung am Koffer."
         : "Ihr seid im Ziel. Die Koffer sind schon vergeben, euer Platz steht in der Rangliste."}</p></div>`
-      + (koffer ? helpBtn(`Stadtjagd: Team ${st.team.name} (${st.team.code}) hat Platz ${st.place}.`) : "") + nav();
+      + (koffer ? helpBtn(`Stadtjagd: Team ${st.team.name} (${st.team.code}) hat Platz ${st.place}.`) : "") + abmeldenHTML() + nav();
   }
   if (st.status === "finished") return out + `<div class="panel"><h2>Das Spiel ist vorbei</h2>
-    <p>Die Spielleitung hat das Spiel beendet. Die Rangliste steht auf der Anmeldeseite.</p></div>` + nav();
+    <p>Die Spielleitung hat das Spiel beendet. Die Rangliste steht auf der Anmeldeseite.</p></div>` + abmeldenHTML() + nav();
 
   if (st.allSolved) {
     const left = st.prizesLeft ?? 0;
@@ -531,7 +568,7 @@ function viewTeam() {
         : "Alle Koffer sind vergeben. Gebt den Code trotzdem ein, dann steht ihr mit Platz in der Rangliste."}</p>
       <div style="margin-top:12px"><label for="tfin">Koffer-Code, 6 Stellen</label><input id="tfin" inputmode="numeric" maxlength="6"></div>
       <button class="btn" data-act="t-final" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Code eingeben"}</button>${msgBox()}</div>`;
-    return out + nav();
+    return out + abmeldenHTML() + nav();
   }
 
   const s = st.station;
@@ -544,8 +581,9 @@ function viewTeam() {
     out += `<div class="panel"><p class="muted small">Station ${s.position} von ${st.totalStations}</p>
       <h2>${esc(s.name)}</h2><p class="hint" style="margin-top:8px">${esc(s.locationHint)}</p>`;
     if (g.kal && hasTarget) out += kalHTML();
-    else out += `<div class="compass"><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
-        <polygon class="needle ${richtungBekannt() ? "" : "unsicher"}" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/></svg>
+    else out += `<div class="compass ${richtungBekannt() ? "" : "unsicher"}"><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
+        <polygon class="needle" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/>
+        <text class="nq" x="39" y="48" text-anchor="middle">?</text></svg>
         <div><div class="dist" id="dist">${dist}</div><div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div></div></div>
       ${!hasTarget ? `<div class="msg err">Für diese Station fehlen die Koordinaten. Die Spielleitung muss sie setzen.</div>` : ""}
       ${!g.on ? `<button class="btn alt" data-act="t-gps">Standort und Kompass aktivieren</button>` : ""}
@@ -569,18 +607,40 @@ function viewTeam() {
       ${g.on && st.status === "running" ? `<div class="share"><span class="dot"></span><span>Standort wird mit der Spielleitung geteilt${S.gps.sentAt ? ", zuletzt " + S.gps.sentAt : ""}</span></div>` : ""}
       </div>`;
   } else {
+    // Nach drei Fehlversuchen: Feld sperren und die Pause sichtbar herunterzählen
+    const pause = !st.testMode && st.lockedUntil && new Date(st.lockedUntil).getTime() > Date.now();
     out += `<div class="panel"><p class="muted small">Station ${s.position}: ${esc(s.name)}</p>
       <p class="riddle" style="margin-top:8px">${esc(s.riddle || "")}</p>
-      <div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans"></div>
-      <button class="btn" data-act="t-answer" ${S.busy ? "disabled" : ""}>Antwort prüfen</button>
-      ${msgBox()}<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
-        : `Fehlversuche: ${st.failedAttempts}/3, danach 2 Minuten Pause.`}</p></div>`;
+      <div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans" autocomplete="off" enterkeyhint="send" ${pause ? "disabled" : ""}></div>
+      <button class="btn" data-act="t-answer" ${S.busy || pause ? "disabled" : ""}>Antwort prüfen</button>
+      ${pause ? `<div class="msg err" id="pause" data-bis="${esc(st.lockedUntil)}">${pauseText(st.lockedUntil)}</div>`
+        : msgBox() + `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
+          : `Fehlversuche: ${st.failedAttempts} von 3, danach 2 Minuten Pause.`}</p>`}</div>`;
   }
   out += `<p class="small muted" style="text-align:center;margin-top:12px">Mitglieder: ${(st.team.members || []).map(esc).join(", ")}</p>`;
   out += helpBtn(`Stadtjagd: Hier ist Team ${st.team.name} (${st.team.code}). `
     + (s ? `Wir brauchen Hilfe bei Station ${s.position}.` : "Wir brauchen Hilfe."));
-  out += `<button class="btn alt" data-act="t-logout">Abmelden</button>`;
+  out += abmeldenHTML();
   return out + nav();
+}
+// Abmelden ist selten gewollt: kleiner Link, dann eine Rückfrage
+function abmeldenHTML() {
+  return S.team.abmelden
+    ? `<div class="panel"><p><b>Wirklich abmelden?</b> Danach braucht ihr den Team-Code wieder.</p>
+        <div class="row2"><button class="btn alt" data-act="t-logout-nein">Nein</button>
+        <button class="btn warn" data-act="t-logout">Ja, abmelden</button></div></div>`
+    : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-logout-frage">Abmelden</button></p>`;
+}
+// Vor dem Start: Standort und Kompass schon freigeben, dann geht es beim Signal sofort los
+function vorbereitenHTML() {
+  const g = S.gps;
+  if (g.kal) return `<div class="panel">${kalHTML()}</div>`;
+  return `<div class="panel"><h3>Schon mal vorbereiten</h3>
+    ${!g.on ? `<p class="small muted">Gebt Standort und Kompass jetzt frei, dann geht es beim Start sofort los.</p>
+      <button class="btn alt" data-act="t-gps">Standort und Kompass freigeben</button>`
+      : `<p class="small" id="gstat">${esc(gpsNote())}</p>${kalOkHTML()}
+        ${kompassDa() ? `<button class="btn alt" data-act="t-kal">Kompass einmessen</button>` : ""}`}
+    ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}</div>`;
 }
 
 /* ---------- Spielleitung ---------- */
@@ -633,10 +693,7 @@ function viewAdmin() {
     if (laeuft) {
       // Nach dem Start sperrt die Datenbank das Auslosen. Statt das Formular
       // wortlos zu verstecken, steht hier der Weg zurück.
-      out += `<div class="panel"><h3>Teams auslosen</h3>
-        <p class="small">Solange das Spiel ${st.status === "running" ? "läuft" : "beendet ist"}, lässt sich nicht neu auslosen, sonst wäre der Fortschritt der Teams nichts mehr wert.</p>
-        <p class="small muted">Setz zuerst den Fortschritt zurück. Danach kannst du hier neu auslosen. Teams und Teilnehmende bleiben dabei erhalten.</p>
-        <button class="btn warn" data-act="a-danger" data-key="reset">Fortschritt zurücksetzen</button></div>`;
+      // steht jetzt unter der Tabelle: im Spiel braucht man hier vor allem "Freischalten"
     } else {
       out += `<div class="panel"><h3>Teams auslosen</h3>
         <p class="small muted">${n} ${n === 1 ? "Person ist" : "Personen sind"} angemeldet.${st.status === "drawn" ? " Neu auslosen wirft die bestehenden Teams und ihre Codes weg und fragt deshalb noch einmal nach." : ""}</p>
@@ -653,27 +710,35 @@ function viewAdmin() {
         <button class="btn" data-act="a-draw" ${n < 2 ? "disabled" : ""}>${st.status === "drawn" ? "Neu auslosen" : "Auslosen"}</button>
         ${n < 2 ? `<p class="small muted">Es müssen mindestens zwei Personen angemeldet sein.</p>` : ""}</div>`;
     }
+    // im Spiel nach Platz und Fortschritt, sonst alphabetisch
+    const reihe = laeuft ? [...(st.teams || [])].sort((a, b) => (a.place || 99) - (b.place || 99)
+      || b.solved - a.solved || a.name.localeCompare(b.name, "de")) : (st.teams || []);
+    const spaeter = laeuft ? `<p class="small muted" style="margin-top:12px">Neu auslosen geht erst wieder nach „Fortschritt zurücksetzen“ im Reiter Daten löschen.
+        Solange das Spiel ${st.status === "running" ? "läuft" : "beendet ist"}, wäre sonst der Fortschritt der Teams verloren.</p>` : "";
     out += `<div class="panel"><table><tr><th>Team</th><th>Code</th><th>Stand</th><th></th></tr>
-      ${(st.teams || []).map(t => `<tr><td><b>${teamEmoji(t.name)} ${esc(t.name)}</b><br><span class="small muted">Leitung ${esc(t.leaderName || "offen")}, ${t.memberCount} Pers.</span></td>
+      ${reihe.map(t => `<tr><td><b>${teamEmoji(t.name)} ${esc(t.name)}</b><br><span class="small muted">Leitung ${esc(t.leaderName || "offen")}, ${t.memberCount} Pers.</span></td>
         <td class="small">${esc(t.code)}</td>
         <td><div class="prog"><span style="width:${(t.solved / Math.max(1, (st.stations || []).length)) * 100}%"></span></div>
           <span class="small muted">${t.solved} / ${(st.stations || []).length}, ${ago(t.lastActivity)}</span>
           ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}</td>
         <td>${st.status === "running" && t.currentPosition ? `<button class="btn sm alt" data-act="a-unlock" data-id="${t.id}">Freischalten</button>` : ""}</td></tr>`).join("")}
-      </table><p class="small muted">„Freischalten“ ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.</p></div>`;
+      </table><p class="small muted">„Freischalten“ ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.</p>${spaeter}</div>`;
   }
   if (A.tab === "people") {
     out += `<div class="panel"><div class="bar"><div><span class="count">${(st.participants || []).length}</span> <span class="muted">angemeldet</span></div>
       ${(st.participants || []).length ? `<button class="btn sm alt" data-act="a-danger" data-key="people">Alle löschen</button>` : ""}</div>
-      <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
-      <ul class="names">${(st.participants || []).map(p => `<li>${esc(p.name)}${p.teamName ? ` <span class="small muted">${esc(p.teamName)}</span>` : ""}
-        <button class="btn sm alt" style="padding:2px 6px;font-size:13px" data-act="a-danger" data-key="person" data-id="${p.id}" data-name="${esc(p.name)}" title="Diese Person löschen">×</button></li>`).join("")}</ul></div>`;
+      <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen" autocapitalize="words"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
+      <div style="margin-top:8px"><input id="asuche" placeholder="Name oder Team suchen" autocomplete="off" value="${esc(A.suche || "")}"></div>
+      <ul class="names">${(st.participants || []).map(p => `<li data-such="${esc((p.name + " " + (p.teamName || "")).toLowerCase())}" ${treffer(p) ? "" : "hidden"}>${esc(p.name)}${p.teamName ? ` <span class="small muted">${esc(p.teamName)}</span>` : ""}
+        <button class="btn sm alt del" data-act="a-danger" data-key="person" data-id="${p.id}" data-name="${esc(p.name)}" title="Diese Person löschen" aria-label="${esc(p.name)} löschen">×</button></li>`).join("")}</ul></div>`;
   }
   if (A.tab === "stations") {
     out += `<div class="panel ${st.testMode ? "danger" : ""}"><h3>Testmodus</h3>
       <p class="small muted">Zum Durchklicken ohne hinzulaufen: Check-in ohne Entfernungsprüfung, auch ohne GPS,
       und jede Antwort zählt. Den Koffer-Code prüft die App weiter. Vor dem Event unbedingt ausschalten.</p>
       <button class="btn ${st.testMode ? "warn" : "alt"}" data-act="a-test" data-on="${st.testMode ? "0" : "1"}">${st.testMode ? "Testmodus ausschalten" : "Testmodus einschalten"}</button></div>`;
+    const unfertig = (st.stations || []).filter(s => offen(s.locationHint) || offen(s.riddle) || offen(s.answer) || s.lat == null);
+    if (unfertig.length) out += `<div class="msg err">Noch nicht fertig: Station ${unfertig.map(s => s.position).join(", ")}. Dort fehlt Ortshinweis, Rätsel, Lösung oder Standort.</div>`;
     out += `<div class="panel"><p class="small muted">Lauf die Route einmal ab und drück an jeder Station „Meinen Standort übernehmen“. Ein Paar wie 50.08750, 14.42806 kannst du auch ins Feld Breite einfügen.</p>
       ${(st.stations || []).map(s => S.admin.edit === s.id ? `
         <div class="stack" style="border-top:1px solid var(--line);padding-top:12px;margin-top:12px">
@@ -695,8 +760,10 @@ function viewAdmin() {
         </div>` : `
         <div style="border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px">
           <b style="font:700 22px var(--head);color:var(--flag);width:20px">${s.position}</b>
-          <div style="flex:1"><h3>${esc(s.name)}</h3><p class="small">${esc(s.riddle)}</p>
-            <p class="small muted">Lösung: ${esc(s.answer)}, Ziffer ${s.digit}, Radius ${s.radiusM} m<br>
+          <div style="flex:1"><h3>${esc(s.name)}</h3>
+            <p class="small">Ortshinweis: ${offen(s.locationHint) ? '<span class="fehlt">fehlt</span>' : esc(s.locationHint)}</p>
+            <p class="small">Rätsel: ${offen(s.riddle) ? '<span class="fehlt">fehlt</span>' : esc(s.riddle)}</p>
+            <p class="small muted">Lösung: ${offen(s.answer) ? '<span class="fehlt">fehlt</span>' : esc(s.answer)}, Ziffer ${s.digit}, Radius ${s.radiusM} m<br>
             Koordinaten: ${s.lat != null ? Number(s.lat).toFixed(5) + ", " + Number(s.lng).toFixed(5) : "fehlen noch"}</p></div>
           <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
         </div>`).join("")}
@@ -743,6 +810,11 @@ function viewAdmin() {
   }
   return out + nav();
 }
+
+// leer oder noch der Platzhalter aus der Seed-Datei
+const offen = v => !v || !String(v).trim() || /^(Ortshinweis|Rätsel) folgt$/.test(String(v).trim());
+const treffer = p => !S.admin.suche
+  || (p.name + " " + (p.teamName || "")).toLowerCase().includes(S.admin.suche.toLowerCase());
 
 /* ---------- Auslosen ---------- */
 const TEAM_MAX = 16;   // so viele Tiernamen kennt admin_draw
@@ -808,16 +880,20 @@ async function drawMap(first) {
   (st.stations || []).forEach(s => {
     if (s.lat == null || s.lng == null) return;
     const icon = L.divIcon({ html: `<div class="mapbadge">${s.position}</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] });
-    const m = L.marker([s.lat, s.lng], { icon }).bindPopup(`<b>Station ${s.position}</b><br>${esc(s.name)}`);
+    const m = L.marker([s.lat, s.lng], { icon, zIndexOffset: 1000 }).bindPopup(`<b>Station ${s.position}</b><br>${esc(s.name)}`);
     const c = L.circle([s.lat, s.lng], { radius: s.radiusM, color: "#EE5F1B", weight: 1, fillOpacity: .08 });
     m.addTo(map); c.addTo(map); layers.stations.push(m, c); pts.push([s.lat, s.lng]);
   });
   const drop = (store, id) => { if (store[id]) { map.removeLayer(store[id]); delete store[id]; } };
+  // Punkte weit weg von der Route (etwa 0/0 eines Geräts ohne Fix) weder zeichnen noch in den Ausschnitt nehmen
+  const anker = (st.stations || []).find(s => s.lat != null && s.lng != null);
+  const nah = (lat, lng) => !anker || haversine({ lat, lng }, anker) < 30000;
   (st.teams || []).forEach((t, i) => {
     const color = teamColor(i), off = !!A.hidden[t.id];
     const tr = A.tracks && A.tracks[t.id];
     let line = tr ? tr.points : [];
     if (cur != null) line = line.filter(p => p[2] <= cur);
+    line = line.filter(p => nah(p[0], p[1]));
 
     // gelaufene Route
     if (!off && line.length > 1) {
@@ -835,7 +911,7 @@ async function drawMap(first) {
     } else if (t.position) {
       at = [t.position.lat, t.position.lng]; when = new Date(t.position.updatedAt).getTime();
     }
-    if (off || !at) { drop(layers.teams, t.id); return; }
+    if (off || !at || !nah(at[0], at[1])) { drop(layers.teams, t.id); return; }
     const ref = cur != null ? cur : Date.now();
     const stale = ref - when > 180000;
     pts.push(at);
@@ -932,7 +1008,7 @@ function renderTimeline() {
     if (!r.finish && (!last || last.okAt)) segs += `<span class="seg" style="left:${pct(prev)}%;width:${pct(end) - pct(prev)}%;opacity:.5"></span>`;
     if (r.finish && r.t.place) {
       const bei = r.t.finishedAt ? new Date(r.t.finishedAt).getTime() : r.finish, pz = st.prizeCount ?? 3;
-      segs += `<span class="win" style="left:${pct(bei)}%">${r.t.place <= pz ? platzZeichen(r.t.place, pz) + " Koffer" : "Platz " + r.t.place}</span>`;
+      segs += `<span class="win ${pct(bei) > 85 ? "links" : ""}" style="left:${pct(bei)}%" title="Platz ${r.t.place}">${r.t.place <= pz ? platzZeichen(r.t.place, pz) : "Platz " + r.t.place}</span>`;
     }
     const note = r.finish ? `${fmtDur(r.finish - start)}<small>${r.solved} Ziffern</small>`
       : `<small style="font-size:14px;color:var(--ink)">${W.status === "finished" ? "nicht fertig" : "unterwegs"}</small><small>${r.solved} von ${total} Ziffern</small>`;
@@ -990,8 +1066,14 @@ const ACT = {
     S.myName = r.name; localStorage.setItem("sj.name", r.name); S.msg = null; await refresh();
   },
   "pub-again"() { S.myName = null; localStorage.removeItem("sj.name"); },
-  async "pub-look"() {
-    const r = await rpc("lookup_participant", { p_name: val("plook") });
+  async "pub-look"(d) {
+    const r = await rpc("lookup_participant", { p_name: d.name || val("plook") });
+    S.kandidaten = null; S.lookupEigen = false;
+    if (!r.found && r.candidates) {
+      S.lookup = null; S.kandidaten = r.candidates;
+      S.msg = { type: "err", text: "Mehrere Namen passen. Tipp auf deinen" + (r.more ? " oder schreib etwas genauer." : ".") };
+      return;
+    }
     if (!r.found) { S.lookup = null; S.msg = { type: "err", text: "Kein Name gefunden. Prüfe die Schreibweise." }; return; }
     if (!r.team) { S.lookup = null; S.msg = { type: "ok", text: r.name + " ist angemeldet, aber noch keinem Team zugeteilt." }; return; }
     S.lookup = r.team; S.msg = { type: "ok", text: r.name + " ist in Team " + r.team.name + "." };
@@ -1001,7 +1083,9 @@ const ACT = {
     const st = await rpc("team_state", { p_code: code });
     S.team.code = st.team.code; S.team.state = st; localStorage.setItem("sj.code", st.team.code); S.msg = null;
   },
-  "t-logout"() { S.team.code = null; S.team.state = null; localStorage.removeItem("sj.code"); stopGps(); },
+  "t-logout"() { S.team.code = null; S.team.state = null; S.team.abmelden = false; localStorage.removeItem("sj.code"); stopGps(); },
+  "t-logout-frage"() { S.team.abmelden = true; },
+  "t-logout-nein"() { S.team.abmelden = false; },
   "t-gps"() { startGps(); },
   "t-kal"() { kalStart(); },
   "t-kal-skip"() { kalEnde(false); },
@@ -1067,12 +1151,8 @@ const ACT = {
     S.admin.state = r.state; S.admin.tab = "map";
     S.msg = r.warning ? { type: "err", text: r.warning } : { type: "ok", text: "Das Spiel läuft." };
   },
-  async "a-finish"() {
-    S.admin.state = await rpc("admin_finish", { p_pin: S.admin.pin });
-    S.admin.cursor = null; stopPlay();
-    await syncTracks(true).catch(() => { });
-    S.msg = { type: "ok", text: "Spiel beendet. Die Routen bleiben, bis du die Standortdaten löschst." };
-  },
+  // Beenden ist endgültig für alle Teams: erst der Dialog
+  "a-finish"() { S.admin.confirm = { key: "finish" }; S.msg = null; },
   // Löschen: erst den Dialog öffnen, gelöscht wird erst nach dem getippten Wort
   "a-danger"(d) { S.admin.confirm = { key: d.key, id: d.id, name: d.name }; S.msg = null; },
   "a-dlg-cancel"() { S.admin.confirm = null; S.msg = null; },
@@ -1084,7 +1164,13 @@ const ACT = {
     S.admin.confirm = null;
     S.msg = { type: "ok", text };
   },
-  async "a-add"() { S.admin.state = await rpc("admin_add_participant", { p_pin: S.admin.pin, p_name: val("aadd") }); },
+  async "a-add"() {
+    const name = val("aadd");
+    S.admin.state = await rpc("admin_add_participant", { p_pin: S.admin.pin, p_name: name });
+    // sagen, wo die Person gelandet ist: nach dem Auslosen kommt sie ins kleinste Team
+    const neu = (S.admin.state.participants || []).find(p => p.name.toLowerCase() === name.trim().replace(/\s+/g, " ").toLowerCase());
+    S.msg = { type: "ok", text: neu && neu.teamName ? `${neu.name} ist jetzt in Team ${neu.teamName}.` : `${name.trim()} ist angemeldet.` };
+  },
   async "a-unlock"(d) { S.admin.state = await rpc("admin_unlock_station", { p_pin: S.admin.pin, p_team: d.id }); },
   "a-edit"(d) { S.admin.edit = d.id; },
   "a-cancel"() { S.admin.edit = null; },
@@ -1118,7 +1204,7 @@ const richtungBekannt = () => S.gps.heading != null || S.gps.gpsHeading != null;
 const kompassDa = () => S.gps.kompass === "an" || S.gps.kompass === "kalibrieren";
 // nur neu zeichnen, solange Kompass oder Einmessen zu sehen sind, sonst ginge
 // eine halb getippte Rätselantwort verloren
-const kompassSichtbar = () => !!($("#needle") || $("#kal"));
+const kompassSichtbar = () => !!($("#needle") || $("#kal") || $("#gstat"));
 
 /* Einmessen: einmal pro Handy und Tag, Überspringen zählt auch.
    Messen können wir nur das Schwenken; iOS meldet zusätzlich die Genauigkeit. */
@@ -1180,7 +1266,8 @@ function liveUpdate() {
   const g = S.gps, st = S.team.state, s = st && st.station;
   kalZeigen();
   const note = $("#gnote"); if (note && s && s.lat != null) note.textContent = gpsNote();
-  const n = $("#needle"); if (n) n.classList.toggle("unsicher", !richtungBekannt());
+  const n = $("#needle"); if (n) n.closest(".compass").classList.toggle("unsicher", !richtungBekannt());
+  const gs = $("#gstat"); if (gs) gs.textContent = gpsNote();
   if (!g.pos || !s || s.lat == null) return;
   const t = { lat: s.lat, lng: s.lng };
   const d = $("#dist"); if (d) d.textContent = fmtDist(haversine(g.pos, t));
@@ -1222,7 +1309,7 @@ function addOrient() {
     // Kompass des Tages von selbst anbieten
     let kalWechsel = false;
     if (g.kal) kalWechsel = kalSchritt(e);
-    else if (kompassDa() && !kalHeute() && $("#needle")) { kalStart(); kalWechsel = true; }
+    else if (kompassDa() && !kalHeute() && ($("#needle") || $("#gstat"))) { kalStart(); kalWechsel = true; }
     // Hinweise und Knöpfe hängen am Zustand: bei einem Wechsel neu zeichnen
     if (kalWechsel || g.kompass + (g.heading == null) !== vorher) kompassNeu = true;
     if (!raf) raf = requestAnimationFrame(() => {
@@ -1258,6 +1345,7 @@ async function startGps() {
   if (watchId != null) navigator.geolocation.clearWatch(watchId);   // kein zweiter Beobachter
   let last = null;
   watchId = navigator.geolocation.watchPosition(p => {
+    if (!brauchbar(p.coords)) return;
     const next = { lat: p.coords.latitude, lng: p.coords.longitude };
     // Laufrichtung auch dann mitrechnen, wenn der Kompass zwar etwas liefert,
     // aber zu ungenau ist. Sonst gibt es keinen Ersatz, wenn er ausfällt.
@@ -1268,12 +1356,20 @@ async function startGps() {
     maybeReport();
     if (firstFix) render(); else liveUpdate();
   }, e => {
-    if (e.code === 3) { S.gps.err = "GPS-Signal ist schwach, die App sucht weiter."; render(); return; }
+    if (e.code === 3) {
+      // Ohne je einen Standort liegt es meist an der Erlaubnis, nicht am Signal
+      S.gps.err = S.gps.pos ? "GPS-Signal ist schwach, die App sucht weiter."
+        : "Noch kein Standort. Hat das Handy nach der Erlaubnis gefragt? Dann „Erlauben“ tippen. Die App sucht weiter.";
+      render(); return;
+    }
     S.gps.err = e.code === 1 ? "Standortzugriff wurde abgelehnt. Erlaube ihn in den Browser-Einstellungen." : "Standort nicht verfügbar.";
     render();
   }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
   render();
 }
+// Manche Geräte melden ohne Fix 0/0 oder Genauigkeit 0; solche Punkte verwerfen
+const brauchbar = c => c && c.accuracy > 0 && c.accuracy <= 1000
+  && !(Math.abs(c.latitude) < 0.01 && Math.abs(c.longitude) < 0.01);
 function stopGps() {
   if (watchId != null) navigator.geolocation.clearWatch(watchId);
   watchId = null; S.gps.on = false; S.gps.pos = null; S.gps.kal = null;
@@ -1298,10 +1394,19 @@ async function maybeReport() {
 }
 
 /* ---------- Laden und Rendern ---------- */
+// Nach dem Auslosen gleich das eigene Team zeigen: der Name ist von der Anmeldung bekannt
+async function eigenesTeam() {
+  if (!S.pub || S.pub.status === "registration" || !S.myName || S.lookup || S.autoLook) return;
+  S.autoLook = true;
+  try {
+    const r = await rpc("lookup_participant", { p_name: S.myName });
+    if (r.found && r.team) { S.lookup = r.team; S.lookupEigen = true; }
+  } catch { /* dann eben per Hand suchen */ }
+}
 async function refresh() {
   if (!cfg.url || !cfg.key) return render();
   try {
-    if (S.view === "public") S.pub = await rpc("public_state", {});
+    if (S.view === "public") { S.pub = await rpc("public_state", {}); await eigenesTeam(); }
     if (S.view === "team" && S.team.code) S.team.state = await rpc("team_state", { p_code: S.team.code });
     if (S.view === "admin" && S.admin.pin) S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin });
   } catch (e) {
@@ -1333,6 +1438,14 @@ document.addEventListener("input", e => {
     return;
   }
   if (e.target.id === "dval" || e.target.id === "dmode") { drawPreview(); return; }
+  if (e.target.id === "asuche") {
+    // filtern ohne neu zu zeichnen, sonst springt der Fokus aus dem Feld
+    S.admin.suche = e.target.value.trim();
+    document.querySelectorAll(".names li[data-such]").forEach(li => {
+      li.hidden = !!S.admin.suche && !li.dataset.such.includes(S.admin.suche.toLowerCase());
+    });
+    return;
+  }
 
   if (e.target.id !== "tlslider") return;
   const A = S.admin, W = A.window;
@@ -1348,14 +1461,21 @@ document.addEventListener("click", async e => {
   const fn = ACT[a.dataset.act]; if (!fn) return;
   S.busy = true;
   a.disabled = true;
+  // Geht etwas schief, soll das Getippte stehen bleiben, statt mit dem Neuzeichnen zu verschwinden
+  const getippt = {};
+  document.querySelectorAll("#app input[id], #app textarea[id]").forEach(el => { getippt[el.id] = el.value; });
+  const zurueck = () => {
+    if (!S.msg || S.msg.type !== "err") return;
+    Object.keys(getippt).forEach(id => { const el = document.getElementById(id); if (el && !el.disabled) el.value = getippt[id]; });
+  };
   try {
     const r = await fn(a.dataset);
     S.busy = false;
-    if (r !== false) render(); else a.disabled = false;
+    if (r !== false) { render(); zurueck(); } else a.disabled = false;
   } catch (err) {
     S.busy = false;
     S.msg = { type: "err", text: err.message || "Etwas ist schiefgelaufen." };
-    render();
+    render(); zurueck();
   }
 });
 document.addEventListener("change", e => { if (e.target.id === "dmode") drawPreview(); });
@@ -1371,6 +1491,11 @@ window.addEventListener("hashchange", () => {
   S.view = location.hash.replace("#/", "") || "public";
   S.msg = null; refresh();
 });
+// Denkpause sekundengenau herunterzählen, am Ende das Feld wieder freigeben
+setInterval(() => {
+  const p = $("#pause"); if (!p) return;
+  if (new Date(p.dataset.bis).getTime() <= Date.now()) render(); else p.textContent = pauseText(p.dataset.bis);
+}, 1000);
 setInterval(() => {
   if (document.hidden) return;
   const busyTyping = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
@@ -1384,7 +1509,7 @@ setInterval(() => {
   }
   if (busyTyping) return;
   if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(s => { S.team.state = s; render(); }).catch(() => { });
-  if (S.view === "public") rpc("public_state", {}).then(s => { S.pub = s; render(); }).catch(() => { });
+  if (S.view === "public") rpc("public_state", {}).then(async s => { S.pub = s; await eigenesTeam(); render(); }).catch(() => { });
 }, 10000);
 refresh();
 </script>
