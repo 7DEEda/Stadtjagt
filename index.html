@@ -143,6 +143,17 @@ th{font:600 14px var(--body);color:var(--muted)}
 .btn.warn{background:var(--err-btn);color:#fff}
 .panel.danger{border-color:var(--err);border-left-width:4px}
 .panel.danger h3{color:var(--err)}
+/* Nach dem Auslosen: großes Team-Zeichen, damit sich die Gruppen finden */
+.teamkarte{text-align:center}
+.teamkarte .kreis{width:min(56vw,220px);aspect-ratio:1;border-radius:50%;margin:10px auto 12px;display:grid;place-items:center;
+  background:var(--c);font-size:min(32vw,130px);line-height:1;box-shadow:0 4px 12px rgba(17,17,17,.12)}
+.teamkarte h1{font-size:38px}
+.teamkarte .names{text-align:left;margin-top:14px}
+.hochhalten{position:fixed;inset:0;z-index:120;background:var(--c);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:8px;color:#fff;cursor:pointer;padding:16px;animation:ovin .16s cubic-bezier(.32,.72,.4,1)}
+.hochhalten .riesig{font-size:min(68vw,52vh);line-height:1.05}
+.hochhalten b{font:700 46px var(--head);text-shadow:0 1px 4px rgba(0,0,0,.4)}
+.hochhalten small{font:500 16px var(--body);opacity:.92;text-shadow:0 1px 3px rgba(0,0,0,.4)}
 .overlay{position:fixed;inset:0;z-index:100;background:rgba(17,17,17,.45);display:grid;place-items:center;padding:16px;animation:ovin .16s cubic-bezier(.32,.72,.4,1)}
 .dialog{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;width:100%;max-width:430px;box-shadow:0 12px 32px rgba(17,17,17,.28),0 2px 6px rgba(17,17,17,.12);animation:dgin .16s cubic-bezier(.32,.72,.4,1)}
 .dialog h2{color:var(--err)}
@@ -454,9 +465,20 @@ function viewPublic() {
         <td style="white-space:nowrap">${r.place ? (vorbei ? "im Ziel " : "") + uhrzeit(r.finishedAt) : r.solved + " / " + p.stationCount}</td></tr>`).join("")}</table></div>`;
   }
   const t = S.lookup;
-  if (t) out += `<div class="panel"><p class="muted small">${S.lookupEigen ? `Dein Team, ${esc(S.myName)}` : "Gefundenes Team"}</p><h2>${teamEmoji(t.name)} Team ${esc(t.name)}</h2>
-    <p>Leitung: ${esc(t.leaderName || "offen")}</p>
-    <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`;
+  if (t) {
+    // Farbe wie auf der Karte der Spielleitung: beide sortieren die Teams nach Namen
+    const farbe = teamColor(Math.max(0, (p.teams || []).findIndex(x => x.name === t.name)));
+    out += `<div class="panel teamkarte" style="--c:${farbe}">
+      <p class="muted small">${S.lookupEigen ? `Dein Team, ${esc(S.myName)}` : "Gefundenes Team"}</p>
+      <div class="kreis" aria-hidden="true">${teamEmoji(t.name)}</div>
+      <h1>Team ${esc(t.name)}</h1>
+      <p>Sucht die anderen mit ${teamEmoji(t.name)}. Teamleitung: <b>${esc(t.leaderName || "offen")}</b></p>
+      <button class="btn" data-act="pub-hoch">Zum Hochhalten</button>
+      <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`;
+    // ganzer Bildschirm in Teamfarbe, zum Hochhalten auf dem Platz
+    if (S.hoch) out += `<div class="hochhalten" style="--c:${farbe}" data-act="pub-hoch-zu" role="button" aria-label="Schließen">
+      <div class="riesig" aria-hidden="true">${teamEmoji(t.name)}</div><b>Team ${esc(t.name)}</b><small>Tippen zum Schließen</small></div>`;
+  }
   out += `<div class="panel"><label for="plook">In welchem Team bin ich?</label>
     <input id="plook" value="${esc(S.myName || "")}" autocapitalize="words" enterkeyhint="search">
     <button class="btn" data-act="pub-look">Team anzeigen</button>${msgBox()}
@@ -745,6 +767,14 @@ function viewAdmin() {
       </table><p class="small muted">„Freischalten“ ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.</p>${spaeter}</div>`;
   }
   if (A.tab === "people") {
+    out += `<div class="panel"><h3>Mehrere auf einmal</h3>
+      <p class="small muted">Ein Name pro Zeile, etwa aus einer Liste kopiert. Namen, die es schon gibt, werden übersprungen.
+        Sind schon Teams ausgelost, kommt jede neue Person ins gerade kleinste Team.</p>
+      <textarea id="aviele" rows="5" placeholder="Anna Beispiel&#10;Ben Muster"></textarea>
+      <div class="row2" style="margin-top:8px"><button class="btn alt" data-act="a-viele">Alle eintragen</button>
+        <button class="btn alt" data-act="a-testdaten">Testdaten einfügen</button></div>
+      <p class="small muted">„Testdaten einfügen“ trägt 30 erfundene Namen mit dem Zusatz „(Test)“ ein. Die Suche findet sie mit „Test“,
+        alle zusammen löscht „Alle löschen“.</p></div>`;
     out += `<div class="panel"><div class="bar"><div><span class="count">${(st.participants || []).length}</span> <span class="muted">angemeldet</span></div>
       ${(st.participants || []).length ? `<button class="btn sm alt" data-act="a-danger" data-key="people">Alle löschen</button>` : ""}</div>
       <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen" autocapitalize="words"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
@@ -833,6 +863,14 @@ function viewAdmin() {
 
 // leer oder noch der Platzhalter aus der Seed-Datei
 const offen = v => !v || !String(v).trim() || /^(Ortshinweis|Rätsel) folgt$/.test(String(v).trim());
+async function vieleEintragen(text) {
+  const r = await rpc("admin_add_participants", { p_pin: S.admin.pin, p_names: text });
+  S.admin.state = r.state;
+  const teile = [`${r.added} eingetragen`];
+  if (r.duplicates) teile.push(`${r.duplicates} gab es schon`);
+  if (r.invalid) teile.push(`${r.invalid} ungültig (2 bis 60 Zeichen)`);
+  S.msg = { type: r.added ? "ok" : "err", text: teile.join(", ") + "." };
+}
 const treffer = p => !S.admin.suche
   || (p.name + " " + (p.teamName || "")).toLowerCase().includes(S.admin.suche.toLowerCase());
 
@@ -1085,6 +1123,12 @@ const ACT = {
     const r = await rpc("register_participant", { p_name: val("pname") });
     S.myName = r.name; localStorage.setItem("sj.name", r.name); S.msg = null; await refresh();
   },
+  async "pub-hoch"() {
+    S.hoch = true;
+    // Bildschirm anlassen, solange das Handy hochgehalten wird (wo der Browser es kann)
+    try { S.wachHalten = await navigator.wakeLock?.request("screen"); } catch { /* dann eben nicht */ }
+  },
+  "pub-hoch-zu"() { S.hoch = false; try { S.wachHalten?.release(); } catch { } S.wachHalten = null; },
   "pub-again"() { S.myName = null; localStorage.removeItem("sj.name"); },
   async "pub-look"(d) {
     const r = await rpc("lookup_participant", { p_name: d.name || val("plook") });
@@ -1183,6 +1227,17 @@ const ACT = {
     const text = await DANGER[c.key].run(c);
     S.admin.confirm = null;
     S.msg = { type: "ok", text };
+  },
+  async "a-viele"() { await vieleEintragen(val("aviele")); },
+  async "a-testdaten"() {
+    const vor = ["Anna", "Ben", "Clara", "David", "Emma", "Felix", "Greta", "Hannes", "Ida", "Jonas",
+      "Katrin", "Luis", "Mia", "Nils", "Olga", "Paul", "Rosa", "Sami", "Tilda", "Uwe"];
+    const nach = ["Berg", "Kurz", "Lang", "Stein", "Wald", "Brand", "Fuchs", "Horn", "Kern", "Lind", "Mohn",
+      "Nagel", "Ost", "Pohl", "Quast", "Rahn", "Sieg", "Tal", "Ulm", "Voss", "Wendt", "Zorn", "Adam"];
+    // 23 Nachnamen sind teilerfremd zu 20 Vornamen: keine Paarung kommt doppelt vor
+    const a = Math.floor(Math.random() * 20), b = Math.floor(Math.random() * 23);
+    const namen = Array.from({ length: 30 }, (_, i) => `${vor[(a + i) % 20]} ${nach[(b + i) % 23]} (Test)`);
+    await vieleEintragen(namen.join("\n"));
   },
   async "a-add"() {
     const name = val("aadd");

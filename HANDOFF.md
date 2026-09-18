@@ -47,6 +47,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260918200000_drei_koffer.sql  Plätze 1 bis 3 statt eines Siegers
   20260918210000_testmodus.sql    Durchklicken ohne Entfernung und Rätsel
   20260918220000_durchsicht.sql   Code ohne Bindestrich, Namenssuche, Positionsprüfung
+  20260918230000_viele_namen.sql  viele Namen auf einmal, Testdaten
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -115,7 +116,8 @@ Admin (alle mit PIN): `admin_state`, `admin_tracks`, `admin_draw`,
 `admin_start`, `admin_finish`, `admin_reset`, `admin_clear_positions`,
 `admin_clear_participants`, `admin_add_participant`,
 `admin_rename_participant`, `admin_delete_participant`, `admin_save_station`,
-`admin_unlock_station`, `admin_set_pin`, `admin_set_test_mode`
+`admin_unlock_station`, `admin_set_pin`, `admin_set_test_mode`,
+`admin_add_participants`
 
 `admin_draw` hat seit Nachtrag 3 drei Parameter: `(p_pin, p_teams, p_size)`.
 Die alte Fassung mit nur einem Parameter wurde entfernt, sonst wüsste PostgREST
@@ -211,6 +213,30 @@ gleichzeitig (Plätze 1 bis 10 je genau einmal). Dazu die Oberfläche im Browser
 über eine lokale Nachbildung der Supabase-Schnittstelle. Nach dem Einspielen
 live geprüft: `public_state` liefert `prizeCount` und Plätze, `finishes` ist
 für `anon` gesperrt. Die Testskripte liegen nicht im Repo.
+
+## Team finden nach dem Auslosen
+
+Wer sich auf seinem Handy angemeldet hat, sieht nach dem Auslosen innerhalb von
+etwa zehn Sekunden „Dein Team“: das Tier-Emoji groß auf einem Kreis in der
+Teamfarbe, Teamname, Teamleitung und Mitglieder. Die Farbe ist dieselbe wie auf
+der Karte der Spielleitung (beide sortieren die Teams nach Namen).
+„Zum Hochhalten“ füllt den ganzen Bildschirm mit Teamfarbe, riesigem Emoji und
+Namen, damit sich die Gruppen auf dem Platz finden; Antippen schließt. Solange
+das offen ist, bleibt der Bildschirm an, wo der Browser die Wake-Lock-API kann.
+Wer auf einem fremden Handy angemeldet wurde, sucht seinen Namen unter „In
+welchem Team bin ich?“ und bekommt dieselbe Karte.
+
+## Viele Namen und Testdaten (Nachtrag 9)
+
+Reiter Teilnehmende, Bereich „Mehrere auf einmal“: ein Name pro Zeile, dann
+„Alle eintragen“. `admin_add_participants` überspringt leere Zeilen, Doppelte
+(auch innerhalb der Liste) und Namen außerhalb von 2 bis 60 Zeichen und meldet,
+wie viele es waren. Sind schon Teams ausgelost, kommt jede neue Person ins
+gerade kleinste Team.
+
+„Testdaten einfügen“ trägt 30 erfundene Namen mit dem Zusatz „(Test)“ ein,
+etwa „Anna Brand (Test)“. Die Suche findet sie mit „Test“, einzeln löschen geht
+über das ×, alle zusammen über „Alle löschen“. **Vor dem Event wegräumen.**
 
 ## Durchsicht der Bedienung (18.09.2026)
 
@@ -503,7 +529,7 @@ wird, und nach der Auswertung löschen.
 | Publishable key | `sb_publishable_7uEQEkFwi27XJdGLSoso5w_TMxHJYUq` (steht in `config.js`, darf öffentlich sein) |
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
-Init-Migration und Nachträge 1 bis 8 sind eingespielt, geprüft über `pg_proc`
+Init-Migration und Nachträge 1 bis 9 sind eingespielt, geprüft über `pg_proc`
 und Aufrufe der Endpunkte. Wer die Datenbank neu aufsetzt, spielt sie in der
 Reihenfolge ein, in der sie unter „Alle Dateien“ stehen: ohne Nachtrag 1
 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne
@@ -598,7 +624,8 @@ oder einen Tunnel.
 ## Ablauf am Eventtag
 
 1. **Vorher: Testmodus aus!** Reiter Stationen, oben. Im Kopf der Spielleitung
-   darf kein rotes „Testmodus an“ mehr stehen.
+   darf kein rotes „Testmodus an“ mehr stehen. Testdaten wegräumen: im Reiter
+   Teilnehmende nach „Test“ suchen oder „Alle löschen“.
 2. **Vorher:** Route ablaufen, jede Station im Reiter Stationen prüfen, Rätsel
    und Antworten vor Ort bestätigen, notfalls „Meinen Standort übernehmen“
    drücken. Alle drei Koffer auf den Code aus dem Reiter Stationen stellen und
