@@ -79,6 +79,35 @@ th{font:600 14px var(--body);color:var(--muted)}
 .mapbadge{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--flag);color:#fff;font:700 15px var(--head);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .mapbadge.team{background:var(--water)}
 .mapbadge.stale{background:#8b9c95}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tchip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 8px;border-radius:99px;font:600 14px var(--body);background:var(--card);border:1.5px solid var(--line);color:var(--ink);cursor:pointer;white-space:nowrap}
+.tchip i{width:12px;height:12px;border-radius:50%;background:var(--c);display:inline-block;flex:none}
+.tchip.off{opacity:.4}
+.tchip.off i{background:transparent;border:2px solid var(--c)}
+.tl-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.tl-head input[type=range]{flex:1;min-width:140px;width:auto;padding:0;border:0;background:none;accent-color:var(--flag)}
+.tl-time{font:700 22px var(--head);min-width:62px;text-align:center;white-space:nowrap}
+.tl-rows{position:relative;margin-top:14px}
+.tl-row{display:grid;grid-template-columns:92px 1fr 80px;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line);cursor:pointer}
+.tl-row.off{opacity:.35}
+.tl-name{font:600 15px var(--body);display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden}
+.tl-name i{width:12px;height:12px;border-radius:50%;flex:none}
+.tl-bar{position:relative;height:22px;background:var(--paper);border-radius:6px}
+.tl-bar .seg{position:absolute;top:4px;height:14px;border-radius:3px;background:var(--c)}
+.tl-bar .seg.solve{background:repeating-linear-gradient(135deg,var(--c) 0 3px,transparent 3px 6px);opacity:.55}
+.tl-bar .st{position:absolute;top:2px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--card);border:2px solid var(--c);color:var(--ink);font:700 11px var(--head);display:grid;place-items:center;font-style:normal;z-index:1}
+.tl-bar .win{position:absolute;top:1px;margin-left:14px;font:700 13px var(--head);color:var(--flag);white-space:nowrap}
+.tl-total{font:700 15px var(--head);text-align:right;white-space:nowrap}
+.tl-total small{display:block;font:500 12px var(--body);color:var(--muted)}
+.tl-axis{position:relative;height:18px;margin:0 90px 0 102px;font:500 12px var(--body);color:var(--muted)}
+.tl-axis span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.tl-cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--flag);margin-left:-1px;pointer-events:none;z-index:2}
+.tl-cursor::after{content:"";position:absolute;top:-6px;left:-5px;width:12px;height:12px;border-radius:50%;background:var(--flag)}
+.tl-key{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px}
+.tl-key span{display:inline-flex;align-items:center;gap:6px}
+.tl-key b{display:inline-block;width:22px;height:10px;border-radius:2px;background:var(--muted)}
+.tl-key b.solve{background:repeating-linear-gradient(135deg,var(--muted) 0 3px,transparent 3px 6px);opacity:.6}
+.tl-key b.dot{width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--muted)}
 .nav{display:flex;gap:6px;justify-content:center;margin-top:24px;font-size:14px}
 .nav a{color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -159,8 +188,19 @@ const S = {
   pub: null, myName: localStorage.getItem("sj.name") || null, lookup: null,
   team: { code: localStorage.getItem("sj.code") || null, state: null },
   gps: { pos: null, acc: null, heading: null, gpsHeading: null, needle: 0, on: false, err: null, compass: false, lastSent: 0, lastSentPos: null, sentAt: null },
-  admin: { pin: sessionStorage.getItem("sj.pin") || null, state: null, tab: "map", edit: null, full: false }
+  admin: { pin: sessionStorage.getItem("sj.pin") || null, state: null, tab: "map", edit: null, full: false,
+           // Routen: tracks[teamId] = {name, points:[[lat,lng,ms]], stations:[...]}
+           tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false }
 };
+// Farben für bis zu 16 Teams, auf hellem wie dunklem Grund unterscheidbar
+const TEAM_COLORS = ["#2F6E9E", "#2E7D4F", "#7B3FA0", "#C62828", "#F9A825", "#00838F", "#AD1457", "#4E6E1F",
+  "#E65100", "#3949AB", "#00695C", "#8D6E63", "#D81B60", "#455A64", "#0277BD", "#9E9D24"];
+const teamColor = i => TEAM_COLORS[i % TEAM_COLORS.length];
+const fmtClock = ms => new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+function fmtDur(ms) {
+  const m = Math.round(ms / 60000);
+  return m < 60 ? m + " min" : Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0") + " h";
+}
 const FLAG = '<svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="1" width="22" height="22" fill="#fff" stroke="currentColor" stroke-width="1.2"/><polygon points="1,1 23,1 23,23" fill="var(--flag)"/></svg>';
 const brand = sub => `<div class="brand">${FLAG}<div><h1>Stadtjagd</h1><div class="muted small">${esc(sub)}</div></div></div>`;
 const msgBox = () => S.msg ? `<div class="msg ${S.msg.type}" role="status">${esc(S.msg.text)}</div>` : "";
@@ -324,9 +364,20 @@ function viewAdmin() {
     const withPos = (st.teams || []).filter(t => t.position);
     out += `<div id="map"></div>
       <div class="bar" style="margin-top:8px"><span class="small muted">${withPos.length} von ${(st.teams || []).length} Teams melden eine Position. Aktualisierung alle 10 Sekunden.</span>
-      <span><button class="btn sm alt" data-act="a-full">Vollbild</button><button class="btn sm alt" data-act="a-clearpos">Standortdaten löschen</button></span></div>`;
+      <span><button class="btn sm alt" data-act="a-full">Vollbild</button><button class="btn sm alt" data-act="a-clearpos">Standortdaten löschen</button></span></div>
+      <div class="legend" id="legend">${(st.teams || []).map((t, i) => `<button class="tchip ${A.hidden[t.id] ? "off" : ""}" style="--c:${teamColor(i)}" data-act="a-team" data-id="${t.id}"><i></i>${esc(t.name)}</button>`).join("")}</div>`;
     const without = (st.teams || []).filter(t => !t.position);
     if (without.length) out += `<p class="small muted">Ohne Position: ${without.map(t => esc(t.name)).join(", ")}</p>`;
+    out += `<div class="panel"><div class="bar"><h3>Zeitachse</h3><span class="small muted" id="tlspan"></span></div>
+      <div class="tl-head">
+        <button class="btn sm" data-act="a-play" id="tlplay">Abspielen</button>
+        <input type="range" id="tlslider" min="0" max="1000" value="1000" aria-label="Zeitpunkt">
+        <b class="tl-time" id="tlclock">--:--</b>
+        <button class="btn sm alt" data-act="a-live" id="tllive">Jetzt</button></div>
+      <div class="tl-rows" id="tlrows"><div class="tl-cursor" id="tlcursor"></div></div>
+      <div class="tl-axis" id="tlaxis"></div>
+      <div class="tl-key"><span><b></b> unterwegs</span><span><b class="solve"></b> an der Station, Rätsel lösen</span><span><b class="dot"></b> Ziffer erhalten</span></div>
+      <p class="small muted">Ein Team anklicken blendet seine Route aus oder ein. Die Standortdaten bleiben nach dem Spielende gespeichert, bis du auf „Standortdaten löschen“ drückst.</p></div>`;
   }
   if (A.tab === "teams") {
     out += `<div class="panel"><table><tr><th>Team</th><th>Code</th><th>Stand</th><th></th></tr>
@@ -393,12 +444,12 @@ function loadLeaflet() {
 async function drawMap(first) {
   const el = $("#map"); if (!el || !S.admin.state) return;
   try { await loadLeaflet(); } catch (e) { el.innerHTML = `<p class="msg err">${esc(e.message)}</p>`; return; }
-  const st = S.admin.state;
+  const st = S.admin.state, A = S.admin, cur = A.cursor;
   if (!map || !el.contains(map.getContainer())) {
     map = L.map(el, { zoomControl: true }).setView([52.52, 13.405], 13);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
-    layers = { stations: [], teams: {} };
+    layers = { stations: [], teams: {}, tracks: {} };
     first = true;
   }
   layers.stations.forEach(l => map.removeLayer(l));
@@ -411,27 +462,167 @@ async function drawMap(first) {
     const c = L.circle([s.lat, s.lng], { radius: s.radiusM, color: "#EE5F1B", weight: 1, fillOpacity: .08 });
     m.addTo(map); c.addTo(map); layers.stations.push(m, c); pts.push([s.lat, s.lng]);
   });
-  const seen = new Set();
-  (st.teams || []).forEach(t => {
-    if (!t.position) return;
-    seen.add(t.id);
-    const stale = (Date.now() - new Date(t.position.updatedAt).getTime()) > 180000;
-    const ll = [t.position.lat, t.position.lng];
-    pts.push(ll);
-    const html = `<div class="mapbadge team ${stale ? "stale" : ""}">${esc(t.name[0])}</div>`;
-    const popup = `<b>${esc(t.name)}</b><br>${esc(t.code)}<br>Station ${t.currentPosition ?? "–"}, ${t.solved} gelöst<br>${stale ? "keine aktuelle Position" : "Position " + ago(t.position.updatedAt)}`;
+  const drop = (store, id) => { if (store[id]) { map.removeLayer(store[id]); delete store[id]; } };
+  (st.teams || []).forEach((t, i) => {
+    const color = teamColor(i), off = !!A.hidden[t.id];
+    const tr = A.tracks && A.tracks[t.id];
+    let line = tr ? tr.points : [];
+    if (cur != null) line = line.filter(p => p[2] <= cur);
+
+    // gelaufene Route
+    if (!off && line.length > 1) {
+      const ll = line.map(p => [p[0], p[1]]);
+      if (layers.tracks[t.id]) layers.tracks[t.id].setLatLngs(ll);
+      else layers.tracks[t.id] = L.polyline(ll, { color, weight: 4, opacity: .85, lineJoin: "round" }).addTo(map);
+      ll.forEach(p => pts.push(p));
+    } else drop(layers.tracks, t.id);
+
+    // aktueller Standort, beim Zurückspulen der letzte Punkt bis dahin
+    let at = null, when = null;
+    if (cur != null) {
+      const last = line[line.length - 1];
+      if (last) { at = [last[0], last[1]]; when = last[2]; }
+    } else if (t.position) {
+      at = [t.position.lat, t.position.lng]; when = new Date(t.position.updatedAt).getTime();
+    }
+    if (off || !at) { drop(layers.teams, t.id); return; }
+    const ref = cur != null ? cur : Date.now();
+    const stale = ref - when > 180000;
+    pts.push(at);
+    const html = `<div class="mapbadge team ${stale ? "stale" : ""}" ${stale ? "" : `style="background:${color}"`}>${esc(t.name[0])}</div>`;
+    const solved = cur != null
+      ? ((tr && tr.stations) || []).filter(s => s.solvedAt && new Date(s.solvedAt).getTime() <= cur).length
+      : t.solved;
+    const popup = `<b>${esc(t.name)}</b><br>${esc(t.code)}<br>${solved} von ${(st.stations || []).length} gelöst<br>`
+      + (stale ? "keine aktuelle Position" : "Position " + fmtClock(when) + " Uhr");
+    const icon = L.divIcon({ html, className: "", iconSize: [28, 28], iconAnchor: [14, 14] });
     if (layers.teams[t.id]) {
-      layers.teams[t.id].setLatLng(ll);
-      layers.teams[t.id].setIcon(L.divIcon({ html, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }));
-      layers.teams[t.id].setPopupContent(popup);
+      layers.teams[t.id].setLatLng(at); layers.teams[t.id].setIcon(icon); layers.teams[t.id].setPopupContent(popup);
     } else {
-      layers.teams[t.id] = L.marker(ll, { icon: L.divIcon({ html, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) })
-        .bindPopup(popup).addTo(map);
+      layers.teams[t.id] = L.marker(at, { icon, zIndexOffset: 500 }).bindPopup(popup).addTo(map);
     }
   });
-  Object.keys(layers.teams).forEach(id => { if (!seen.has(id)) { map.removeLayer(layers.teams[id]); delete layers.teams[id]; } });
-  if (first && pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.25));
+  if (first && pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.2));
   setTimeout(() => map.invalidateSize(), 60);
+}
+
+/* ---------- Routen laden ---------- */
+// Holt nur die Punkte seit dem letzten Abruf, sonst käme bei jedem Takt
+// der komplette Verlauf über die Leitung.
+async function syncTracks(full) {
+  const A = S.admin;
+  if (!A.pin) return;
+  if (full) { A.tracks = null; A.syncedAt = null; }
+  const r = await rpc("admin_tracks", A.syncedAt ? { p_pin: A.pin, p_since: A.syncedAt } : { p_pin: A.pin });
+  if (!A.tracks) A.tracks = {};
+  const keep = new Set(); let stale = false;
+  (r.teams || []).forEach(t => {
+    keep.add(t.id);
+    const e = A.tracks[t.id] || (A.tracks[t.id] = { name: t.name, points: [], stations: [] });
+    e.name = t.name; e.stations = t.stations || [];
+    if (t.points && t.points.length) e.points = e.points.concat(t.points);
+    // Wurden die Standortdaten zwischendurch gelöscht, haben wir zu viele Punkte
+    if (t.pointCount != null && e.points.length > t.pointCount) stale = true;
+  });
+  Object.keys(A.tracks).forEach(id => { if (!keep.has(id)) delete A.tracks[id]; });
+  A.syncedAt = r.now;
+  A.window = {
+    status: r.status,
+    start: r.startedAt ? new Date(r.startedAt).getTime() : null,
+    end: r.finishedAt ? new Date(r.finishedAt).getTime() : Date.now()
+  };
+  if (stale && !full) return syncTracks(true);
+}
+
+/* ---------- Zeitachse ---------- */
+function timelineRows() {
+  const A = S.admin, st = A.state, total = (st.stations || []).length;
+  const list = (st.teams || []).map((t, i) => {
+    const tr = A.tracks && A.tracks[t.id];
+    const sts = (((tr && tr.stations) || [])).map(s => ({
+      position: s.position,
+      inAt: s.checkedInAt ? new Date(s.checkedInAt).getTime() : null,
+      okAt: s.solvedAt ? new Date(s.solvedAt).getTime() : null
+    })).filter(s => s.inAt).sort((a, b) => a.position - b.position);
+    const okTimes = sts.filter(s => s.okAt).map(s => s.okAt);
+    const solved = okTimes.length;
+    return { t, color: teamColor(i), sts, solved, finish: total > 0 && solved === total ? Math.max(...okTimes) : null };
+  });
+  list.sort((a, b) => a.finish && b.finish ? a.finish - b.finish
+    : a.finish ? -1 : b.finish ? 1
+      : b.solved - a.solved || a.t.name.localeCompare(b.t.name, "de"));
+  return list;
+}
+function renderTimeline() {
+  const rows = $("#tlrows"); if (!rows) return;
+  const A = S.admin, st = A.state, W = A.window;
+  const span = $("#tlspan"), axis = $("#tlaxis"), slider = $("#tlslider");
+  if (!W || !W.start) {
+    rows.innerHTML = '<div class="tl-cursor" id="tlcursor" hidden></div>'
+      + '<p class="small muted" style="padding:10px 0">Sobald das Spiel gestartet ist, entsteht hier für jedes Team eine Zeitleiste.</p>';
+    if (span) span.textContent = "";
+    if (axis) axis.innerHTML = "";
+    if (slider) slider.disabled = true;
+    return;
+  }
+  if (slider) slider.disabled = false;
+  const start = W.start, end = Math.max(W.end, start + 60000), total = (st.stations || []).length;
+  const pct = ms => (Math.min(Math.max(ms, start), end) - start) / (end - start) * 100;
+  let html = '<div class="tl-cursor" id="tlcursor"></div>';
+  timelineRows().forEach(r => {
+    let segs = "", prev = start;
+    r.sts.forEach(s => {
+      segs += `<span class="seg" style="left:${pct(prev)}%;width:${pct(s.inAt) - pct(prev)}%"></span>`;
+      const stop = s.okAt ?? end;
+      segs += `<span class="seg solve" style="left:${pct(s.inAt)}%;width:${pct(stop) - pct(s.inAt)}%"></span>`;
+      if (s.okAt) segs += `<i class="st" style="left:${pct(s.okAt)}%">${s.position}</i>`;
+      prev = stop;
+    });
+    const last = r.sts[r.sts.length - 1];
+    if (!r.finish && (!last || last.okAt)) segs += `<span class="seg" style="left:${pct(prev)}%;width:${pct(end) - pct(prev)}%;opacity:.5"></span>`;
+    if (r.finish && st.winnerTeamId === r.t.id) segs += `<span class="win" style="left:${pct(r.finish)}%">Koffer</span>`;
+    const note = r.finish ? `${fmtDur(r.finish - start)}<small>${r.solved} Ziffern</small>`
+      : `<small style="font-size:14px;color:var(--ink)">${W.status === "finished" ? "nicht fertig" : "unterwegs"}</small><small>${r.solved} von ${total} Ziffern</small>`;
+    html += `<div class="tl-row ${A.hidden[r.t.id] ? "off" : ""}" data-act="a-team" data-id="${r.t.id}">
+      <div class="tl-name"><i style="background:${r.color}"></i>${esc(r.t.name)}</div>
+      <div class="tl-bar" style="--c:${r.color}">${segs}</div><div class="tl-total">${note}</div></div>`;
+  });
+  rows.innerHTML = html;
+  if (axis) {
+    const step = (end - start) > 3 * 3600e3 ? 3600e3 : (end - start) > 75 * 60e3 ? 30 * 60e3 : 15 * 60e3;
+    let a = "";
+    for (let ms = Math.ceil(start / step) * step; ms <= end; ms += step) a += `<span style="left:${pct(ms)}%">${fmtClock(ms)}</span>`;
+    axis.innerHTML = a;
+  }
+  if (span) span.textContent = W.status === "finished"
+    ? `Start ${fmtClock(start)}, Ende ${fmtClock(end)}, Dauer ${fmtDur(end - start)}`
+    : `Start ${fmtClock(start)}, läuft seit ${fmtDur(end - start)}`;
+  updateCursor();
+}
+function updateCursor() {
+  const A = S.admin, W = A.window, c = $("#tlcursor"), clock = $("#tlclock"), slider = $("#tlslider");
+  if (!W || !W.start) return;
+  const start = W.start, end = Math.max(W.end, start + 60000);
+  const at = A.cursor != null ? A.cursor : end;
+  const f = (Math.min(Math.max(at, start), end) - start) / (end - start);
+  if (c) { c.hidden = false; c.style.left = `calc(102px + (100% - 192px) * ${f})`; }
+  if (clock) clock.textContent = fmtClock(at);
+  if (slider && document.activeElement !== slider) slider.value = Math.round(f * 1000);
+  const live = $("#tllive"); if (live) live.disabled = A.cursor == null;
+}
+function stopPlay() {
+  S.admin.playing = false;
+  const b = $("#tlplay"); if (b) b.textContent = "Abspielen";
+}
+function playStep(now) {
+  const A = S.admin, W = A.window;
+  if (!A.playing || !W || !W.start) return stopPlay();
+  const end = Math.max(W.end, W.start + 60000);
+  const dt = now - (A.lastTs || now); A.lastTs = now;
+  A.cursor = Math.min(end, (A.cursor == null ? W.start : A.cursor) + dt * (end - W.start) / 45000);
+  drawMap(false); updateCursor();
+  if (A.cursor >= end) { A.cursor = null; stopPlay(); drawMap(false); updateCursor(); }
+  else requestAnimationFrame(playStep);
 }
 
 /* ---------- Aktionen ---------- */
@@ -482,6 +673,25 @@ const ACT = {
   },
   "a-tab"(d) { S.admin.tab = d.tab; S.admin.edit = null; S.msg = null; },
   "a-full"() { S.admin.full = !S.admin.full; $("#map")?.classList.toggle("full"); setTimeout(() => map && map.invalidateSize(), 80); return false; },
+  "a-team"(d) {
+    const A = S.admin;
+    A.hidden[d.id] = !A.hidden[d.id];
+    const chip = document.querySelector(`.tchip[data-id="${d.id}"]`);
+    if (chip) chip.classList.toggle("off", !!A.hidden[d.id]);
+    drawMap(false); renderTimeline();
+    return false;
+  },
+  "a-play"() {
+    const A = S.admin;
+    if (A.playing) { stopPlay(); return false; }
+    if (!A.window || !A.window.start) return false;
+    if (A.cursor == null) A.cursor = A.window.start;
+    A.playing = true; A.lastTs = performance.now();
+    const b = $("#tlplay"); if (b) b.textContent = "Pause";
+    requestAnimationFrame(playStep);
+    return false;
+  },
+  "a-live"() { stopPlay(); S.admin.cursor = null; drawMap(false); updateCursor(); return false; },
   async "a-draw"() {
     S.admin.state = await rpc("admin_draw", { p_pin: S.admin.pin });
     S.admin.tab = "teams"; S.msg = { type: "ok", text: "Ausgelost. Gib jeder Teamleitung ihren Code." };
@@ -493,16 +703,20 @@ const ACT = {
   },
   async "a-finish"() {
     S.admin.state = await rpc("admin_finish", { p_pin: S.admin.pin });
-    S.msg = { type: "ok", text: "Spiel beendet, Standortdaten gelöscht." };
+    S.admin.cursor = null; stopPlay();
+    await syncTracks(true).catch(() => { });
+    S.msg = { type: "ok", text: "Spiel beendet. Die Routen bleiben, bis du die Standortdaten löschst." };
   },
   async "a-reset"() {
-    if (!confirm("Fortschritt aller Teams löschen?")) return false;
+    if (!confirm("Fortschritt aller Teams löschen? Die gelaufenen Routen gehen dabei auch verloren.")) return false;
     S.admin.state = await rpc("admin_reset", { p_pin: S.admin.pin });
+    S.admin.tracks = null; S.admin.syncedAt = null; S.admin.cursor = null; stopPlay();
   },
   async "a-clearpos"() {
-    if (!confirm("Alle gespeicherten Standortdaten löschen?")) return false;
+    if (!confirm("Alle gespeicherten Standortdaten löschen? Damit sind auch die gelaufenen Routen weg.")) return false;
     S.admin.state = await rpc("admin_clear_positions", { p_pin: S.admin.pin });
-    S.msg = { type: "ok", text: "Standortdaten gelöscht." };
+    S.admin.tracks = null; S.admin.syncedAt = null; S.admin.cursor = null; stopPlay();
+    S.msg = { type: "ok", text: "Standortdaten und Routen gelöscht." };
   },
   async "a-add"() { S.admin.state = await rpc("admin_add_participant", { p_pin: S.admin.pin, p_name: val("aadd") }); },
   async "a-del"(d) { S.admin.state = await rpc("admin_delete_participant", { p_pin: S.admin.pin, p_id: d.id }); },
@@ -633,9 +847,22 @@ function render() {
   app.innerHTML = (!cfg.url || !cfg.key) ? viewSetup()
     : S.view === "team" ? viewTeam()
       : S.view === "admin" ? viewAdmin() : viewPublic();
-  if (S.view === "admin" && S.admin.pin && S.admin.tab === "map") drawMap(true);
+  if (S.view === "admin" && S.admin.pin && S.admin.tab === "map") {
+    drawMap(true); renderTimeline();
+    syncTracks().then(() => { drawMap(false); renderTimeline(); }).catch(() => { });
+  }
   if (S.view === "team") liveUpdate();
 }
+// Zeitachse: Schieber zieht den Zeitpunkt, ganz rechts heißt "jetzt"
+document.addEventListener("input", e => {
+  if (e.target.id !== "tlslider") return;
+  const A = S.admin, W = A.window;
+  if (!W || !W.start) return;
+  stopPlay();
+  const end = Math.max(W.end, W.start + 60000), v = Number(e.target.value) / 1000;
+  A.cursor = v >= 1 ? null : W.start + (end - W.start) * v;
+  drawMap(false); updateCursor();
+});
 document.addEventListener("click", async e => {
   const a = e.target.closest("[data-act]");
   if (!a || a.disabled) return;
@@ -668,7 +895,7 @@ setInterval(() => {
   if (S.view === "admin" && S.admin.pin) {
     rpc("admin_state", { p_pin: S.admin.pin }).then(s => {
       S.admin.state = s;
-      if (S.admin.tab === "map") drawMap(false);
+      if (S.admin.tab === "map") syncTracks().then(() => { drawMap(false); renderTimeline(); }).catch(() => { });
       else if (!busyTyping && !S.admin.edit) render();
     }).catch(() => { });
     return;

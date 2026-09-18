@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stadtjagd Mockup Routen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF;
+  --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#FFFFFF; --water:#2F6E9E;
+  --ok:#2E7D4F; --err:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38;
+  --contour:#1C312B; --flag:#FF7A3A; --water:#6FA8D6; --ok:#6CCB8E; --err:#FF8A80;
+  --ok-bg:#16332A; --err-bg:#3A1F1C;}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);min-height:100vh}
+main{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:20px 16px 70px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+h1{font-size:32px;font-weight:700}h3{font-size:19px;font-weight:600}
+p{margin:.4em 0 0}
+.muted{color:var(--muted)}.small{font-size:14px}
+.brand{display:flex;gap:12px;align-items:center}
+.flag{width:32px;height:32px;flex:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.btn{display:inline-block;width:auto;border:0;border-radius:10px;padding:8px 12px;font:700 15px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);margin:0 6px 6px 0}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.msg{border-radius:10px;padding:10px 12px;margin-top:12px;font-size:15px}
+.msg.ok{background:var(--ok-bg);color:var(--ok)}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-top:14px;overflow-x:auto}
+.tabs button{background:none;border:0;padding:10px 12px;font:600 17px var(--head);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--flag)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.chip{display:inline-block;padding:4px 10px;border-radius:99px;font:600 13px var(--body);background:var(--paper);border:1px solid var(--line)}
+#map{height:56vh;min-height:320px;border-radius:12px;border:1px solid var(--line);margin-top:12px;background:var(--paper)}
+.mapbadge{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--flag);color:#fff;font:700 15px var(--head);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.mapbadge.team{width:26px;height:26px;font-size:14px}
+/* neu: Legende */
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tchip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 8px;border-radius:99px;font:600 14px var(--body);background:var(--card);border:1.5px solid var(--line);color:var(--ink);cursor:pointer}
+.tchip i{width:12px;height:12px;border-radius:50%;background:var(--c);display:inline-block}
+.tchip.off{opacity:.4}
+.tchip.off i{background:transparent;border:2px solid var(--c)}
+/* neu: Zeitachse */
+.tl-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.tl-head input[type=range]{flex:1;min-width:160px;accent-color:var(--flag)}
+.tl-time{font:700 22px var(--head);min-width:64px;text-align:center;white-space:nowrap}
+.tl-rows{position:relative;margin-top:14px}
+.tl-row{display:grid;grid-template-columns:96px 1fr 84px;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line);cursor:pointer}
+.tl-row.off{opacity:.35}
+.tl-name{font:600 15px var(--body);display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden}
+.tl-name i{width:12px;height:12px;border-radius:50%;flex:none}
+.tl-bar{position:relative;height:22px;background:var(--paper);border-radius:6px}
+.tl-bar .seg{position:absolute;top:4px;height:14px;border-radius:3px;background:var(--c)}
+.tl-bar .seg.solve{background:repeating-linear-gradient(135deg,var(--c) 0 3px,transparent 3px 6px);opacity:.55}
+.tl-bar .st{position:absolute;top:2px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--card);border:2px solid var(--c);color:var(--ink);font:700 11px var(--head);display:grid;place-items:center;font-style:normal;z-index:1}
+.tl-bar .win{position:absolute;top:1px;margin-left:14px;font:700 13px var(--head);color:var(--flag);white-space:nowrap}
+.tl-total{font:700 15px var(--head);text-align:right;white-space:nowrap}
+.tl-total small{display:block;font:500 12px var(--body);color:var(--muted)}
+.tl-axis{position:relative;height:18px;margin-left:106px;margin-right:94px;font:500 12px var(--body);color:var(--muted)}
+.tl-axis span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--flag);margin-left:-1px;pointer-events:none;z-index:2}
+.cursor::after{content:"";position:absolute;top:-6px;left:-5px;width:12px;height:12px;border-radius:50%;background:var(--flag)}
+.legendkey{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px}
+.legendkey span{display:inline-flex;align-items:center;gap:6px}
+.legendkey b{display:inline-block;width:22px;height:10px;border-radius:2px;background:var(--muted)}
+.legendkey b.solve{background:repeating-linear-gradient(135deg,var(--muted) 0 3px,transparent 3px 6px);opacity:.6}
+.legendkey b.dot{width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <div class="bar"><div class="brand"><svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="1" width="22" height="22" fill="#fff" stroke="currentColor" stroke-width="1.2"/><polygon points="1,1 23,1 23,23" fill="var(--flag)"/></svg><div><h1>Spielleitung</h1><div><span class="chip">Beendet</span></div></div></div><div><button class="btn alt">Zurücksetzen</button></div></div>
+  <div class="msg ok">Mockup mit erfundenen Routen von fünf Teams, Start 10:00 Uhr. Nichts davon ist gespeichert. Schieber ziehen oder abspielen, Teams per Klick ein- und ausblenden.</div>
+  <div class="tabs" role="tablist"><button role="tab" aria-selected="true">Karte</button><button role="tab">Teams</button><button role="tab">Teilnehmende</button><button role="tab">Stationen</button></div>
+
+  <div id="map"></div>
+  <div class="bar" style="margin-top:8px"><span class="small muted" id="mapnote"></span>
+    <span><button class="btn alt" title="im Mockup ohne Funktion">Vollbild</button><button class="btn alt" title="im Mockup ohne Funktion">Standortdaten löschen</button></span></div>
+  <div class="legend" id="legend"></div>
+
+  <div class="panel">
+    <div class="bar"><h3>Zeitachse</h3><span class="small muted" id="tlspan"></span></div>
+    <div class="tl-head">
+      <button class="btn" id="play">Abspielen</button>
+      <input type="range" id="slider" min="0" max="1000" value="1000" aria-label="Zeitpunkt">
+      <b class="tl-time" id="tltime">--:--</b>
+      <button class="btn alt" id="toend">Zum Ende</button>
+    </div>
+    <div class="tl-rows" id="rows"><div class="cursor" id="cursor"></div></div>
+    <div class="tl-axis" id="axis"></div>
+    <div class="legendkey"><span><b></b> unterwegs</span><span><b class="solve"></b> an der Station, Rätsel lösen</span><span><b class="dot"></b> Ziffer erhalten</span></div>
+    <p class="small muted">Zeile anklicken blendet das Team auf der Karte aus oder ein. Die Gesamtzeit läuft vom Spielstart bis zur letzten Ziffer.</p>
+  </div>
+</main>
+<script>
+window.onerror = (m, s, l) => { document.title = "FEHLER " + m + " @" + l; };
+/* ---------- Hilfen ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const rad = x => x * Math.PI / 180;
+function haversine(a, b) {
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+const offset = (p, dN, dE) => ({ lat: p.lat + dN / 111320, lng: p.lng + dE / (111320 * Math.cos(rad(p.lat))) });
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const rnd = mulberry32(20260925);
+const R = (min, max) => min + rnd() * (max - min);
+const fmtTime = ms => new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+const fmtDur = ms => { const m = Math.round(ms / 60000); return m < 60 ? m + " min" : Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0") + " h"; };
+
+/* ---------- Erfundene Daten ---------- */
+const STATIONS = [
+  { position: 1, name: "Brandenburger Tor", lat: 52.516275, lng: 13.377704, r: 60 },
+  { position: 2, name: "Reichstagsgebäude", lat: 52.518623, lng: 13.376198, r: 80 },
+  { position: 3, name: "Gendarmenmarkt", lat: 52.513622, lng: 13.392640, r: 60 },
+  { position: 4, name: "Neptunbrunnen", lat: 52.519437, lng: 13.406781, r: 60 },
+  { position: 5, name: "Weltzeituhr (Koffer)", lat: 52.521180, lng: 13.413330, r: 60 }
+];
+const START = new Date("2026-09-25T10:00:00").getTime();
+const MEET = { lat: 52.51585, lng: 13.37995 };
+const TEAMS = [
+  { name: "Fuchs", color: "#2F6E9E", speed: 1.45, detour: 0.6, solve: [240, 300, 420, 180, 360] },
+  { name: "Dachs", color: "#2E7D4F", speed: 1.30, detour: 1.0, solve: [300, 420, 300, 540, 240] },
+  { name: "Luchs", color: "#7B3FA0", speed: 1.55, detour: 0.4, solve: [180, 240, 540, 240, 300] },
+  { name: "Eule",  color: "#C62828", speed: 1.20, detour: 1.3, solve: [420, 360, 480, 300, 420] },
+  { name: "Biber", color: "#F9A825", speed: 1.00, detour: 0.9, solve: [600, 720, 900, 600, 600] }
+];
+function genTeam(team, idx) {
+  let t = START + idx * 20000;
+  const pts = [], st = [];
+  let cur = MEET;
+  const push = p => pts.push({ lat: p.lat, lng: p.lng, t });
+  push(cur);
+  const walk = to => {
+    const d = haversine(cur, to), n = Math.max(1, Math.ceil(d / 20));
+    for (let i = 1; i <= n; i++) {
+      const f = i / n, p = { lat: cur.lat + (to.lat - cur.lat) * f, lng: cur.lng + (to.lng - cur.lng) * f };
+      t += (d / n) / team.speed * R(0.9, 1.25) * 1000;
+      push(offset(p, R(-4, 4), R(-4, 4)));
+    }
+    cur = to;
+  };
+  for (const s of STATIONS) {
+    const target = { lat: s.lat, lng: s.lng };
+    const k = rnd() < 0.5 ? 1 : 2;
+    for (let j = 1; j <= k; j++) {
+      const f = j / (k + 1), base = { lat: cur.lat + (target.lat - cur.lat) * f, lng: cur.lng + (target.lng - cur.lng) * f };
+      walk(offset(base, (rnd() < 0.5 ? -1 : 1) * R(30, 140) * team.detour, R(-60, 60) * team.detour));
+    }
+    walk(offset(target, R(-15, 15), R(-15, 15)));
+    t += R(10, 40) * 1000;
+    const checkedInAt = t, dur = team.solve[s.position - 1], solvedAt = checkedInAt + dur * 1000;
+    for (let u = 60; u < dur; u += 60) { t = checkedInAt + u * 1000; push(offset(cur, R(-6, 6), R(-6, 6))); }
+    t = solvedAt; push(offset(cur, R(-3, 3), R(-3, 3)));
+    st.push({ position: s.position, checkedInAt, solvedAt });
+  }
+  return { ...team, pts, stations: st, finishedAt: t };
+}
+const full = TEAMS.map(genTeam);
+const winner = full.reduce((a, b) => a.finishedAt < b.finishedAt ? a : b);
+const END = winner.finishedAt + 15 * 60 * 1000;   // Spielleitung beendet 15 min nach dem Sieg
+const teams = full.map(tm => {
+  const pts = tm.pts.filter(p => p.t <= END);
+  const stations = tm.stations.filter(s => s.checkedInAt <= END).map(s => ({ ...s, solvedAt: s.solvedAt <= END ? s.solvedAt : null }));
+  const done = stations.length === STATIONS.length && stations[STATIONS.length - 1].solvedAt;
+  return { ...tm, pts, stations, finishedAt: done ? tm.finishedAt : null, visible: true, winner: tm === winner };
+});
+const pct = ms => (ms - START) / (END - START) * 100;
+
+/* ---------- Karte ---------- */
+const map = L.map("map", { zoomControl: true }).setView([52.518, 13.395], 14);
+// Hinweis: openstreetmap.org liefert an lokal geöffnete Dateien (file://) keine
+// Kacheln, weil der Browser dabei keinen Referer sendet, siehe HANDOFF.md.
+// Das Mockup nutzt deshalb den Server von OpenStreetMap Deutschland, gleicher
+// Kartenstil. Die Live-Seite auf github.io bekommt weiterhin osm.org-Kacheln.
+L.tileLayer("https://tile.openstreetmap.de/{z}/{x}/{y}.png",
+  { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(map);
+STATIONS.forEach(s => {
+  L.marker([s.lat, s.lng], { icon: L.divIcon({ html: `<div class="mapbadge">${s.position}</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) })
+    .bindPopup(`<b>Station ${s.position}</b><br>${esc(s.name)}`).addTo(map);
+  L.circle([s.lat, s.lng], { radius: s.r, color: "#EE5F1B", weight: 1, fillOpacity: .08 }).addTo(map);
+});
+const layers = teams.map(tm => ({
+  line: L.polyline([], { color: tm.color, weight: 4, opacity: .85, lineJoin: "round" }).addTo(map),
+  marker: L.marker([0, 0], { icon: L.divIcon({ html: `<div class="mapbadge team" style="background:${tm.color}">${esc(tm.name[0])}</div>`, className: "", iconSize: [26, 26], iconAnchor: [13, 13] }), zIndexOffset: 500 }).bindPopup("")
+}));
+map.fitBounds(L.latLngBounds(teams.flatMap(t => t.pts.map(p => [p.lat, p.lng]))).pad(0.12));
+
+/* ---------- Zeitachse: Zeilen ---------- */
+const rows = $("#rows");
+const order = teams.map((t, i) => i).sort((a, b) => {
+  const A = teams[a], B = teams[b];
+  if (A.finishedAt && B.finishedAt) return A.finishedAt - B.finishedAt;
+  if (A.finishedAt) return -1;
+  if (B.finishedAt) return 1;
+  return B.stations.length - A.stations.length;
+});
+const rowIndex = {};   // Team-Index -> Zeilenposition
+order.forEach((i, pos) => {
+  const tm = teams[i];
+  let segs = "", prev = START;
+  tm.stations.forEach(s => {
+    segs += `<span class="seg walk" style="left:${pct(prev)}%;width:${pct(s.checkedInAt) - pct(prev)}%"></span>`;
+    const end = s.solvedAt ?? END;
+    segs += `<span class="seg solve" style="left:${pct(s.checkedInAt)}%;width:${pct(end) - pct(s.checkedInAt)}%"></span>`;
+    if (s.solvedAt) segs += `<i class="st" style="left:${pct(s.solvedAt)}%">${s.position}</i>`;
+    prev = end;
+  });
+  const lastSt = tm.stations[tm.stations.length - 1];
+  if (!tm.finishedAt && (!lastSt || lastSt.solvedAt)) {
+    segs += `<span class="seg walk" style="left:${pct(prev)}%;width:${pct(END) - pct(prev)}%;opacity:.5"></span>`;
+  }
+  if (tm.winner) segs += `<span class="win" style="left:${pct(tm.finishedAt)}%">Koffer</span>`;
+  const solved = tm.stations.filter(s => s.solvedAt).length;
+  const total = tm.finishedAt ? fmtDur(tm.finishedAt - START) + `<small>${solved} Ziffern</small>`
+    : `<small style="font-size:14px;color:var(--ink)">nicht fertig</small><small>${solved} von ${STATIONS.length} Ziffern</small>`;
+  const row = document.createElement("div");
+  row.className = "tl-row";
+  row.innerHTML = `<div class="tl-name"><i style="background:${tm.color}"></i>${esc(tm.name)}</div>
+    <div class="tl-bar" style="--c:${tm.color}">${segs}</div><div class="tl-total">${total}</div>`;
+  row.onclick = () => toggle(i);
+  rows.appendChild(row);
+  rowIndex[i] = pos;
+});
+const rowEls = Array.from(rows.querySelectorAll(".tl-row"));
+
+/* ---------- Legende ---------- */
+const legend = $("#legend");
+teams.forEach((tm, i) => {
+  const b = document.createElement("button");
+  b.className = "tchip"; b.style.setProperty("--c", tm.color); b.innerHTML = `<i></i>${esc(tm.name)}`;
+  b.onclick = () => toggle(i);
+  legend.appendChild(b);
+});
+function toggle(i) {
+  teams[i].visible = !teams[i].visible;
+  legend.children[i].classList.toggle("off", !teams[i].visible);
+  rowEls[rowIndex[i]].classList.toggle("off", !teams[i].visible);
+  redraw();
+}
+
+// Achse mit Uhrzeiten alle 15 Minuten
+const axis = $("#axis");
+for (let ms = START; ms <= END; ms += 15 * 60 * 1000) axis.insertAdjacentHTML("beforeend", `<span style="left:${pct(ms)}%">${fmtTime(ms)}</span>`);
+$("#tlspan").textContent = `Start ${fmtTime(START)}, Ende ${fmtTime(END)}, ${fmtDur(END - START)}`;
+$("#mapnote").textContent = `${teams.length} von ${teams.length} Teams haben eine Route. Positionen kamen alle 20 m oder spätestens alle 60 s.`;
+
+/* ---------- Abspielen ---------- */
+let T = END, playing = false, lastTs = 0;
+const slider = $("#slider"), playBtn = $("#play"), cursor = $("#cursor");
+function redraw() {
+  teams.forEach((tm, i) => {
+    const L_ = layers[i], pts = tm.pts.filter(p => p.t <= T);
+    if (!tm.visible || !pts.length) { L_.line.setLatLngs([]); if (map.hasLayer(L_.marker)) map.removeLayer(L_.marker); return; }
+    L_.line.setLatLngs(pts.map(p => [p.lat, p.lng]));
+    const last = pts[pts.length - 1];
+    L_.marker.setLatLng([last.lat, last.lng]);
+    if (!map.hasLayer(L_.marker)) L_.marker.addTo(map);
+    const solved = tm.stations.filter(s => s.solvedAt && s.solvedAt <= T).length;
+    L_.marker.setPopupContent(`<b>${esc(tm.name)}</b><br>${fmtTime(last.t)}, ${solved} Ziffern`);
+  });
+  slider.value = Math.round((T - START) / (END - START) * 1000);
+  $("#tltime").textContent = fmtTime(T);
+  cursor.style.left = `calc(106px + (100% - 200px) * ${(T - START) / (END - START)})`;
+}
+function tick(now) {
+  if (!playing) return;
+  const dt = now - lastTs; lastTs = now;
+  T = Math.min(END, T + dt * (END - START) / 45000);   // ganzer Ablauf in 45 s
+  redraw();
+  if (T >= END) { playing = false; playBtn.textContent = "Abspielen"; } else requestAnimationFrame(tick);
+}
+playBtn.onclick = () => {
+  if (playing) { playing = false; playBtn.textContent = "Abspielen"; return; }
+  if (T >= END) T = START;
+  playing = true; playBtn.textContent = "Pause"; lastTs = performance.now(); requestAnimationFrame(tick);
+};
+slider.oninput = () => { playing = false; playBtn.textContent = "Abspielen"; T = START + (END - START) * slider.value / 1000; redraw(); };
+$("#toend").onclick = () => { playing = false; playBtn.textContent = "Abspielen"; T = END; redraw(); };
+redraw();
+</script>
+</body>
+</html>
