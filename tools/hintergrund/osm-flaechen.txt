@@ -1,0 +1,6 @@
+[out:json][timeout:120];
+( relation["natural"="water"](50.054,14.386,50.118,14.437);
+  relation["leisure"="park"](50.054,14.386,50.118,14.437);
+  relation["landuse"~"^(forest|grass)$"](50.054,14.386,50.118,14.437);
+  relation["natural"="wood"](50.054,14.386,50.118,14.437); );
+out geom;

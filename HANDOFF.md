@@ -134,6 +134,31 @@ gesetzt; das Skript dazu liegt nicht im Repo, die Formen sind fest eingebaut.
 Farben kommen aus den vorhandenen Token, die Klassen heißen `c` und `c5` für
 Höhenlinien, `w` und `wl` für Wasser, `t` für Wege, `p` für Wegpunkte.
 
+## Hintergrund: neue Varianten (offen)
+
+Am 18.09.2026 sind drei detailliertere Hintergründe entstanden, entschieden ist
+noch nichts. Vergleich zum Anklicken, hell und dunkel, Handy und Laptop:
+`mockups/hintergrund-varianten.html`.
+
+| | Variante | Größe, ausgeliefert |
+|---|---|---|
+| A | Wanderkarte fein: heutiger Stil, Höhenlinien aus einem Geländemodell, Bäche, Wald, Gitter, Höhenpunkte, Nordpfeil, Maßstab | 42 KB, gezippt 11 KB |
+| B | Prag-Stadtplan aus OpenStreetMap: Moldau, Straßen nach Rang, Parks, Viertel, Route mit den fünf Stationen lagegetreu | 152 KB, gezippt 60 KB |
+| C | Orientierungslauf-Karte mit Bahnaufdruck: Start, Posten 1 bis 5, Ziel ist der Koffer | 59 KB, gezippt 19 KB |
+
+- Erzeugt von `tools/hintergrund/hintergrund.py`, die fertigen SVGs liegen in
+  `mockups/hintergrund/`. Aufruf und Datenabruf stehen oben im Skript.
+- Alle Varianten nutzen `vector-effect: non-scaling-stroke`: die Linien bleiben
+  auf jedem Bildschirm gleich fein. Beim heutigen Hintergrund werden sie am
+  Laptop fast fünfmal so dick. Beschriftungen fallen auf breiten Bildschirmen
+  weg, sonst wären sie riesig.
+- Die Varianten brauchen neue Farb-Token (`--park`, `--strasse`, `--ol-*` usw.),
+  hell und dunkel; die Werte stehen in `tools/hintergrund/vergleich.py`.
+- B braucht den Hinweis „© OpenStreetMap-Mitwirkende“ (ODbL), er steht klein
+  unten rechts im SVG. Vor dem Einbau B auf etwa 100 KB verkleinern.
+- Beim Einbau ersetzt das gewählte SVG das `<svg class="topo">` in
+  `index.html`, dazu die CSS-Klassen aus `vergleich.py`.
+
 ## Auslosen
 
 Im Reiter Teams steht ein Formular: entweder Personen pro Team oder Anzahl
