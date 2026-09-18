@@ -8,9 +8,12 @@ Summe der fünf. Das erste Team, das den vollständigen Code eingibt, öffnet de
 Koffer und gewinnt.
 
 **Stand 18.09.2026:** Live auf GitHub Pages, Datenbank eingerichtet, Nachträge 1
-bis 5 eingespielt. Die fünf Prager Stationen stehen mit Koordinaten in der
-Datenbank. Offen sind der Praxistest draußen, die Prüfung der Rätsel vor Ort und
-die WhatsApp-Nummer für den Hilfe-Knopf.
+bis 5 eingespielt. **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
+Holešovice, dann Planetarium, Rudolfstollen, Wasserturm Letná, Bergstation der
+Křižík-Seilbahn, Metronom (siehe „Route“). Die Orte stehen in
+`supabase/seed-stationen-prag.sql`, in der Datenbank steht noch die alte
+Altstadt-Route. Offen sind Rätsel und Ortshinweise, der Ort des Koffers, der
+Praxistest draußen und die WhatsApp-Nummer für den Hilfe-Knopf.
 
 ## Stack und Aufbau
 
@@ -40,7 +43,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260918170000_draw_size.sql    Auslosen mit Teamgröße oder Teamzahl
   20260918180000_tiernamen.sql    Tiernamen mit Emoji, ohne Umlaute
   20260918190000_anmeldung_leeren.sql  alle Teilnehmenden auf einmal löschen
-supabase/seed-stationen-prag.sql  die fünf Prager Stationen
+supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
 mockups/karte-routen.html       Entwurf für Routen und Zeitachse, vor der Umsetzung,
@@ -133,6 +136,34 @@ gestrichelten Wegen und Wegpunkten. Das SVG ist erzeugt, nicht von Hand
 gesetzt; das Skript dazu liegt nicht im Repo, die Formen sind fest eingebaut.
 Farben kommen aus den vorhandenen Token, die Klassen heißen `c` und `c5` für
 Höhenlinien, `w` und `wl` für Wasser, `t` für Wege, `p` für Wegpunkte.
+
+## Route
+
+Start ist der Treffpunkt, kein Datensatz: Hotel Mama Shelter Praha,
+Veletržní 1502/20, Praha 7-Holešovice, 50.102458, 14.431681.
+
+| Nr. | Station | Tschechisch | Koordinaten | Luftlinie davor |
+|---|---|---|---|---|
+| 1 | Planetarium Prag | Planetárium Praha | 50.105286, 14.427406 | 440 m ab Start |
+| 2 | Rudolfstollen | Rudolfova štola | 50.104441, 14.419553 | 570 m |
+| 3 | Wasserturm Letná | Vodárenská věž Letná | 50.100195, 14.420089 | 470 m |
+| 4 | Křižík-Seilbahn, Bergstation | Horní stanice lanové dráhy Františka Křižíka | 50.095789, 14.425346 | 620 m |
+| 5 | Metronom | Pražský metronom | 50.094775, 14.415938 | 680 m |
+
+Zusammen rund 2,8 km Luftlinie, zu Fuß eher 3,5 km, dazu der Anstieg aus der
+Stromovka auf die Letná. Die Stationsnamen sieht das Team vor dem Check-in, die
+Ortshinweise sind das eigentliche Rätsel für den Weg; der Hinweis der Station 5
+erscheint am Ende als Hinweis auf den Koffer.
+
+Noch offen: Rätsel mit Lösungen, Ortshinweise, wo der Koffer steht. Bis dahin
+stehen in der Seed-Datei Platzhalter mit leerer Lösung; eine leere Lösung zählt
+nie als richtig. Die Datenbank hat die neue Route noch nicht, die Seed-Datei
+überschreibt beim Einspielen die fünf Stationen.
+
+Hintergrund-Variante B zeigt noch die alte Altstadt-Route. Für die neue muss der
+Ausschnitt nach Norden wandern (Mitte etwa 50.100, 14.4235), dafür die OSM-Daten
+mit einem Rahmen bis etwa 50.132 neu laden und die Stationen in
+`tools/hintergrund/hintergrund.py` tauschen.
 
 ## Hintergrund: neue Varianten (offen)
 
@@ -383,8 +414,8 @@ Wichtig für die Weiterarbeit:
   über eine direkte Datenbankverbindung zeigen das nicht, nur Aufrufe über die
   API.
 - **Beispieldaten:** `supabase/seed-stationen-prag.sql` setzt die fünf Prager
-  Stationen mit Koordinaten, Ortshinweisen und Rätseln, Koffer-Code 371955.
-  Rätsel und Antworten sind nach bestem Wissen gesetzt und vor Ort zu prüfen.
+  Stationen der neuen Route mit Koordinaten, Koffer-Code 371955. Rätsel und
+  Ortshinweise sind noch Platzhalter, siehe „Route“.
   `supabase/seed-personen.sql` legt 100 erfundene Teilnehmende an, nur zum
   Proben und nur vor dem Auslosen einspielen.
 
@@ -461,10 +492,10 @@ oder einen Tunnel.
   Entfernung und Pfeil beim Gehen prüfen, einchecken, Rätsel lösen, danach die
   Karte und die Zeitachse im Admin-Bereich ansehen. Anschließend „Fortschritt
   zurücksetzen“.
-- **Rätsel vor Ort prüfen.** Die fünf Prager Rätsel und ihre Antworten sind nach
-  bestem Wissen gesetzt, aber niemand von uns stand davor. Besonders die Anzahl
-  der Statuengruppen auf der Karlsbrücke und die Stufenzahl am Petřín gehören
-  bestätigt.
+- **Rätsel und Ortshinweise** für die neue Route ausdenken, dann vor Ort
+  prüfen: nur dort lösbar, etwa über Jahreszahlen, Inschriften oder Zählaufgaben.
+- **Koffer:** Wo steht er? Der Ortshinweis der Station 5 führt am Ende dorthin.
+- **Neue Route in die Datenbank** einspielen, sobald die Rätsel stehen.
 - **Kompass auf dem iPhone 17 Pro:** Ursache gefunden, siehe GPS und Kompass.
   Der Sensor meldet ±74° Unsicherheit und einen eingefrorenen Wert. Die App
   erkennt das jetzt und weicht auf die Laufrichtung aus. Ob das Gerät nach
