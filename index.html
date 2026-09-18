@@ -11,14 +11,14 @@
 :root{
   --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF;
   --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#FFFFFF; --water:#2F6E9E;
-  --ok:#2E7D4F; --err:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7; --err-btn:#B3261E;
+  --ok:#2E7D4F; --err:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7; --err-btn:#B3261E; --info-bg:#E6EEF4;
   --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38;
   --contour:#1C312B; --flag:#FF7A3A; --water:#6FA8D6; --ok:#6CCB8E; --err:#FF8A80; --err-btn:#C5372C;
-  --ok-bg:#16332A; --err-bg:#3A1F1C;}}
+  --ok-bg:#16332A; --err-bg:#3A1F1C; --info-bg:#172A36;}}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);min-height:100vh}
@@ -50,6 +50,9 @@ textarea{min-height:64px;font-size:16px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .msg{border-radius:10px;padding:10px 12px;margin-top:12px;font-size:15px}
 .msg.err{background:var(--err-bg);color:var(--err)}.msg.ok{background:var(--ok-bg);color:var(--ok)}
+.msg.info{background:var(--info-bg);color:var(--ink)}
+.msg .btn{margin-top:10px}
+.link{background:none;border:0;padding:6px 0;margin-top:8px;font:600 15px var(--body);color:var(--muted);text-decoration:underline;cursor:pointer}
 .count{font:700 42px var(--head);line-height:1}
 ul.names{list-style:none;padding:0;margin:10px 0 0;columns:2;column-gap:14px;font-size:15px}
 ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line)}
@@ -66,6 +69,16 @@ ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line
 .compass svg{width:78px;height:78px;flex:none}
 .ring{fill:none;stroke:var(--line);stroke-width:3}
 .needle{fill:var(--flag);transform-origin:39px 39px}
+.needle.unsicher{fill:var(--line)}   /* noch keine Richtung bekannt */
+/* Kompass einmessen: Handy fährt eine liegende Acht ab */
+.acht{display:block;width:100%;max-width:260px;height:auto;margin:10px auto 0}
+.acht .bahn{fill:none;stroke:var(--line);stroke-width:3;stroke-dasharray:6 6}
+.acht .handy{fill:var(--card);stroke:var(--ink);stroke-width:2.5}
+.acht .schirm{fill:var(--flag);opacity:.85}
+.fort{height:10px;border-radius:5px;background:var(--line);overflow:hidden;margin-top:14px}
+.fort span{display:block;height:100%;width:0;background:var(--flag);transition:width .3s linear}
+.werte{display:flex;justify-content:space-between;gap:10px;margin-top:6px;font-size:14px;color:var(--muted)}
+.werte b{color:var(--ink);white-space:nowrap}
 .dist{font:700 38px var(--head);line-height:1}
 .hint{font-size:19px;font-weight:500}
 .riddle{font-size:19px;border-left:4px solid var(--flag);padding-left:12px}
@@ -242,8 +255,10 @@ const S = {
   msg: null, busy: false,
   pub: null, myName: localStorage.getItem("sj.name") || null, lookup: null,
   team: { code: localStorage.getItem("sj.code") || null, state: null },
-  // kompass: "unbekannt" | "wartet" | "an" | "kalibrieren" | "abgelehnt" | "fehlt"
-  gps: { pos: null, acc: null, heading: null, headingAcc: null, gpsHeading: null, needle: 0, on: false, err: null, kompass: "unbekannt", lastSent: 0, lastSentPos: null, sentAt: null },
+  // kompass: "unbekannt" | "wartet" | "an" | "kalibrieren" | "relativ" | "abgelehnt" | "fehlt"
+  gps: { pos: null, acc: null, heading: null, gpsHeading: null, needle: 0, on: false, err: null, kompass: "unbekannt", lastSent: 0, lastSentPos: null, sentAt: null,
+         // kompassAcc: Genauigkeit in Grad (nur iOS), kal: laufendes Einmessen, kalOk: Ergebnis für den Hinweis danach
+         kompassAcc: null, kal: null, kalOk: null },
   admin: { pin: sessionStorage.getItem("sj.pin") || null, state: null, tab: "map", edit: null, full: false,
            // Routen: tracks[teamId] = {name, points:[[lat,lng,ms]], stations:[...]}
            tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false, confirm: null,
@@ -259,8 +274,6 @@ const TEAM_EMOJI = {
   flamingo: "🦩", pinguin: "🐧", delfin: "🐬", adler: "🦅", igel: "🦔", otter: "🦦",
   krake: "🐙", biber: "🦫", koala: "🐨", drache: "🐉"
 };
-// Ab dieser Unsicherheit in Grad ist die Kompassrichtung nicht mehr zu gebrauchen
-const KOMPASS_GRENZE = 25;
 const teamEmoji = name => TEAM_EMOJI[String(name || "").trim().toLowerCase()] || "🐾";
 
 /* ---------- Löschbereich ---------- */
@@ -420,22 +433,46 @@ function routeHTML(st) {
   }
   return h + "</div>";
 }
+const accText = a => a != null && a >= 0 ? `±${Math.round(a)}°` : "unbekannt";
 function kompassText() {
-  const g = S.gps;
-  if (g.heading != null && g.kompass === "an") return "Kompass aktiv";
-  if (g.kompass === "kalibrieren") {
-    const wie = g.headingAcc != null && g.headingAcc >= 0 ? ` (±${Math.round(g.headingAcc)}°)` : "";
-    return g.gpsHeading != null
-      ? `Kompass ungenau${wie}, Pfeil folgt eurer Laufrichtung`
-      : `Kompass ungenau${wie}, Handy in einer liegenden Acht schwenken oder ein paar Schritte gehen`;
+  const g = S.gps, lauf = g.gpsHeading != null;
+  if (g.heading != null) {
+    if (g.kompass !== "kalibrieren")
+      return "Kompass aktiv" + (g.kompassAcc != null && g.kompassAcc >= 0 ? ", " + accText(g.kompassAcc) : "");
+    const wie = g.kompassAcc != null && g.kompassAcc >= 0 ? ` (${accText(g.kompassAcc)})` : "";
+    return `Kompass ungenau${wie}, ` + (lauf ? "Pfeil folgt eurer Laufrichtung" : "Handy in einer liegenden Acht schwenken");
   }
-  if (g.kompass === "abgelehnt") return "Kompass nicht freigegeben";
-  if (g.kompass === "fehlt") return "dieses Gerät hat keinen Kompass";
-  // Daten kommen an, aber ohne Nordbezug: das ist der Kalibrierfall
+  // iOS: Ereignisse kommen an, aber ohne Nordbezug, das ist der Kalibrierfall
   if (g.kompass === "kalibrieren") return "Kompass findet Norden nicht, Handy in einer liegenden Acht schwenken";
-  if (g.gpsHeading != null) return "Richtung aus Laufrichtung";
-  if (g.kompass === "wartet") return "Kompass meldet sich noch nicht, dreh dich einmal langsam";
-  return "kein Kompass, Pfeil zeigt relativ zu Norden";
+  if (g.kompass === "wartet") return lauf ? "Richtung aus Laufrichtung" : "Suche Kompass …";
+  const warum = { abgelehnt: "Kompass nicht freigegeben", relativ: "Kompass ohne Nordbezug" }[g.kompass] || "kein Kompass";
+  return warum + (lauf ? ", Richtung aus Laufrichtung" : ", erst ein paar Schritte gehen");
+}
+const ACHT = `<svg class="acht" viewBox="0 0 200 100" aria-hidden="true">
+  <path id="achtbahn" class="bahn" d="M100,50 C130,8 185,8 185,50 C185,92 130,92 100,50 C70,8 15,8 15,50 C15,92 70,92 100,50 Z"/>
+  <g><rect class="handy" x="-10" y="-17" width="20" height="34" rx="4"/><rect class="schirm" x="-6" y="-12" width="12" height="22" rx="1.5"/>
+    <animateMotion dur="3.2s" repeatCount="indefinite"><mpath href="#achtbahn"/></animateMotion>
+    <animateTransform attributeName="transform" type="rotate" additive="sum" values="-18;18;-18" dur="1.6s" repeatCount="indefinite"/></g></svg>`;
+const kalText = f => f >= 1 ? "Fertig" : f > 0 ? "Bewegung erkannt, weiter so" : "Wartet auf Bewegung";
+function kalHTML() {
+  const g = S.gps, f = Math.min(1, g.kal.bewegt / KAL_MS);
+  return `<div id="kal"><h3 style="margin-top:16px">Kompass einmessen</h3>
+    <p>Haltet das Handy flach vor euch und schwenkt es ein paar Mal in einer liegenden Acht, so wie hier.
+    Dreht dabei das Handgelenk mit.</p>${ACHT}
+    <div class="fort"><span id="kalfort" style="width:${Math.round(f * 100)}%"></span></div>
+    <div class="werte"><span id="kaltext">${kalText(f)}</span>`
+    + (g.kompassAcc != null ? `<span>Genauigkeit <b id="kalacc">${accText(g.kompassAcc)}</b></span>` : "")
+    + `</div><button class="link" data-act="t-kal-skip">Überspringen</button></div>`;
+}
+function kalOkHTML() {
+  const ok = S.gps.kalOk;
+  if (!ok || Date.now() > ok.bis) return "";
+  if (ok.acc != null && (ok.acc < 0 || ok.acc > KOMPASS_GRENZE)) return `<div class="msg err">Der Kompass bleibt ungenau
+    (${accText(ok.acc)}). Oft stört Metall oder ein Magnet, etwa ein Auto, ein Geländer
+    oder eine MagSafe-Hülle. Geht ein paar Schritte weg und messt neu ein. Auf dem iPhone hilft außerdem:
+    Einstellungen, Datenschutz, Ortungsdienste, Systemdienste, dort „Kompasskalibrierung“ einschalten.
+    Bis dahin folgt der Pfeil eurer Laufrichtung.</div>`;
+  return `<div class="msg ok">Kompass ist eingemessen${ok.acc != null ? ", " + accText(ok.acc) : ""}. Der Pfeil zeigt zur Station.</div>`;
 }
 function gpsNote() {
   const g = S.gps;
@@ -480,24 +517,33 @@ function viewTeam() {
 
   if (!st.checkedIn) {
     const g = S.gps, hasTarget = s.lat != null && s.lng != null;
-    const dist = hasTarget && g.pos ? fmtDist(haversine(g.pos, { lat: s.lat, lng: s.lng })) : "– –";
+    const dist = hasTarget && g.pos ? fmtDist(haversine(g.pos, { lat: s.lat, lng: s.lng })) : "- -";
+    const kalOk = kalOkHTML();
     out += `<div class="panel"><p class="muted small">Station ${s.position} von ${st.totalStations}</p>
-      <h2>${esc(s.name)}</h2><p class="hint" style="margin-top:8px">${esc(s.locationHint)}</p>
-      <div class="compass"><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
-        <polygon class="needle" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/></svg>
+      <h2>${esc(s.name)}</h2><p class="hint" style="margin-top:8px">${esc(s.locationHint)}</p>`;
+    if (g.kal && hasTarget) out += kalHTML();
+    else out += `<div class="compass"><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
+        <polygon class="needle ${richtungBekannt() ? "" : "unsicher"}" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/></svg>
         <div><div class="dist" id="dist">${dist}</div><div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div></div></div>
       ${!hasTarget ? `<div class="msg err">Für diese Station fehlen die Koordinaten. Die Spielleitung muss sie setzen.</div>` : ""}
       ${!g.on ? `<button class="btn alt" data-act="t-gps">Standort und Kompass aktivieren</button>` : ""}
+      ${kalOk}
+      ${g.on && ["fehlt", "relativ"].includes(g.kompass) && g.gpsHeading == null ? `<div class="msg info">Dieses Handy hat keinen Kompass.
+        Kein Problem: Der Pfeil richtet sich nach eurer Laufrichtung. Geht ein paar Schritte geradeaus
+        und haltet das Handy dabei vor euch. Die Entfernung stimmt immer.</div>` : ""}
       ${g.on && g.kompass === "abgelehnt" ? `<div class="msg err">Der Kompass ist nicht freigegeben.
-        Auf dem iPhone: Einstellungen, Safari, ganz unten „Bewegung und Ausrichtung“ einschalten,
-        dann diese Seite neu laden. Ohne Kompass zeigt der Pfeil die Richtung aus eurer Laufrichtung,
-        sobald ihr ein paar Schritte gegangen seid.</div>` : ""}
-      ${g.on && g.kompass === "kalibrieren" ? `<div class="msg err">Der Kompass ist noch ungenau.
-        Schwenkt das Handy einmal in einer liegenden Acht, dann fängt sich der Pfeil.</div>` : ""}
-      ${g.on && g.heading == null && g.kompass !== "fehlt" ? `<button class="btn alt" data-act="t-gps">Kompass erneut versuchen</button>` : ""}
+        Schließt diese Seite, öffnet den Link neu und tippt bei der Nachfrage auf „Erlauben“.
+        Fragt das Handy nicht mehr nach, den Browser ganz beenden und neu öffnen.
+        Bis dahin zeigt der Pfeil die Richtung aus eurer Laufrichtung, sobald ihr ein paar Schritte gegangen seid.
+        <button class="btn alt" data-act="t-gps">Kompass erneut versuchen</button></div>` : ""}
+      ${g.on && g.kompass === "kalibrieren" && !kalOk ? `<div class="msg err">Der Kompass ist ungenau.
+        Schwenkt das Handy ein paar Mal in einer liegenden Acht, dann fängt sich der Pfeil.
+        <button class="btn alt" data-act="t-kal">Jetzt einmessen</button></div>` : ""}
       <button class="btn" data-act="t-check" ${S.busy || !hasTarget || !g.pos ? "disabled" : ""}>Wir sind da</button>
       ${msgBox()}
       ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
+      ${kompassDa() && (g.kompass !== "kalibrieren" || kalOk) ? `<button class="link" data-act="t-kal">Kompass neu einmessen</button>` : ""}`;
+    out += `
       ${g.on && st.status === "running" ? `<div class="share"><span class="dot"></span><span>Standort wird mit der Spielleitung geteilt${S.gps.sentAt ? ", zuletzt " + S.gps.sentAt : ""}</span></div>` : ""}
       </div>`;
   } else {
@@ -925,6 +971,8 @@ const ACT = {
   },
   "t-logout"() { S.team.code = null; S.team.state = null; localStorage.removeItem("sj.code"); stopGps(); },
   "t-gps"() { startGps(); },
+  "t-kal"() { kalStart(); },
+  "t-kal-skip"() { kalEnde(false); },
   async "t-check"() {
     const g = S.gps;
     const pos = await freshPosition();
@@ -1027,7 +1075,55 @@ const ACT = {
 };
 
 /* ---------- GPS und Kompass ---------- */
-let watchId = null, orientOn = false, raf = 0;
+let watchId = null, orientOn = false, raf = 0, kompassNeu = false;
+const richtungBekannt = () => S.gps.heading != null || S.gps.gpsHeading != null;
+const kompassDa = () => S.gps.kompass === "an" || S.gps.kompass === "kalibrieren";
+// nur neu zeichnen, solange Kompass oder Einmessen zu sehen sind, sonst ginge
+// eine halb getippte Rätselantwort verloren
+const kompassSichtbar = () => !!($("#needle") || $("#kal"));
+
+/* Einmessen: einmal pro Handy und Tag, Überspringen zählt auch.
+   Messen können wir nur das Schwenken; iOS meldet zusätzlich die Genauigkeit. */
+const KOMPASS_GRENZE = 25;   // Grad, darüber ist die Kompassrichtung nicht zu gebrauchen
+const KAL_KEY = "sj.kal";
+const KAL_MS = 5000;          // so lange muss geschwenkt werden
+const KAL_MS_IOS = 2000;      // iOS: früher fertig, sobald die Genauigkeit stimmt
+const KAL_GUT = 15;           // Grad, ab da gilt der iOS-Kompass als eingemessen
+const KAL_SCHWENK = 80;       // Grad pro Sekunde, darunter ist es nur Zittern
+const heute = () => new Date().toDateString();
+const kalHeute = () => localStorage.getItem(KAL_KEY) === heute();
+function kalStart() { S.gps.kal = { bewegt: 0, letzt: null }; S.gps.kalOk = null; }
+function kalEnde(fertig) {
+  const g = S.gps;
+  g.kal = null;
+  localStorage.setItem(KAL_KEY, heute());
+  g.kalOk = fertig ? { acc: g.kompassAcc, bis: Date.now() + 8000 } : null;
+}
+// ein Orientierungsereignis auswerten; true, wenn das Einmessen damit fertig ist
+function kalSchritt(e) {
+  const k = S.gps.kal, t = e.timeStamp || performance.now();
+  if (e.beta == null || e.gamma == null) return false;
+  if (k.letzt) {
+    const dt = t - k.letzt.t;
+    if (dt > 0 && dt < 200) {
+      const w = (a, b) => Math.abs(((a - b) % 360 + 540) % 360 - 180);
+      if ((w(e.beta, k.letzt.b) + w(e.gamma, k.letzt.c)) / dt * 1000 > KAL_SCHWENK) k.bewegt += dt;
+    }
+  }
+  k.letzt = { t, b: e.beta, c: e.gamma };
+  const acc = S.gps.kompassAcc;
+  const iosGut = acc != null && acc >= 0 && acc <= KAL_GUT && k.bewegt >= KAL_MS_IOS;
+  if (k.bewegt >= KAL_MS || iosGut) { kalEnde(true); return true; }
+  return false;
+}
+function kalZeigen() {
+  const k = S.gps.kal; if (!k) return;
+  const f = Math.min(1, k.bewegt / KAL_MS);
+  const b = $("#kalfort"); if (b) b.style.width = Math.round(f * 100) + "%";
+  const t = $("#kaltext"); if (t) t.textContent = kalText(f);
+  const a = $("#kalacc"); if (a) a.textContent = accText(S.gps.kompassAcc);
+}
+
 function setNeedle(target) {
   const g = S.gps;
   g.needle += ((target - g.needle) % 360 + 540) % 360 - 180;
@@ -1040,12 +1136,13 @@ function richtung() {
   const g = S.gps;
   if (g.heading != null && g.kompass === "an") return g.heading;
   if (g.gpsHeading != null) return g.gpsHeading;
-  if (g.heading != null) return g.heading;
-  return 0;
+  return g.heading ?? 0;
 }
 function liveUpdate() {
   const g = S.gps, st = S.team.state, s = st && st.station;
+  kalZeigen();
   const note = $("#gnote"); if (note && s && s.lat != null) note.textContent = gpsNote();
+  const n = $("#needle"); if (n) n.classList.toggle("unsicher", !richtungBekannt());
   if (!g.pos || !s || s.lat == null) return;
   const t = { lat: s.lat, lng: s.lng };
   const d = $("#dist"); if (d) d.textContent = fmtDist(haversine(g.pos, t));
@@ -1055,32 +1152,45 @@ function addOrient() {
   if (orientOn) return; orientOn = true;
   const h = e => {
     const g = S.gps;
+    const vorher = g.kompass + (g.heading == null);
     let hd = null;
     const wch = e.webkitCompassHeading;          // nur iOS, schon auf Norden bezogen
     if (typeof wch === "number") {
       hd = wch;
+      // iOS: Genauigkeit in Grad, negativ heißt nicht kalibriert. Ein großer positiver
+      // Wert ist genauso unbrauchbar: gemessen auf einem iPhone 17 Pro ±74°, der Pfeil
+      // lag um einen Viertelkreis daneben. Zurück auf "an" erst 5° unter der Grenze,
+      // damit Hinweis und Knopf nicht an der Grenze flackern.
       const acc = e.webkitCompassAccuracy;
-      g.headingAcc = typeof acc === "number" ? acc : null;
-      // iOS meldet eine negative Genauigkeit, solange der Sensor ungültig ist.
-      // Ein großer positiver Wert ist genauso unbrauchbar: bei ±74° kann der
-      // Pfeil um einen Viertelkreis danebenliegen. Gemessen auf einem
-      // iPhone 17 Pro am 18.09.2026, siehe HANDOFF.
-      g.kompass = (typeof acc === "number" && (acc < 0 || acc > KOMPASS_GRENZE))
-        ? "kalibrieren" : "an";
+      g.kompassAcc = typeof acc === "number" ? acc : null;
+      if (typeof acc !== "number") g.kompass = "an";
+      else if (acc < 0 || acc > KOMPASS_GRENZE) g.kompass = "kalibrieren";
+      else if (acc <= KOMPASS_GRENZE - 5 || g.kompass !== "kalibrieren") g.kompass = "an";
     } else if (e.absolute && e.alpha != null) {
       hd = 360 - e.alpha; g.kompass = "an";
     } else if (wch === null) {
-      // Ereignis kommt an, aber ohne Nordbezug: Magnetsensor nicht kalibriert
+      // iOS: Ereignis kommt an, aber ohne Nordbezug, Magnetsensor nicht kalibriert
       g.kompass = "kalibrieren";
+    } else if (e.alpha != null) {
+      // andere Geräte: Drehung nur relativ zum Startpunkt, taugt nicht für Norden
+      g.kompass = "relativ";
     }
-    if (hd == null) {
-      g.heading = null;
-      if (!raf) raf = requestAnimationFrame(() => { raf = 0; liveUpdate(); });
-      return;
+    if (hd == null) g.heading = null;
+    else {
+      const so = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+      g.heading = (hd + so + 360) % 360;
     }
-    const so = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
-    g.heading = (hd + so + 360) % 360;
-    if (!raf) raf = requestAnimationFrame(() => { raf = 0; liveUpdate(); });
+    // Einmessen: läuft es, zählt jedes Ereignis mit; sonst beim ersten echten
+    // Kompass des Tages von selbst anbieten
+    let kalWechsel = false;
+    if (g.kal) kalWechsel = kalSchritt(e);
+    else if (kompassDa() && !kalHeute() && $("#needle")) { kalStart(); kalWechsel = true; }
+    // Hinweise und Knöpfe hängen am Zustand: bei einem Wechsel neu zeichnen
+    if (kalWechsel || g.kompass + (g.heading == null) !== vorher) kompassNeu = true;
+    if (!raf) raf = requestAnimationFrame(() => {
+      raf = 0;
+      if (kompassNeu && kompassSichtbar()) { kompassNeu = false; render(); } else liveUpdate();
+    });
   };
   if ("ondeviceorientationabsolute" in window) window.addEventListener("deviceorientationabsolute", h);
   else window.addEventListener("deviceorientation", h);
@@ -1098,6 +1208,14 @@ async function startGps() {
       else g.kompass = "abgelehnt";
     } else { g.kompass = "wartet"; addOrient(); }
   } catch { g.kompass = "abgelehnt"; }
+  // Handys ohne Magnetsensor schweigen einfach oder schicken leere Ereignisse.
+  // Kommt in 3 s nichts Brauchbares, gilt der Kompass als fehlend; meldet er sich
+  // später doch noch, setzt der Handler ihn wieder auf "an".
+  if (g.kompass === "wartet") setTimeout(() => {
+    if (g.kompass !== "wartet") return;
+    g.kompass = "fehlt";
+    if (kompassSichtbar()) render();
+  }, 3000);
   g.on = true; g.err = null;
   if (watchId != null) navigator.geolocation.clearWatch(watchId);   // kein zweiter Beobachter
   let last = null;
@@ -1120,7 +1238,7 @@ async function startGps() {
 }
 function stopGps() {
   if (watchId != null) navigator.geolocation.clearWatch(watchId);
-  watchId = null; S.gps.on = false; S.gps.pos = null;
+  watchId = null; S.gps.on = false; S.gps.pos = null; S.gps.kal = null;
 }
 function freshPosition() {
   return new Promise((res, rej) => navigator.geolocation.getCurrentPosition(

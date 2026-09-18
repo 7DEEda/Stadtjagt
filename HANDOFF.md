@@ -42,6 +42,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260918190000_anmeldung_leeren.sql  alle Teilnehmenden auf einmal löschen
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
+mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
 mockups/karte-routen.html       Entwurf für Routen und Zeitachse, vor der Umsetzung,
                                 zeigt noch Berlin. Historisches Dokument, keine Doku.
 supabase/config.toml            Projektdatei der Supabase CLI, hier ungenutzt
@@ -222,22 +223,33 @@ das in Ordnung ist, am besten ein Diensthandy.
   `deviceorientationabsolute`. Auf iOS muss
   `DeviceOrientationEvent.requestPermission()` in einem Klick-Handler laufen,
   deshalb der Knopf „Standort und Kompass aktivieren“.
-- Ohne Magnetometer wird die Laufrichtung aus zwei GPS-Punkten genutzt, sonst
-  zeigt der Pfeil relativ zu Norden.
+- Ohne Magnetometer wird die Laufrichtung aus zwei GPS-Punkten genutzt. Bis sie
+  bekannt ist, bleibt der Pfeil grau (`.needle.unsicher`), statt eine
+  erfundene Richtung zu zeigen.
 - Beim Check-in wird eine frische Position geholt. Serverseitig gilt `radius_m`
   plus bis zu 25 m GPS-Toleranz.
 - **Alles braucht HTTPS.** Eine lokal per Doppelklick geöffnete Datei (`file://`
   oder `content://`) bekommt keinen Standortzugriff.
 - **Der Kompass sagt, warum er nicht geht.** `S.gps.kompass` hält den Zustand,
-  unter der Nadel steht er im Klartext: aktiv, ungenau (Sensor nicht
-  kalibriert), findet Norden nicht, nicht freigegeben, oder das Gerät hat
-  keinen. Vorher landete jeder Fehlschlag in einem leeren `catch` und sah gleich
-  aus.
-- **Auf dem iPhone** muss in Einstellungen, Safari ganz unten „Bewegung und
-  Ausrichtung“ eingeschaltet sein. Ist das aus, antwortet
-  `requestPermission()` mit `denied`, ohne zu fragen. Die App zeigt dann diesen
-  Hinweis und einen Knopf für einen zweiten Versuch; früher verschwand der Knopf
-  nach dem ersten Druck und half nur noch neu laden.
+  unter der Nadel steht er im Klartext: `wartet` (erlaubt, noch nichts
+  gekommen), `an`, `kalibrieren` (ungenau oder ohne Nordbezug), `relativ`
+  (Drehung ohne Nordbezug, andere Geräte), `abgelehnt`, `fehlt`. Vorher landete
+  jeder Fehlschlag in einem leeren `catch` und sah gleich aus. Wechselt der
+  Zustand, zeichnet die Team-Ansicht neu, damit Hinweis und Knöpfe sofort
+  stimmen; aber nur, solange Kompass oder Einmessen zu sehen sind, sonst ginge
+  eine halb getippte Rätselantwort verloren.
+- **Erlaubnis auf dem iPhone:** Den Schalter „Bewegung und Ausrichtung“ in den
+  Safari-Einstellungen gibt es seit iOS 13 nicht mehr, die Erlaubnis gilt je
+  Seite und wird per `requestPermission()` erfragt. Nach einer Ablehnung
+  antwortet sie oft sofort mit `denied`. Die App rät deshalb: Seite schließen,
+  neu öffnen, „Erlauben“ tippen, notfalls den Browser ganz beenden. Der Knopf
+  „Kompass erneut versuchen“ steht nur noch in diesem Hinweis.
+- **Ohne Kompass:** Kommt 3 s nach dem Freigeben kein brauchbares Ereignis,
+  gilt der Kompass als `fehlt`. Handys ohne Magnetsensor schweigen einfach oder
+  schicken leere Ereignisse; vorher stand dort für immer „Kompass meldet sich
+  noch nicht“. Ein ruhiger Hinweis erklärt, dass der Pfeil der Laufrichtung
+  folgt und die Entfernung immer stimmt. Meldet sich der Kompass später doch,
+  springt der Zustand zurück auf `an`.
 - **Unkalibrierter Magnetsensor:** iOS liefert dann `webkitCompassAccuracy < 0`
   oder `webkitCompassHeading === null`. Abhilfe ist eine liegende Acht mit dem
   Handy. Das steht als Hinweis in der App.
@@ -249,7 +261,8 @@ das in Ordnung ist, am besten ein Diensthandy.
   antwortet also, führt aber nicht nach. Die erste Fassung prüfte nur auf
   negative Werte und meldete deshalb fröhlich „Kompass aktiv“, während der
   Pfeil um einen Viertelkreis danebenlag.
-- **Grenze:** `KOMPASS_GRENZE` in `index.html`, aktuell 25 Grad. Darüber gilt
+- **Grenze:** `KOMPASS_GRENZE` in `index.html`, aktuell 25 Grad; zurück auf
+  „aktiv“ erst unter 20 Grad, damit Hinweis und Knopf nicht flackern. Darüber gilt
   die Richtung als unbrauchbar, die App sagt das mit dem gemessenen Wert und
   schaltet auf die Laufrichtung aus zwei GPS-Punkten um, sobald das Team ein
   paar Schritte gegangen ist. Dafür wird die Laufrichtung jetzt auch dann
@@ -259,10 +272,28 @@ das in Ordnung ist, am besten ein Diensthandy.
   weg von Magneten (MagSafe-Hüllen, Autohalterungen, Magnetbörsen, Kopfhörer),
   und in den Einstellungen unter Datenschutz, Ortungsdienste, Systemdienste den
   Dienst Kompasskalibrierung einschalten.
+- **Einmessen (liegende Acht):** Meldet sich zum ersten Mal am Tag ein echter
+  Kompass (`an` oder `kalibrieren`), zeigt die Team-Ansicht statt des Kompasses
+  eine Anleitung mit Animation und Fortschrittsbalken. Eine Webseite kann das
+  Kalibrieren weder auslösen noch prüfen, nur das Schwenken messen
+  (Winkelgeschwindigkeit aus `beta`/`gamma` über 80°/s, Zittern zählt nicht).
+  Fertig nach 5 s Schwenken, auf dem iPhone schon nach 2 s, sobald
+  `webkitCompassAccuracy` ±15° oder besser meldet; Android verrät keine
+  Genauigkeit. „Überspringen“ geht immer. Beides merkt sich das Handy in
+  `localStorage` unter `sj.kal` mit dem Datum, danach bleibt der Link „Kompass
+  neu einmessen“. Wird der Kompass später ungenau, trägt der Hinweis den Knopf
+  „Jetzt einmessen“. Bleibt er nach dem Einmessen über der Grenze, nennt die App
+  Magnete und die iOS-Kompasskalibrierung. Die Werte stehen als `KAL_*` im
+  Abschnitt „GPS und Kompass“ in `index.html`. Entwurf:
+  `mockups/kompass-einmessen.html`.
 - **Testseite:** `kompass-test.html`, live unter
   https://7deeda.github.io/Stadtjagt/kompass-test.html. Zeigt Erlaubnis,
   Ereigniszahl, `webkitCompassHeading`, Genauigkeit und Rohwerte und fällt nach
-  fünf Sekunden ein Urteil. Ein Knopf legt den Bericht in die Zwischenablage.
+  fünf Sekunden ein Urteil. Sie zählt, wie viele der 36 Richtungen beim Drehen
+  ankommen (ab 30: funktioniert), und schreibt nur Änderungen ins Protokoll;
+  ein still liegendes Handy liefert sonst zwölf gleiche Zeilen, was wie ein
+  eingefrorener Sensor aussieht. Ein Knopf legt den Bericht in die
+  Zwischenablage.
 
 ## Standortdaten und Datenschutz
 
@@ -415,7 +446,11 @@ oder einen Tunnel.
   Kalibrierung brauchbare Werte liefert, ist noch nicht bestätigt: Testseite
   erneut aufrufen, dabei auf die Zeile „Kompassgenauigkeit“ achten. Bleibt sie
   über 25°, nimmt das Team als Ersatz die Laufrichtung, und die Entfernung in
-  Metern stimmt ohnehin unabhängig vom Kompass.
+  Metern stimmt ohnehin unabhängig vom Kompass. Zum Vergleich ein iPhone 17
+  (kein Pro, iOS 27, Chrome) am selben Tag: Erlaubnis erteilt,
+  `webkitCompassHeading` mit ±10°, also brauchbar. Die zwölf gleichen Werte im
+  Bericht kamen dort vom still liegenden Handy. Beim Pro deshalb erneut testen
+  und sich dabei einmal im Kreis drehen.
 - **WhatsApp-Nummer** fehlt in `config.js`, deshalb erscheint kein Hilfe-Knopf.
 - Am Koffer sollte jemand von der Spielleitung stehen und erst nach dem Signal
   der App öffnen lassen.

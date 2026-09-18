@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Kompass einmessen</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Token und Klassen wie in index.html */
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF;
+  --flag:#EE5F1B; --flag-ink:#FFFFFF; --water:#2F6E9E;
+  --ok:#2E7D4F; --err:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7; --info-bg:#E6EEF4;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --desk:#DDE3DA;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38;
+  --flag:#FF7A3A; --water:#6FA8D6; --ok:#6CCB8E; --err:#FF8A80; --ok-bg:#16332A; --err-bg:#3A1F1C; --info-bg:#172A36;
+  --desk:#08110F;}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--desk);color:var(--ink);font:17px/1.5 var(--body);min-height:100vh}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+h1{font-size:30px;font-weight:700}h2{font-size:24px;font-weight:700}h3{font-size:19px;font-weight:600}
+p{margin:.4em 0 0}
+.muted{color:var(--muted)}.small{font-size:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 18px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);margin-top:12px}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.link{background:none;border:0;padding:6px 0;margin-top:8px;font:600 15px var(--body);color:var(--muted);text-decoration:underline;cursor:pointer}
+.msg{border-radius:10px;padding:10px 12px;margin-top:12px;font-size:15px}
+.msg.err{background:var(--err-bg);color:var(--err)}.msg.ok{background:var(--ok-bg);color:var(--ok)}
+.msg.info{background:var(--info-bg);color:var(--ink)}
+.lock{display:flex;gap:6px;justify-content:center;margin:4px 0}
+.wheel{width:44px;height:58px;border-radius:8px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font:700 32px var(--head)}
+.wheel.empty{color:color-mix(in srgb,var(--paper) 30%,transparent)}
+.route{display:flex;align-items:center;margin:12px 2px 2px}
+.route i{flex:1;height:3px;background:var(--line)}
+.route b{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--line);display:grid;place-items:center;font:700 14px var(--head);background:var(--card);color:var(--muted)}
+.route b.now{border-color:var(--flag);color:var(--flag)}
+.compass{display:flex;gap:16px;align-items:center;margin-top:12px}
+.compass svg{width:78px;height:78px;flex:none}
+.ring{fill:none;stroke:var(--line);stroke-width:3}
+.needle{fill:var(--flag);transform-origin:39px 39px;transition:transform .6s cubic-bezier(.32,.72,.4,1)}
+.needle.unsicher{fill:var(--line)}
+.dist{font:700 38px var(--head);line-height:1;white-space:nowrap}
+.hint{font-size:19px;font-weight:500}
+.share{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin-top:10px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--flag);flex:none}
+
+/* Neu: Einmessen */
+.acht{display:block;width:100%;max-width:260px;height:auto;margin:10px auto 0}
+.acht .bahn{fill:none;stroke:var(--line);stroke-width:3;stroke-dasharray:6 6}
+.acht .handy{fill:var(--card);stroke:var(--ink);stroke-width:2.5}
+.acht .schirm{fill:var(--flag);opacity:.85}
+.fort{height:10px;border-radius:5px;background:var(--line);overflow:hidden;margin-top:14px}
+.fort span{display:block;height:100%;width:0;background:var(--flag);transition:width .3s linear}
+.werte{display:flex;justify-content:space-between;gap:10px;margin-top:6px;font-size:14px;color:var(--muted)}
+.werte b{color:var(--ink);white-space:nowrap}
+.suche{display:flex;gap:12px;align-items:center;margin-top:12px;color:var(--muted)}
+.kreisel{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--flag);animation:dreh .8s linear infinite}
+@keyframes dreh{to{transform:rotate(360deg)}}
+.einblenden{animation:ein .16s cubic-bezier(.32,.72,.4,1)}
+@keyframes ein{from{opacity:0;transform:translateY(-6px) scale(.98)}}
+
+/* Mockup-Rahmen */
+.buehne{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;align-items:flex-start;padding:24px 16px 60px}
+.steuer{max-width:340px;flex:1 1 280px}
+.steuer h1{font-size:26px}
+.steuer .panel{margin-top:12px}
+.wahl{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.wahl label{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);cursor:pointer;font-size:15px}
+.wahl label:has(input:checked){border-color:var(--flag)}
+.wahl input{margin-top:4px;accent-color:var(--flag)}
+.wahl small{display:block;color:var(--muted)}
+.handyrahmen{width:390px;max-width:100%;background:var(--paper);border-radius:34px;border:10px solid #1a1a1a;min-height:780px;overflow:hidden;position:relative}
+.handyrahmen main{padding:18px 16px 40px}
+.notiz{font-size:14px;color:var(--muted);border-left:3px solid var(--flag);padding-left:10px;margin-top:10px}
+@media (max-width:440px){.handyrahmen{border:0;border-radius:0}}
+</style>
+</head>
+<body>
+<div class="buehne">
+  <div class="steuer">
+    <h1>Mockup: Kompass einmessen</h1>
+    <p class="muted small">Team-Ansicht, Station 1, bevor das Team eingecheckt hat. Gerät wählen, dann im Handy auf „Standort und Kompass aktivieren“ tippen. Das Schwenken wird hier nur nachgespielt.</p>
+    <div class="panel">
+      <h3>Gerät</h3>
+      <div class="wahl" id="wahl">
+        <label><input type="radio" name="g" value="ios" checked><span>iPhone<small>meldet die Genauigkeit, wir warten auf ±15°</small></span></label>
+        <label><input type="radio" name="g" value="android"><span>Android mit Kompass<small>keine Genauigkeit, wir erkennen nur das Schwenken</small></span></label>
+        <label><input type="radio" name="g" value="ohne"><span>Handy ohne Kompass<small>nach 3 s ohne Kompassdaten</small></span></label>
+        <label><input type="radio" name="g" value="abgelehnt"><span>Kompass abgelehnt<small>„Nicht erlauben“ getippt</small></span></label>
+      </div>
+      <button class="btn alt" id="neu">Von vorn</button>
+    </div>
+    <p class="notiz">Eingemessen wird einmal pro Handy und Tag. Danach bleibt unter dem Kompass der Link „Kompass neu einmessen“. Meldet das iPhone später wieder schlechte Werte, erscheint der Hinweis mit einem Knopf, der direkt hierher führt.</p>
+  </div>
+
+  <div class="handyrahmen"><main id="app"></main></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let zustand = "start", fort = 0, genau = 45, takt = null, gelaufen = false;
+const geraet = () => document.querySelector("input[name=g]:checked").value;
+
+function kopf() {
+  return `<div style="display:flex;gap:10px;align-items:center"><div style="flex:1"><h1>🦊 Team Fuchs</h1>
+    <div class="muted small" style="white-space:nowrap">FUCHS-4711, Leitung Anna</div></div></div>
+    <div class="panel"><div class="lock">${"?????".split("").map(() => '<div class="wheel empty">?</div>').join("")}<div class="wheel empty">?</div></div>
+    <div class="route"><b class="now">1</b><i></i><b>2</b><i></i><b>3</b><i></i><b>4</b><i></i><b>5</b></div></div>`;
+}
+function stationKopf() {
+  return `<p class="muted small">Station 1 von 5</p><h2>Pulverturm</h2>
+    <p class="hint" style="margin-top:8px">Das dunkle Tor zur Altstadt, durch das die Könige zur Krönung zogen.</p>`;
+}
+function kompass(richtung, note, unsicher) {
+  return `<div class="compass"><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
+    <polygon class="needle ${unsicher ? "unsicher" : ""}" points="39,8 47,42 39,36 31,42" style="transform:rotate(${richtung}deg)"/></svg>
+    <div><div class="dist">240 m</div><div class="muted small">${note}</div></div></div>`;
+}
+const teilen = `<div class="share"><span class="dot"></span><span>Standort wird mit der Spielleitung geteilt</span></div>`;
+
+function acht() {
+  // liegende Acht, das Handy fährt die Bahn ab und kippt dabei leicht
+  return `<svg class="acht" viewBox="0 0 200 100" aria-hidden="true">
+    <path id="bahn" class="bahn" d="M100,50 C130,8 185,8 185,50 C185,92 130,92 100,50 C70,8 15,8 15,50 C15,92 70,92 100,50 Z"/>
+    <g><rect class="handy" x="-10" y="-17" width="20" height="34" rx="4"/><rect class="schirm" x="-6" y="-12" width="12" height="22" rx="1.5"/>
+      <animateMotion dur="3.2s" repeatCount="indefinite"><mpath href="#bahn"/></animateMotion>
+      <animateTransform attributeName="transform" type="rotate" additive="sum" values="-18;18;-18" dur="1.6s" repeatCount="indefinite"/></g></svg>`;
+}
+
+function ansicht() {
+  const g = geraet();
+  let h = kopf() + `<div class="panel">` + stationKopf();
+
+  if (zustand === "start") {
+    h += kompass(0, "Standort noch nicht aktiv", true)
+      + `<button class="btn alt" data-a="aktiv">Standort und Kompass aktivieren</button>
+         <button class="btn" disabled>Wir sind da</button>`;
+  }
+  else if (zustand === "suche") {
+    h += `<div class="suche"><div class="kreisel"></div><span>Suche Kompass …</span></div>`;
+  }
+  else if (zustand === "einmessen") {
+    const fertigIos = g === "ios" && genau <= 15;
+    h += `<h3 style="margin-top:16px">Kompass einmessen</h3>
+      <p>Haltet das Handy flach vor euch und schwenkt es ein paar Mal in einer liegenden Acht, so wie hier.
+      Dreht dabei das Handgelenk mit.</p>` + acht()
+      + `<div class="fort"><span style="width:${Math.round(fort * 100)}%"></span></div>
+      <div class="werte"><span>${fort >= 1 || fertigIos ? "Fertig" : fort > 0 ? "Bewegung erkannt, weiter so" : "Wartet auf Bewegung"}</span>`
+      + (g === "ios" ? `<span>Genauigkeit <b>±${Math.round(genau)}°</b></span>` : "") + `</div>
+      <button class="link" data-a="ueberspringen">Überspringen</button>`;
+  }
+  else if (zustand === "fertig") {
+    const ohne = g === "ohne", ab = g === "abgelehnt";
+    let note, box = "";
+    if (g === "ios") note = "GPS ±8 m, Kompass aktiv, ±12°";
+    else if (g === "android") note = "GPS ±8 m, Kompass aktiv";
+    else note = gelaufen ? "GPS ±8 m, Richtung aus Laufrichtung" : "GPS ±8 m, erst ein paar Schritte gehen";
+    if (ohne) box = `<div class="msg info">Dieses Handy hat keinen Kompass. Kein Problem: Der Pfeil richtet sich nach eurer Laufrichtung.
+      Geht ein paar Schritte geradeaus und haltet das Handy dabei vor euch. Die Entfernung stimmt immer.</div>`;
+    if (ab) box = `<div class="msg err">Der Kompass ist nicht freigegeben. Schließt diese Seite, öffnet den Link neu und tippt bei der Nachfrage auf „Erlauben“.
+      Bis dahin richtet sich der Pfeil nach eurer Laufrichtung, sobald ihr ein paar Schritte gegangen seid.</div>`;
+    if ((g === "ios" || g === "android") && !gelaufen) box = `<div class="msg ok einblenden">Kompass ist eingemessen. Der Pfeil zeigt zur Station.</div>`;
+    const unsicher = (ohne || ab) && !gelaufen;
+    h += kompass(unsicher ? 0 : 38, note, unsicher) + box
+      + ((ohne || ab) && !gelaufen ? `<button class="btn alt" data-a="gehen">(Mockup) ein paar Schritte gehen</button>` : "")
+      + `<button class="btn" data-a="nix">Wir sind da</button>`
+      + (g === "ios" || g === "android" ? `<button class="link" data-a="nochmal">Kompass neu einmessen</button>` : "")
+      + teilen;
+  }
+  return h + `</div>`;
+}
+function zeichne() { $("#app").innerHTML = ansicht(); }
+
+function starteEinmessen() {
+  zustand = "einmessen"; fort = 0; genau = 45; zeichne();
+  clearInterval(takt);
+  // nachgespielt: Bewegung füllt den Balken in etwa 5 s, das iPhone wird dabei genauer
+  setTimeout(() => {
+    takt = setInterval(() => {
+      fort = Math.min(1, fort + 0.07);
+      if (geraet() === "ios") genau = Math.max(12, genau - 3.2);
+      const fertig = geraet() === "ios" ? (genau <= 15 && fort >= .5) : fort >= 1;
+      if (fertig) { clearInterval(takt); fort = 1; zeichne(); setTimeout(() => { zustand = "fertig"; zeichne(); }, 700); return; }
+      zeichne();
+    }, 350);
+  }, 900);
+}
+
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-a]"); if (!a) return;
+  const was = a.dataset.a;
+  if (was === "aktiv") {
+    zustand = "suche"; zeichne();
+    const g = geraet();
+    setTimeout(() => {
+      if (g === "ios" || g === "android") starteEinmessen();
+      else { zustand = "fertig"; zeichne(); }
+    }, g === "ohne" ? 3000 : g === "abgelehnt" ? 600 : 900);
+  }
+  if (was === "ueberspringen") { clearInterval(takt); zustand = "fertig"; zeichne(); }
+  if (was === "nochmal") starteEinmessen();
+  if (was === "gehen") { gelaufen = true; zeichne(); }
+});
+function vonVorn() { clearInterval(takt); zustand = "start"; gelaufen = false; zeichne(); }
+$("#neu").onclick = vonVorn;
+$("#wahl").addEventListener("change", vonVorn);
+zeichne();
+</script>
+</body>
+</html>

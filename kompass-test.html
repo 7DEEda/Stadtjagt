@@ -54,7 +54,7 @@ svg{width:84px;height:84px;flex:none}
         <circle class="ring" cx="42" cy="42" r="38"/>
         <polygon class="needle" id="needle" points="42,9 51,45 42,38 33,45"/>
       </svg>
-      <div><div class="big" id="hdg">– –</div><div class="muted" id="hdgsrc">noch keine Richtung</div></div>
+      <div><div class="big" id="hdg">- -</div><div class="muted" id="hdgsrc">noch keine Richtung</div></div>
     </div>
   </div>
 
@@ -69,9 +69,10 @@ svg{width:84px;height:84px;flex:none}
 const $ = s => document.querySelector(s);
 const F = {};   // alles, was wir herausfinden
 let zaehler = { deviceorientation: 0, deviceorientationabsolute: 0 };
+let letzte = null, zeilen = [], zuletztGeloggt = null;
 let letzterWert = null, gleich = 0;
-const GRENZE = 25;   // ab hier ist die Richtung nicht mehr zu gebrauchen
-let letzte = null, zeilen = [];
+const GRENZE = 25;   // ab hier ist die Richtung nicht mehr zu gebrauchen, wie KOMPASS_GRENZE in index.html
+const faecher = new Set();   // gesehene 10°-Sektoren, 36 heißt einmal ganz herum
 
 function setz(k, v, art) {
   F[k] = { wert: v, art: art || "" };
@@ -101,6 +102,7 @@ setz("Erlaubnis Bewegung", braucht ? "noch nicht gefragt" : "nicht nötig");
 setz("Ereignisse empfangen", "0");
 setz("webkitCompassHeading", "noch keins");
 setz("Kompassgenauigkeit", "noch keins");
+setz("Beim Drehen gesehen", "noch nichts");
 setz("Standort", "noch nicht gefragt");
 
 function beiEreignis(typ) {
@@ -126,7 +128,7 @@ function beiEreignis(typ) {
           : "±" + Math.round(acc * 10) / 10 + "°" + (acc > GRENZE ? " (viel zu ungenau, brauchbar wäre unter " + GRENZE + "°)" : ""),
         schlecht ? "err" : "ok");
     }
-    // Bleibt der Wert ueber viele Ereignisse exakt gleich, fuehrt der Sensor nicht nach
+    // Bleibt der Wert über viele Ereignisse exakt gleich, führt der Sensor nicht nach
     if (typeof wch === "number") {
       if (wch === letzterWert) gleich++; else { gleich = 0; letzterWert = wch; }
       setz("Richtung bewegt sich", gleich > 40 ? "nein, seit " + gleich + " Ereignissen derselbe Wert" : "ja",
@@ -145,7 +147,17 @@ function beiEreignis(typ) {
       $("#hdg").textContent = Math.round(hd) + "°";
       $("#hdgsrc").textContent = quelle;
       $("#needle").style.transform = `rotate(${-hd}deg)`;
+      if (quelle !== "alpha (nur relativ, zeigt nicht nach Norden)") {
+        faecher.add(Math.floor(hd / 10) % 36);
+        setz("Beim Drehen gesehen", `${faecher.size} von 36 Richtungen`, faecher.size >= 30 ? "ok" : "");
+        if (faecher.size >= 30) urteil("Der Kompass funktioniert: die Richtung läuft beim Drehen mit.", true);
+      }
     }
+    // nur Änderungen mitschreiben, sonst stehen 60 gleiche Zeilen pro Sekunde da
+    const merkmal = [typeof wch === "number" ? Math.round(wch) : wch, acc, e.absolute,
+      e.alpha == null ? null : Math.round(e.alpha)].join("|");
+    if (merkmal === zuletztGeloggt) return;
+    zuletztGeloggt = merkmal;
     log(`${typ} #${zaehler[typ]}  wch=${wch === undefined ? "-" : wch}  acc=${acc === undefined ? "-" : acc}  `
       + `abs=${e.absolute}  a=${e.alpha == null ? "-" : Math.round(e.alpha)}`);
   };
@@ -165,8 +177,8 @@ $("#start").onclick = async function () {
       setz("Erlaubnis Bewegung", r, r === "granted" ? "ok" : "err");
       if (r !== "granted") {
         urteil("Die Erlaubnis für Bewegung und Ausrichtung wurde nicht erteilt. "
-          + "Auf dem iPhone: Einstellungen, Safari, ganz unten „Bewegung und Ausrichtung“ einschalten, "
-          + "danach diese Seite neu laden.", false);
+          + "Seite schließen, neu öffnen und bei der Nachfrage auf „Erlauben“ tippen. "
+          + "Fragt das Handy nicht mehr nach, den Browser ganz beenden und neu öffnen.", false);
       }
     } else {
       setz("Erlaubnis Bewegung", "nicht nötig", "ok");
@@ -195,8 +207,8 @@ $("#start").onclick = async function () {
   setTimeout(function () {
     const n = zaehler.deviceorientation + zaehler.deviceorientationabsolute;
     if (!n) {
-      urteil("Das Gerät sendet keine Ausrichtungsdaten. Entweder fehlt die Erlaubnis, oder "
-        + "„Bewegung und Ausrichtung“ ist in den Safari-Einstellungen aus.", false);
+      urteil("Das Gerät sendet keine Ausrichtungsdaten. Meist fehlt die Erlaubnis: "
+        + "Seite schließen, neu öffnen und bei der Nachfrage auf „Erlauben“ tippen.", false);
     } else if (letzte && typeof letzte.webkitCompassHeading !== "number" && !letzte.absolute) {
       urteil("Ereignisse kommen an, aber ohne Nordbezug. Der Magnetsensor ist vermutlich nicht "
         + "kalibriert: das Gerät einmal in einer liegenden Acht bewegen, dann erneut prüfen.", false);
@@ -206,11 +218,13 @@ $("#start").onclick = async function () {
         + "liegenden Acht, haltet es weg von Magneten, Autohalterungen und Kopfhörern, und schaltet "
         + "in den Einstellungen unter Datenschutz, Ortungsdienste, Systemdienste den "
         + "Kompasskalibrierung-Dienst ein. Danach erneut prüfen.", false);
-    } else if (gleich > 40) {
-      urteil("Der Kompass liefert seit vielen Ereignissen exakt denselben Wert, er führt also nicht "
-        + "nach. Seite neu laden und das Gerät dabei bewegen.", false);
-    } else if (F["Erlaubnis Bewegung"] && F["Erlaubnis Bewegung"].wert === "granted") {
-      urteil("Der Kompass liefert Daten. Wenn die Gradzahl beim Drehen mitläuft, ist alles in Ordnung.", true);
+    } else if (gleich > 40 && faecher.size < 30) {
+      urteil("Der Kompass liefert seit vielen Ereignissen exakt denselben Wert. Liegt das Gerät still, "
+        + "ist das normal: dreh dich jetzt einmal ganz im Kreis. Bleibt der Wert dabei stehen, "
+        + "führt der Sensor nicht nach, dann Seite neu laden und das Gerät dabei bewegen.", false);
+    } else if (faecher.size < 30) {
+      urteil("Der Kompass liefert Daten. Dreh dich jetzt einmal ganz im Kreis, "
+        + "dann prüft die Seite, ob die Richtung mitläuft.", true);
     }
   }, 5000);
 };
