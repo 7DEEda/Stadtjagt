@@ -435,12 +435,16 @@ Breite weg. Freier Text ohne Karte darunter (Kopfzeile, Reiter, „Mitglieder“
 (`text-shadow`), damit er auf jeder Variante lesbar bleibt; Knöpfe, Felder und
 Karten setzen ihn zurück. Geprüft hell und dunkel auf allen vier.
 
-**Parallax (19.09.2026):** Die Karte ist um `--px-hub` (40vh) höher als das
+**Parallax (19.09.2026):** Die Karte ist um `--px-hub` (40lvh) höher als das
 Fenster und wandert beim Scrollen nach oben, über die ganze Seitenlänge genau
-um diesen Überstand (`parallax()` setzt `--px` per `requestAnimationFrame`,
-`render()` und `resize` stoßen es an). Am Seitenende schließt die Karte exakt
-mit dem Fensterrand ab, es entsteht nie ein Streifen. Bei „Bewegung
-reduzieren“ ist der Hub 0, die Karte steht still.
+um diesen Überstand. Ohne Skript: eine scroll-gebundene CSS-Animation
+(`animation-timeline: scroll(root)`), die der Browser im Compositor rechnet.
+Die erste Fassung per JavaScript ruckelte und sprang auf Android, sobald
+Chrome die Adressleiste ein- oder ausblendete (`innerHeight` änderte sich);
+darum jetzt `lvh`-Einheiten, die davon unabhängig sind. Am Seitenende schließt
+die Karte exakt mit dem Fensterrand ab. Browser ohne `animation-timeline`
+(ältere Firefox, Safari vor 26) und „Bewegung reduzieren“ zeigen die Karte
+still.
 
 Variante B zeigt noch den Altstadt-Ausschnitt; Route und Stationsmarken wurden
 beim Kopieren entfernt, weil sie die alte Route zeigten. Für die Holešovice-
