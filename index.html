@@ -59,6 +59,8 @@ ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line
 .leader{color:var(--flag);font-weight:600}
 .lock{display:flex;gap:6px;justify-content:center;margin:4px 0}
 .wheel{width:44px;height:58px;border-radius:8px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font:700 32px var(--head)}
+.wheel.klein{width:34px;height:42px;font-size:22px;border-radius:6px}
+.ziffern .lock{justify-content:flex-start;margin-top:8px}
 .wheel.empty{color:color-mix(in srgb,var(--paper) 30%,transparent)}
 .route{display:flex;align-items:center;margin:12px 2px 2px}
 .route i{flex:1;height:3px;background:var(--line)}.route i.done{background:var(--flag)}
@@ -463,12 +465,12 @@ function pauseText(bis) {
   const rest = Math.max(0, Math.ceil((new Date(bis).getTime() - Date.now()) / 1000));
   return `Denkpause: noch ${rest} ${rest === 1 ? "Sekunde" : "Sekunden"}. Danach habt ihr wieder drei Versuche.`;
 }
-function lockHTML(st) {
+function lockHTML(st, klein) {
   const d = st.digits || [];
   let h = '<div class="lock">';
   for (let k = 0; k < 6; k++) {
     const v = k < 5 ? d[k] : st.finalDigit;
-    h += `<div class="wheel ${v == null ? "empty" : ""}">${v == null ? "?" : v}</div>`;
+    h += `<div class="wheel ${klein ? "klein" : ""} ${v == null ? "empty" : ""}">${v == null ? "?" : v}</div>`;
   }
   return h + "</div>";
 }
@@ -545,7 +547,10 @@ function viewTeam() {
     <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>`
     + vorbereitenHTML() + helpBtn(`Stadtjagd: Hier ist Team ${st.team.name} (${st.team.code}). Wir haben eine Frage vor dem Start.`) + abmeldenHTML() + nav();
 
-  out += `<div class="panel">${lockHTML(st)}${routeHTML(st)}
+  // Unterwegs zählt die Station: das Schloss steht dann klein unter ihr,
+  // groß erst wieder beim Koffer und am Ende (Entscheidung 18.09.2026, Variante B)
+  const unterwegs = !st.place && st.status === "running" && !st.allSolved && !!st.station;
+  if (!unterwegs) out += `<div class="panel">${lockHTML(st)}${routeHTML(st)}
     <p class="small muted" style="text-align:center">Die 6. Ziffer ist die Einerstelle der Summe eurer fünf Ziffern.</p></div>`;
 
   if (st.place) {
@@ -617,6 +622,8 @@ function viewTeam() {
         : msgBox() + `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
           : `Fehlversuche: ${st.failedAttempts} von 3, danach 2 Minuten Pause.`}</p>`}</div>`;
   }
+  if (unterwegs) out += `<div class="panel ziffern"><div class="bar"><h3>Eure Ziffern</h3>
+    <span class="small muted">${st.solvedCount} von ${st.totalStations}</span></div>${lockHTML(st, true)}${routeHTML(st)}</div>`;
   out += `<p class="small muted" style="text-align:center;margin-top:12px">Mitglieder: ${(st.team.members || []).map(esc).join(", ")}</p>`;
   out += helpBtn(`Stadtjagd: Hier ist Team ${st.team.name} (${st.team.code}). `
     + (s ? `Wir brauchen Hilfe bei Station ${s.position}.` : "Wir brauchen Hilfe."));

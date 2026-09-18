@@ -254,9 +254,12 @@ Spielleitung auf dem Tablet hoch und quer, hell und dunkel. Behoben:
   Erfolgsmeldungen verschwinden nach etwa zehn Sekunden, bei ignorierter
   GPS-Erlaubnis ein passender Hinweis statt „Signal schwach“.
 
-Offen aus der Durchsicht: die Reihenfolge der Team-Ansicht unterwegs
-(Entfernung und Pfeil nach oben, Zahlenschloss kompakter), dazu gibt es ein
-Mockup zur Entscheidung.
+- **Reihenfolge der Team-Ansicht unterwegs** (entschieden 18.09.2026,
+  Variante B aus `mockups/team-reihenfolge.html`): Station, Entfernung, Pfeil
+  und „Wir sind da“ stehen oben, darunter „Eure Ziffern“ mit kleinen Rädern und
+  Fortschritt. Groß erscheint das Zahlenschloss nur noch beim Koffer, auf dem
+  Platz-Bildschirm und nach dem Ende. Vorher schnitt auf einem iPhone SE in
+  Safari (rund 548 px sichtbar) die Kante mitten durch die Entfernung.
 
 Getestet lokal gegen PostgreSQL 15 (21 Prüfungen zu Nachtrag 8, dazu wieder
 Koffer und Testmodus) und in der Oberfläche; Nachtrag 8 live eingespielt und
