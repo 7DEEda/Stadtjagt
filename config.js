@@ -2,6 +2,6 @@
 // Der anon public key ist zur Veroeffentlichung gedacht und darf hier stehen.
 // Der service_role key gehoert NIEMALS in diese Datei.
 window.SJ_CONFIG = {
-  url: "",   // z. B. "https://abcdxyz.supabase.co"
-  key: ""    // anon public key
+  url: "https://lwdmwklyydhcvnhpjudk.supabase.co",
+  key: "sb_publishable_7uEQEkFwi27XJdGLSoso5w_TMxHJYUq"
 };
