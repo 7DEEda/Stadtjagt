@@ -302,6 +302,18 @@ const DANGER = {
       return "Fortschritt gelöscht. Das Spiel steht wieder vor dem Start.";
     }
   },
+  people: {
+    when: st => (st.participants || []).length > 0,
+    title: "Alle Teilnehmenden löschen",
+    lead: st => `Alle ${(st.participants || []).length} angemeldeten Personen und alle Teams werden gelöscht, dazu Fortschritt und Standortdaten. Danach ist die Anmeldung wieder offen.`,
+    keeps: "Stationen, Rätsel, Ziffern und die PIN bleiben.",
+    btn: "Alle Teilnehmenden löschen",
+    async run() {
+      S.admin.state = await rpc("admin_clear_participants", { p_pin: S.admin.pin });
+      S.admin.tracks = null; S.admin.syncedAt = null; S.admin.cursor = null; S.admin.hidden = {}; stopPlay();
+      return "Alles geleert. Die Anmeldung ist wieder offen.";
+    }
+  },
   person: {
     when: () => false,   // erscheint nicht als Kachel, nur über das × bei den Teilnehmenden
     wort: false,         // eine Person löscht man oft, da reicht die Rückfrage ohne Tippen
@@ -522,8 +534,16 @@ function viewAdmin() {
       <p class="small muted">Ein Team anklicken blendet seine Route aus oder ein. Die Standortdaten bleiben nach dem Spielende gespeichert, bis du auf „Standortdaten löschen“ drückst.</p></div>`;
   }
   if (A.tab === "teams") {
-    if (st.status === "registration" || st.status === "drawn") {
-      const n = (st.participants || []).length, d = A.draw;
+    const n = (st.participants || []).length, d = A.draw;
+    const laeuft = st.status === "running" || st.status === "finished";
+    if (laeuft) {
+      // Nach dem Start sperrt die Datenbank das Auslosen. Statt das Formular
+      // wortlos zu verstecken, steht hier der Weg zurück.
+      out += `<div class="panel"><h3>Teams auslosen</h3>
+        <p class="small">Solange das Spiel ${st.status === "running" ? "läuft" : "beendet ist"}, lässt sich nicht neu auslosen, sonst wäre der Fortschritt der Teams nichts mehr wert.</p>
+        <p class="small muted">Setz zuerst den Fortschritt zurück. Danach kannst du hier neu auslosen. Teams und Teilnehmende bleiben dabei erhalten.</p>
+        <button class="btn warn" data-act="a-danger" data-key="reset">Fortschritt zurücksetzen</button></div>`;
+    } else {
       out += `<div class="panel"><h3>Teams auslosen</h3>
         <p class="small muted">${n} ${n === 1 ? "Person ist" : "Personen sind"} angemeldet.${st.status === "drawn" ? " Neu auslosen wirft die bestehenden Teams und ihre Codes weg und fragt deshalb noch einmal nach." : ""}</p>
         <div style="display:grid;grid-template-columns:1fr 96px;gap:8px;margin-top:12px">
@@ -548,7 +568,8 @@ function viewAdmin() {
       </table><p class="small muted">„Freischalten“ ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.</p></div>`;
   }
   if (A.tab === "people") {
-    out += `<div class="panel"><div class="bar"><div><span class="count">${(st.participants || []).length}</span> <span class="muted">angemeldet</span></div></div>
+    out += `<div class="panel"><div class="bar"><div><span class="count">${(st.participants || []).length}</span> <span class="muted">angemeldet</span></div>
+      ${(st.participants || []).length ? `<button class="btn sm alt" data-act="a-danger" data-key="people">Alle löschen</button>` : ""}</div>
       <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
       <ul class="names">${(st.participants || []).map(p => `<li>${esc(p.name)}${p.teamName ? ` <span class="small muted">${esc(p.teamName)}</span>` : ""}
         <button class="btn sm alt" style="padding:2px 6px;font-size:13px" data-act="a-danger" data-key="person" data-id="${p.id}" data-name="${esc(p.name)}" title="Diese Person löschen">×</button></li>`).join("")}</ul></div>`;
@@ -595,21 +616,24 @@ function viewAdmin() {
       <p class="small muted" style="margin-top:10px">Gelöschtes lässt sich nicht zurückholen, es gibt keine Sicherung. Jede Aktion hier fragt zweimal nach.</p></div>`;
     const offen = Object.keys(DANGER).filter(k => DANGER[k].when(st));
     out += offen.length
-      ? offen.map(k => `<div class="panel danger"><h3>${esc(DANGER[k].title)}</h3>
-          <p class="small">${esc(DANGER[k].lead)}</p>
-          <p class="small muted">${esc(DANGER[k].keeps)}</p>
+      ? offen.map(k => `<div class="panel danger"><h3>${esc(typeof DANGER[k].title === "function" ? DANGER[k].title(st) : DANGER[k].title)}</h3>
+          <p class="small">${esc(typeof DANGER[k].lead === "function" ? DANGER[k].lead(st) : DANGER[k].lead)}</p>
+          <p class="small muted">${esc(typeof DANGER[k].keeps === "function" ? DANGER[k].keeps(st) : DANGER[k].keeps)}</p>
           <button class="btn warn" data-act="a-danger" data-key="${k}">${esc(DANGER[k].btn)}</button></div>`).join("")
       : `<div class="panel"><p class="muted">Im Moment gibt es nichts zu löschen. Sobald Teams ausgelost sind, stehen hier die Möglichkeiten.</p></div>`;
     out += `<p class="small muted" style="margin-top:12px">Einzelne Personen löschst du im Reiter Teilnehmende über das ×, neu auslosen im Reiter Teams. Beides fragt ebenfalls nach.</p>`;
   }
   if (A.confirm) {
     const D = DANGER[A.confirm.key];
-    const titel = A.confirm.name ? D.title.replace("$NAME", A.confirm.name) : D.title;
-    const lead = A.confirm.name ? D.lead.replace("$NAME", A.confirm.name) : D.lead;
+    const txt = (v) => {
+      const roh = typeof v === "function" ? v(st) : v;
+      return A.confirm.name ? roh.replace("$NAME", A.confirm.name) : roh;
+    };
+    const titel = txt(D.title), lead = txt(D.lead);
     out += `<div class="overlay"><div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlgt">
       <h2 id="dlgt">${esc(titel)}</h2>
       <div class="why">${esc(lead)}</div>
-      <p class="keeps">${esc(A.confirm.name ? D.keeps.replace("$NAME", A.confirm.name) : D.keeps)}</p>
+      <p class="keeps">${esc(txt(D.keeps))}</p>
       ${brauchtWort(A.confirm.key) ? `<div style="margin-top:16px"><label for="dlgword">Tippe <b>${DANGER_WORD}</b>, um es wirklich zu löschen</label>
         <input id="dlgword" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>` : ""}
       <div class="row">

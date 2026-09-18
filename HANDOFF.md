@@ -47,7 +47,7 @@ Bekannte, bewusst akzeptierte Schwächen:
 
 Öffentlich: `public_state`, `register_participant`, `lookup_participant`
 Team: `team_state`, `check_in`, `submit_answer`, `submit_final`, `report_position`
-Admin (alle mit PIN): `admin_state`, `admin_tracks`, `admin_draw`, `admin_start`, `admin_finish`, `admin_reset`, `admin_clear_positions`, `admin_add_participant`, `admin_rename_participant`, `admin_delete_participant`, `admin_save_station`, `admin_unlock_station`, `admin_set_pin`
+Admin (alle mit PIN): `admin_state`, `admin_tracks`, `admin_draw`, `admin_clear_participants`, `admin_start`, `admin_finish`, `admin_reset`, `admin_clear_positions`, `admin_add_participant`, `admin_rename_participant`, `admin_delete_participant`, `admin_save_station`, `admin_unlock_station`, `admin_set_pin`
 
 Hilfsfunktionen ohne Ausführungsrecht für `anon`: `norm`, `dist_m`, `team_by_code`, `current_station`, `require_admin`.
 
@@ -77,6 +77,12 @@ Team. Das sah wie ein Fehler aus, war aber die Regel.
 
 Ist schon ausgelost, fragt das erneute Auslosen über denselben Dialog nach wie
 die Löschaktionen, denn es wirft die bestehenden Teams und ihre Codes weg.
+
+Läuft das Spiel schon oder ist es beendet, lehnt die Datenbank ein Auslosen ab,
+sonst wäre der Fortschritt der Teams nichts mehr wert. Der Reiter Teams zeigt
+dann keinen leeren Bereich, sondern erklärt das und bietet direkt
+„Fortschritt zurücksetzen“ an. Danach steht das Spiel wieder auf `drawn` und
+das Formular ist zurück.
 
 ## Hilfe für die Teilnehmenden
 
@@ -141,7 +147,7 @@ der Auswertung löschen.
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
 Erledigt: Migration ist im Supabase-Projekt eingespielt, Schema und Funktionen stehen, Status `registration`.
-Nachträge 1 bis 4 (`where_clauses`, `routes`, `draw_size`, `tiernamen`) sind am 18.09.2026 eingespielt, geprüft über `pg_proc` und einen Aufruf von `admin_tracks`. Wer die Datenbank neu aufsetzt, spielt sie in dieser Reihenfolge nach der Init-Migration ein: ohne Nachtrag 1 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne Nachtrag 2 fehlen Routen und Zeitachse.
+Nachträge 1 bis 5 (`where_clauses`, `routes`, `draw_size`, `tiernamen`, `anmeldung_leeren`) sind am 18.09.2026 eingespielt, geprüft über `pg_proc` und einen Aufruf von `admin_tracks`. Wer die Datenbank neu aufsetzt, spielt sie in dieser Reihenfolge nach der Init-Migration ein: ohne Nachtrag 1 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne Nachtrag 2 fehlen Routen und Zeitachse.
 GitHub Pages läuft über Actions, erstes Deployment grün.
 
 Wichtig für die Weiterarbeit:
@@ -171,10 +177,18 @@ gestartet ist, neu auslosen. Oben im Kopf stehen nur noch Auslosen, Starten und
 Beenden. Der Reiter zeigt vorher, wie viele Teams, Personen, Positionen und
 gelöste Stationen betroffen sind.
 
+Im Reiter Teilnehmende sitzt zusätzlich „Alle löschen“. Das ruft
+`admin_clear_participants` auf: alle Personen, alle Teams, Fortschritt und
+Standortdaten weg, Status zurück auf `registration`, damit sich wieder jemand
+anmelden kann. Stationen, Rätsel, Ziffern und die PIN bleiben. Praktisch nach
+einem Probelauf mit Testeinträgen.
+
 Jede dieser Aktionen fragt zweimal: erst der Dialog, dann muss das Wort
 `LÖSCHEN` getippt werden, bevor der Knopf überhaupt anklickbar wird. Escape und
-„Abbrechen“ brechen ab. Dasselbe gilt für das × bei den Teilnehmenden, das
-vorher ohne jede Rückfrage gelöscht hat. Neue Löschaktionen gehören in die
+„Abbrechen“ brechen ab. Das × bei einer einzelnen Person fragt ebenfalls nach,
+verlangt aber kein getipptes Wort: eine Person zu streichen ist Routine, und
+der gesperrte Knopf sah dort wie ein Fehler aus. Wer eine Aktion ohne Wort
+anlegen will, setzt `wort: false` im Eintrag. Neue Löschaktionen gehören in die
 Liste `DANGER` in `index.html`, dann bekommen sie den Dialog automatisch.
 
 ## SQL ausführen ohne den Browser
