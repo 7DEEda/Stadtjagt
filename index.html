@@ -22,6 +22,8 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);min-height:100vh}
+body.fest{overflow:hidden}
+/* Karte bleibt stehen: fest am Fenster, nicht am Dokument (auch auf iOS, das background-attachment ignoriert) */
 /* Hintergrund wie eine Wanderkarte: Hoehenlinien, Fluss, Wege, Wegpunkte */
 .topo{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%}
 .topo .c,.topo .c5{fill:none;stroke:var(--contour);stroke-width:1}
@@ -1415,7 +1417,7 @@ const ACT = {
     S.admin.pin = pin; sessionStorage.setItem("sj.pin", pin); S.msg = null;
   },
   "a-tab"(d) { S.admin.tab = d.tab; S.admin.edit = null; S.msg = null; },
-  "a-full"() { S.admin.full = !S.admin.full; $("#map")?.classList.toggle("full"); setTimeout(() => map && map.invalidateSize(), 80); return false; },
+  "a-full"() { S.admin.full = !S.admin.full; $("#map")?.classList.toggle("full"); document.body.classList.toggle("fest", S.admin.full); setTimeout(() => map && map.invalidateSize(), 80); return false; },
   "a-team"(d) {
     const A = S.admin;
     A.hidden[d.id] = !A.hidden[d.id];
@@ -1885,6 +1887,8 @@ async function refresh() {
 function render() {
   const app = $("#app");
   app.className = S.view === "admin" && S.admin.pin ? "wide" : "";
+  // Liegt ein Dialog oder die Hochhalten-Ansicht darüber, scrollt die Seite dahinter nicht mit
+  document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full));
   app.innerHTML = (!cfg.url || !cfg.key) ? viewSetup()
     : S.view === "team" ? viewTeam()
       : S.view === "admin" ? viewAdmin() : viewPublic();
