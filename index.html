@@ -902,7 +902,7 @@ function viewAdmin() {
       <div style="display:flex;gap:8px;flex-wrap:wrap">${DANGER.testdaten.when(st) ? `<button class="btn sm alt" data-act="a-danger" data-key="testdaten">Testdaten entfernen</button>` : ""}
       ${(st.participants || []).length ? `<button class="btn sm alt" data-act="a-danger" data-key="people">Alle löschen</button>` : ""}</div></div>
       <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen" autocapitalize="words"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
-      <div style="margin-top:8px"><input id="asuche" placeholder="Name oder Team suchen" autocomplete="off" value="${esc(A.suche || "")}"></div>
+      <div style="margin-top:8px"><input id="asuche" placeholder="Name oder Team suchen" autocomplete="off" data-enter="none" value="${esc(A.suche || "")}"></div>
       <ul class="names">${(st.participants || []).map(p => `<li data-such="${esc((p.name + " " + (p.teamName || "")).toLowerCase())}" ${treffer(p) ? "" : "hidden"}>${esc(p.name)}${p.teamName ? ` <span class="small muted">${esc(p.teamName)}</span>` : ""}
         <button class="btn sm alt del" data-act="a-danger" data-key="person" data-id="${p.id}" data-name="${esc(p.name)}" title="Diese Person löschen" aria-label="${esc(p.name)} löschen">×</button></li>`).join("")}</ul></div>`;
   }
@@ -1874,8 +1874,13 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && S.admin.confirm) { S.admin.confirm = null; render(); return; }
   if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
   if (e.target.id === "dlgword") { const ok = $("#dlgok"); if (ok && !ok.disabled) ok.click(); return; }
-  const box = e.target.closest(".stack") || e.target.closest(".panel");
-  const btn = box && box.querySelector(".btn[data-act]");
+  // Enter löst den Knopf aus, der zum Feld gehört: erst in der eigenen Zeile, dann in der Karte,
+  // dort lieber den Hauptknopf (orange) als einen Nebenknopf. Nie einen Lösch-Knopf (a-danger):
+  // der steht in der Karte "Teilnehmende" vor dem Hinzufügen.
+  if (e.target.dataset.enter === "none") return;
+  const zeile = e.target.parentElement, box = e.target.closest(".stack") || e.target.closest(".panel");
+  const finde = (el, sel) => el && el.querySelector(sel + ':not([data-act="a-danger"])');
+  const btn = finde(zeile, ".btn[data-act]") || finde(box, ".btn[data-act]:not(.alt)") || finde(box, ".btn[data-act]");
   if (btn && !btn.disabled) btn.click();
 });
 window.addEventListener("hashchange", () => {
