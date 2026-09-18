@@ -57,9 +57,38 @@ Hilfsfunktionen ohne Ausführungsrecht für `anon`: `norm`, `dist_m`, `team_by_c
 - `#/team` – Login per Team-Code, Zahlenschloss, Ortshinweis, Kompass mit Entfernung, Check-in, Rätsel, Endcode
 - `#/admin` – Karte, Teams, Teilnehmende, Stationen, Daten löschen; Auslosen, Starten, Beenden
 
-Jedes Team hat ein Tier-Emoji, passend zum Namen. Die Zuordnung steht als
-`TEAM_EMOJI` in `index.html`, nicht in der Datenbank. Kommt ein Teamname dazu,
-dort ergänzen, sonst erscheint eine Pfote als Platzhalter.
+Jedes Team hat ein Tier-Emoji, passend zum Namen. Die Namen kommen aus
+`admin_draw`, die Emoji aus `TEAM_EMOJI` in `index.html`. Beide Listen müssen
+zusammenpassen, sonst erscheint eine Pfote als Platzhalter. Aktuell: Fuchs,
+Wolf, Eule, Tiger, Panda, Einhorn, Flamingo, Pinguin, Delfin, Adler, Igel,
+Otter, Krake, Biber, Koala, Drache. Alle ohne Umlaute, damit die Team-Codes
+auf jeder Handytastatur leicht zu tippen sind.
+
+## Auslosen
+
+Im Reiter Teams steht ein Formular: entweder Personen pro Team oder Anzahl
+Teams. Darunter steht sofort, was dabei herauskommt, etwa „Ergibt 4 Teams,
+1 mit 4 und 3 mit 3 Personen“. Mehr als 16 Teams gehen nicht, so viele
+Tiernamen gibt es.
+
+Vorher rechnete `admin_draw` die Teamzahl fest als `round(Personen / 10)`.
+Bei 13 Angemeldeten ergibt das 1, also blieb es beim Auslosen immer bei einem
+Team. Das sah wie ein Fehler aus, war aber die Regel.
+
+Ist schon ausgelost, fragt das erneute Auslosen über denselben Dialog nach wie
+die Löschaktionen, denn es wirft die bestehenden Teams und ihre Codes weg.
+
+## Hilfe für die Teilnehmenden
+
+In der öffentlichen Ansicht und in der Team-Ansicht steht ein Knopf, der
+WhatsApp mit einer vorbereiteten Nachricht öffnet. Die Nachricht nennt je nach
+Ansicht Team, Code und aktuelle Station, damit die Spielleitung sofort weiß,
+wer schreibt.
+
+Die Nummer steht in `config.js` unter `support.phone`, international ohne
+Pluszeichen, aus 0151 2345678 wird also `491512345678`. Ohne Nummer erscheint
+kein Knopf. **Die Nummer wird öffentlich**: sie steht im Quelltext der Seite
+und im öffentlichen Repo. Nimm eine, bei der das in Ordnung ist.
 
 ## Routen und Zeitachse
 
@@ -112,7 +141,7 @@ der Auswertung löschen.
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
 Erledigt: Migration ist im Supabase-Projekt eingespielt, Schema und Funktionen stehen, Status `registration`.
-Nachtrag 1 (`20260918150000_where_clauses.sql`) und Nachtrag 2 (`20260918160000_routes.sql`) sind am 18.09.2026 eingespielt, geprüft über `pg_proc` und einen Aufruf von `admin_tracks`. Wer die Datenbank neu aufsetzt, spielt sie in dieser Reihenfolge nach der Init-Migration ein: ohne Nachtrag 1 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne Nachtrag 2 fehlen Routen und Zeitachse.
+Nachträge 1 bis 4 (`where_clauses`, `routes`, `draw_size`, `tiernamen`) sind am 18.09.2026 eingespielt, geprüft über `pg_proc` und einen Aufruf von `admin_tracks`. Wer die Datenbank neu aufsetzt, spielt sie in dieser Reihenfolge nach der Init-Migration ein: ohne Nachtrag 1 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne Nachtrag 2 fehlen Routen und Zeitachse.
 GitHub Pages läuft über Actions, erstes Deployment grün.
 
 Wichtig für die Weiterarbeit:
@@ -124,7 +153,13 @@ Wichtig für die Weiterarbeit:
 - **Das Projekt lag zunächst unter OneDrive.** Wenn es dort noch liegt: nach außerhalb verschieben, OneDrive synchronisiert den `.git`-Ordner mit und erzeugt Konflikte.
 - **Kartenkacheln brauchen einen Referer.** `openstreetmap.org` antwortet auf Anfragen ohne Referer mit einem Sperrbild („Access blocked“) statt mit der Karte. Eine per Doppelklick geöffnete Datei (`file://`) sendet keinen, dort bleibt die Karte also leer. Auf der Live-Seite und über `http://localhost` funktioniert sie. Zum lokalen Testen `python -m http.server` im Projektordner starten, Python ist auf dem Arbeitsrechner vorhanden. Localhost gilt dem Browser außerdem als sicherer Kontext, Standortzugriff geht dort ohne HTTPS.
 - **Jedes UPDATE und DELETE braucht ein WHERE.** Supabase lädt für API-Verbindungen die Erweiterung pg-safeupdate. Ohne WHERE bricht die Funktion mit „UPDATE requires a WHERE clause“ ab, auch innerhalb von security-definer-Funktionen. Für „alle Zeilen“ `where true` schreiben. Tests über eine direkte Datenbankverbindung zeigen das nicht, nur Aufrufe über die API.
-- **Beispieldaten:** `supabase/seed.sql` füllt fünf Berliner Stationen (Brandenburger Tor bis Weltzeituhr) und 100 erfundene Teilnehmende ein, Koffer-Code damit 371955. Nur zum Testen; der Aufräumblock am Ende der Datei entfernt alles wieder.
+- **Hintergrund:** Die Seite liegt auf einer gezeichneten Wanderkarte mit
+  Höhenlinien, Fluss, gestrichelten Wegen und Wegpunkten. Das SVG ist erzeugt,
+  nicht von Hand gesetzt; das Skript dazu liegt nicht im Repo, die Formen sind
+  fest eingebaut. Farben kommen aus den vorhandenen Token, die Klassen heißen
+  `c` und `c5` für Höhenlinien, `w` und `wl` für Wasser, `t` für Wege, `p` für
+  Wegpunkte.
+- **Beispieldaten:** `supabase/seed-stationen-prag.sql` setzt die fünf Prager Stationen (Pulverturm, Astronomische Uhr, Karlsbrücke, Lennon-Mauer, Petřín) mit Koordinaten, Ortshinweisen und Rätseln, Koffer-Code 371955. Rätsel und Antworten sind nach bestem Wissen gesetzt und vor Ort zu prüfen. `supabase/seed-personen.sql` legt 100 erfundene Teilnehmende an, nur zum Proben und nur vor dem Auslosen einspielen.
 
 Offen an dieser Stelle: der Probelauf draußen. Ablauf: Station 1 per „Meinen Standort übernehmen“ setzen, auslosen, starten, mit dem Team-Code einloggen, Standort und Kompass aktivieren, Entfernung und Pfeil beim Gehen prüfen, einchecken, Rätsel lösen, danach die Karte im Admin-Bereich ansehen. Anschließend „Zurücksetzen“, damit der Testfortschritt verschwindet.
 

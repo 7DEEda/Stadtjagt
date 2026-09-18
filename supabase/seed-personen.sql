@@ -1,57 +1,13 @@
 -- ============================================================
---  STADTJAGD – Beispieldaten zum Testen
+--  STADTJAGD – 100 erfundene Teilnehmende zum Testen
 --
---  Fünf Stationen in Berlin-Mitte (Route ca. 3,5 km, Brandenburger Tor
---  bis Alexanderplatz) und 100 erfundene Teilnehmende, damit die Auslosung
---  zehn Teams ergibt. Alle Namen sind ausgedacht.
+--  Nur für Proben. Alle Namen sind ausgedacht. Mehrfach ausführbar,
+--  vorhandene Namen werden übersprungen.
 --
---  Im Supabase SQL-Editor ausführen, solange der Status "registration"
---  ist. Mehrfach ausführbar: Stationen werden überschrieben, vorhandene
---  Namen übersprungen. Zum Entfernen siehe Abschnitt "Aufräumen" unten.
---
---  Ziffern: 3, 7, 1, 9, 5. Summe 25, Einerstelle 5. Koffer-Code 371955.
+--  Nicht auf einem Stand einspielen, auf dem schon ausgelost wurde:
+--  Nachzügler landen sonst in keinem Team. Erst einspielen, dann auslosen.
+--  Die Stationen stehen in seed-stationen-prag.sql.
 -- ============================================================
-
--- ---------- Stationen ----------
-update stations set
-  name = 'Brandenburger Tor',
-  lat = 52.516275, lng = 13.377704, radius_m = 60,
-  location_hint = 'Sucht das Tor, dessen Wagenlenkerin einmal nach Paris entführt wurde und heute wieder nach Osten schaut.',
-  riddle = 'Zählt die Säulen auf der Seite zum Pariser Platz.',
-  answer = '6', digit = 3
-where position = 1;
-
-update stations set
-  name = 'Reichstagsgebäude',
-  lat = 52.518623, lng = 13.376198, radius_m = 80,
-  location_hint = 'Ein Haus mit gläserner Kuppel, in dem seit 1999 wieder das Parlament tagt. Über dem Portal steht, wem es gewidmet ist.',
-  riddle = 'Wie viele Wörter stehen über dem Hauptportal?',
-  answer = '3', digit = 7
-where position = 2;
-
-update stations set
-  name = 'Gendarmenmarkt',
-  lat = 52.513622, lng = 13.392640, radius_m = 60,
-  location_hint = 'Zwei Dome, ein Konzerthaus, dazwischen ein Dichter aus Marbach auf seinem Sockel.',
-  riddle = 'Wie viele Frauenfiguren sitzen am Sockel des Dichters?',
-  answer = '4', digit = 1
-where position = 3;
-
-update stations set
-  name = 'Neptunbrunnen',
-  lat = 52.519437, lng = 13.406781, radius_m = 60,
-  location_hint = 'Ein Meeresgott sitzt auf einer Muschel, vor einem Rathaus, dessen Name seine Farbe verrät.',
-  riddle = 'Wie viele Frauenfiguren sitzen am Beckenrand?',
-  answer = '4', digit = 9
-where position = 4;
-
-update stations set
-  name = 'Weltzeituhr (Koffer)',
-  lat = 52.521180, lng = 13.413330, radius_m = 60,
-  location_hint = 'Auf dem großen Platz, den Fernsehturm im Rücken, zeigt eine Säule die Zeit für die ganze Welt. Hier wartet der Koffer.',
-  riddle = 'In wie viele Felder ist der Ring mit den Städtenamen geteilt?',
-  answer = '24', digit = 5
-where position = 5;
 
 -- ---------- Teilnehmende ----------
 insert into participants (name, name_key)

@@ -40,13 +40,19 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 TOKEN_FILE = pathlib.Path(os.environ.get("USERPROFILE", pathlib.Path.home())) / ".supabase" / "stadtjagt.token"
 API = "https://api.supabase.com/v1/projects/{ref}/database/query"
 
-# Anweisungen, die ohne --force nicht durchgehen
+# Anweisungen, die ohne --force nicht durchgehen: hier gehen Daten verloren
 GEFAEHRLICH = [
-    (r"\bdrop\s+(table|schema|database|function|type|index)\b", "drop"),
+    (r"\bdrop\s+(table|schema|database|materialized\s+view)\b", "tabelle oder schema löschen"),
     (r"\btruncate\b", "truncate"),
     (r"\bdelete\s+from\b(?!.*\bwhere\b)", "delete ohne where"),
     (r"\bupdate\b(?:(?!\bwhere\b).)*?\bset\b(?:(?!\bwhere\b).)*?(?:;|$)", "update ohne where"),
     (r"\balter\s+table\b.*\bdrop\s+column\b", "spalte entfernen"),
+]
+
+# Anweisungen, die auffallen sollen, aber durchgehen: sie ändern nur Definitionen
+WARNUNG = [
+    (r"\bdrop\s+(function|procedure|type|index|trigger|view)\b", "funktion oder index ersetzen"),
+    (r"\brevoke\b", "rechte entziehen"),
 ]
 
 
@@ -101,14 +107,17 @@ def ohne_kommentare(sql: str) -> str:
 def pruefen(sql: str, force: bool) -> None:
     text = ohne_kommentare(sql)
     treffer = [name for muster, name in GEFAEHRLICH if re.search(muster, text, flags=re.S)]
+    hinweis = [name for muster, name in WARNUNG if re.search(muster, text, flags=re.S)]
     if treffer and not force:
         sys.exit(
-            "Abgelehnt. Diese Anweisung greift Daten an: " + ", ".join(sorted(set(treffer))) + ".\n"
+            "Abgelehnt. Hier gehen Daten verloren: " + ", ".join(sorted(set(treffer))) + ".\n"
             "Wenn das wirklich so gewollt ist, noch einmal mit --force aufrufen.\n"
             "Denk dran: die Init-Migration löscht alle Tabellen."
         )
     if treffer:
         print("Achtung, mit --force ausgeführt: " + ", ".join(sorted(set(treffer))), file=sys.stderr)
+    if hinweis:
+        print("Hinweis, geht ohne --force durch: " + ", ".join(sorted(set(hinweis))), file=sys.stderr)
 
 
 def ausfuehren(sql: str, read_only: bool) -> object:
