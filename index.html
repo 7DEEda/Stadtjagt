@@ -762,8 +762,8 @@ function leitungHTML(st) {
     ? `<div class="panel"><h3>Leitung abgeben</h3>
         <p class="small muted">Die neue Leitung loggt sich mit demselben Team-Code ein. Danach kannst du dich hier abmelden.</p>
         <div style="margin-top:12px"><label for="tneu">Neue Teamleitung</label><select id="tneu">${andere.map(m => `<option>${esc(m)}</option>`).join("")}</select></div>
-        <div class="row2"><button class="btn alt" data-act="t-abgeben-nein">Abbrechen</button><button class="btn" data-act="t-abgeben">Leitung übergeben</button></div></div>`
-    : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-abgeben-frage">Leitung abgeben</button></p>`);
+        <div class="row2"><button class="btn alt" data-act="t-abgeben-nein">Abbrechen</button><button class="btn" data-act="t-abgeben">Leitung übergeben</button></div>${msgBox("abgeben")}</div>`
+    : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-abgeben-frage">Leitung abgeben</button></p>${msgBox("abgeben")}`);
 }
 // Abmelden ist selten gewollt: kleiner Link, dann eine Rückfrage
 function abmeldenHTML() {
@@ -873,7 +873,7 @@ function viewAdmin() {
       ${reihe.map(t => `<tr><td><b>${teamEmoji(t.name)} ${esc(t.name)}</b><br><span class="small muted">${t.memberCount} Pers., Leitung</span><br>
           <select class="sm" data-chg="a-leader" data-id="${t.id}" aria-label="Teamleitung von Team ${esc(t.name)}">
             ${!t.leaderId ? `<option value="" selected>offen</option>` : ""}
-            ${(st.participants || []).filter(p => p.teamId === t.id).map(p => `<option value="${p.id}" ${p.id === t.leaderId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}
+            ${(st.participants || []).filter(p => p.teamId === t.id).map(p => `<option value="${esc(p.id)}" ${p.id === t.leaderId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}
           </select></td>
         <td class="small" style="white-space:nowrap">${esc(t.code)}<br>${t.readToken ? `<button class="btn sm alt" style="margin-top:6px" data-act="a-mit" data-token="${esc(t.readToken)}" data-name="${esc(t.name)}">Mitlese-Link</button>` : ""}</td>
         <td><div class="prog"><span style="width:${(t.solved / Math.max(1, (st.stations || []).length)) * 100}%"></span></div>
@@ -1318,11 +1318,15 @@ const ACT = {
   },
   "t-abgeben-frage"() { S.team.abgeben = true; S.msg = null; },
   "t-abgeben-nein"() { S.team.abgeben = false; S.msg = null; },
+  // Die Rückmeldung gehört unter das Abgeben-Feld (ort "abgeben"): das steht in jeder Phase,
+  // die allgemeine Meldung nur an Station, Rätsel und Koffer
   async "t-abgeben"() {
     const name = val("tneu");
-    S.team.state = await rpc("team_set_leader", { p_code: S.team.code, p_name: name });
-    S.team.abgeben = false;
-    S.msg = { type: "ok", text: `${vorname(name)} ist jetzt Teamleitung. Gib ${vorname(name)} den Team-Code ${S.team.state.team.code} zum Einloggen. Danach kannst du dich hier abmelden.` };
+    try {
+      S.team.state = await rpc("team_set_leader", { p_code: S.team.code, p_name: name });
+      S.team.abgeben = false;
+      S.msg = { type: "ok", ort: "abgeben", text: `${vorname(name)} ist jetzt Teamleitung. Gib ${vorname(name)} den Team-Code ${S.team.state.team.code} zum Einloggen. Danach kannst du dich hier abmelden.` };
+    } catch (e) { S.msg = { type: "err", ort: "abgeben", text: e.message || "Etwas ist schiefgelaufen." }; }
   },
   "t-gps"() { startGps(); },
   "t-kal"() { kalStart(); },
@@ -1726,7 +1730,9 @@ async function mitlesen() {
 function mitLinkPruefen() {
   const m = location.hash.match(/^#\/mit\/([0-9a-f]{32})$/i);
   if (!m) return false;
-  localStorage.setItem("sj.mit", m[1].toLowerCase());
+  // Läuft beim Start vor refresh(): ein gesperrter Speicher (privates Fenster, Geräterichtlinie)
+  // darf höchstens das Mitlesen kosten, nicht die ganze Seite
+  try { localStorage.setItem("sj.mit", m[1].toLowerCase()); } catch { /* dann eben nicht gemerkt */ }
   history.replaceState(null, "", location.pathname + location.search + "#/public");
   S.view = "public"; S.mit = null;
   return true;
@@ -1877,7 +1883,8 @@ window.addEventListener("hashchange", () => {
 document.addEventListener("change", async e => {
   const s = e.target.closest("select[data-chg]"); if (!s) return;
   const fn = ACT[s.dataset.chg]; if (!fn) return;
-  try { if (await fn({ id: s.dataset.id, value: s.value }) !== false) render(); }
+  s.disabled = true;   // kein zweiter Wechsel, solange der erste unterwegs ist
+  try { if (await fn({ id: s.dataset.id, value: s.value }) !== false) render(); else s.disabled = false; }
   catch (err) { S.msg = { type: "err", text: err.message || "Etwas ist schiefgelaufen." }; render(); }
 });
 // Denkpause sekundengenau herunterzählen, am Ende das Feld wieder freigeben
@@ -1887,7 +1894,7 @@ setInterval(() => {
 }, 1000);
 setInterval(() => {
   if (document.hidden) return;
-  const busyTyping = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
+  const busyTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
   if (S.view === "admin" && S.admin.pin) {
     rpc("admin_state", { p_pin: S.admin.pin }).then(s => {
       S.admin.state = s;

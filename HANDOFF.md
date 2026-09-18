@@ -58,6 +58,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260919020000_anmeldung_bis_auslosen.sql  Selbstanmeldung wieder nur bis zum Auslosen
   20260919030000_wasserdicht.sql  Koffer-Code nur am Ziel, Fortsetzen, Rätsel werten, mehrere Lösungen, Testdaten entfernen
   20260919040000_leitung_und_mitlesen.sql  Teamleitung zuweisen und abgeben, Mitlese-Link je Team
+  20260919050000_review.sql       name_key nachgezogen, Fehlversuche unter Zeilensperre (Code-Review)
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -592,6 +593,26 @@ der Spielleitung (Konstante `START` in `index.html`, nicht in der Datenbank).
 Getestet lokal (`test_leitung.py`, 18 Prüfungen) und im Browser: Link öffnen
 auf einem fremden Handy zeigt das Team, Leitung abgeben, Leitung im Admin
 wählen, Mitlese-Link kopieren, Haus auf der Karte.
+
+## Code-Review (19.09.2026)
+
+Drei Prüfer (JavaScript, Datenbank, Sicherheit) über die Nachträge 13 und 14
+und die UI-Runde. Sicherheit: nichts über die in SPIEL.md dokumentierten
+Lücken hinaus. Behoben (Nachtrag 15 und `index.html`):
+
+- Rückmeldung nach „Leitung abgeben“ war vor dem Start, im Ziel und nach dem
+  Ende unsichtbar (die Phase hatte keinen `msgBox()`); jetzt eigener Ort
+  `abgeben` direkt unter dem Feld, auch für Fehler.
+- `mitLinkPruefen()` lief beim Start ungeschützt: ein gesperrter
+  `localStorage` (privates Fenster) hätte die Seite leer gelassen. Jetzt
+  `try/catch`.
+- Auswahlfelder: die 10-s-Abfrage zeichnete auch bei offenem `<select>` neu
+  (`SELECT` zählt jetzt als „tippt gerade“), und das Feld ist gesperrt,
+  solange der Wechsel unterwegs ist.
+- `norm()`-Änderung aus Nachtrag 13 ohne Nachzug von `participants.name_key`
+  (live wich keine Zeile ab, die Supabase-Locale faltet `lower()` korrekt).
+- `submit_answer` zählt Fehlversuche jetzt unter Zeilensperre (`for update`),
+  zwei gleichzeitige Falschantworten konnten sonst denselben Stand lesen.
 
 ## UI-Runde (19.09.2026)
 
