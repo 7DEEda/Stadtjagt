@@ -274,6 +274,11 @@ const TEAM_EMOJI = {
   flamingo: "🦩", pinguin: "🐧", delfin: "🐬", adler: "🦅", igel: "🦔", otter: "🦦",
   krake: "🐙", biber: "🦫", koala: "🐨", drache: "🐉"
 };
+// Plätze mit Koffer: 1 bis 3 als Medaille, weitere Koffer-Plätze mit Koffer, danach die Zahl
+const MEDAILLE = ["🥇", "🥈", "🥉"];
+const platzZeichen = (place, prizes) => !place ? ""
+  : place <= prizes ? (MEDAILLE[place - 1] || "🧳 " + place) : String(place);
+const uhrzeit = ts => ts ? new Date(ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
 const teamEmoji = name => TEAM_EMOJI[String(name || "").trim().toLowerCase()] || "🐾";
 
 /* ---------- Löschbereich ---------- */
@@ -398,11 +403,15 @@ function viewPublic() {
     return out + nav();
   }
 
-  if (p.winnerTeamId) {
-    const w = (p.teams || []).find(t => t.id === p.winnerTeamId);
-    out += `<div class="panel"><h2>${teamEmoji(w && w.name)} Team ${esc(w ? w.name : "?")} hat den Koffer geöffnet</h2>
-      <table><tr><th>Platz</th><th>Team</th><th>Stationen</th></tr>
-      ${(p.ranking || []).map((r, i) => `<tr><td>${i + 1}</td><td>${teamEmoji(r.teamName)} ${esc(r.teamName)}</td><td>${r.solved} / ${p.stationCount}</td></tr>`).join("")}</table></div>`;
+  const ziel = (p.ranking || []).filter(r => r.place), vorbei = p.status === "finished";
+  if (vorbei || ziel.length) {
+    const prizes = p.prizeCount ?? 3;
+    out += `<div class="panel"><h2>${vorbei ? "Rangliste" : "Zieleinlauf"}</h2>
+      ${vorbei ? "" : `<p class="small muted">Das Spiel läuft noch. Jedes Team erscheint hier, sobald es den Koffer-Code eingegeben hat.</p>`}
+      <table><tr><th>Platz</th><th>Team</th><th>${vorbei ? "Stand" : "Im Ziel"}</th></tr>
+      ${(vorbei ? p.ranking || [] : ziel).map(r => `<tr><td style="white-space:nowrap">${r.place ? platzZeichen(r.place, prizes) : "-"}</td>
+        <td>${teamEmoji(r.teamName)} ${esc(r.teamName)}</td>
+        <td style="white-space:nowrap">${r.place ? (vorbei ? "im Ziel " : "") + uhrzeit(r.finishedAt) : r.solved + " / " + p.stationCount}</td></tr>`).join("")}</table></div>`;
   }
   const t = S.lookup;
   if (t) out += `<div class="panel"><p class="muted small">Gefundenes Team</p><h2>${teamEmoji(t.name)} Team ${esc(t.name)}</h2>
@@ -499,16 +508,26 @@ function viewTeam() {
   out += `<div class="panel">${lockHTML(st)}${routeHTML(st)}
     <p class="small muted" style="text-align:center">Die 6. Ziffer ist die Einerstelle der Summe eurer fünf Ziffern.</p></div>`;
 
-  if (st.isWinner) return out + `<div class="panel" style="text-align:center"><h2>Ihr habt gewonnen</h2>
-    <p>Zeigt diesen Bildschirm der Spielleitung am Koffer.</p></div>`
-    + helpBtn(`Stadtjagd: Team ${st.team.name} (${st.team.code}) hat den Koffer-Code.`) + nav();
-  if (st.winnerTeamId) return out + `<div class="panel"><h2>Ein anderes Team war schneller</h2>
-    <p>Kommt zum Koffer, dort gibt es die Auflösung.</p></div>` + nav();
+  if (st.place) {
+    const koffer = st.place <= st.prizeCount;
+    return out + `<div class="panel" style="text-align:center">
+      <div style="font-size:56px;line-height:1.1">${koffer ? platzZeichen(st.place, st.prizeCount) : "🏁"}</div>
+      <h2>Platz ${st.place}</h2>
+      <p>${koffer ? "Ihr habt einen Koffer gewonnen. Zeigt diesen Bildschirm der Spielleitung am Koffer."
+        : "Ihr seid im Ziel. Die Koffer sind schon vergeben, euer Platz steht in der Rangliste."}</p></div>`
+      + (koffer ? helpBtn(`Stadtjagd: Team ${st.team.name} (${st.team.code}) hat Platz ${st.place}.`) : "") + nav();
+  }
+  if (st.status === "finished") return out + `<div class="panel"><h2>Das Spiel ist vorbei</h2>
+    <p>Die Spielleitung hat das Spiel beendet. Die Rangliste steht auf der Anmeldeseite.</p></div>` + nav();
 
   if (st.allSolved) {
-    out += `<div class="panel"><h2>Der Koffer</h2><p class="hint">${esc(st.caseHint || "")}</p>
+    const left = st.prizesLeft ?? 0;
+    out += `<div class="panel"><h2>Die Koffer</h2><p class="hint">${esc(st.caseHint || "")}</p>
+      <p class="small ${left ? "" : "muted"}" style="margin-top:8px">${left
+        ? `Noch ${left} von ${st.prizeCount} Koffern zu vergeben. Es zählt, wer den Code zuerst eingibt.`
+        : "Alle Koffer sind vergeben. Gebt den Code trotzdem ein, dann steht ihr mit Platz in der Rangliste."}</p>
       <div style="margin-top:12px"><label for="tfin">Koffer-Code, 6 Stellen</label><input id="tfin" inputmode="numeric" maxlength="6"></div>
-      <button class="btn" data-act="t-final" ${S.busy ? "disabled" : ""}>Koffer öffnen</button>${msgBox()}</div>`;
+      <button class="btn" data-act="t-final" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Code eingeben"}</button>${msgBox()}</div>`;
     return out + nav();
   }
 
@@ -569,7 +588,7 @@ function viewAdmin() {
   const st = A.state;
   if (!st) return brand("Spielleitung") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
 
-  const status = st.winnerTeamId ? '<span class="chip">Beendet</span>'
+  const status = st.status === "finished" ? '<span class="chip">Beendet</span>'
     : st.status === "running" ? '<span class="chip live">Läuft</span>'
       : st.status === "drawn" ? '<span class="chip">Teams ausgelost</span>' : '<span class="chip">Anmeldung offen</span>';
   let actions = "";
@@ -634,7 +653,8 @@ function viewAdmin() {
       ${(st.teams || []).map(t => `<tr><td><b>${teamEmoji(t.name)} ${esc(t.name)}</b><br><span class="small muted">Leitung ${esc(t.leaderName || "offen")}, ${t.memberCount} Pers.</span></td>
         <td class="small">${esc(t.code)}</td>
         <td><div class="prog"><span style="width:${(t.solved / Math.max(1, (st.stations || []).length)) * 100}%"></span></div>
-          <span class="small muted">${t.solved} / ${(st.stations || []).length}, ${ago(t.lastActivity)}</span></td>
+          <span class="small muted">${t.solved} / ${(st.stations || []).length}, ${ago(t.lastActivity)}</span>
+          ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}</td>
         <td>${st.status === "running" && t.currentPosition ? `<button class="btn sm alt" data-act="a-unlock" data-id="${t.id}">Freischalten</button>` : ""}</td></tr>`).join("")}
       </table><p class="small muted">„Freischalten“ ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.</p></div>`;
   }
@@ -672,7 +692,8 @@ function viewAdmin() {
             Koordinaten: ${s.lat != null ? Number(s.lat).toFixed(5) + ", " + Number(s.lng).toFixed(5) : "fehlen noch"}</p></div>
           <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
         </div>`).join("")}
-      <p class="small" style="border-top:1px solid var(--line);padding-top:12px">Koffer-Code: <b>${esc(st.caseCode || "")}</b></p></div>`;
+      <p class="small" style="border-top:1px solid var(--line);padding-top:12px">Koffer-Code: <b style="white-space:nowrap">${esc(st.caseCode || "")}</b>, gilt für alle ${st.prizeCount ?? 3} Koffer.
+        Die Reihenfolge der Koffer ergibt sich aus dem Platz in der App.</p></div>`;
   }
   if (A.tab === "danger") {
     const teams = st.teams || [], people = st.participants || [];
@@ -901,7 +922,10 @@ function renderTimeline() {
     });
     const last = r.sts[r.sts.length - 1];
     if (!r.finish && (!last || last.okAt)) segs += `<span class="seg" style="left:${pct(prev)}%;width:${pct(end) - pct(prev)}%;opacity:.5"></span>`;
-    if (r.finish && st.winnerTeamId === r.t.id) segs += `<span class="win" style="left:${pct(r.finish)}%">Koffer</span>`;
+    if (r.finish && r.t.place) {
+      const bei = r.t.finishedAt ? new Date(r.t.finishedAt).getTime() : r.finish, pz = st.prizeCount ?? 3;
+      segs += `<span class="win" style="left:${pct(bei)}%">${r.t.place <= pz ? platzZeichen(r.t.place, pz) + " Koffer" : "Platz " + r.t.place}</span>`;
+    }
     const note = r.finish ? `${fmtDur(r.finish - start)}<small>${r.solved} Ziffern</small>`
       : `<small style="font-size:14px;color:var(--ink)">${W.status === "finished" ? "nicht fertig" : "unterwegs"}</small><small>${r.solved} von ${total} Ziffern</small>`;
     html += `<div class="tl-row ${A.hidden[r.t.id] ? "off" : ""}" data-act="a-team" data-id="${r.t.id}">
@@ -987,7 +1011,7 @@ const ACT = {
   },
   async "t-final"() {
     const r = await rpc("submit_final", { p_code: S.team.code, p_value: val("tfin") });
-    S.team.state = r.state; S.msg = { type: r.won ? "ok" : "err", text: r.message };
+    S.team.state = r.state; S.msg = { type: r.ok ? "ok" : "err", text: r.message };
   },
   async "a-login"() {
     const pin = val("apin");

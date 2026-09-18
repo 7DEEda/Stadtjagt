@@ -4,15 +4,16 @@ Digital geführtes Geocaching für die TSE-Teamfahrt in **Prag**. Die Teilnehmen
 melden sich per Link an, werden per Knopfdruck in Teams ausgelost und laufen
 dieselbe Route mit fünf Stationen ab. Jede Station gibt nach GPS-Check-in und
 gelöstem Rätsel eine Ziffer frei. Die sechste Ziffer ist die Einerstelle der
-Summe der fünf. Das erste Team, das den vollständigen Code eingibt, öffnet den
-Koffer und gewinnt.
+Summe der fünf. Am Ziel stehen drei Koffer mit absteigendem Preisgeld: die
+ersten drei Teams, die den vollständigen Code eingeben, bekommen Platz 1 bis 3
+und je einen Koffer. Alle anderen laufen weiter und kommen mit Platz ins Ziel.
 
 **Stand 18.09.2026:** Live auf GitHub Pages, Datenbank eingerichtet, Nachträge 1
-bis 5 eingespielt. **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
+bis 6 eingespielt (6: drei Koffer, siehe „Drei Koffer“). **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
 Holešovice, dann Planetarium, Rudolfstollen, Wasserturm Letná, Bergstation der
 Křižík-Seilbahn, Metronom (siehe „Route“). Die Orte stehen in
 `supabase/seed-stationen-prag.sql` und seit 18.09.2026 auch in der Datenbank,
-mit Platzhaltern statt Rätseln. Offen sind Rätsel und Ortshinweise, der Ort des Koffers, der
+mit Platzhaltern statt Rätseln. Offen sind Rätsel und Ortshinweise, der
 Praxistest draußen und die WhatsApp-Nummer für den Hilfe-Knopf.
 
 ## Stack und Aufbau
@@ -43,6 +44,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260918170000_draw_size.sql    Auslosen mit Teamgröße oder Teamzahl
   20260918180000_tiernamen.sql    Tiernamen mit Emoji, ohne Umlaute
   20260918190000_anmeldung_leeren.sql  alle Teilnehmenden auf einmal löschen
+  20260918200000_drei_koffer.sql  Plätze 1 bis 3 statt eines Siegers
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -65,9 +67,11 @@ Das ist der Kern, hier bitte nichts aufweichen:
 - Lösungen, Ziffern und der Koffercode verlassen die Datenbank nie. Der
   Rätseltext wird erst nach erfolgreichem Check-in ausgeliefert, eine Ziffer
   erst nach richtiger Antwort.
-- Der Sieger wird atomar gesetzt: `update game_state ... where id = 1 and
-  winner_team_id is null`. Zwei gleichzeitige Eingaben können nicht zu zwei
-  Siegern führen.
+- Plätze werden atomar vergeben: `submit_final` sperrt die Zeile in
+  `game_state` (`for update`), gleichzeitige Eingaben warten also
+  hintereinander, und `finishes.place` ist zusätzlich `unique`. Zwei Teams
+  können nie denselben Platz bekommen. Geprüft mit zehn gleichzeitigen
+  Eingaben, siehe „Drei Koffer“.
 - Die Admin-PIN wird serverseitig in `require_admin()` geprüft, nicht im Browser.
 - Team-Codes bestehen aus Tiername und vier Ziffern (`FUCHS-4711`) und stehen
   **nicht** in der öffentlichen Antwort.
@@ -92,8 +96,11 @@ Bekannte, bewusst akzeptierte Schwächen:
   `failed_attempts`, `locked_until`
 - `team_positions` – letzte bekannte Position je Team
 - `position_log` – jeder gemeldete Punkt, daraus entstehen die Routen
+- `finishes` – je Team `place` (unique) und `finished_at`, entsteht beim
+  richtigen Koffer-Code, verschwindet mit dem Team (`on delete cascade`)
 - `game_state` – Einzelzeile mit `status` (`registration` → `drawn` → `running`
-  → `finished`), `winner_team_id`, `admin_pin`
+  → `finished`), `winner_team_id` (Platz 1), `prize_count` (Zahl der Koffer,
+  Vorgabe 3), `admin_pin`
 
 ## RPC-Endpunkte
 
@@ -165,6 +172,40 @@ Hintergrund-Variante B zeigt noch die alte Altstadt-Route. Für die neue muss de
 Ausschnitt nach Norden wandern (Mitte etwa 50.100, 14.4235), dafür die OSM-Daten
 mit einem Rahmen bis etwa 50.132 neu laden und die Stationen in
 `tools/hintergrund/hintergrund.py` tauschen.
+
+## Drei Koffer
+
+Seit Nachtrag 6 gibt es statt eines Siegers Plätze. `game_state.prize_count`
+sagt, wie viele Koffer es gibt (Vorgabe 3, ändern per SQL). Alle Koffer haben
+denselben Code aus den Ziffern; wer welchen bekommt, entscheidet der Platz in
+der App. Deshalb steht jemand von der Spielleitung bei den Koffern und gibt den
+passenden erst frei, wenn das Team den Platz-Bildschirm zeigt.
+
+- **Code richtig:** `submit_final` vergibt den nächsten freien Platz. Wer ihn
+  noch einmal eingibt, behält seinen Platz. Platz 1 steht zusätzlich in
+  `winner_team_id`, damit Bestehendes nicht bricht.
+- **Das Spiel läuft weiter**, auch nach dem dritten Koffer. Die übrigen Teams
+  kommen mit Platz ins Ziel. Früher sprang das Spiel beim ersten richtigen
+  Code auf `finished`, und alle anderen sahen „Ein anderes Team war schneller“.
+- **Spiel beenden** bleibt bei der Spielleitung. Danach nimmt `submit_final`
+  keine Codes mehr an; wer bis dahin nicht im Ziel war, steht in der
+  Rangliste nach gelösten Stationen.
+- **Anzeige:** Die Team-Ansicht zeigt vor der Eingabe, wie viele Koffer noch
+  übrig sind, danach Platz und Medaille (🥇🥈🥉) oder 🏁 ab Platz 4. Die
+  öffentliche Seite zeigt während des Spiels live den „Zieleinlauf“, nach dem
+  Ende die Rangliste. Im Admin-Bereich stehen Platz und Uhrzeit bei den Teams
+  und in der Zeitachse.
+- **Zurücksetzen:** „Spiel starten“ und „Fortschritt zurücksetzen“ leeren die
+  Plätze. Auslosen und „Alle löschen“ löschen die Teams, die Plätze gehen mit.
+
+Getestet am 18.09.2026 gegen ein lokales PostgreSQL 15 mit allen Migrationen:
+26 Prüfungen, darunter falscher Code, doppelte Eingabe, Platz 4 ohne Koffer,
+Eingabe nach dem Beenden, Zurücksetzen, ein erzwungener Wettlauf (Team B
+wartet nachweislich, bis A fertig ist, und bekommt Platz 2) und zehn Teams
+gleichzeitig (Plätze 1 bis 10 je genau einmal). Dazu die Oberfläche im Browser
+über eine lokale Nachbildung der Supabase-Schnittstelle. Nach dem Einspielen
+live geprüft: `public_state` liefert `prizeCount` und Plätze, `finishes` ist
+für `anon` gesperrt. Die Testskripte liegen nicht im Repo.
 
 ## Hintergrund: neue Varianten (offen)
 
@@ -378,7 +419,7 @@ wird, und nach der Auswertung löschen.
 | Publishable key | `sb_publishable_7uEQEkFwi27XJdGLSoso5w_TMxHJYUq` (steht in `config.js`, darf öffentlich sein) |
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
-Init-Migration und Nachträge 1 bis 5 sind eingespielt, geprüft über `pg_proc`
+Init-Migration und Nachträge 1 bis 6 sind eingespielt, geprüft über `pg_proc`
 und Aufrufe der Endpunkte. Wer die Datenbank neu aufsetzt, spielt sie in der
 Reihenfolge ein, in der sie unter „Alle Dateien“ stehen: ohne Nachtrag 1
 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne
@@ -472,7 +513,8 @@ oder einen Tunnel.
 
 1. **Vorher:** Route ablaufen, jede Station im Reiter Stationen prüfen, Rätsel
    und Antworten vor Ort bestätigen, notfalls „Meinen Standort übernehmen“
-   drücken. Koffer auf den Code aus dem Reiter Stationen stellen.
+   drücken. Alle drei Koffer auf den Code aus dem Reiter Stationen stellen und
+   an die letzte Station bringen.
 2. **Vorher:** Support-Nummer in `config.js` eintragen und pushen.
 3. Anmeldelink verteilen, Teilnehmende tragen sich ein.
 4. Vor dem Start: Testeinträge über „Alle löschen“ im Reiter Teilnehmende
@@ -482,9 +524,12 @@ oder einen Tunnel.
 6. „Spiel starten“, danach die Karte offen lassen.
 7. Wenn ein Team hängt: „Freischalten“ im Reiter Teams ersetzt den Check-in, das
    Rätsel bleibt.
-8. Nach dem Sieg: „Spiel beenden“. Die Rangliste erscheint öffentlich, die
-   Routen bleiben zum Auswerten erhalten.
-9. **Danach:** Zeitachse und Routen ansehen, dann „Standortdaten löschen“.
+8. An den Koffern: Jedes Team zeigt seinen Platz-Bildschirm, die Aufsicht
+   gibt Koffer 1, 2 oder 3 frei. Der Zieleinlauf steht live auf der
+   Anmeldeseite.
+9. Wenn alle da sind oder die Zeit um ist: „Spiel beenden“. Die Rangliste
+   erscheint öffentlich, die Routen bleiben zum Auswerten erhalten.
+10. **Danach:** Zeitachse und Routen ansehen, dann „Standortdaten löschen“.
 
 ## Offene Punkte
 
@@ -495,7 +540,6 @@ oder einen Tunnel.
   zurücksetzen“.
 - **Rätsel und Ortshinweise** für die neue Route ausdenken, dann vor Ort
   prüfen: nur dort lösbar, etwa über Jahreszahlen, Inschriften oder Zählaufgaben.
-- **Koffer:** Wo steht er? Der Ortshinweis der Station 5 führt am Ende dorthin.
 - **Kompass auf dem iPhone 17 Pro:** Ursache gefunden, siehe GPS und Kompass.
   Der Sensor meldet ±74° Unsicherheit und einen eingefrorenen Wert. Die App
   erkennt das jetzt und weicht auf die Laufrichtung aus. Ob das Gerät nach
@@ -508,8 +552,8 @@ oder einen Tunnel.
   Bericht kamen dort vom still liegenden Handy. Beim Pro deshalb erneut testen
   und sich dabei einmal im Kreis drehen.
 - **WhatsApp-Nummer** fehlt in `config.js`, deshalb erscheint kein Hilfe-Knopf.
-- Am Koffer sollte jemand von der Spielleitung stehen und erst nach dem Signal
-  der App öffnen lassen.
+- An den Koffern muss jemand von der Spielleitung stehen: alle drei haben
+  denselben Code, erst der Platz-Bildschirm entscheidet, welcher Koffer dran ist.
 - Optional: Startreihenfolge versetzen, Team-Chat, Fotoaufgaben.
 
 ## Historie und Entscheidungen
