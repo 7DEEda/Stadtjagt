@@ -158,12 +158,13 @@ select.sm{width:auto;max-width:100%;font-size:14px;padding:6px 8px;margin-top:4p
 .teamkarte .kreis{cursor:pointer;transition:transform .16s cubic-bezier(.32,.72,.4,1)}
 .teamkarte .kreis:active{transform:scale(.96)}
 .teamkarte .names{text-align:left;margin-top:14px}
-.hochhalten{position:fixed;inset:0;z-index:120;background:var(--c);display:flex;flex-direction:column;align-items:center;
+.hochhalten{position:fixed;inset:0;z-index:1200;background:var(--c);display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:8px;color:#fff;cursor:pointer;padding:16px;animation:ovin .16s cubic-bezier(.32,.72,.4,1)}
 .hochhalten .riesig{font-size:min(68vw,52vh);line-height:1.05}
 .hochhalten b{font:700 46px var(--head);text-shadow:0 1px 4px rgba(0,0,0,.4)}
 .hochhalten small{font:500 16px var(--body);opacity:.92;text-shadow:0 1px 3px rgba(0,0,0,.4)}
-.overlay{position:fixed;inset:0;z-index:100;background:rgba(17,17,17,.45);display:grid;place-items:center;padding:16px;animation:ovin .16s cubic-bezier(.32,.72,.4,1)}
+/* über Leaflet (Ebenen bis 1000), sonst deckt die Karte den Dialog ab */
+.overlay{position:fixed;inset:0;z-index:1100;background:rgba(17,17,17,.45);display:grid;place-items:center;padding:16px;animation:ovin .16s cubic-bezier(.32,.72,.4,1)}
 .dialog{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;width:100%;max-width:430px;box-shadow:0 12px 32px rgba(17,17,17,.28),0 2px 6px rgba(17,17,17,.12);animation:dgin .16s cubic-bezier(.32,.72,.4,1)}
 .dialog h2{color:var(--err)}
 .dialog .why{background:var(--err-bg);color:var(--err);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:15px}
