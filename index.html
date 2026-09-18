@@ -90,6 +90,7 @@ ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
 .chip{display:inline-block;padding:4px 10px;border-radius:99px;font:600 13px var(--body);background:var(--paper);border:1px solid var(--line)}
 .chip.live{background:var(--flag);color:var(--flag-ink);border-color:var(--flag)}
+.chip.test{background:var(--err-bg);color:var(--err);border-color:var(--err);margin-left:6px}
 table{width:100%;border-collapse:collapse;font-size:15px}
 td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 th{font:600 14px var(--body);color:var(--muted)}
@@ -500,6 +501,8 @@ function viewTeam() {
   let out = `<div class="bar"><div>${FLAG}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
     <div class="muted small">${esc(st.team.code)}, Leitung ${esc(st.team.leaderName || "offen")}</div></div></div>`;
 
+  if (st.testMode) out += `<div class="msg err">Testmodus: Entfernung und Antworten werden nicht geprüft.</div>`;
+
   if (st.status === "drawn") return out + `<div class="panel"><h3>Ihr seid startklar</h3>
     <p>Alle Teams starten gleichzeitig. Wartet auf das Signal der Spielleitung.</p>
     <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>`
@@ -558,7 +561,7 @@ function viewTeam() {
       ${g.on && g.kompass === "kalibrieren" && !kalOk ? `<div class="msg err">Der Kompass ist ungenau.
         Schwenkt das Handy ein paar Mal in einer liegenden Acht, dann fängt sich der Pfeil.
         <button class="btn alt" data-act="t-kal">Jetzt einmessen</button></div>` : ""}
-      <button class="btn" data-act="t-check" ${S.busy || !hasTarget || !g.pos ? "disabled" : ""}>Wir sind da</button>
+      <button class="btn" data-act="t-check" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>Wir sind da</button>
       ${msgBox()}
       ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
       ${kompassDa() && (g.kompass !== "kalibrieren" || kalOk) ? `<button class="link" data-act="t-kal">Kompass neu einmessen</button>` : ""}`;
@@ -570,7 +573,8 @@ function viewTeam() {
       <p class="riddle" style="margin-top:8px">${esc(s.riddle || "")}</p>
       <div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans"></div>
       <button class="btn" data-act="t-answer" ${S.busy ? "disabled" : ""}>Antwort prüfen</button>
-      ${msgBox()}<p class="small muted">Fehlversuche: ${st.failedAttempts}/3, danach 2 Minuten Pause.</p></div>`;
+      ${msgBox()}<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
+        : `Fehlversuche: ${st.failedAttempts}/3, danach 2 Minuten Pause.`}</p></div>`;
   }
   out += `<p class="small muted" style="text-align:center;margin-top:12px">Mitglieder: ${(st.team.members || []).map(esc).join(", ")}</p>`;
   out += helpBtn(`Stadtjagd: Hier ist Team ${st.team.name} (${st.team.code}). `
@@ -597,7 +601,7 @@ function viewAdmin() {
   if (st.status === "drawn") actions += `<button class="btn sm" data-act="a-start">Spiel starten</button>`;
   if (st.status === "running") actions += `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
 
-  let out = `<div class="bar"><div class="brand" style="margin:0">${FLAG}<div><h1>Spielleitung</h1><div>${status}</div></div></div><div>${actions}</div></div>${msgBox()}`;
+  let out = `<div class="bar"><div class="brand" style="margin:0">${FLAG}<div><h1>Spielleitung</h1><div>${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}</div></div></div><div>${actions}</div></div>${msgBox()}`;
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
   if (missing.length) out += `<div class="msg err">Ohne Koordinaten kann dort niemand einchecken. Betroffen: Station ${missing.map(s => s.position).join(", ")}.</div>`;
 
@@ -666,6 +670,10 @@ function viewAdmin() {
         <button class="btn sm alt" style="padding:2px 6px;font-size:13px" data-act="a-danger" data-key="person" data-id="${p.id}" data-name="${esc(p.name)}" title="Diese Person löschen">×</button></li>`).join("")}</ul></div>`;
   }
   if (A.tab === "stations") {
+    out += `<div class="panel ${st.testMode ? "danger" : ""}"><h3>Testmodus</h3>
+      <p class="small muted">Zum Durchklicken ohne hinzulaufen: Check-in ohne Entfernungsprüfung, auch ohne GPS,
+      und jede Antwort zählt. Den Koffer-Code prüft die App weiter. Vor dem Event unbedingt ausschalten.</p>
+      <button class="btn ${st.testMode ? "warn" : "alt"}" data-act="a-test" data-on="${st.testMode ? "0" : "1"}">${st.testMode ? "Testmodus ausschalten" : "Testmodus einschalten"}</button></div>`;
     out += `<div class="panel"><p class="small muted">Lauf die Route einmal ab und drück an jeder Station „Meinen Standort übernehmen“. Ein Paar wie 50.08750, 14.42806 kannst du auch ins Feld Breite einfügen.</p>
       ${(st.stations || []).map(s => S.admin.edit === s.id ? `
         <div class="stack" style="border-top:1px solid var(--line);padding-top:12px;margin-top:12px">
@@ -998,9 +1006,11 @@ const ACT = {
   "t-kal"() { kalStart(); },
   "t-kal-skip"() { kalEnde(false); },
   async "t-check"() {
-    const g = S.gps;
-    const pos = await freshPosition();
-    S.gps.pos = { lat: pos.lat, lng: pos.lng }; S.gps.acc = pos.acc;
+    // Im Testmodus zählt der Ort nicht: dann auch ohne GPS einchecken
+    const test = S.team.state && S.team.state.testMode;
+    const pos = !test ? await freshPosition()
+      : S.gps.pos ? { ...S.gps.pos, acc: S.gps.acc } : { lat: null, lng: null, acc: null };
+    if (pos.lat != null) { S.gps.pos = { lat: pos.lat, lng: pos.lng }; S.gps.acc = pos.acc; }
     const r = await rpc("check_in", { p_code: S.team.code, p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc });
     S.team.state = r.state;
     S.msg = { type: r.ok ? "ok" : "err", text: r.message + (!r.ok && pos.acc > 40 ? ` GPS ist gerade ungenau (±${Math.round(pos.acc)} m).` : "") };
@@ -1012,6 +1022,10 @@ const ACT = {
   async "t-final"() {
     const r = await rpc("submit_final", { p_code: S.team.code, p_value: val("tfin") });
     S.team.state = r.state; S.msg = { type: r.ok ? "ok" : "err", text: r.message };
+  },
+  async "a-test"(d) {
+    S.admin.state = await rpc("admin_set_test_mode", { p_pin: S.admin.pin, p_on: d.on === "1" });
+    S.msg = { type: "ok", text: d.on === "1" ? "Testmodus ist an." : "Testmodus ist aus." };
   },
   async "a-login"() {
     const pin = val("apin");

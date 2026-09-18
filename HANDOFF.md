@@ -45,6 +45,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260918180000_tiernamen.sql    Tiernamen mit Emoji, ohne Umlaute
   20260918190000_anmeldung_leeren.sql  alle Teilnehmenden auf einmal löschen
   20260918200000_drei_koffer.sql  Plätze 1 bis 3 statt eines Siegers
+  20260918210000_testmodus.sql    Durchklicken ohne Entfernung und Rätsel
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -113,7 +114,7 @@ Admin (alle mit PIN): `admin_state`, `admin_tracks`, `admin_draw`,
 `admin_start`, `admin_finish`, `admin_reset`, `admin_clear_positions`,
 `admin_clear_participants`, `admin_add_participant`,
 `admin_rename_participant`, `admin_delete_participant`, `admin_save_station`,
-`admin_unlock_station`, `admin_set_pin`
+`admin_unlock_station`, `admin_set_pin`, `admin_set_test_mode`
 
 `admin_draw` hat seit Nachtrag 3 drei Parameter: `(p_pin, p_teams, p_size)`.
 Die alte Fassung mit nur einem Parameter wurde entfernt, sonst wüsste PostgREST
@@ -206,6 +207,26 @@ gleichzeitig (Plätze 1 bis 10 je genau einmal). Dazu die Oberfläche im Browser
 über eine lokale Nachbildung der Supabase-Schnittstelle. Nach dem Einspielen
 live geprüft: `public_state` liefert `prizeCount` und Plätze, `finishes` ist
 für `anon` gesperrt. Die Testskripte liegen nicht im Repo.
+
+## Testmodus
+
+Zum Durchklicken am Schreibtisch, seit Nachtrag 7. Schalter im Admin-Bereich,
+Reiter Stationen, ganz oben; gespeichert in `game_state.test_mode`.
+
+- **An:** Check-in ohne Entfernungsprüfung, auch ganz ohne GPS; jede Antwort
+  zählt, auch ein leeres Feld; die Denkpause nach drei Fehlversuchen entfällt.
+  Der Koffer-Code wird weiter geprüft, er steht ja im Zahlenschloss.
+- **Sichtbar:** rotes „Testmodus an“ im Kopf der Spielleitung, roter Hinweis
+  oben in der Team-Ansicht.
+- **Vor dem Event ausschalten.** Sonst kommt jedes Team ohne Laufen und ohne
+  Rätsel an alle Ziffern.
+- **Nebenbei behoben:** `check_in` ohne Koordinaten ging vorher durch, weil die
+  Entfernung dann `null` ist und `null > Toleranz` nie wahr wird. Außerhalb des
+  Testmodus braucht der Check-in jetzt einen Standort.
+
+Getestet am 18.09.2026 lokal: 25 Prüfungen zum Testmodus, dazu erneut die 26
+Koffer-Prüfungen, und ein Durchlauf aller fünf Stationen in der Oberfläche ohne
+GPS und mit leeren Antworten.
 
 ## Hintergrund: neue Varianten (offen)
 
@@ -419,7 +440,7 @@ wird, und nach der Auswertung löschen.
 | Publishable key | `sb_publishable_7uEQEkFwi27XJdGLSoso5w_TMxHJYUq` (steht in `config.js`, darf öffentlich sein) |
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
-Init-Migration und Nachträge 1 bis 6 sind eingespielt, geprüft über `pg_proc`
+Init-Migration und Nachträge 1 bis 7 sind eingespielt, geprüft über `pg_proc`
 und Aufrufe der Endpunkte. Wer die Datenbank neu aufsetzt, spielt sie in der
 Reihenfolge ein, in der sie unter „Alle Dateien“ stehen: ohne Nachtrag 1
 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne
@@ -511,25 +532,27 @@ oder einen Tunnel.
 
 ## Ablauf am Eventtag
 
-1. **Vorher:** Route ablaufen, jede Station im Reiter Stationen prüfen, Rätsel
+1. **Vorher: Testmodus aus!** Reiter Stationen, oben. Im Kopf der Spielleitung
+   darf kein rotes „Testmodus an“ mehr stehen.
+2. **Vorher:** Route ablaufen, jede Station im Reiter Stationen prüfen, Rätsel
    und Antworten vor Ort bestätigen, notfalls „Meinen Standort übernehmen“
    drücken. Alle drei Koffer auf den Code aus dem Reiter Stationen stellen und
    an die letzte Station bringen.
-2. **Vorher:** Support-Nummer in `config.js` eintragen und pushen.
-3. Anmeldelink verteilen, Teilnehmende tragen sich ein.
-4. Vor dem Start: Testeinträge über „Alle löschen“ im Reiter Teilnehmende
+3. **Vorher:** Support-Nummer in `config.js` eintragen und pushen.
+4. Anmeldelink verteilen, Teilnehmende tragen sich ein.
+5. Vor dem Start: Testeinträge über „Alle löschen“ im Reiter Teilnehmende
    entfernen, damit nur echte Namen übrig bleiben.
-5. Am Treffpunkt: Reiter Teams, Teamgröße wählen, auslosen, Codes an die
+6. Am Treffpunkt: Reiter Teams, Teamgröße wählen, auslosen, Codes an die
    Teamleitungen geben. Den Teams sagen, dass der Weg aufgezeichnet wird.
-6. „Spiel starten“, danach die Karte offen lassen.
-7. Wenn ein Team hängt: „Freischalten“ im Reiter Teams ersetzt den Check-in, das
+7. „Spiel starten“, danach die Karte offen lassen.
+8. Wenn ein Team hängt: „Freischalten“ im Reiter Teams ersetzt den Check-in, das
    Rätsel bleibt.
-8. An den Koffern: Jedes Team zeigt seinen Platz-Bildschirm, die Aufsicht
+9. An den Koffern: Jedes Team zeigt seinen Platz-Bildschirm, die Aufsicht
    gibt Koffer 1, 2 oder 3 frei. Der Zieleinlauf steht live auf der
    Anmeldeseite.
-9. Wenn alle da sind oder die Zeit um ist: „Spiel beenden“. Die Rangliste
+10. Wenn alle da sind oder die Zeit um ist: „Spiel beenden“. Die Rangliste
    erscheint öffentlich, die Routen bleiben zum Auswerten erhalten.
-10. **Danach:** Zeitachse und Routen ansehen, dann „Standortdaten löschen“.
+11. **Danach:** Zeitachse und Routen ansehen, dann „Standortdaten löschen“.
 
 ## Offene Punkte
 
