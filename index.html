@@ -242,7 +242,8 @@ const S = {
   msg: null, busy: false,
   pub: null, myName: localStorage.getItem("sj.name") || null, lookup: null,
   team: { code: localStorage.getItem("sj.code") || null, state: null },
-  gps: { pos: null, acc: null, heading: null, gpsHeading: null, needle: 0, on: false, err: null, compass: false, lastSent: 0, lastSentPos: null, sentAt: null },
+  // kompass: "unbekannt" | "wartet" | "an" | "kalibrieren" | "abgelehnt" | "fehlt"
+  gps: { pos: null, acc: null, heading: null, gpsHeading: null, needle: 0, on: false, err: null, kompass: "unbekannt", lastSent: 0, lastSentPos: null, sentAt: null },
   admin: { pin: sessionStorage.getItem("sj.pin") || null, state: null, tab: "map", edit: null, full: false,
            // Routen: tracks[teamId] = {name, points:[[lat,lng,ms]], stations:[...]}
            tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false, confirm: null,
@@ -417,12 +418,25 @@ function routeHTML(st) {
   }
   return h + "</div>";
 }
+function kompassText() {
+  const g = S.gps;
+  if (g.heading != null) {
+    return g.kompass === "kalibrieren"
+      ? "Kompass ungenau, Handy einmal in einer liegenden Acht schwenken"
+      : "Kompass aktiv";
+  }
+  if (g.kompass === "abgelehnt") return "Kompass nicht freigegeben";
+  if (g.kompass === "fehlt") return "dieses Gerät hat keinen Kompass";
+  // Daten kommen an, aber ohne Nordbezug: das ist der Kalibrierfall
+  if (g.kompass === "kalibrieren") return "Kompass findet Norden nicht, Handy in einer liegenden Acht schwenken";
+  if (g.gpsHeading != null) return "Richtung aus Laufrichtung";
+  if (g.kompass === "wartet") return "Kompass meldet sich noch nicht, dreh dich einmal langsam";
+  return "kein Kompass, Pfeil zeigt relativ zu Norden";
+}
 function gpsNote() {
   const g = S.gps;
   if (!g.on) return "";
-  const a = g.pos ? `GPS ±${Math.round(g.acc)} m` : "Warte auf GPS …";
-  const h = g.heading != null ? "Kompass aktiv" : g.gpsHeading != null ? "Richtung aus Laufrichtung" : "kein Kompass, Pfeil zeigt relativ zu Norden";
-  return a + ", " + h;
+  return (g.pos ? `GPS ±${Math.round(g.acc)} m` : "Warte auf GPS …") + ", " + kompassText();
 }
 function viewTeam() {
   if (!S.team.code) return brand("Teamleitung") + `<div class="panel">
@@ -470,6 +484,13 @@ function viewTeam() {
         <div><div class="dist" id="dist">${dist}</div><div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div></div></div>
       ${!hasTarget ? `<div class="msg err">Für diese Station fehlen die Koordinaten. Die Spielleitung muss sie setzen.</div>` : ""}
       ${!g.on ? `<button class="btn alt" data-act="t-gps">Standort und Kompass aktivieren</button>` : ""}
+      ${g.on && g.kompass === "abgelehnt" ? `<div class="msg err">Der Kompass ist nicht freigegeben.
+        Auf dem iPhone: Einstellungen, Safari, ganz unten „Bewegung und Ausrichtung“ einschalten,
+        dann diese Seite neu laden. Ohne Kompass zeigt der Pfeil die Richtung aus eurer Laufrichtung,
+        sobald ihr ein paar Schritte gegangen seid.</div>` : ""}
+      ${g.on && g.kompass === "kalibrieren" ? `<div class="msg err">Der Kompass ist noch ungenau.
+        Schwenkt das Handy einmal in einer liegenden Acht, dann fängt sich der Pfeil.</div>` : ""}
+      ${g.on && g.heading == null && g.kompass !== "fehlt" ? `<button class="btn alt" data-act="t-gps">Kompass erneut versuchen</button>` : ""}
       <button class="btn" data-act="t-check" ${S.busy || !hasTarget || !g.pos ? "disabled" : ""}>Wir sind da</button>
       ${msgBox()}
       ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
@@ -1020,12 +1041,27 @@ function liveUpdate() {
 function addOrient() {
   if (orientOn) return; orientOn = true;
   const h = e => {
+    const g = S.gps;
     let hd = null;
-    if (typeof e.webkitCompassHeading === "number") hd = e.webkitCompassHeading;
-    else if (e.absolute && e.alpha != null) hd = 360 - e.alpha;
-    if (hd == null) return;
+    const wch = e.webkitCompassHeading;          // nur iOS, schon auf Norden bezogen
+    if (typeof wch === "number") {
+      hd = wch;
+      // iOS meldet eine negative Genauigkeit, solange der Sensor nicht kalibriert ist
+      g.kompass = (typeof e.webkitCompassAccuracy === "number" && e.webkitCompassAccuracy < 0)
+        ? "kalibrieren" : "an";
+    } else if (e.absolute && e.alpha != null) {
+      hd = 360 - e.alpha; g.kompass = "an";
+    } else if (wch === null) {
+      // Ereignis kommt an, aber ohne Nordbezug: Magnetsensor nicht kalibriert
+      g.kompass = "kalibrieren";
+    }
+    if (hd == null) {
+      g.heading = null;
+      if (!raf) raf = requestAnimationFrame(() => { raf = 0; liveUpdate(); });
+      return;
+    }
     const so = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
-    S.gps.heading = (hd + so + 360) % 360;
+    g.heading = (hd + so + 360) % 360;
     if (!raf) raf = requestAnimationFrame(() => { raf = 0; liveUpdate(); });
   };
   if ("ondeviceorientationabsolute" in window) window.addEventListener("deviceorientationabsolute", h);
@@ -1036,12 +1072,16 @@ async function startGps() {
   if (!navigator.geolocation) { g.err = "Dieses Gerät liefert keinen Standort."; render(); return; }
   try {
     const DOE = window.DeviceOrientationEvent;
-    if (DOE && typeof DOE.requestPermission === "function") {
+    if (!DOE) g.kompass = "fehlt";
+    else if (typeof DOE.requestPermission === "function") {
+      // iOS: muss aus einem Fingertipp kommen, sonst wird abgelehnt
       const r = await DOE.requestPermission();
-      if (r === "granted") addOrient();
-    } else addOrient();
-  } catch { /* Kompass bleibt aus, Laufrichtung reicht */ }
+      if (r === "granted") { g.kompass = "wartet"; addOrient(); }
+      else g.kompass = "abgelehnt";
+    } else { g.kompass = "wartet"; addOrient(); }
+  } catch { g.kompass = "abgelehnt"; }
   g.on = true; g.err = null;
+  if (watchId != null) navigator.geolocation.clearWatch(watchId);   // kein zweiter Beobachter
   let last = null;
   watchId = navigator.geolocation.watchPosition(p => {
     const next = { lat: p.coords.latitude, lng: p.coords.longitude };

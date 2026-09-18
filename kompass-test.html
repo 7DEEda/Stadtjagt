@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stadtjagd Kompass-Test</title>
+<style>
+:root{--paper:#F1F5EE;--card:#FFF;--ink:#17302A;--muted:#5B6F68;--line:#D3DECF;--flag:#EE5F1B;
+  --ok:#2E7D4F;--err:#B3261E;--ok-bg:#E3F1E7;--err-bg:#FBE9E7}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0F1B18;--card:#16261F;--ink:#E4EEE8;--muted:#9BB1A9;--line:#2A3F38;
+  --flag:#FF7A3A;--ok:#6CCB8E;--err:#FF8A80;--ok-bg:#16332A;--err-bg:#3A1F1C}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:520px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}
+h2{font-size:17px;margin:22px 0 6px}
+p{margin:.4em 0 0}
+.muted{color:var(--muted);font-size:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+button{display:block;width:100%;border:0;border-radius:10px;padding:14px 16px;font:700 17px inherit;
+  background:var(--flag);color:#fff;margin-top:12px;min-height:48px}
+button.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td{padding:5px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+td:first-child{color:var(--muted);width:47%}
+td:last-child{font-variant-numeric:tabular-nums;word-break:break-word}
+.ok{color:var(--ok);font-weight:600}
+.err{color:var(--err);font-weight:600}
+.box{border-radius:10px;padding:10px 12px;margin-top:10px;font-size:15px}
+.box.ok{background:var(--ok-bg)}
+.box.err{background:var(--err-bg)}
+.dial{display:flex;gap:16px;align-items:center;margin-top:10px}
+svg{width:84px;height:84px;flex:none}
+.needle{fill:var(--flag);transform-origin:42px 42px;transition:transform .15s linear}
+.ring{fill:none;stroke:var(--line);stroke-width:3}
+.big{font:700 34px system-ui;line-height:1}
+#log{font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;max-height:210px;
+  overflow:auto;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:8px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Kompass-Test</h1>
+  <p class="muted">Diese Seite gehört zur Stadtjagd und prüft nur, ob der Kompass dieses Geräts funktioniert.
+  Sie speichert nichts und sendet nichts. Drück den Knopf, dreh dich dann einmal langsam im Kreis.</p>
+
+  <button id="start">Kompass und Standort freigeben</button>
+  <div id="verdict"></div>
+
+  <div class="panel">
+    <div class="dial">
+      <svg viewBox="0 0 84 84" aria-hidden="true">
+        <circle class="ring" cx="42" cy="42" r="38"/>
+        <polygon class="needle" id="needle" points="42,9 51,45 42,38 33,45"/>
+      </svg>
+      <div><div class="big" id="hdg">– –</div><div class="muted" id="hdgsrc">noch keine Richtung</div></div>
+    </div>
+  </div>
+
+  <h2>Was das Gerät meldet</h2>
+  <div class="panel"><table id="tbl"></table></div>
+
+  <h2>Rohdaten der letzten Ereignisse</h2>
+  <div class="panel"><div id="log">noch nichts empfangen</div>
+    <button class="alt" id="copy">Bericht kopieren</button></div>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const F = {};   // alles, was wir herausfinden
+let zaehler = { deviceorientation: 0, deviceorientationabsolute: 0 };
+let letzte = null, zeilen = [];
+
+function setz(k, v, art) {
+  F[k] = { wert: v, art: art || "" };
+  zeichne();
+}
+function zeichne() {
+  $("#tbl").innerHTML = Object.keys(F).map(k =>
+    `<tr><td>${k}</td><td class="${F[k].art}">${String(F[k].wert)}</td></tr>`).join("");
+}
+function log(t) {
+  zeilen.unshift(t);
+  if (zeilen.length > 12) zeilen.pop();
+  $("#log").textContent = zeilen.join("\n");
+}
+
+// ---- Grundlagen sofort ----
+setz("Seite über HTTPS", location.protocol === "https:" ? "ja" : "NEIN, ohne HTTPS kein Kompass",
+  location.protocol === "https:" ? "ok" : "err");
+setz("Gerät", navigator.userAgent.replace(/^Mozilla\/5\.0 /, ""));
+setz("DeviceOrientationEvent vorhanden", "DeviceOrientationEvent" in window ? "ja" : "nein",
+  "DeviceOrientationEvent" in window ? "ok" : "err");
+const braucht = window.DeviceOrientationEvent && typeof window.DeviceOrientationEvent.requestPermission === "function";
+setz("Fragt nach Erlaubnis (iOS)", braucht ? "ja" : "nein, sollte ohne Nachfrage gehen");
+setz("deviceorientationabsolute gibt es", ("ondeviceorientationabsolute" in window) ? "ja" : "nein, dann zählt webkitCompassHeading");
+setz("Bildschirmdrehung", (screen.orientation && screen.orientation.angle) ?? "unbekannt");
+setz("Erlaubnis Bewegung", braucht ? "noch nicht gefragt" : "nicht nötig");
+setz("Ereignisse empfangen", "0");
+setz("webkitCompassHeading", "noch keins");
+setz("Kompassgenauigkeit", "noch keins");
+setz("Standort", "noch nicht gefragt");
+
+function beiEreignis(typ) {
+  return function (e) {
+    zaehler[typ]++;
+    letzte = e;
+    setz("Ereignisse empfangen",
+      `deviceorientation ${zaehler.deviceorientation}, absolute ${zaehler.deviceorientationabsolute}`,
+      (zaehler.deviceorientation + zaehler.deviceorientationabsolute) ? "ok" : "");
+
+    const wch = e.webkitCompassHeading;
+    const acc = e.webkitCompassAccuracy;
+    if (typeof wch === "number") {
+      setz("webkitCompassHeading", wch.toFixed(1) + "°", "ok");
+    } else {
+      setz("webkitCompassHeading", wch === null ? "null, Kompass nicht kalibriert" : "nicht vorhanden",
+        "err");
+    }
+    if (acc !== undefined) {
+      setz("Kompassgenauigkeit", acc < 0 ? acc + " (ungültig, bitte kalibrieren)" : "±" + acc + "°",
+        acc !== undefined && acc >= 0 ? "ok" : "err");
+    }
+    setz("alpha / beta / gamma",
+      [e.alpha, e.beta, e.gamma].map(v => v == null ? "null" : v.toFixed(1)).join(" / "));
+    setz("Feld absolute", String(e.absolute));
+
+    // Richtung bestimmen, genau wie die App es tut
+    let hd = null, quelle = "";
+    if (typeof wch === "number") { hd = wch; quelle = "webkitCompassHeading"; }
+    else if (e.absolute && e.alpha != null) { hd = 360 - e.alpha; quelle = "alpha (absolut)"; }
+    else if (e.alpha != null) { hd = 360 - e.alpha; quelle = "alpha (nur relativ, zeigt nicht nach Norden)"; }
+    if (hd != null) {
+      $("#hdg").textContent = Math.round(hd) + "°";
+      $("#hdgsrc").textContent = quelle;
+      $("#needle").style.transform = `rotate(${-hd}deg)`;
+    }
+    log(`${typ} #${zaehler[typ]}  wch=${wch === undefined ? "-" : wch}  acc=${acc === undefined ? "-" : acc}  `
+      + `abs=${e.absolute}  a=${e.alpha == null ? "-" : Math.round(e.alpha)}`);
+  };
+}
+
+function urteil(text, gut) {
+  $("#verdict").innerHTML = `<div class="box ${gut ? "ok" : "err"}">${text}</div>`;
+}
+
+$("#start").onclick = async function () {
+  $("#start").disabled = true;
+  $("#start").textContent = "Frage nach …";
+  // 1) Bewegungssensor
+  try {
+    if (braucht) {
+      const r = await window.DeviceOrientationEvent.requestPermission();
+      setz("Erlaubnis Bewegung", r, r === "granted" ? "ok" : "err");
+      if (r !== "granted") {
+        urteil("Die Erlaubnis für Bewegung und Ausrichtung wurde nicht erteilt. "
+          + "Auf dem iPhone: Einstellungen, Safari, ganz unten „Bewegung und Ausrichtung“ einschalten, "
+          + "danach diese Seite neu laden.", false);
+      }
+    } else {
+      setz("Erlaubnis Bewegung", "nicht nötig", "ok");
+    }
+  } catch (err) {
+    setz("Erlaubnis Bewegung", "Fehler: " + (err && err.message ? err.message : err), "err");
+    urteil("Die Nachfrage nach der Erlaubnis ist fehlgeschlagen. Meist liegt das daran, dass sie nicht "
+      + "direkt aus einem Fingertipp kam oder die Seite nicht über HTTPS läuft.", false);
+  }
+  // Immer zuhören, auch wenn die Erlaubnis fehlt: dann sehen wir, dass nichts kommt
+  window.addEventListener("deviceorientation", beiEreignis("deviceorientation"));
+  if ("ondeviceorientationabsolute" in window) {
+    window.addEventListener("deviceorientationabsolute", beiEreignis("deviceorientationabsolute"));
+  }
+  // 2) Standort
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      p => setz("Standort", `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)} (±${Math.round(p.coords.accuracy)} m)`, "ok"),
+      e => setz("Standort", "Fehler " + e.code + ": " + e.message, "err"),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+  } else {
+    setz("Standort", "wird von diesem Gerät nicht angeboten", "err");
+  }
+  $("#start").textContent = "Läuft, jetzt langsam im Kreis drehen";
+  // 3) Nach fünf Sekunden ein Urteil fällen
+  setTimeout(function () {
+    const n = zaehler.deviceorientation + zaehler.deviceorientationabsolute;
+    if (!n) {
+      urteil("Das Gerät sendet keine Ausrichtungsdaten. Entweder fehlt die Erlaubnis, oder "
+        + "„Bewegung und Ausrichtung“ ist in den Safari-Einstellungen aus.", false);
+    } else if (letzte && typeof letzte.webkitCompassHeading !== "number" && !letzte.absolute) {
+      urteil("Ereignisse kommen an, aber ohne Nordbezug. Der Magnetsensor ist vermutlich nicht "
+        + "kalibriert: das Gerät einmal in einer liegenden Acht bewegen, dann erneut prüfen.", false);
+    } else if (F["Erlaubnis Bewegung"] && F["Erlaubnis Bewegung"].wert === "granted") {
+      urteil("Der Kompass liefert Daten. Wenn die Gradzahl beim Drehen mitläuft, ist alles in Ordnung.", true);
+    }
+  }, 5000);
+};
+
+$("#copy").onclick = function () {
+  const t = "Stadtjagd Kompass-Test\n"
+    + Object.keys(F).map(k => k + ": " + F[k].wert).join("\n")
+    + "\n\nLetzte Ereignisse:\n" + zeilen.join("\n");
+  navigator.clipboard.writeText(t).then(
+    () => { $("#copy").textContent = "Bericht kopiert, jetzt einfügen"; },
+    () => { $("#copy").textContent = "Kopieren ging nicht, bitte abfotografieren"; });
+};
+</script>
+</body>
+</html>

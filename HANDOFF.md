@@ -123,6 +123,22 @@ Sekunden der ganze Verlauf über die Leitung geht.
 - Ohne Magnetometer wird die Laufrichtung aus zwei GPS-Punkten genutzt, sonst zeigt der Pfeil relativ zu Norden. Der Zustand steht immer unter dem Kompass.
 - Beim Check-in wird eine frische Position geholt. Serverseitig gilt `radius_m` plus bis zu 25 m GPS-Toleranz.
 - **Alles braucht HTTPS.** Eine lokal per Doppelklick geöffnete Datei (`file://` oder `content://`) bekommt keinen Standortzugriff.
+- **Der Kompass sagt jetzt, warum er nicht geht.** Unter der Nadel steht einer
+  von fünf Zuständen: aktiv, ungenau (Sensor nicht kalibriert), findet Norden
+  nicht, nicht freigegeben, oder das Gerät hat keinen. Vorher wurde jeder
+  Fehlschlag stumm verschluckt und sah gleich aus.
+- **Auf dem iPhone** muss in Einstellungen, Safari ganz unten „Bewegung und
+  Ausrichtung“ eingeschaltet sein. Ist das aus, antwortet
+  `DeviceOrientationEvent.requestPermission()` mit `denied`, ohne zu fragen.
+  Die App zeigt dann diesen Hinweis und einen Knopf für einen zweiten Versuch;
+  früher verschwand der Knopf nach dem ersten Druck und half nur noch neu laden.
+- **Unkalibrierter Magnetsensor:** iOS liefert dann `webkitCompassAccuracy < 0`
+  oder `webkitCompassHeading === null`. Abhilfe ist eine liegende Acht mit dem
+  Handy. Das steht jetzt als Hinweis in der App.
+- **Testseite:** `kompass-test.html`, live unter
+  https://7deeda.github.io/Stadtjagt/kompass-test.html. Zeigt Erlaubnis,
+  Ereigniszahl, `webkitCompassHeading`, Genauigkeit und Rohwerte und fällt nach
+  fünf Sekunden ein Urteil. Gehört nicht zum Spiel, stört dort aber auch nicht.
 
 ## Standortdaten und Datenschutz
 
