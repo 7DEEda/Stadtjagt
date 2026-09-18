@@ -444,7 +444,7 @@ WhatsApp mit einer vorbereiteten Nachricht öffnet. Die Nachricht nennt je nach
 Ansicht Team, Code und aktuelle Station, damit die Spielleitung sofort weiß, wer
 schreibt.
 
-Die Nummer steht in `config.js` unter `support.phone`, international ohne
+Seit 19.09.2026 sind es zwei Knöpfe unter „Hilfe von der Spielleitung“: **WhatsApp** (grünes Symbol, öffnet `wa.me` mit vorbereitetem Text) und **Anrufen** (`tel:`-Link, öffnet die Telefon-App). Die Nummer steht in `config.js` unter `support.phone`, international ohne
 Pluszeichen, aus 0151 2345678 wird also `491512345678`. Ohne Nummer erscheint
 kein Knopf. **Die Nummer wird öffentlich**: sie steht im Quelltext der Seite und
 im öffentlichen Repo, dessen Historie sie dauerhaft behält. Nimm eine, bei der
