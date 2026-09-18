@@ -5,7 +5,7 @@ welche Zustände und Abläufe es gibt und wo das im Code steht. Den Verlauf der
 Entscheidungen und die Betriebsnotizen (Zugänge, Umgebung, Historie) enthält
 `HANDOFF.md`.
 
-Stand: 19.09.2026, Nachträge 1 bis 12.
+Stand: 18.09.2026, Nachträge 1 bis 12.
 
 ---
 
@@ -66,7 +66,7 @@ Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
 - Nur `running`, nur die aktuelle Station (`current_station`: erste ungelöste
   in `position`-Reihenfolge).
 - Braucht Koordinaten (Nachtrag 7 schloss die Lücke „null-Koordinaten gehen
-  durch“).
+  durch“). Nur im Testmodus geht es ohne Koordinaten und ohne Abstand.
 - Erlaubt, wenn Abstand ≤ `stations.radius_m` + `min(GPS-Genauigkeit, 25 m)`.
   Radius Vorgabe 50 m, Rudolfstollen 60 m.
 - Die App holt dafür eine frische Position (`freshPosition`).
@@ -87,8 +87,9 @@ Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
   alle fünf gelöst sind.
 
 ### Plätze (`submit_final`, Nachtrag 6)
-- Nur `running`, nur mit allen Ziffern, nur mit richtigem Code (Leerzeichen und
-  Bindestriche egal).
+- Nur `running`, nur mit allen Ziffern, nur mit richtigem Code. Verglichen
+  werden nur die Ziffern der Eingabe, alles andere (Leerzeichen, Bindestriche)
+  fällt weg.
 - Vergibt den nächsten Platz in `finishes`. Gleichzeitige Eingaben laufen
   nacheinander (`select … for update` auf `game_state`), `finishes.place` ist
   zusätzlich `unique`.
@@ -340,7 +341,7 @@ node -e 'const h=require("fs").readFileSync("index.html","utf8");[...h.matchAll(
 
 ---
 
-## 10. Offene Punkte (Stand 19.09.2026)
+## 10. Offene Punkte (Stand 18.09.2026)
 
 - Rätsel, Lösungen und Ortshinweise der fünf Stationen fehlen (Platzhalter).
 - Öffentliche Auslieferung des ganzen Repos (siehe 7.), neuer Koffer-Code.

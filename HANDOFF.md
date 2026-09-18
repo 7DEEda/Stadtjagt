@@ -9,7 +9,8 @@ ersten drei Teams, die den vollständigen Code eingeben, bekommen Platz 1 bis 3
 und je einen Koffer. Alle anderen laufen weiter und kommen mit Platz ins Ziel.
 
 **Stand 18.09.2026:** Live auf GitHub Pages, Datenbank eingerichtet, Nachträge 1
-bis 6 eingespielt (6: drei Koffer, siehe „Drei Koffer“). **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
+bis 12 eingespielt (6: drei Koffer, 7: Testmodus, 11: Mitlesen, 12: Anmeldung
+bis zum Auslosen; Überblick in [SPIEL.md](SPIEL.md)). **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
 Holešovice, dann Planetarium, Rudolfstollen, Wasserturm Letná, Bergstation der
 Křižík-Seilbahn, Metronom (siehe „Route“). Die Orte stehen in
 `supabase/seed-stationen-prag.sql` und seit 18.09.2026 auch in der Datenbank,
@@ -269,14 +270,14 @@ Geräte-Schlüssel zurück (64 Hex-Zeichen), die App speichert ihn als `sj.token
 Sekunden neu. Mitglieder teilen ihren Standort nicht, nur die Teamleitung.
 
 Wer von der Spielleitung eingetragen wurde (Nachzügler im Admin-Bereich,
-Sammeleingabe, Testdaten) oder sich vor dem 19.09.2026 angemeldet hat, hat
+Sammeleingabe, Testdaten) oder sich vor Nachtrag 11 angemeldet hat, hat
 keinen Schlüssel und sieht nur die Team-Karte. Abhilfe wäre ein Mitlese-Link
 auf dem Handy der Teamleitung; gebaut ist das noch nicht.
 
 `teamAnsicht(st, lesen)` in `index.html` baut beide Ansichten; `lesen` blendet
 die Eingaben aus. Die Ansicht der Teamleitung (`#/team`) ist unverändert.
 
-## Teamsuche nur, wo das Handy sein Team nicht kennt (19.09.2026)
+## Teamsuche nur, wo das Handy sein Team nicht kennt (18.09.2026)
 
 „In welchem Team bin ich?“ steht groß nur noch auf Handys, die ihr eigenes Team
 nicht kennen: von jemand anderem angemeldet, von der Spielleitung nachgetragen,
@@ -296,7 +297,7 @@ erfundenen Namen anmeldete, bekam einen Geräte-Schlüssel und las bei dem Team
 mit, in das er kam. Alle Teams haben dieselben Ziffern, also genügte ein
 schnelles Team für den Koffer-Code.
 
-Seit 19.09.2026 schließt die Selbstanmeldung wieder mit dem Auslosen. Danach
+Seit 18.09.2026 schließt die Selbstanmeldung wieder mit dem Auslosen. Danach
 zeigt die Anmeldeseite unter „Noch nicht angemeldet?“ nur die Hilfe-Knöpfe
 (WhatsApp mit „Ich bin noch nicht angemeldet. Mein Name:“), die Spielleitung
 trägt Nachzügler im Reiter Teilnehmende ein (ins kleinste Team). Solche
@@ -513,7 +514,7 @@ WhatsApp mit einer vorbereiteten Nachricht öffnet. Die Nachricht nennt je nach
 Ansicht Team, Code und aktuelle Station, damit die Spielleitung sofort weiß, wer
 schreibt.
 
-Seit 19.09.2026 sind es zwei Knöpfe unter „Hilfe von der Spielleitung“: **WhatsApp** (grünes Symbol, öffnet `wa.me` mit vorbereitetem Text) und **Anrufen** (`tel:`-Link, öffnet die Telefon-App). Die Nummer steht in `config.js` unter `support.phone`, international ohne
+Seit 18.09.2026 sind es zwei Knöpfe unter „Hilfe von der Spielleitung“: **WhatsApp** (grünes Symbol, öffnet `wa.me` mit vorbereitetem Text) und **Anrufen** (`tel:`-Link, öffnet die Telefon-App). Die Nummer steht in `config.js` unter `support.phone`, international ohne
 Pluszeichen, aus 0151 2345678 wird also `491512345678`. Ohne Nummer erscheint
 kein Knopf. **Die Nummer wird öffentlich**: sie steht im Quelltext der Seite und
 im öffentlichen Repo, dessen Historie sie dauerhaft behält. Nimm eine, bei der
@@ -761,7 +762,7 @@ oder einen Tunnel.
   `webkitCompassHeading` mit ±10°, also brauchbar. Die zwölf gleichen Werte im
   Bericht kamen dort vom still liegenden Handy. Beim Pro deshalb erneut testen
   und sich dabei einmal im Kreis drehen.
-- **WhatsApp-Nummer:** In `config.js` steht seit 19.09.2026 die Testnummer
+- **WhatsApp-Nummer:** In `config.js` steht seit 18.09.2026 die Testnummer
   `491720000000` (0172 0000000), damit der Hilfe-Knopf sichtbar ist. Vor dem
   Event durch die echte Nummer der Spielleitung ersetzen und pushen.
 - An den Koffern muss jemand von der Spielleitung stehen: alle drei haben
