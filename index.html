@@ -468,6 +468,10 @@ function viewPublic() {
     return out + nav();
   }
 
+  // Mitlesen: wer sich auf diesem Handy angemeldet hat, sieht ab dem Start, was die Teamleitung sieht
+  const mit = S.mit && S.mit.team && (p.status === "running" || p.status === "finished") ? S.mit : null;
+  if (mit) out = teamAnsicht(mit, true);
+
   const ziel = (p.ranking || []).filter(r => r.place), vorbei = p.status === "finished";
   if (vorbei || ziel.length) {
     const prizes = p.prizeCount ?? 3;
@@ -482,18 +486,21 @@ function viewPublic() {
   if (t) {
     // Farbe wie auf der Karte der Spielleitung: beide sortieren die Teams nach Namen
     const farbe = teamColor(Math.max(0, (p.teams || []).findIndex(x => x.name === t.name)));
-    out += `<div class="panel teamkarte" style="--c:${farbe}">
+    if (mit) out += `<p style="text-align:center;margin:10px 0 0"><button class="link" data-act="pub-hoch">${teamEmoji(t.name)} Team-Zeichen zum Hochhalten</button></p>`;
+    else out += `<div class="panel teamkarte" style="--c:${farbe}">
       <p class="muted small">${S.lookupEigen ? `Dein Team, ${esc(vorname(S.myName))}` : "Gefundenes Team"}</p>
       <div class="kreis" aria-hidden="true">${teamEmoji(t.name)}</div>
       <h1>Team ${esc(t.name)}</h1>
       <p>Sucht die anderen mit ${teamEmoji(t.name)}. Teamleitung: <b>${esc(t.leaderName || "offen")}</b></p>
       <button class="btn" data-act="pub-hoch">Zum Hochhalten</button>
-      <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`;
+      <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`
+      // vor dem Start: Standort und Kompass schon freigeben, am Übungsziel ausprobieren
+      + (S.mit && S.mit.team && p.status === "drawn" ? vorbereitenHTML() : "");
     // ganzer Bildschirm in Teamfarbe, zum Hochhalten auf dem Platz
     if (S.hoch) out += `<div class="hochhalten" style="--c:${farbe}" data-act="pub-hoch-zu" role="button" aria-label="Schließen">
       <div class="riesig" aria-hidden="true">${teamEmoji(t.name)}</div><b>Team ${esc(t.name)}</b><small>Tippen zum Schließen</small></div>`;
   }
-  out += `<div class="panel"><label for="plook">In welchem Team bin ich?</label>
+  if (!mit) out += `<div class="panel"><label for="plook">In welchem Team bin ich?</label>
     <input id="plook" value="${esc(S.myName || "")}" autocapitalize="words" enterkeyhint="search">
     <button class="btn" data-act="pub-look">Team anzeigen</button>${msgBox()}
     ${S.kandidaten ? `<div class="wahl">${S.kandidaten.map(n => `<button class="btn sm alt" data-act="pub-look" data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : ""}</div>`;
@@ -503,7 +510,7 @@ function viewPublic() {
       : "Trag dich nach. Du kommst in ein Team, das noch Platz hat."}</p>
     <div style="margin-top:10px"><label for="pname">Vor- und Nachname</label><input id="pname" autocomplete="name" autocapitalize="words" enterkeyhint="send"></div>
     <button class="btn alt" data-act="pub-reg" ${S.busy ? "disabled" : ""}>Nachmelden</button>${msgBox("anm")}</div>`;
-  out += helpBtn("Stadtjagd: Ich finde mein Team nicht.");
+  if (!mit) out += helpBtn("Stadtjagd: Ich finde mein Team nicht.");
   return out + nav();
 }
 
@@ -583,16 +590,24 @@ function viewTeam() {
     + helpBtn("Stadtjagd: Wir haben keinen Team-Code.") + nav();
   const st = S.team.state;
   if (!st) return brand("Teamleitung") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
-
+  return teamAnsicht(st, false);
+}
+// Was ein Team sieht. lesen = Mitglied: sieht alles wie die Teamleitung, gibt aber nichts ein.
+// Ohne lesen = Teamleitung mit Team-Code: checkt ein, beantwortet Rätsel, gibt den Koffer-Code ein.
+function teamAnsicht(st, lesen) {
+  const leitung = vorname(st.team.leaderName) || "eure Teamleitung";
+  const kennung = lesen ? `Team ${st.team.name}` : `Team ${st.team.name} (${st.team.code})`;
+  const ende = lesen ? "" : abmeldenHTML() + nav();
   let out = `<div class="bar"><div>${FLAG}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
-    <div class="muted small">${esc(st.team.code)}, Leitung ${esc(st.team.leaderName || "offen")}</div></div></div>`;
+    <div class="muted small">${lesen ? `Teamleitung: ${esc(st.team.leaderName || "offen")}`
+      : `${esc(st.team.code)}, Leitung ${esc(st.team.leaderName || "offen")}`}</div></div></div>`;
 
   if (st.testMode) out += `<div class="msg err">Testmodus: Entfernung und Antworten werden nicht geprüft.</div>`;
 
   if (st.status === "drawn") return out + `<div class="panel"><h3>Ihr seid startklar</h3>
     <p>Alle Teams starten gleichzeitig. Wartet auf das Signal der Spielleitung.</p>
     <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>`
-    + vorbereitenHTML() + helpBtn(`Stadtjagd: Hier ist Team ${st.team.name} (${st.team.code}). Wir haben eine Frage vor dem Start.`) + abmeldenHTML() + nav();
+    + vorbereitenHTML() + helpBtn(`Stadtjagd: Hier ist ${kennung}. Wir haben eine Frage vor dem Start.`) + ende;
 
   // Unterwegs zählt die Station: das Schloss steht dann klein unter ihr,
   // groß erst wieder beim Koffer und am Ende (Entscheidung 18.09.2026, Variante B)
@@ -607,10 +622,10 @@ function viewTeam() {
       <h2>Platz ${st.place}</h2>
       <p>${koffer ? "Ihr habt einen Koffer gewonnen. Zeigt diesen Bildschirm der Spielleitung am Koffer."
         : "Ihr seid im Ziel. Die Koffer sind schon vergeben, euer Platz steht in der Rangliste."}</p></div>`
-      + (koffer ? helpBtn(`Stadtjagd: Team ${st.team.name} (${st.team.code}) hat Platz ${st.place}.`) : "") + abmeldenHTML() + nav();
+      + (koffer ? helpBtn(`Stadtjagd: ${kennung} hat Platz ${st.place}.`) : "") + ende;
   }
   if (st.status === "finished") return out + `<div class="panel"><h2>Das Spiel ist vorbei</h2>
-    <p>Die Spielleitung hat das Spiel beendet. Die Rangliste steht auf der Anmeldeseite.</p></div>` + abmeldenHTML() + nav();
+    <p>Die Spielleitung hat das Spiel beendet. ${lesen ? "Die Rangliste steht unten." : "Die Rangliste steht auf der Anmeldeseite."}</p></div>` + ende;
 
   if (st.allSolved) {
     const left = st.prizesLeft ?? 0;
@@ -618,13 +633,14 @@ function viewTeam() {
       <p class="small ${left ? "" : "muted"}" style="margin-top:8px">${left
         ? `Noch ${left} von ${st.prizeCount} Koffern zu vergeben. Es zählt, wer den Code zuerst eingibt.`
         : "Alle Koffer sind vergeben. Gebt den Code trotzdem ein, dann steht ihr mit Platz in der Rangliste."}</p>
-      <div style="margin-top:12px"><label for="tfin">Koffer-Code, 6 Stellen</label><input id="tfin" inputmode="numeric" maxlength="6"></div>
-      <button class="btn" data-act="t-final" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Code eingeben"}</button>${msgBox()}</div>`;
-    return out + abmeldenHTML() + nav();
+      ${lesen ? `<p class="small" style="margin-top:12px">Den Koffer-Code gibt <b>${esc(leitung)}</b> ein. Er steht oben im Zahlenschloss.</p>`
+        : `<div style="margin-top:12px"><label for="tfin">Koffer-Code, 6 Stellen</label><input id="tfin" inputmode="numeric" maxlength="6"></div>
+      <button class="btn" data-act="t-final" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Code eingeben"}</button>${msgBox()}`}</div>`;
+    return out + ende;
   }
 
   const s = st.station;
-  if (!s) return out + `<div class="panel"><p>Das Spiel läuft gerade nicht.</p></div>` + nav();
+  if (!s) return out + `<div class="panel"><p>Das Spiel läuft gerade nicht.</p></div>` + (lesen ? "" : nav());
 
   if (!st.checkedIn) {
     const g = S.gps, hasTarget = s.lat != null && s.lng != null;
@@ -651,20 +667,22 @@ function viewTeam() {
       ${g.on && g.kompass === "kalibrieren" && !kalOk ? `<div class="msg err">Der Kompass ist ungenau.
         Schwenkt das Handy ein paar Mal in einer liegenden Acht, dann fängt sich der Pfeil.
         <button class="btn alt" data-act="t-kal">Jetzt einmessen</button></div>` : ""}
-      <button class="btn" data-act="t-check" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>Wir sind da</button>
+      ${lesen ? `<p class="small muted" style="margin-top:12px">Einchecken macht <b>${esc(leitung)}</b>, sobald ihr da seid. Dann erscheint hier das Rätsel.</p>`
+        : `<button class="btn" data-act="t-check" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>Wir sind da</button>`}
       ${msgBox()}
       ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
       ${kompassDa() && (g.kompass !== "kalibrieren" || kalOk) ? `<button class="link" data-act="t-kal">Kompass neu einmessen</button>` : ""}`;
     out += `
-      ${g.on && st.status === "running" ? `<div class="share"><span class="dot"></span><span>Standort wird mit der Spielleitung geteilt${S.gps.sentAt ? ", zuletzt " + S.gps.sentAt : ""}</span></div>` : ""}
+      ${!lesen && g.on && st.status === "running" ? `<div class="share"><span class="dot"></span><span>Standort wird mit der Spielleitung geteilt${S.gps.sentAt ? ", zuletzt " + S.gps.sentAt : ""}</span></div>` : ""}
       </div>`;
   } else {
     // Nach drei Fehlversuchen: Feld sperren und die Pause sichtbar herunterzählen
     const pause = !st.testMode && st.lockedUntil && new Date(st.lockedUntil).getTime() > Date.now();
     out += `<div class="panel"><p class="muted small">Station ${s.position}: ${esc(s.name)}</p>
       <p class="riddle" style="margin-top:8px">${esc(s.riddle || "")}</p>
-      <div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans" autocomplete="off" enterkeyhint="send" ${pause ? "disabled" : ""}></div>
-      <button class="btn" data-act="t-answer" ${S.busy || pause ? "disabled" : ""}>Antwort prüfen</button>
+      ${lesen ? `<p class="small" style="margin-top:12px">Die Antwort gibt <b>${esc(leitung)}</b> ein. Überlegt gemeinsam.</p>`
+        : `<div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans" autocomplete="off" enterkeyhint="send" ${pause ? "disabled" : ""}></div>
+      <button class="btn" data-act="t-answer" ${S.busy || pause ? "disabled" : ""}>Antwort prüfen</button>`}
       ${pause ? `<div class="msg err" id="pause" data-bis="${esc(st.lockedUntil)}">${pauseText(st.lockedUntil)}</div>`
         : msgBox() + `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
           : `Fehlversuche: ${st.failedAttempts} von 3, danach 2 Minuten Pause.`}</p>`}</div>`;
@@ -672,10 +690,9 @@ function viewTeam() {
   if (unterwegs) out += `<div class="panel ziffern"><div class="bar"><h3>Eure Ziffern</h3>
     <span class="small muted">${st.solvedCount} von ${st.totalStations}</span></div>${lockHTML(st, true)}${routeHTML(st)}</div>`;
   out += `<p class="small muted" style="text-align:center;margin-top:12px">Mitglieder: ${(st.team.members || []).map(esc).join(", ")}</p>`;
-  out += helpBtn(`Stadtjagd: Hier ist Team ${st.team.name} (${st.team.code}). `
+  out += helpBtn(`Stadtjagd: Hier ist ${kennung}. `
     + (s ? `Wir brauchen Hilfe bei Station ${s.position}.` : "Wir brauchen Hilfe."));
-  out += abmeldenHTML();
-  return out + nav();
+  return out + ende;
 }
 // Abmelden ist selten gewollt: kleiner Link, dann eine Rückfrage
 function abmeldenHTML() {
@@ -1144,6 +1161,7 @@ const ACT = {
     try { r = await rpc("register_participant", { p_name: val("pname") }); }
     catch (e) { S.msg = { type: "err", text: e.message, ort: "anm" }; return; }
     S.myName = r.name; localStorage.setItem("sj.name", r.name); S.msg = null;
+    if (r.token) localStorage.setItem("sj.token", r.token);   // damit dieses Handy später mitlesen kann
     // nach dem Auslosen kommt das Team gleich mit: große Karte sofort zeigen
     if (r.team) { S.lookup = r.team; S.lookupName = r.name; S.lookupEigen = true; S.autoLook = true; }
     await refresh();
@@ -1154,7 +1172,8 @@ const ACT = {
     try { S.wachHalten = await navigator.wakeLock?.request("screen"); } catch { /* dann eben nicht */ }
   },
   "pub-hoch-zu"() { S.hoch = false; try { S.wachHalten?.release(); } catch { } S.wachHalten = null; },
-  "pub-again"() { S.myName = null; localStorage.removeItem("sj.name"); },
+  "pub-again"() {
+    localStorage.removeItem("sj.token"); S.mit = null; S.myName = null; localStorage.removeItem("sj.name"); },
   async "pub-look"(d) {
     const r = await rpc("lookup_participant", { p_name: d.name || val("plook") });
     S.kandidaten = null; S.lookupEigen = false;
@@ -1363,8 +1382,9 @@ function richtung() {
   return g.heading ?? 0;
 }
 // Wohin der Pfeil zeigt: unterwegs die Station, vor dem Start das Übungsziel
+const aktiverStand = () => S.view === "team" ? S.team.state : S.mit;
 function aktuellesZiel() {
-  const st = S.team.state, s = st && st.station;
+  const st = aktiverStand(), s = st && st.station;
   if (s && s.lat != null && s.lng != null) return s;
   if (st && st.status === "drawn") return PROBEZIEL;
   return null;
@@ -1529,6 +1549,16 @@ function teamNachziehen() {
   if (!neu) S.hoch = false;
   return geaendert;
 }
+// Mitlesen: Stand des eigenen Teams über den Geräte-Schlüssel aus der Anmeldung
+async function mitlesen() {
+  const tok = localStorage.getItem("sj.token");
+  if (!tok || !S.pub || S.pub.status === "registration") { S.mit = null; return; }
+  try { S.mit = await rpc("member_state", { p_token: tok }); }
+  catch (e) {
+    if (String(e.message).includes("Unbekanntes Gerät")) localStorage.removeItem("sj.token");
+    S.mit = null;
+  }
+}
 // Nach "Alle löschen" steht der eigene Name nur noch im Handy: dann wieder das Anmeldeformular zeigen.
 // Geprüft wird beim ersten Laden und immer, wenn die Zahl der Angemeldeten sinkt.
 async function nameNochDa() {
@@ -1543,7 +1573,7 @@ async function nameNochDa() {
     const r = await rpc("lookup_participant", { p_name: S.myName });
     // die Suche findet auch Namensteile, hier zählt nur genau der eigene Name
     if (r.found && r.name.trim().toLowerCase() === S.myName.trim().toLowerCase()) return false;
-    S.myName = null; localStorage.removeItem("sj.name");
+    S.myName = null; localStorage.removeItem("sj.name"); localStorage.removeItem("sj.token"); S.mit = null;
     if (S.lookupEigen) { S.lookup = null; S.lookupName = null; S.hoch = false; }
     return true;
   } catch { return false; }
@@ -1558,7 +1588,7 @@ function codeUngueltig() {
 async function refresh() {
   if (!cfg.url || !cfg.key) return render();
   try {
-    if (S.view === "public") { S.pub = await rpc("public_state", {}); await nameNochDa(); teamNachziehen(); await eigenesTeam(); }
+    if (S.view === "public") { S.pub = await rpc("public_state", {}); await nameNochDa(); teamNachziehen(); await eigenesTeam(); await mitlesen(); }
     if (S.view === "team" && S.team.code) S.team.state = await rpc("team_state", { p_code: S.team.code });
     if (S.view === "admin" && S.admin.pin) S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin });
   } catch (e) {
@@ -1578,7 +1608,7 @@ function render() {
     drawMap(true); renderTimeline();
     syncTracks().then(() => { drawMap(false); renderTimeline(); }).catch(() => { });
   }
-  if (S.view === "team") liveUpdate();
+  if (S.view === "team" || (S.view === "public" && S.mit)) liveUpdate();
   if (S.admin.confirm) ($("#dlgword") || $("#dlgok"))?.focus();
   if (S.view === "admin" && S.admin.tab === "teams") drawPreview();
 }
@@ -1669,6 +1699,7 @@ setInterval(() => {
     S.pub = s;
     const neu = (await nameNochDa()) | teamNachziehen();
     await eigenesTeam();
+    await mitlesen();
     if (!S.hoch || neu) render();
   }).catch(() => { });
 }, 10000);

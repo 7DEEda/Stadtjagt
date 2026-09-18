@@ -50,6 +50,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260918220000_durchsicht.sql   Code ohne Bindestrich, Namenssuche, Positionsprüfung
   20260918230000_viele_namen.sql  viele Namen auf einmal, Testdaten
   20260919000000_nachmelden.sql   Nachzügler melden sich selbst an
+  20260919010000_mitlesen.sql     das ganze Team liest mit (Geräte-Schlüssel)
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -78,6 +79,11 @@ Das ist der Kern, hier bitte nichts aufweichen:
   können nie denselben Platz bekommen. Geprüft mit zehn gleichzeitigen
   Eingaben, siehe „Drei Koffer“.
 - Die Admin-PIN wird serverseitig in `require_admin()` geprüft, nicht im Browser.
+- Mitlesen geht nur mit dem Geräte-Schlüssel aus der eigenen Anmeldung
+  (`participants.token`), nie über den Namen: Namen sind öffentlich, und alle
+  Teams lösen dieselben Rätsel mit denselben Ziffern. `member_state` liefert
+  keinen Team-Code; eingeben (Check-in, Antwort, Koffer-Code) geht weiter nur
+  mit dem Team-Code.
 - Team-Codes bestehen aus Tiername und vier Ziffern (`FUCHS-4711`) und stehen
   **nicht** in der öffentlichen Antwort.
 
@@ -109,7 +115,8 @@ Bekannte, bewusst akzeptierte Schwächen:
 
 ## RPC-Endpunkte
 
-Öffentlich: `public_state`, `register_participant`, `lookup_participant`
+Öffentlich: `public_state`, `register_participant`, `lookup_participant`,
+`member_state` (mit Geräte-Schlüssel)
 
 Team: `team_state`, `check_in`, `submit_answer`, `submit_final`,
 `report_position`
@@ -241,6 +248,29 @@ Neu auslosen und Löschen ziehen die Handys selbst nach (behoben 18.09.2026):
   Name noch angemeldet ist (beim Laden und wenn die Zahl der Angemeldeten
   sinkt). Wenn nicht, erscheint wieder das Anmeldeformular statt „Du bist
   dabei“.
+
+## Das ganze Team liest mit (Nachtrag 11)
+
+Alle im Team sehen ab dem Start auf der Anmeldeseite, was die Teamleitung sieht:
+Station, Ortshinweis, Kompass und Entfernung (mit dem eigenen GPS), das Rätsel
+nach dem Check-in, Fehlversuche und Denkpause, die Ziffern, beim Koffer das volle
+Zahlenschloss, am Ende Platz und Medaille. Eingeben kann nur die Teamleitung;
+an den Stellen steht dann etwa „Einchecken macht Silke“ oder „Die Antwort gibt
+Silke ein“. Vor dem Start zeigt die Team-Karte auch Mitgliedern den
+Übungskompass zur TSE AG.
+
+Wie das Handy sein Team kennt: `register_participant` gibt einen zufälligen
+Geräte-Schlüssel zurück (64 Hex-Zeichen), die App speichert ihn als `sj.token`.
+`member_state(p_token)` liefert damit `team_state` ohne Team-Code, alle zehn
+Sekunden neu. Mitglieder teilen ihren Standort nicht, nur die Teamleitung.
+
+Lücke: Wer von der Spielleitung eingetragen wurde (Nachzügler im Admin-Bereich,
+Sammeleingabe, Testdaten) oder sich vor dem 19.09.2026 angemeldet hat, hat
+keinen Schlüssel und sieht nur die Team-Karte. Abhilfe wäre ein Mitlese-Link
+auf dem Handy der Teamleitung; gebaut ist das noch nicht.
+
+`teamAnsicht(st, lesen)` in `index.html` baut beide Ansichten; `lesen` blendet
+die Eingaben aus. Die Ansicht der Teamleitung (`#/team`) ist unverändert.
 
 ## Nachzügler melden sich selbst an (Nachtrag 10)
 
@@ -555,7 +585,7 @@ wird, und nach der Auswertung löschen.
 | Publishable key | `sb_publishable_7uEQEkFwi27XJdGLSoso5w_TMxHJYUq` (steht in `config.js`, darf öffentlich sein) |
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
-Init-Migration und Nachträge 1 bis 10 sind eingespielt, geprüft über `pg_proc`
+Init-Migration und Nachträge 1 bis 11 sind eingespielt, geprüft über `pg_proc`
 und Aufrufe der Endpunkte. Wer die Datenbank neu aufsetzt, spielt sie in der
 Reihenfolge ein, in der sie unter „Alle Dateien“ stehen: ohne Nachtrag 1
 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne
