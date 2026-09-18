@@ -226,6 +226,19 @@ das offen ist, bleibt der Bildschirm an, wo der Browser die Wake-Lock-API kann.
 Wer auf einem fremden Handy angemeldet wurde, sucht seinen Namen unter „In
 welchem Team bin ich?“ und bekommt dieselbe Karte.
 
+Neu auslosen und Löschen ziehen die Handys selbst nach (behoben 18.09.2026):
+
+- Die angezeigte Karte liest das Team bei jeder Abfrage neu aus den
+  Teamlisten in `public_state`. Nach einem Neu-Auslosen steht nach spätestens
+  zehn Sekunden das neue Team da, auch in der Vollbild-Ansicht.
+- Die Team-Ansicht meldet sich ab, wenn der Code nicht mehr gilt, und sagt
+  „Dieser Team-Code gilt nicht mehr, vermutlich wurde neu ausgelost“. Vorher
+  zeigte sie still das alte Team weiter.
+- Nach „Alle löschen“ prüft die Anmeldeseite, ob der im Handy gespeicherte
+  Name noch angemeldet ist (beim Laden und wenn die Zahl der Angemeldeten
+  sinkt). Wenn nicht, erscheint wieder das Anmeldeformular statt „Du bist
+  dabei“.
+
 ## Viele Namen und Testdaten (Nachtrag 9)
 
 Reiter Teilnehmende, Bereich „Mehrere auf einmal“: ein Name pro Zeile, dann

@@ -1140,7 +1140,7 @@ const ACT = {
     }
     if (!r.found) { S.lookup = null; S.msg = { type: "err", text: "Kein Name gefunden. Prüfe die Schreibweise." }; return; }
     if (!r.team) { S.lookup = null; S.msg = { type: "ok", text: r.name + " ist angemeldet, aber noch keinem Team zugeteilt." }; return; }
-    S.lookup = r.team; S.msg = { type: "ok", text: r.name + " ist in Team " + r.team.name + "." };
+    S.lookup = r.team; S.lookupName = r.name; S.msg = { type: "ok", text: r.name + " ist in Team " + r.team.name + "." };
   },
   async "t-login"() {
     const code = val("tcode");
@@ -1482,17 +1482,62 @@ async function eigenesTeam() {
   S.autoLook = true;
   try {
     const r = await rpc("lookup_participant", { p_name: S.myName });
-    if (r.found && r.team) { S.lookup = r.team; S.lookupEigen = true; }
+    if (r.found && r.team) { S.lookup = r.team; S.lookupName = r.name; S.lookupEigen = true; }
   } catch { /* dann eben per Hand suchen */ }
+}
+// Das angezeigte Team bei jeder Abfrage neu aus den Teamlisten ablesen, sonst bleibt nach
+// einem Neu-Auslosen das alte Team stehen. true, wenn sich das Team geändert hat.
+function teamNachziehen() {
+  const p = S.pub;
+  if (!p) return false;
+  if (p.status === "registration") {
+    // Teams sind weg (etwa nach "Alle löschen"): beim nächsten Auslosen wieder selbst suchen
+    const war = !!S.lookup;
+    S.lookup = null; S.autoLook = false; S.hoch = false;
+    return war;
+  }
+  if (!S.lookupName) return false;
+  const t = (p.teams || []).find(x => (x.members || []).includes(S.lookupName));
+  const neu = t ? { name: t.name, leaderName: t.leaderName, members: t.members } : null;
+  const geaendert = (S.lookup ? S.lookup.name : null) !== (neu ? neu.name : null);
+  S.lookup = neu;
+  if (!neu) S.hoch = false;
+  return geaendert;
+}
+// Nach "Alle löschen" steht der eigene Name nur noch im Handy: dann wieder das Anmeldeformular zeigen.
+// Geprüft wird beim ersten Laden und immer, wenn die Zahl der Angemeldeten sinkt.
+async function nameNochDa() {
+  const p = S.pub;
+  if (!p || !S.myName) return false;
+  const weniger = S.letzteAnzahl != null && p.participantCount < S.letzteAnzahl;
+  const erstesMal = !S.nameGeprueft;
+  S.letzteAnzahl = p.participantCount;
+  if (!weniger && !erstesMal) return false;
+  S.nameGeprueft = true;
+  try {
+    const r = await rpc("lookup_participant", { p_name: S.myName });
+    // die Suche findet auch Namensteile, hier zählt nur genau der eigene Name
+    if (r.found && r.name.trim().toLowerCase() === S.myName.trim().toLowerCase()) return false;
+    S.myName = null; localStorage.removeItem("sj.name");
+    if (S.lookupEigen) { S.lookup = null; S.lookupName = null; S.hoch = false; }
+    return true;
+  } catch { return false; }
+}
+// Nach einem Neu-Auslosen gilt der alte Team-Code nicht mehr: abmelden und das sagen,
+// statt still das alte Team weiter zu zeigen
+function codeUngueltig() {
+  S.team.code = null; S.team.state = null; S.team.abmelden = false;
+  localStorage.removeItem("sj.code"); stopGps();
+  S.msg = { type: "err", text: "Dieser Team-Code gilt nicht mehr, vermutlich wurde neu ausgelost. Gebt den neuen Code ein." };
 }
 async function refresh() {
   if (!cfg.url || !cfg.key) return render();
   try {
-    if (S.view === "public") { S.pub = await rpc("public_state", {}); await eigenesTeam(); }
+    if (S.view === "public") { S.pub = await rpc("public_state", {}); await nameNochDa(); teamNachziehen(); await eigenesTeam(); }
     if (S.view === "team" && S.team.code) S.team.state = await rpc("team_state", { p_code: S.team.code });
     if (S.view === "admin" && S.admin.pin) S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin });
   } catch (e) {
-    if (String(e.message).includes("Unbekannter Team-Code")) { S.team.code = null; localStorage.removeItem("sj.code"); }
+    if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); return render(); }
     if (String(e.message).includes("Falsche PIN")) { S.admin.pin = null; sessionStorage.removeItem("sj.pin"); }
     S.msg = { type: "err", text: e.message };
   }
@@ -1590,10 +1635,17 @@ setInterval(() => {
     return;
   }
   if (busyTyping) return;
-  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(s => { S.team.state = s; render(); }).catch(() => { });
+  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(s => { S.team.state = s; render(); })
+    .catch(e => { if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); render(); } });
   // Beim Hochhalten nicht neu zeichnen: die Vollbild-Ansicht würde jedes Mal neu einblenden und flackern.
   // Die Daten kommen trotzdem, beim Schließen ist alles aktuell.
-  if (S.view === "public") rpc("public_state", {}).then(async s => { S.pub = s; await eigenesTeam(); if (!S.hoch) render(); }).catch(() => { });
+  // Hat sich das Team geändert (neu ausgelost), trotzdem neu zeichnen.
+  if (S.view === "public") rpc("public_state", {}).then(async s => {
+    S.pub = s;
+    const neu = (await nameNochDa()) | teamNachziehen();
+    await eigenesTeam();
+    if (!S.hoch || neu) render();
+  }).catch(() => { });
 }, 10000);
 refresh();
 </script>
