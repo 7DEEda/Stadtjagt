@@ -61,6 +61,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260919050000_review.sql       name_key nachgezogen, Fehlversuche unter Zeilensperre (Code-Review)
   20260919060000_start_im_testmodus.sql  Starten im Testmodus wieder erlaubt, mit Warnung
   20260919070000_koffer_hinweis_spieldauer.sql  Koffer-Hinweis, Spieldauer mit Countdown, Tipp je Station
+  20260919080000_leitung_ohne_code.sql  Teamleitung loggt sich über den Geräte-Schlüssel ein (leader_code)
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -597,6 +598,18 @@ der Spielleitung (Konstante `START` in `index.html`, nicht in der Datenbank).
 Getestet lokal (`test_leitung.py`, 18 Prüfungen) und im Browser: Link öffnen
 auf einem fremden Handy zeigt das Team, Leitung abgeben, Leitung im Admin
 wählen, Mitlese-Link kopieren, Haus auf der Karte.
+
+## Teamleitung ohne Code (Nachtrag 18, 19.09.2026)
+
+Wer sich auf dem eigenen Handy angemeldet hat, ist über den Geräte-Schlüssel
+bekannt. Öffnet diese Person `#/team` und leitet gerade ein Team, holt die App
+den Team-Code selbst (`leader_code(p_token)`, `leitungOhneCode()` in
+`refresh()`) und loggt ein; das Feld zum Tippen erscheint gar nicht. Der Knopf
+auf der Team-Karte heißt „Du bist Teamleitung: loslegen“. Bei einem Wechsel
+der Leitung bekommt die neue Leitung den Code auf demselben Weg, niemand muss
+ihn weitersagen; das alte Handy bleibt eingeloggt, bis es sich abmeldet (wer
+den Code hat, spielt, unverändert). Tippen bleibt für Handys ohne Anmeldung
+(Code von der Spielleitung) und für die Spielleitung am Tablet.
 
 ## Durchgang aus Sicht der Teams (Nachtrag 17, 19.09.2026)
 

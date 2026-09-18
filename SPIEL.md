@@ -5,7 +5,7 @@ welche Zustände und Abläufe es gibt und wo das im Code steht. Den Verlauf der
 Entscheidungen und die Betriebsnotizen (Zugänge, Umgebung, Historie) enthält
 `HANDOFF.md`.
 
-Stand: 19.09.2026, Nachträge 1 bis 17.
+Stand: 19.09.2026, Nachträge 1 bis 18.
 
 ---
 
@@ -27,7 +27,7 @@ App eingeben.
 | Rolle | Zugang | Kann | Sieht |
 |---|---|---|---|
 | **Teilnehmende** | Link, Name bei der Anmeldung; oder Mitlese-Link des Teams | sich anmelden (nur bis zum Auslosen), Team nachschauen | eigenes Team groß mit Emoji; ab dem Start alles, was die Teamleitung sieht (Geräte-Schlüssel aus der Anmeldung oder Mitlese-Link) |
-| **Teamleitung** | Team-Code (`FUCHS-4711`) unter `#/team` | einchecken, Rätsel beantworten, Koffer-Code eingeben, Mitlese-Link teilen, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
+| **Teamleitung** | `#/team`: mit Geräte-Schlüssel automatisch, sonst Team-Code (`FUCHS-4711`) | einchecken, Rätsel beantworten, Koffer-Code eingeben, Mitlese-Link teilen, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
 | **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, fortsetzen, freischalten, Rätsel werten, Teamleitung wählen, Stationen pflegen, Leute eintragen, löschen, Testmodus | Karte mit Routen, Zeitachse, alle Teams mit Codes und Mitlese-Links, Koffer-Code |
 
 Die Teamleitung wird beim Auslosen je Team zufällig bestimmt
@@ -163,7 +163,10 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
   Standort und Kompass freigeben, Kompass einmessen, Übungsziel TSE AG Berlin
   (`PROBEZIEL`).
 - Gehört das Handy der Teamleitung (Name = `leaderName`), steht auf der
-  Team-Karte „Du bist Teamleitung: Code eingeben“ (Link zu `#/team`).
+  Team-Karte „Du bist Teamleitung: loslegen“ (Link zu `#/team`). Dort holt
+  die App den Team-Code über den Geräte-Schlüssel (`leader_code`, Nachtrag
+  18) und loggt ohne Tippen ein; das Eingabefeld bleibt für Handys ohne
+  Anmeldung.
 - Ab dem Start zeigen alle Ansichten im Kopf die Restzeit (`endsAt`, aus
   `duration_min`), rot in den letzten 15 Minuten, danach „Zeit ist um“.
 - Nachzügler: nur über die Spielleitung (Hilfe-Knöpfe auf der Anmeldeseite).
@@ -333,8 +336,9 @@ Endpunkte:
 - öffentlich: `public_state`, `register_participant`, `lookup_participant`
   (auch Namensteile, bis zu acht Vorschläge), `member_state`,
   `member_state_by_team`
-- Teamleitung: `team_state`, `check_in`, `submit_answer`, `reveal_tip`,
-  `submit_final`, `report_position`, `team_set_leader`
+- Teamleitung: `leader_code` (Team-Code über den Geräte-Schlüssel),
+  `team_state`, `check_in`, `submit_answer`, `reveal_tip`, `submit_final`,
+  `report_position`, `team_set_leader`
 - Spielleitung: `admin_state`, `admin_tracks`, `admin_draw`, `admin_start`,
   `admin_finish`, `admin_resume`, `admin_reset`, `admin_clear_positions`,
   `admin_clear_participants`, `admin_add_participant`,
