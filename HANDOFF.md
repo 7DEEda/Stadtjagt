@@ -223,6 +223,7 @@ der Karte der Spielleitung (beide sortieren die Teams nach Namen).
 „Zum Hochhalten“ füllt den ganzen Bildschirm mit Teamfarbe, riesigem Emoji und
 Namen, damit sich die Gruppen auf dem Platz finden; Antippen schließt. Solange
 das offen ist, bleibt der Bildschirm an, wo der Browser die Wake-Lock-API kann.
+Angesprochen wird nur mit Vornamen („Du bist dabei, Anna.“, „Dein Team, Anna“), Listen zeigen den vollen Namen.
 Wer auf einem fremden Handy angemeldet wurde, sucht seinen Namen unter „In
 welchem Team bin ich?“ und bekommt dieselbe Karte.
 
@@ -247,7 +248,7 @@ Reiter Teilnehmende, Bereich „Mehrere auf einmal“: ein Name pro Zeile, dann
 wie viele es waren. Sind schon Teams ausgelost, kommt jede neue Person ins
 gerade kleinste Team.
 
-„Testdaten einfügen“ trägt 30 erfundene Namen mit dem Zusatz „(Test)“ ein,
+„Testdaten einfügen“ trägt 90 erfundene Namen mit dem Zusatz „(Test)“ ein,
 etwa „Anna Brand (Test)“. Die Suche findet sie mit „Test“, einzeln löschen geht
 über das ×, alle zusammen über „Alle löschen“. **Vor dem Event wegräumen.**
 

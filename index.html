@@ -307,6 +307,8 @@ const MEDAILLE = ["🥇", "🥈", "🥉"];
 const platzZeichen = (place, prizes) => !place ? ""
   : place <= prizes ? (MEDAILLE[place - 1] || "🧳 " + place) : String(place);
 const uhrzeit = ts => ts ? new Date(ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "";
+// Spielerinnen und Spieler nur mit Vornamen ansprechen; Listen behalten den vollen Namen
+const vorname = name => String(name || "").trim().split(/\s+/)[0];
 const teamEmoji = name => TEAM_EMOJI[String(name || "").trim().toLowerCase()] || "🐾";
 
 /* ---------- Löschbereich ---------- */
@@ -443,7 +445,7 @@ function viewPublic() {
 
   if (p.status === "registration") {
     out += S.myName
-      ? `<div class="panel"><h2>Du bist dabei, ${esc(S.myName)}.</h2>
+      ? `<div class="panel"><h2>Du bist dabei, ${esc(vorname(S.myName))}.</h2>
          <p>Sobald die Spielleitung auslost, siehst du hier dein Team.</p></div>
          <button class="btn alt" data-act="pub-again">Weitere Person anmelden</button>`
       : `<div class="panel"><h2>Mitmachen</h2><p class="muted">Trag deinen Namen ein. Die Teams werden später zufällig ausgelost.</p>
@@ -469,7 +471,7 @@ function viewPublic() {
     // Farbe wie auf der Karte der Spielleitung: beide sortieren die Teams nach Namen
     const farbe = teamColor(Math.max(0, (p.teams || []).findIndex(x => x.name === t.name)));
     out += `<div class="panel teamkarte" style="--c:${farbe}">
-      <p class="muted small">${S.lookupEigen ? `Dein Team, ${esc(S.myName)}` : "Gefundenes Team"}</p>
+      <p class="muted small">${S.lookupEigen ? `Dein Team, ${esc(vorname(S.myName))}` : "Gefundenes Team"}</p>
       <div class="kreis" aria-hidden="true">${teamEmoji(t.name)}</div>
       <h1>Team ${esc(t.name)}</h1>
       <p>Sucht die anderen mit ${teamEmoji(t.name)}. Teamleitung: <b>${esc(t.leaderName || "offen")}</b></p>
@@ -773,7 +775,7 @@ function viewAdmin() {
       <textarea id="aviele" rows="5" placeholder="Anna Beispiel&#10;Ben Muster"></textarea>
       <div class="row2" style="margin-top:8px"><button class="btn alt" data-act="a-viele">Alle eintragen</button>
         <button class="btn alt" data-act="a-testdaten">Testdaten einfügen</button></div>
-      <p class="small muted">„Testdaten einfügen“ trägt 30 erfundene Namen mit dem Zusatz „(Test)“ ein. Die Suche findet sie mit „Test“,
+      <p class="small muted">„Testdaten einfügen“ trägt 90 erfundene Namen mit dem Zusatz „(Test)“ ein. Die Suche findet sie mit „Test“,
         alle zusammen löscht „Alle löschen“.</p></div>`;
     out += `<div class="panel"><div class="bar"><div><span class="count">${(st.participants || []).length}</span> <span class="muted">angemeldet</span></div>
       ${(st.participants || []).length ? `<button class="btn sm alt" data-act="a-danger" data-key="people">Alle löschen</button>` : ""}</div>
@@ -1236,7 +1238,7 @@ const ACT = {
       "Nagel", "Ost", "Pohl", "Quast", "Rahn", "Sieg", "Tal", "Ulm", "Voss", "Wendt", "Zorn", "Adam"];
     // 23 Nachnamen sind teilerfremd zu 20 Vornamen: keine Paarung kommt doppelt vor
     const a = Math.floor(Math.random() * 20), b = Math.floor(Math.random() * 23);
-    const namen = Array.from({ length: 30 }, (_, i) => `${vor[(a + i) % 20]} ${nach[(b + i) % 23]} (Test)`);
+    const namen = Array.from({ length: 90 }, (_, i) => `${vor[(a + i) % 20]} ${nach[(b + i) % 23]} (Test)`);
     await vieleEintragen(namen.join("\n"));
   },
   async "a-add"() {
