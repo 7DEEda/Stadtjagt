@@ -11,7 +11,7 @@
 --    1 Planetarium Prag        Planetárium Praha, Stromovka
 --    2 Rudolfstollen           Rudolfova štola, Stromovka
 --    3 Wasserturm Letná        Vodárenská věž Letná
---    4 Křižík-Seilbahn, oben   Horní stanice lanové dráhy Františka Křižíka
+--    4 Aussicht Letná          Horní stanice lanové dráhy Františka Křižíka (ehemalige Standseilbahn, 1891 bis 1916)
 --    5 Metronom                Pražský metronom, Letná
 --
 --  Luftlinie: Start 440 m, 1 bis 2 570 m, 2 bis 3 470 m, 3 bis 4 620 m,
@@ -53,9 +53,9 @@ update stations set
 where position = 3;
 
 update stations set
-  name = 'Křižík-Seilbahn, Bergstation',
+  name = 'Aussicht Letná, ehemalige Bergstation',
   lat = 50.095789, lng = 14.425346, radius_m = 50,
-  location_hint = 'Ortshinweis folgt',
+  location_hint = 'Oben an der großen Treppe, die vom Park zur Čech-Brücke hinunterführt. Hier begann 1891 eine Standseilbahn, heute ist es ein Aussichtspunkt.',
   riddle = 'Rätsel folgt', answer = '', digit = 9
 where position = 4;
 

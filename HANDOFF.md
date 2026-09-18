@@ -12,7 +12,7 @@ und je einen Koffer. Alle anderen laufen weiter und kommen mit Platz ins Ziel.
 bis 12 eingespielt (6: drei Koffer, 7: Testmodus, 11: Mitlesen, 12: Anmeldung
 bis zum Auslosen; Überblick in [SPIEL.md](SPIEL.md)). **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
 Holešovice, dann Planetarium, Rudolfstollen, Wasserturm Letná, Bergstation der
-Křižík-Seilbahn, Metronom (siehe „Route“). Die Orte stehen in
+Aussicht Letná (ehemalige Bergstation der Standseilbahn), Metronom (siehe „Route“). Die Orte stehen in
 `supabase/seed-stationen-prag.sql` und seit 18.09.2026 auch in der Datenbank,
 mit Platzhaltern statt Rätseln. Offen sind Rätsel und Ortshinweise, der
 Praxistest draußen und die echte WhatsApp-Nummer für den Hilfe-Knopf (bis dahin
@@ -177,7 +177,7 @@ Veletržní 1502/20, Praha 7-Holešovice, 50.102458, 14.431681.
 | 1 | Planetarium Prag | Planetárium Praha | 50.105286, 14.427406 | 440 m ab Start |
 | 2 | Rudolfstollen | Rudolfova štola | 50.104441, 14.419553 | 570 m |
 | 3 | Wasserturm Letná | Vodárenská věž Letná | 50.100195, 14.420089 | 470 m |
-| 4 | Křižík-Seilbahn, Bergstation | Horní stanice lanové dráhy Františka Křižíka | 50.095789, 14.425346 | 620 m |
+| 4 | Aussicht Letná, ehemalige Bergstation | Horní stanice lanové dráhy Františka Křižíka (Standseilbahn 1891 bis 1916, heute Aussichtspunkt an der Treppe) | 50.095789, 14.425346 | 620 m |
 | 5 | Metronom | Pražský metronom | 50.094775, 14.415938 | 680 m |
 
 Zusammen rund 2,8 km Luftlinie, zu Fuß eher 3,5 km, dazu der Anstieg aus der
