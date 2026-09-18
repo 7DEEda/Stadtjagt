@@ -241,6 +241,24 @@ das in Ordnung ist, am besten ein Diensthandy.
 - **Unkalibrierter Magnetsensor:** iOS liefert dann `webkitCompassAccuracy < 0`
   oder `webkitCompassHeading === null`. Abhilfe ist eine liegende Acht mit dem
   Handy. Das steht als Hinweis in der App.
+- **Eine große positive Genauigkeit ist genauso unbrauchbar.** Gemessen auf
+  einem iPhone 17 Pro (iOS 27, Chrome für iOS) am 18.09.2026: Erlaubnis
+  erteilt, 1143 Ereignisse empfangen, `webkitCompassHeading` vorhanden, aber
+  `webkitCompassAccuracy` bei **±74°**, und der Wert bewegte sich über zwölf
+  aufeinanderfolgende Ereignisse um keine einzige Nachkommastelle. Der Sensor
+  antwortet also, führt aber nicht nach. Die erste Fassung prüfte nur auf
+  negative Werte und meldete deshalb fröhlich „Kompass aktiv“, während der
+  Pfeil um einen Viertelkreis danebenlag.
+- **Grenze:** `KOMPASS_GRENZE` in `index.html`, aktuell 25 Grad. Darüber gilt
+  die Richtung als unbrauchbar, die App sagt das mit dem gemessenen Wert und
+  schaltet auf die Laufrichtung aus zwei GPS-Punkten um, sobald das Team ein
+  paar Schritte gegangen ist. Dafür wird die Laufrichtung jetzt auch dann
+  mitgerechnet, wenn der Kompass etwas liefert; vorher unterblieb das, sobald
+  irgendeine Richtung ankam, und es gab keinen Ersatz.
+- **Was gegen einen schlechten Sensor hilft:** liegende Acht mit dem Gerät,
+  weg von Magneten (MagSafe-Hüllen, Autohalterungen, Magnetbörsen, Kopfhörer),
+  und in den Einstellungen unter Datenschutz, Ortungsdienste, Systemdienste den
+  Dienst Kompasskalibrierung einschalten.
 - **Testseite:** `kompass-test.html`, live unter
   https://7deeda.github.io/Stadtjagt/kompass-test.html. Zeigt Erlaubnis,
   Ereigniszahl, `webkitCompassHeading`, Genauigkeit und Rohwerte und fällt nach
@@ -391,8 +409,13 @@ oder einen Tunnel.
   bestem Wissen gesetzt, aber niemand von uns stand davor. Besonders die Anzahl
   der Statuengruppen auf der Karlsbrücke und die Stufenzahl am Petřín gehören
   bestätigt.
-- **Kompass auf dem iPhone 17 Pro** funktioniert laut Rückmeldung nicht. Die
-  Testseite `kompass-test.html` nennt die Ursache; der Bericht steht noch aus.
+- **Kompass auf dem iPhone 17 Pro:** Ursache gefunden, siehe GPS und Kompass.
+  Der Sensor meldet ±74° Unsicherheit und einen eingefrorenen Wert. Die App
+  erkennt das jetzt und weicht auf die Laufrichtung aus. Ob das Gerät nach
+  Kalibrierung brauchbare Werte liefert, ist noch nicht bestätigt: Testseite
+  erneut aufrufen, dabei auf die Zeile „Kompassgenauigkeit“ achten. Bleibt sie
+  über 25°, nimmt das Team als Ersatz die Laufrichtung, und die Entfernung in
+  Metern stimmt ohnehin unabhängig vom Kompass.
 - **WhatsApp-Nummer** fehlt in `config.js`, deshalb erscheint kein Hilfe-Knopf.
 - Am Koffer sollte jemand von der Spielleitung stehen und erst nach dem Signal
   der App öffnen lassen.

@@ -243,7 +243,7 @@ const S = {
   pub: null, myName: localStorage.getItem("sj.name") || null, lookup: null,
   team: { code: localStorage.getItem("sj.code") || null, state: null },
   // kompass: "unbekannt" | "wartet" | "an" | "kalibrieren" | "abgelehnt" | "fehlt"
-  gps: { pos: null, acc: null, heading: null, gpsHeading: null, needle: 0, on: false, err: null, kompass: "unbekannt", lastSent: 0, lastSentPos: null, sentAt: null },
+  gps: { pos: null, acc: null, heading: null, headingAcc: null, gpsHeading: null, needle: 0, on: false, err: null, kompass: "unbekannt", lastSent: 0, lastSentPos: null, sentAt: null },
   admin: { pin: sessionStorage.getItem("sj.pin") || null, state: null, tab: "map", edit: null, full: false,
            // Routen: tracks[teamId] = {name, points:[[lat,lng,ms]], stations:[...]}
            tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false, confirm: null,
@@ -259,6 +259,8 @@ const TEAM_EMOJI = {
   flamingo: "🦩", pinguin: "🐧", delfin: "🐬", adler: "🦅", igel: "🦔", otter: "🦦",
   krake: "🐙", biber: "🦫", koala: "🐨", drache: "🐉"
 };
+// Ab dieser Unsicherheit in Grad ist die Kompassrichtung nicht mehr zu gebrauchen
+const KOMPASS_GRENZE = 25;
 const teamEmoji = name => TEAM_EMOJI[String(name || "").trim().toLowerCase()] || "🐾";
 
 /* ---------- Löschbereich ---------- */
@@ -420,10 +422,12 @@ function routeHTML(st) {
 }
 function kompassText() {
   const g = S.gps;
-  if (g.heading != null) {
-    return g.kompass === "kalibrieren"
-      ? "Kompass ungenau, Handy einmal in einer liegenden Acht schwenken"
-      : "Kompass aktiv";
+  if (g.heading != null && g.kompass === "an") return "Kompass aktiv";
+  if (g.kompass === "kalibrieren") {
+    const wie = g.headingAcc != null && g.headingAcc >= 0 ? ` (±${Math.round(g.headingAcc)}°)` : "";
+    return g.gpsHeading != null
+      ? `Kompass ungenau${wie}, Pfeil folgt eurer Laufrichtung`
+      : `Kompass ungenau${wie}, Handy in einer liegenden Acht schwenken oder ein paar Schritte gehen`;
   }
   if (g.kompass === "abgelehnt") return "Kompass nicht freigegeben";
   if (g.kompass === "fehlt") return "dieses Gerät hat keinen Kompass";
@@ -1030,13 +1034,22 @@ function setNeedle(target) {
   const n = $("#needle");
   if (n) { n.style.transition = "transform .25s linear"; n.style.transform = `rotate(${g.needle}deg)`; }
 }
+// Woher die Blickrichtung kommt. Ein unsicherer Kompass ist schlechter als
+// die Richtung, in die das Team tatsächlich läuft.
+function richtung() {
+  const g = S.gps;
+  if (g.heading != null && g.kompass === "an") return g.heading;
+  if (g.gpsHeading != null) return g.gpsHeading;
+  if (g.heading != null) return g.heading;
+  return 0;
+}
 function liveUpdate() {
   const g = S.gps, st = S.team.state, s = st && st.station;
   const note = $("#gnote"); if (note && s && s.lat != null) note.textContent = gpsNote();
   if (!g.pos || !s || s.lat == null) return;
   const t = { lat: s.lat, lng: s.lng };
   const d = $("#dist"); if (d) d.textContent = fmtDist(haversine(g.pos, t));
-  setNeedle(bearingTo(g.pos, t) - (g.heading ?? g.gpsHeading ?? 0));
+  setNeedle(bearingTo(g.pos, t) - richtung());
 }
 function addOrient() {
   if (orientOn) return; orientOn = true;
@@ -1046,8 +1059,13 @@ function addOrient() {
     const wch = e.webkitCompassHeading;          // nur iOS, schon auf Norden bezogen
     if (typeof wch === "number") {
       hd = wch;
-      // iOS meldet eine negative Genauigkeit, solange der Sensor nicht kalibriert ist
-      g.kompass = (typeof e.webkitCompassAccuracy === "number" && e.webkitCompassAccuracy < 0)
+      const acc = e.webkitCompassAccuracy;
+      g.headingAcc = typeof acc === "number" ? acc : null;
+      // iOS meldet eine negative Genauigkeit, solange der Sensor ungültig ist.
+      // Ein großer positiver Wert ist genauso unbrauchbar: bei ±74° kann der
+      // Pfeil um einen Viertelkreis danebenliegen. Gemessen auf einem
+      // iPhone 17 Pro am 18.09.2026, siehe HANDOFF.
+      g.kompass = (typeof acc === "number" && (acc < 0 || acc > KOMPASS_GRENZE))
         ? "kalibrieren" : "an";
     } else if (e.absolute && e.alpha != null) {
       hd = 360 - e.alpha; g.kompass = "an";
@@ -1085,7 +1103,9 @@ async function startGps() {
   let last = null;
   watchId = navigator.geolocation.watchPosition(p => {
     const next = { lat: p.coords.latitude, lng: p.coords.longitude };
-    if (last && haversine(last, next) > 6 && S.gps.heading == null) S.gps.gpsHeading = bearingTo(last, next);
+    // Laufrichtung auch dann mitrechnen, wenn der Kompass zwar etwas liefert,
+    // aber zu ungenau ist. Sonst gibt es keinen Ersatz, wenn er ausfällt.
+    if (last && haversine(last, next) > 6 && S.gps.kompass !== "an") S.gps.gpsHeading = bearingTo(last, next);
     last = next;
     const firstFix = !S.gps.pos;
     S.gps.pos = next; S.gps.acc = p.coords.accuracy ?? 999; S.gps.err = null;

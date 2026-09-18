@@ -69,6 +69,8 @@ svg{width:84px;height:84px;flex:none}
 const $ = s => document.querySelector(s);
 const F = {};   // alles, was wir herausfinden
 let zaehler = { deviceorientation: 0, deviceorientationabsolute: 0 };
+let letzterWert = null, gleich = 0;
+const GRENZE = 25;   // ab hier ist die Richtung nicht mehr zu gebrauchen
 let letzte = null, zeilen = [];
 
 function setz(k, v, art) {
@@ -118,8 +120,17 @@ function beiEreignis(typ) {
         "err");
     }
     if (acc !== undefined) {
-      setz("Kompassgenauigkeit", acc < 0 ? acc + " (ungültig, bitte kalibrieren)" : "±" + acc + "°",
-        acc !== undefined && acc >= 0 ? "ok" : "err");
+      const schlecht = !(typeof acc === "number") || acc < 0 || acc > GRENZE;
+      setz("Kompassgenauigkeit",
+        acc < 0 ? acc + " (ungültig, Sensor nicht kalibriert)"
+          : "±" + Math.round(acc * 10) / 10 + "°" + (acc > GRENZE ? " (viel zu ungenau, brauchbar wäre unter " + GRENZE + "°)" : ""),
+        schlecht ? "err" : "ok");
+    }
+    // Bleibt der Wert ueber viele Ereignisse exakt gleich, fuehrt der Sensor nicht nach
+    if (typeof wch === "number") {
+      if (wch === letzterWert) gleich++; else { gleich = 0; letzterWert = wch; }
+      setz("Richtung bewegt sich", gleich > 40 ? "nein, seit " + gleich + " Ereignissen derselbe Wert" : "ja",
+        gleich > 40 ? "err" : "ok");
     }
     setz("alpha / beta / gamma",
       [e.alpha, e.beta, e.gamma].map(v => v == null ? "null" : v.toFixed(1)).join(" / "));
@@ -189,6 +200,15 @@ $("#start").onclick = async function () {
     } else if (letzte && typeof letzte.webkitCompassHeading !== "number" && !letzte.absolute) {
       urteil("Ereignisse kommen an, aber ohne Nordbezug. Der Magnetsensor ist vermutlich nicht "
         + "kalibriert: das Gerät einmal in einer liegenden Acht bewegen, dann erneut prüfen.", false);
+    } else if (letzte && typeof letzte.webkitCompassAccuracy === "number" && letzte.webkitCompassAccuracy > GRENZE) {
+      urteil("Der Kompass antwortet, ist aber mit ±" + Math.round(letzte.webkitCompassAccuracy)
+        + "° viel zu ungenau. Brauchbar wäre unter " + GRENZE + "°. Bewegt das Gerät einmal in einer "
+        + "liegenden Acht, haltet es weg von Magneten, Autohalterungen und Kopfhörern, und schaltet "
+        + "in den Einstellungen unter Datenschutz, Ortungsdienste, Systemdienste den "
+        + "Kompasskalibrierung-Dienst ein. Danach erneut prüfen.", false);
+    } else if (gleich > 40) {
+      urteil("Der Kompass liefert seit vielen Ereignissen exakt denselben Wert, er führt also nicht "
+        + "nach. Seite neu laden und das Gerät dabei bewegen.", false);
     } else if (F["Erlaubnis Bewegung"] && F["Erlaubnis Bewegung"].wert === "granted") {
       urteil("Der Kompass liefert Daten. Wenn die Gradzahl beim Drehen mitläuft, ist alles in Ordnung.", true);
     }
