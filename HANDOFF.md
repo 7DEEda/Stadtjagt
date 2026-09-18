@@ -17,6 +17,9 @@ mit Platzhaltern statt Rätseln. Offen sind Rätsel und Ortshinweise, der
 Praxistest draußen und die echte WhatsApp-Nummer für den Hilfe-Knopf (bis dahin
 steht die Testnummer 0172 0000000 drin).
 
+Spielregeln, Zustände, Abläufe und Code-Aufbau in geordneter Form: `SPIEL.md`.
+Diese Datei ist das fortlaufende Protokoll mit Zugängen und Entscheidungen.
+
 ## Stack und Aufbau
 
 | Teil | Technik | Datei |

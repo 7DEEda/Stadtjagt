@@ -8,6 +8,8 @@ Zeitachse für die Spielleitung.
 Vollständiger Kontext, Architektur, Datenschutz und offene Punkte:
 **[HANDOFF.md](HANDOFF.md)**
 
+Wie Spiel und Code funktionieren (Regeln, Zustände, Abläufe, Aufbau): **[SPIEL.md](SPIEL.md)**
+
 ## Ansichten
 
 | Pfad | Für wen |
