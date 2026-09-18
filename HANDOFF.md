@@ -11,8 +11,8 @@ Koffer und gewinnt.
 bis 5 eingespielt. **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
 Holešovice, dann Planetarium, Rudolfstollen, Wasserturm Letná, Bergstation der
 Křižík-Seilbahn, Metronom (siehe „Route“). Die Orte stehen in
-`supabase/seed-stationen-prag.sql`, in der Datenbank steht noch die alte
-Altstadt-Route. Offen sind Rätsel und Ortshinweise, der Ort des Koffers, der
+`supabase/seed-stationen-prag.sql` und seit 18.09.2026 auch in der Datenbank,
+mit Platzhaltern statt Rätseln. Offen sind Rätsel und Ortshinweise, der Ort des Koffers, der
 Praxistest draußen und die WhatsApp-Nummer für den Hilfe-Knopf.
 
 ## Stack und Aufbau
@@ -157,8 +157,9 @@ erscheint am Ende als Hinweis auf den Koffer.
 
 Noch offen: Rätsel mit Lösungen, Ortshinweise, wo der Koffer steht. Bis dahin
 stehen in der Seed-Datei Platzhalter mit leerer Lösung; eine leere Lösung zählt
-nie als richtig. Die Datenbank hat die neue Route noch nicht, die Seed-Datei
-überschreibt beim Einspielen die fünf Stationen.
+nie als richtig. Eingespielt am 18.09.2026 mit `tools/sql.py`; ein erneutes
+Einspielen überschreibt die fünf Stationen, also auch später im Reiter Stationen
+eingetragene Rätsel.
 
 Hintergrund-Variante B zeigt noch die alte Altstadt-Route. Für die neue muss der
 Ausschnitt nach Norden wandern (Mitte etwa 50.100, 14.4235), dafür die OSM-Daten
@@ -495,7 +496,6 @@ oder einen Tunnel.
 - **Rätsel und Ortshinweise** für die neue Route ausdenken, dann vor Ort
   prüfen: nur dort lösbar, etwa über Jahreszahlen, Inschriften oder Zählaufgaben.
 - **Koffer:** Wo steht er? Der Ortshinweis der Station 5 führt am Ende dorthin.
-- **Neue Route in die Datenbank** einspielen, sobald die Rätsel stehen.
 - **Kompass auf dem iPhone 17 Pro:** Ursache gefunden, siehe GPS und Kompass.
   Der Sensor meldet ±74° Unsicherheit und einen eingefrorenen Wert. Die App
   erkennt das jetzt und weicht auf die Laufrichtung aus. Ob das Gerät nach
