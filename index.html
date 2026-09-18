@@ -460,7 +460,9 @@ function viewPublic() {
   if (p.status === "registration") {
     out += S.myName
       ? `<div class="panel"><h2>Du bist dabei, ${esc(vorname(S.myName))}.</h2>
-         <p>Sobald die Spielleitung auslost, siehst du hier dein Team.</p></div>
+         <p>Sobald die Spielleitung auslost, siehst du hier dein Team.</p>
+         <p class="small muted" style="margin-top:8px">Öffne diese Seite später im selben Browser, am besten über ein Lesezeichen.
+           Dann erkennt sie dich wieder und zeigt dein Team von selbst.</p></div>
          <button class="btn alt" data-act="pub-again">Weitere Person anmelden</button>`
       : `<div class="panel"><h2>Mitmachen</h2><p class="muted">Trag deinen Namen ein. Die Teams werden später zufällig ausgelost.</p>
          <div style="margin-top:12px"><label for="pname">Vor- und Nachname</label><input id="pname" autocomplete="name" autocapitalize="words" enterkeyhint="send"></div>
@@ -495,6 +497,7 @@ function viewPublic() {
       <h1>Team ${esc(t.name)}</h1>
       <p>Sucht die anderen mit ${teamEmoji(t.name)}. Teamleitung: <b>${esc(t.leaderName || "offen")}</b></p>
       <button class="btn" data-act="pub-hoch">Zum Hochhalten</button>
+      ${!S.lookupEigen && !S.myName ? `<button class="btn alt" data-act="pub-ich">Das bin ich, merken</button>` : ""}
       <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`
       // vor dem Start: Standort und Kompass schon freigeben, am Übungsziel ausprobieren
       + (S.mit && S.mit.team && p.status === "drawn" ? vorbereitenHTML() : "");
@@ -502,13 +505,22 @@ function viewPublic() {
     if (S.hoch) out += `<div class="hochhalten" style="--c:${farbe}" data-act="pub-hoch-zu" role="button" aria-label="Schließen">
       <div class="riesig" aria-hidden="true">${teamEmoji(t.name)}</div><b>Team ${esc(t.name)}</b><small>Tippen zum Schließen</small></div>`;
   }
-  if (!mit) out += `<div class="panel"><label for="plook">In welchem Team bin ich?</label>
-    <input id="plook" value="${esc(S.myName || "")}" autocapitalize="words" enterkeyhint="search">
+  // Teamsuche: groß nur auf Handys, die ihr eigenes Team nicht kennen (von anderen angemeldet,
+  // von der Spielleitung nachgetragen, anderer Browser). Sonst ein kleiner Link für Kollegen.
+  const eigenBekannt = !!(t && S.lookupEigen);
+  if (!eigenBekannt || S.sucheOffen) {
+    const f = S.fremd;
+    out += `<div class="panel"><label for="plook">${eigenBekannt ? "Anderes Team nachschauen" : "In welchem Team bin ich?"}</label>
+    <input id="plook" value="${eigenBekannt ? "" : esc(S.myName || "")}" autocapitalize="words" enterkeyhint="search">
     <button class="btn" data-act="pub-look">Team anzeigen</button>${msgBox()}
-    ${S.kandidaten ? `<div class="wahl">${S.kandidaten.map(n => `<button class="btn sm alt" data-act="pub-look" data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : ""}</div>`;
+    ${S.kandidaten ? `<div class="wahl">${S.kandidaten.map(n => `<button class="btn sm alt" data-act="pub-look" data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : ""}
+    ${f ? `<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px"><h3>${teamEmoji(f.name)} Team ${esc(f.name)}</h3>
+      <p class="small">Teamleitung: <b>${esc(f.leaderName || "offen")}</b></p>
+      <p class="small muted">${(f.members || []).map(esc).join(", ")}</p></div>` : ""}</div>`;
+  } else out += `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="pub-suche">Anderes Team nachschauen</button></p>`;
   // Nach dem Auslosen ist die Selbstanmeldung zu (sonst ließe sich mit erfundenen Namen bei
   // fremden Teams mitlesen). Nachzügler melden sich bei der Spielleitung, die trägt sie nach.
-  if (!S.myName && !vorbei) {
+  if (!S.myName && !t && !vorbei) {
     const hilfe = helpBtn("Stadtjagd: Ich bin noch nicht angemeldet. Mein Name: ");
     out += `<div class="panel"><h3>Noch nicht angemeldet?</h3>
       <p class="small muted">Die Teams stehen schon. Melde dich bei der Spielleitung, sie trägt dich nach und sagt dir dein Team.</p>
@@ -1172,6 +1184,14 @@ const ACT = {
     if (r.team) { S.lookup = r.team; S.lookupName = r.name; S.lookupEigen = true; S.autoLook = true; }
     await refresh();
   },
+  "pub-suche"() { S.sucheOffen = true; },
+  // Wer über die Suche sein Team gefunden hat, kann es sich merken: dann steht es auch nach dem Neuladen da
+  "pub-ich"() {
+    if (!S.lookupName) return;
+    S.myName = S.lookupName; localStorage.setItem("sj.name", S.myName);
+    S.lookupEigen = true; S.nameGeprueft = true; S.letzteAnzahl = null;
+    S.msg = { type: "ok", text: "Gemerkt. Dieses Handy zeigt jetzt dein Team." };
+  },
   async "pub-hoch"() {
     S.hoch = true;
     // Bildschirm anlassen, solange das Handy hochgehalten wird (wo der Browser es kann)
@@ -1182,7 +1202,18 @@ const ACT = {
     localStorage.removeItem("sj.token"); S.mit = null; S.myName = null; localStorage.removeItem("sj.name"); },
   async "pub-look"(d) {
     const r = await rpc("lookup_participant", { p_name: d.name || val("plook") });
-    S.kandidaten = null; S.lookupEigen = false;
+    const eigen = !!(S.lookup && S.lookupEigen);
+    S.kandidaten = null; S.fremd = null;
+    if (eigen) {
+      if (!r.found && r.candidates) {
+        S.kandidaten = r.candidates;
+        S.msg = { type: "err", text: "Mehrere Namen passen. Tipp auf den gesuchten" + (r.more ? " oder schreib etwas genauer." : ".") };
+      } else if (!r.found) S.msg = { type: "err", text: "Kein Name gefunden. Prüfe die Schreibweise." };
+      else if (!r.team) S.msg = { type: "ok", text: r.name + " ist angemeldet, aber noch keinem Team zugeteilt." };
+      else { S.fremd = r.team; S.msg = { type: "ok", text: r.name + " ist in Team " + r.team.name + "." }; }
+      return;
+    }
+    S.lookupEigen = false;
     if (!r.found && r.candidates) {
       S.lookup = null; S.kandidaten = r.candidates;
       S.msg = { type: "err", text: "Mehrere Namen passen. Tipp auf deinen" + (r.more ? " oder schreib etwas genauer." : ".") };

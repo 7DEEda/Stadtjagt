@@ -273,6 +273,18 @@ auf dem Handy der Teamleitung; gebaut ist das noch nicht.
 `teamAnsicht(st, lesen)` in `index.html` baut beide Ansichten; `lesen` blendet
 die Eingaben aus. Die Ansicht der Teamleitung (`#/team`) ist unverändert.
 
+## Teamsuche nur, wo das Handy sein Team nicht kennt (19.09.2026)
+
+„In welchem Team bin ich?“ steht groß nur noch auf Handys, die ihr eigenes Team
+nicht kennen: von jemand anderem angemeldet, von der Spielleitung nachgetragen,
+oder ein anderer Browser als bei der Anmeldung (häufig: Link in WhatsApp
+geöffnet, später in Safari). Handys mit „Dein Team“ zeigen nur einen kleinen
+Link „Anderes Team nachschauen“; das Ergebnis steht dann darunter, die eigene
+Karte bleibt. Wer sein Team über die Suche gefunden hat, kann mit „Das bin
+ich, merken“ den Namen auf dem Handy speichern (nur Anzeige, kein Mitlesen:
+dafür fehlt der Geräte-Schlüssel). Nach der Anmeldung steht der Hinweis, die
+Seite später im selben Browser zu öffnen, am besten per Lesezeichen.
+
 ## Anmeldung nur bis zum Auslosen (Nachtrag 12, ersetzt Nachtrag 10)
 
 Nachtrag 10 hatte die Selbstanmeldung bis zum Spielende geöffnet. Zusammen mit
