@@ -237,7 +237,12 @@ function bearingTo(a, b) {
   const x = Math.cos(rad(a.lat)) * Math.sin(rad(b.lat)) - Math.sin(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.cos(rad(b.lng - a.lng));
   return (deg(Math.atan2(y, x)) + 360) % 360;
 }
-const fmtDist = m => m < 1000 ? Math.round(m) + " m" : (m / 1000).toFixed(2).replace(".", ",") + " km";
+const fmtDist = m => m < 1000 ? Math.round(m) + " m"
+  : m < 10000 ? (m / 1000).toFixed(2).replace(".", ",") + " km"
+  : Math.round(m / 1000) + " km";
+// Übungsziel vor dem Start: so lassen sich Kompass und Entfernung schon ausprobieren.
+// Bergiusstraße 52, 12057 Berlin, Koordinaten aus OpenStreetMap.
+const PROBEZIEL = { name: "TSE AG in Berlin", lat: 52.46175, lng: 13.46070 };
 function ago(ts) {
   if (!ts) return "nie";
   const s = Math.max(0, Math.round((Date.now() - new Date(ts).getTime()) / 1000));
@@ -643,10 +648,18 @@ function vorbereitenHTML() {
   const g = S.gps;
   if (g.kal) return `<div class="panel">${kalHTML()}</div>`;
   return `<div class="panel"><h3>Schon mal vorbereiten</h3>
-    ${!g.on ? `<p class="small muted">Gebt Standort und Kompass jetzt frei, dann geht es beim Start sofort los.</p>
+    ${!g.on ? `<p class="small muted">Gebt Standort und Kompass jetzt frei, dann geht es beim Start sofort los.
+      Zum Ausprobieren zeigt der Pfeil danach auf die ${PROBEZIEL.name}.</p>
       <button class="btn alt" data-act="t-gps">Standort und Kompass freigeben</button>`
-      : `<p class="small" id="gstat">${esc(gpsNote())}</p>${kalOkHTML()}
-        ${kompassDa() ? `<button class="btn alt" data-act="t-kal">Kompass einmessen</button>` : ""}`}
+      : `<p class="small muted">Zum Ausprobieren zeigt der Pfeil auf die ${PROBEZIEL.name}.
+        Dreht euch einmal: Der Pfeil sollte in dieselbe Himmelsrichtung zeigen, egal wie ihr das Handy haltet.</p>
+      <div class="compass ${richtungBekannt() ? "" : "unsicher"}"><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
+        <polygon class="needle" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/>
+        <text class="nq" x="39" y="48" text-anchor="middle">?</text></svg>
+        <div><div class="dist" id="dist">${g.pos ? fmtDist(haversine(g.pos, PROBEZIEL)) : "- -"}</div>
+          <div class="muted small" id="gstat">${esc(gpsNote())}</div></div></div>
+      ${kalOkHTML()}
+      ${kompassDa() ? `<button class="btn alt" data-act="t-kal">Kompass einmessen</button>` : ""}`}
     ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}</div>`;
 }
 
@@ -1269,14 +1282,21 @@ function richtung() {
   if (g.gpsHeading != null) return g.gpsHeading;
   return g.heading ?? 0;
 }
+// Wohin der Pfeil zeigt: unterwegs die Station, vor dem Start das Übungsziel
+function aktuellesZiel() {
+  const st = S.team.state, s = st && st.station;
+  if (s && s.lat != null && s.lng != null) return s;
+  if (st && st.status === "drawn") return PROBEZIEL;
+  return null;
+}
 function liveUpdate() {
-  const g = S.gps, st = S.team.state, s = st && st.station;
+  const g = S.gps, ziel = aktuellesZiel();
   kalZeigen();
-  const note = $("#gnote"); if (note && s && s.lat != null) note.textContent = gpsNote();
+  const note = $("#gnote"); if (note && ziel) note.textContent = gpsNote();
   const n = $("#needle"); if (n) n.closest(".compass").classList.toggle("unsicher", !richtungBekannt());
   const gs = $("#gstat"); if (gs) gs.textContent = gpsNote();
-  if (!g.pos || !s || s.lat == null) return;
-  const t = { lat: s.lat, lng: s.lng };
+  if (!g.pos || !ziel) return;
+  const t = { lat: ziel.lat, lng: ziel.lng };
   const d = $("#dist"); if (d) d.textContent = fmtDist(haversine(g.pos, t));
   setNeedle(bearingTo(g.pos, t) - richtung());
 }

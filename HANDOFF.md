@@ -232,7 +232,13 @@ Spielleitung auf dem Tablet hoch und quer, hell und dunkel. Behoben:
   Namen zum Antippen. Nach dem Auslosen zeigt die Anmeldeseite das eigene Team
   von selbst („Dein Team“), der Name ist von der Anmeldung bekannt.
 - **Wartebildschirm** vor dem Start: „Standort und Kompass freigeben“, das
-  Einmessen läuft dort schon, beim Startsignal ist alles bereit.
+  Einmessen läuft dort schon, beim Startsignal ist alles bereit. Dazu ein
+  Kompass mit Übungsziel **TSE AG, Bergiusstraße 52, 12057 Berlin**
+  (52.46175, 13.46070, Adresse laut Impressum, Koordinaten aus
+  OpenStreetMap). So lassen sich Pfeil und Entfernung vor dem Start
+  ausprobieren; aus Prag zeigt er rund 271 km nach Nordnordwest. Das Ziel
+  steht als `PROBEZIEL` in `index.html`, ab dem Start zeigt der Pfeil auf die
+  Station. Entfernungen ab 10 km zeigt die App in ganzen Kilometern.
 - **Kompass** zeigt ein Fragezeichen statt eines grauen Pfeils, solange keine
   Richtung bekannt ist.
 - **Positionen:** App und Datenbank verwerfen 0/0, Genauigkeit 0 und schlechter
