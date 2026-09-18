@@ -55,7 +55,11 @@ Hilfsfunktionen ohne Ausführungsrecht für `anon`: `norm`, `dist_m`, `team_by_c
 
 - `#/public` – Anmeldung mit Namensfeld, nach der Auslosung Namenssuche, nach Spielende Rangliste
 - `#/team` – Login per Team-Code, Zahlenschloss, Ortshinweis, Kompass mit Entfernung, Check-in, Rätsel, Endcode
-- `#/admin` – Karte, Teams, Teilnehmende, Stationen; Auslosen, Starten, Beenden, Zurücksetzen
+- `#/admin` – Karte, Teams, Teilnehmende, Stationen, Daten löschen; Auslosen, Starten, Beenden
+
+Jedes Team hat ein Tier-Emoji, passend zum Namen. Die Zuordnung steht als
+`TEAM_EMOJI` in `index.html`, nicht in der Datenbank. Kommt ein Teamname dazu,
+dort ergänzen, sonst erscheint eine Pfote als Platzhalter.
 
 ## Routen und Zeitachse
 
@@ -124,6 +128,20 @@ Wichtig für die Weiterarbeit:
 - **Beispieldaten:** `supabase/seed.sql` füllt fünf Berliner Stationen (Brandenburger Tor bis Weltzeituhr) und 100 erfundene Teilnehmende ein, Koffer-Code damit 371955. Nur zum Testen; der Aufräumblock am Ende der Datei entfernt alles wieder.
 
 Offen an dieser Stelle: der Probelauf draußen. Ablauf: Station 1 per „Meinen Standort übernehmen“ setzen, auslosen, starten, mit dem Team-Code einloggen, Standort und Kompass aktivieren, Entfernung und Pfeil beim Gehen prüfen, einchecken, Rätsel lösen, danach die Karte im Admin-Bereich ansehen. Anschließend „Zurücksetzen“, damit der Testfortschritt verschwindet.
+
+## Löschen
+
+Alles, was Daten entfernt, steht im eigenen Reiter „Daten löschen“ und nirgends
+sonst: Standortdaten löschen, Fortschritt zurücksetzen und, solange noch nicht
+gestartet ist, neu auslosen. Oben im Kopf stehen nur noch Auslosen, Starten und
+Beenden. Der Reiter zeigt vorher, wie viele Teams, Personen, Positionen und
+gelöste Stationen betroffen sind.
+
+Jede dieser Aktionen fragt zweimal: erst der Dialog, dann muss das Wort
+`LÖSCHEN` getippt werden, bevor der Knopf überhaupt anklickbar wird. Escape und
+„Abbrechen“ brechen ab. Dasselbe gilt für das × bei den Teilnehmenden, das
+vorher ohne jede Rückfrage gelöscht hat. Neue Löschaktionen gehören in die
+Liste `DANGER` in `index.html`, dann bekommen sie den Dialog automatisch.
 
 ## Einrichtung
 

@@ -11,13 +11,13 @@
 :root{
   --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF;
   --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#FFFFFF; --water:#2F6E9E;
-  --ok:#2E7D4F; --err:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7;
+  --ok:#2E7D4F; --err:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7; --err-btn:#B3261E;
   --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38;
-  --contour:#1C312B; --flag:#FF7A3A; --water:#6FA8D6; --ok:#6CCB8E; --err:#FF8A80;
+  --contour:#1C312B; --flag:#FF7A3A; --water:#6FA8D6; --ok:#6CCB8E; --err:#FF8A80; --err-btn:#C5372C;
   --ok-bg:#16332A; --err-bg:#3A1F1C;}}
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -88,7 +88,7 @@ th{font:600 14px var(--body);color:var(--muted)}
 .tl-head input[type=range]{flex:1;min-width:140px;width:auto;padding:0;border:0;background:none;accent-color:var(--flag)}
 .tl-time{font:700 22px var(--head);min-width:62px;text-align:center;white-space:nowrap}
 .tl-rows{position:relative;margin-top:14px}
-.tl-row{display:grid;grid-template-columns:92px 1fr 80px;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line);cursor:pointer}
+.tl-row{display:grid;grid-template-columns:104px 1fr 80px;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line);cursor:pointer}
 .tl-row.off{opacity:.35}
 .tl-name{font:600 15px var(--body);display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden}
 .tl-name i{width:12px;height:12px;border-radius:50%;flex:none}
@@ -99,7 +99,7 @@ th{font:600 14px var(--body);color:var(--muted)}
 .tl-bar .win{position:absolute;top:1px;margin-left:14px;font:700 13px var(--head);color:var(--flag);white-space:nowrap}
 .tl-total{font:700 15px var(--head);text-align:right;white-space:nowrap}
 .tl-total small{display:block;font:500 12px var(--body);color:var(--muted)}
-.tl-axis{position:relative;height:18px;margin:0 90px 0 102px;font:500 12px var(--body);color:var(--muted)}
+.tl-axis{position:relative;height:18px;margin:0 90px 0 114px;font:500 12px var(--body);color:var(--muted)}
 .tl-axis span{position:absolute;transform:translateX(-50%);white-space:nowrap}
 .tl-cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--flag);margin-left:-1px;pointer-events:none;z-index:2}
 .tl-cursor::after{content:"";position:absolute;top:-6px;left:-5px;width:12px;height:12px;border-radius:50%;background:var(--flag)}
@@ -108,6 +108,19 @@ th{font:600 14px var(--body);color:var(--muted)}
 .tl-key b{display:inline-block;width:22px;height:10px;border-radius:2px;background:var(--muted)}
 .tl-key b.solve{background:repeating-linear-gradient(135deg,var(--muted) 0 3px,transparent 3px 6px);opacity:.6}
 .tl-key b.dot{width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--muted)}
+.btn.warn{background:var(--err-btn);color:#fff}
+.panel.danger{border-color:var(--err);border-left-width:4px}
+.panel.danger h3{color:var(--err)}
+.overlay{position:fixed;inset:0;z-index:100;background:rgba(17,17,17,.45);display:grid;place-items:center;padding:16px;animation:ovin .16s cubic-bezier(.32,.72,.4,1)}
+.dialog{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;width:100%;max-width:430px;box-shadow:0 12px 32px rgba(17,17,17,.28),0 2px 6px rgba(17,17,17,.12);animation:dgin .16s cubic-bezier(.32,.72,.4,1)}
+.dialog h2{color:var(--err)}
+.dialog .why{background:var(--err-bg);color:var(--err);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:15px}
+.dialog .keeps{font-size:14px;color:var(--muted);margin-top:8px}
+.dialog .row{display:flex;gap:8px;margin-top:16px}
+.dialog .row .btn{margin-top:0}
+@keyframes ovin{from{opacity:0}}
+@keyframes dgin{from{opacity:0;transform:translateY(-6px) scale(.98)}}
+@media (prefers-reduced-motion:reduce){.overlay,.dialog{animation:none}}
 .nav{display:flex;gap:6px;justify-content:center;margin-top:24px;font-size:14px}
 .nav a{color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -190,12 +203,74 @@ const S = {
   gps: { pos: null, acc: null, heading: null, gpsHeading: null, needle: 0, on: false, err: null, compass: false, lastSent: 0, lastSentPos: null, sentAt: null },
   admin: { pin: sessionStorage.getItem("sj.pin") || null, state: null, tab: "map", edit: null, full: false,
            // Routen: tracks[teamId] = {name, points:[[lat,lng,ms]], stations:[...]}
-           tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false }
+           tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false, confirm: null }
 };
 // Farben für bis zu 16 Teams, auf hellem wie dunklem Grund unterscheidbar
 const TEAM_COLORS = ["#2F6E9E", "#2E7D4F", "#7B3FA0", "#C62828", "#F9A825", "#00838F", "#AD1457", "#4E6E1F",
   "#E65100", "#3949AB", "#00695C", "#8D6E63", "#D81B60", "#455A64", "#0277BD", "#9E9D24"];
 const teamColor = i => TEAM_COLORS[i % TEAM_COLORS.length];
+// Tier zum Teamnamen. Die Namen kommen aus admin_draw in der Datenbank.
+const TEAM_EMOJI = {
+  fuchs: "🦊", dachs: "🦡", luchs: "🐆", eule: "🦉", biber: "🦫", falke: "🦅",
+  hirsch: "🦌", otter: "🦦", wolf: "🐺", specht: "🐦", igel: "🦔", marder: "🐿️",
+  reiher: "🦢", kranich: "🦩", iltis: "🦨", steinbock: "🐐"
+};
+const teamEmoji = name => TEAM_EMOJI[String(name || "").trim().toLowerCase()] || "🐾";
+
+/* ---------- Löschbereich ---------- */
+// Alles, was Daten entfernt, läuft über diese Liste und den Dialog darunter.
+// Zwei Hürden: erst der Dialog, dann das getippte Wort.
+const DANGER_WORD = "LÖSCHEN";
+const wordOk = v => ["löschen", "loeschen"].includes(String(v || "").trim().toLowerCase());
+const DANGER = {
+  clearpos: {
+    when: st => (st.teams || []).some(t => t.position),
+    title: "Standortdaten löschen",
+    lead: "Alle gespeicherten Positionen und die gelaufenen Routen aller Teams werden entfernt.",
+    keeps: "Teams, Teilnehmende, Fortschritt und Ziffern bleiben.",
+    btn: "Standortdaten löschen",
+    async run() {
+      S.admin.state = await rpc("admin_clear_positions", { p_pin: S.admin.pin });
+      S.admin.tracks = null; S.admin.syncedAt = null; S.admin.cursor = null; stopPlay();
+      return "Standortdaten und Routen gelöscht.";
+    }
+  },
+  redraw: {
+    when: st => st.status === "drawn",
+    title: "Teams neu auslosen",
+    lead: "Die bestehenden Teams werden gelöscht und alle Teilnehmenden neu verteilt. Die bisherigen Team-Codes gelten dann nicht mehr.",
+    keeps: "Teilnehmende und Stationen bleiben.",
+    btn: "Neu auslosen",
+    async run() {
+      S.admin.state = await rpc("admin_draw", { p_pin: S.admin.pin });
+      S.admin.tracks = null; S.admin.syncedAt = null; S.admin.hidden = {}; S.admin.tab = "teams";
+      return "Neu ausgelost. Gib jeder Teamleitung ihren neuen Code.";
+    }
+  },
+  reset: {
+    when: st => st.status !== "registration",
+    title: "Fortschritt zurücksetzen",
+    lead: "Check-ins, gelöste Rätsel, Ziffern, Standortdaten und Routen aller Teams werden gelöscht. Danach steht das Spiel wieder vor dem Start.",
+    keeps: "Teams, Teilnehmende und Stationen bleiben.",
+    btn: "Fortschritt zurücksetzen",
+    async run() {
+      S.admin.state = await rpc("admin_reset", { p_pin: S.admin.pin });
+      S.admin.tracks = null; S.admin.syncedAt = null; S.admin.cursor = null; stopPlay();
+      return "Fortschritt gelöscht. Das Spiel steht wieder vor dem Start.";
+    }
+  },
+  person: {
+    when: () => false,   // erscheint nicht als Kachel, nur über das × bei den Teilnehmenden
+    title: "$NAME löschen",
+    lead: "$NAME wird aus der Anmeldung entfernt.",
+    keeps: "War die Person eine Teamleitung, wird im Team eine neue ausgelost.",
+    btn: "Person löschen",
+    async run(c) {
+      S.admin.state = await rpc("admin_delete_participant", { p_pin: S.admin.pin, p_id: c.id });
+      return c.name + " gelöscht.";
+    }
+  }
+};
 const fmtClock = ms => new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 function fmtDur(ms) {
   const m = Math.round(ms / 60000);
@@ -236,12 +311,12 @@ function viewPublic() {
 
   if (p.winnerTeamId) {
     const w = (p.teams || []).find(t => t.id === p.winnerTeamId);
-    out += `<div class="panel"><h2>Team ${esc(w ? w.name : "?")} hat den Koffer geöffnet</h2>
+    out += `<div class="panel"><h2>${teamEmoji(w && w.name)} Team ${esc(w ? w.name : "?")} hat den Koffer geöffnet</h2>
       <table><tr><th>Platz</th><th>Team</th><th>Stationen</th></tr>
-      ${(p.ranking || []).map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.teamName)}</td><td>${r.solved} / ${p.stationCount}</td></tr>`).join("")}</table></div>`;
+      ${(p.ranking || []).map((r, i) => `<tr><td>${i + 1}</td><td>${teamEmoji(r.teamName)} ${esc(r.teamName)}</td><td>${r.solved} / ${p.stationCount}</td></tr>`).join("")}</table></div>`;
   }
   const t = S.lookup;
-  if (t) out += `<div class="panel"><p class="muted small">Gefundenes Team</p><h2>Team ${esc(t.name)}</h2>
+  if (t) out += `<div class="panel"><p class="muted small">Gefundenes Team</p><h2>${teamEmoji(t.name)} Team ${esc(t.name)}</h2>
     <p>Leitung: ${esc(t.leaderName || "offen")}</p>
     <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`;
   out += `<div class="panel"><label for="plook">In welchem Team bin ich?</label>
@@ -283,7 +358,7 @@ function viewTeam() {
   const st = S.team.state;
   if (!st) return brand("Teamleitung") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
 
-  let out = `<div class="bar"><div>${FLAG}</div><div style="flex:1"><h1>Team ${esc(st.team.name)}</h1>
+  let out = `<div class="bar"><div>${FLAG}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
     <div class="muted small">${esc(st.team.code)}, Leitung ${esc(st.team.leaderName || "offen")}</div></div></div>`;
 
   if (st.status === "drawn") return out + `<div class="panel"><h3>Ihr seid startklar</h3>
@@ -348,24 +423,24 @@ function viewAdmin() {
     : st.status === "running" ? '<span class="chip live">Läuft</span>'
       : st.status === "drawn" ? '<span class="chip">Teams ausgelost</span>' : '<span class="chip">Anmeldung offen</span>';
   let actions = "";
-  if (st.status === "registration" || st.status === "drawn") actions += `<button class="btn sm alt" data-act="a-draw">${st.status === "drawn" ? "Neu auslosen" : "Teams auslosen"}</button>`;
+  // Alles, was Daten löscht, steht nicht hier oben, sondern im Reiter "Daten löschen".
+  if (st.status === "registration") actions += `<button class="btn sm alt" data-act="a-draw">Teams auslosen</button>`;
   if (st.status === "drawn") actions += `<button class="btn sm" data-act="a-start">Spiel starten</button>`;
   if (st.status === "running") actions += `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
-  if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-reset">Zurücksetzen</button>`;
 
   let out = `<div class="bar"><div class="brand" style="margin:0">${FLAG}<div><h1>Spielleitung</h1><div>${status}</div></div></div><div>${actions}</div></div>${msgBox()}`;
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
   if (missing.length) out += `<div class="msg err">Ohne Koordinaten kann dort niemand einchecken. Betroffen: Station ${missing.map(s => s.position).join(", ")}.</div>`;
 
-  const tabs = [["map", "Karte"], ["teams", "Teams"], ["people", "Teilnehmende"], ["stations", "Stationen"]];
+  const tabs = [["map", "Karte"], ["teams", "Teams"], ["people", "Teilnehmende"], ["stations", "Stationen"], ["danger", "Daten löschen"]];
   out += `<div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${A.tab === k}" data-act="a-tab" data-tab="${k}">${l}</button>`).join("")}</div>`;
 
   if (A.tab === "map") {
     const withPos = (st.teams || []).filter(t => t.position);
     out += `<div id="map"></div>
       <div class="bar" style="margin-top:8px"><span class="small muted">${withPos.length} von ${(st.teams || []).length} Teams melden eine Position. Aktualisierung alle 10 Sekunden.</span>
-      <span><button class="btn sm alt" data-act="a-full">Vollbild</button><button class="btn sm alt" data-act="a-clearpos">Standortdaten löschen</button></span></div>
-      <div class="legend" id="legend">${(st.teams || []).map((t, i) => `<button class="tchip ${A.hidden[t.id] ? "off" : ""}" style="--c:${teamColor(i)}" data-act="a-team" data-id="${t.id}"><i></i>${esc(t.name)}</button>`).join("")}</div>`;
+      <span><button class="btn sm alt" data-act="a-full">Vollbild</button></span></div>
+      <div class="legend" id="legend">${(st.teams || []).map((t, i) => `<button class="tchip ${A.hidden[t.id] ? "off" : ""}" style="--c:${teamColor(i)}" data-act="a-team" data-id="${t.id}"><i></i>${teamEmoji(t.name)} ${esc(t.name)}</button>`).join("")}</div>`;
     const without = (st.teams || []).filter(t => !t.position);
     if (without.length) out += `<p class="small muted">Ohne Position: ${without.map(t => esc(t.name)).join(", ")}</p>`;
     out += `<div class="panel"><div class="bar"><h3>Zeitachse</h3><span class="small muted" id="tlspan"></span></div>
@@ -381,7 +456,7 @@ function viewAdmin() {
   }
   if (A.tab === "teams") {
     out += `<div class="panel"><table><tr><th>Team</th><th>Code</th><th>Stand</th><th></th></tr>
-      ${(st.teams || []).map(t => `<tr><td><b>${esc(t.name)}</b><br><span class="small muted">Leitung ${esc(t.leaderName || "offen")}, ${t.memberCount} Pers.</span></td>
+      ${(st.teams || []).map(t => `<tr><td><b>${teamEmoji(t.name)} ${esc(t.name)}</b><br><span class="small muted">Leitung ${esc(t.leaderName || "offen")}, ${t.memberCount} Pers.</span></td>
         <td class="small">${esc(t.code)}</td>
         <td><div class="prog"><span style="width:${(t.solved / Math.max(1, (st.stations || []).length)) * 100}%"></span></div>
           <span class="small muted">${t.solved} / ${(st.stations || []).length}, ${ago(t.lastActivity)}</span></td>
@@ -392,7 +467,7 @@ function viewAdmin() {
     out += `<div class="panel"><div class="bar"><div><span class="count">${(st.participants || []).length}</span> <span class="muted">angemeldet</span></div></div>
       <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
       <ul class="names">${(st.participants || []).map(p => `<li>${esc(p.name)}${p.teamName ? ` <span class="small muted">${esc(p.teamName)}</span>` : ""}
-        <button class="btn sm alt" style="padding:2px 6px;font-size:13px" data-act="a-del" data-id="${p.id}">×</button></li>`).join("")}</ul></div>`;
+        <button class="btn sm alt" style="padding:2px 6px;font-size:13px" data-act="a-danger" data-key="person" data-id="${p.id}" data-name="${esc(p.name)}" title="Diese Person löschen">×</button></li>`).join("")}</ul></div>`;
   }
   if (A.tab === "stations") {
     out += `<div class="panel"><p class="small muted">Lauf die Route einmal ab und drück an jeder Station „Meinen Standort übernehmen“. Ein Paar wie 52.51631, 13.37770 kannst du auch ins Feld Breite einfügen.</p>
@@ -422,6 +497,41 @@ function viewAdmin() {
           <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
         </div>`).join("")}
       <p class="small" style="border-top:1px solid var(--line);padding-top:12px">Koffer-Code: <b>${esc(st.caseCode || "")}</b></p></div>`;
+  }
+  if (A.tab === "danger") {
+    const teams = st.teams || [], people = st.participants || [];
+    const zahlen = [
+      ["Teams", teams.length],
+      ["Teilnehmende", people.length],
+      ["Teams mit gespeicherter Position", teams.filter(t => t.position).length],
+      ["gelöste Stationen insgesamt", teams.reduce((n, t) => n + (t.solved || 0), 0)]
+    ];
+    out += `<div class="panel"><h3>Was gerade gespeichert ist</h3>
+      <table>${zahlen.map(([k, v]) => `<tr><td>${k}</td><td style="text-align:right"><b>${v}</b></td></tr>`).join("")}</table>
+      <p class="small muted" style="margin-top:10px">Gelöschtes lässt sich nicht zurückholen, es gibt keine Sicherung. Jede Aktion hier fragt zweimal nach.</p></div>`;
+    const offen = Object.keys(DANGER).filter(k => DANGER[k].when(st));
+    out += offen.length
+      ? offen.map(k => `<div class="panel danger"><h3>${esc(DANGER[k].title)}</h3>
+          <p class="small">${esc(DANGER[k].lead)}</p>
+          <p class="small muted">${esc(DANGER[k].keeps)}</p>
+          <button class="btn warn" data-act="a-danger" data-key="${k}">${esc(DANGER[k].btn)}</button></div>`).join("")
+      : `<div class="panel"><p class="muted">Im Moment gibt es nichts zu löschen. Sobald Teams ausgelost sind, stehen hier die Möglichkeiten.</p></div>`;
+    out += `<p class="small muted" style="margin-top:12px">Einzelne Personen löschst du im Reiter Teilnehmende über das ×. Auch das fragt zweimal nach.</p>`;
+  }
+  if (A.confirm) {
+    const D = DANGER[A.confirm.key];
+    const titel = A.confirm.name ? D.title.replace("$NAME", A.confirm.name) : D.title;
+    const lead = A.confirm.name ? D.lead.replace("$NAME", A.confirm.name) : D.lead;
+    out += `<div class="overlay"><div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlgt">
+      <h2 id="dlgt">${esc(titel)}</h2>
+      <div class="why">${esc(lead)}</div>
+      <p class="keeps">${esc(A.confirm.name ? D.keeps.replace("$NAME", A.confirm.name) : D.keeps)}</p>
+      <div style="margin-top:16px"><label for="dlgword">Tippe <b>${DANGER_WORD}</b>, um es wirklich zu löschen</label>
+        <input id="dlgword" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+      <div class="row">
+        <button class="btn alt" data-act="a-dlg-cancel">Abbrechen</button>
+        <button class="btn warn" id="dlgok" data-act="a-dlg-ok" disabled>${esc(D.btn)}</button>
+      </div></div></div>`;
   }
   return out + nav();
 }
@@ -489,7 +599,7 @@ async function drawMap(first) {
     const ref = cur != null ? cur : Date.now();
     const stale = ref - when > 180000;
     pts.push(at);
-    const html = `<div class="mapbadge team ${stale ? "stale" : ""}" ${stale ? "" : `style="background:${color}"`}>${esc(t.name[0])}</div>`;
+    const html = `<div class="mapbadge team ${stale ? "stale" : ""}" ${stale ? "" : `style="background:${color}"`}>${teamEmoji(t.name)}</div>`;
     const solved = cur != null
       ? ((tr && tr.stations) || []).filter(s => s.solvedAt && new Date(s.solvedAt).getTime() <= cur).length
       : t.solved;
@@ -584,7 +694,7 @@ function renderTimeline() {
     const note = r.finish ? `${fmtDur(r.finish - start)}<small>${r.solved} Ziffern</small>`
       : `<small style="font-size:14px;color:var(--ink)">${W.status === "finished" ? "nicht fertig" : "unterwegs"}</small><small>${r.solved} von ${total} Ziffern</small>`;
     html += `<div class="tl-row ${A.hidden[r.t.id] ? "off" : ""}" data-act="a-team" data-id="${r.t.id}">
-      <div class="tl-name"><i style="background:${r.color}"></i>${esc(r.t.name)}</div>
+      <div class="tl-name"><i style="background:${r.color}"></i>${teamEmoji(r.t.name)} ${esc(r.t.name)}</div>
       <div class="tl-bar" style="--c:${r.color}">${segs}</div><div class="tl-total">${note}</div></div>`;
   });
   rows.innerHTML = html;
@@ -605,7 +715,7 @@ function updateCursor() {
   const start = W.start, end = Math.max(W.end, start + 60000);
   const at = A.cursor != null ? A.cursor : end;
   const f = (Math.min(Math.max(at, start), end) - start) / (end - start);
-  if (c) { c.hidden = false; c.style.left = `calc(102px + (100% - 192px) * ${f})`; }
+  if (c) { c.hidden = false; c.style.left = `calc(114px + (100% - 204px) * ${f})`; }
   if (clock) clock.textContent = fmtClock(at);
   if (slider && document.activeElement !== slider) slider.value = Math.round(f * 1000);
   const live = $("#tllive"); if (live) live.disabled = A.cursor == null;
@@ -707,19 +817,17 @@ const ACT = {
     await syncTracks(true).catch(() => { });
     S.msg = { type: "ok", text: "Spiel beendet. Die Routen bleiben, bis du die Standortdaten löschst." };
   },
-  async "a-reset"() {
-    if (!confirm("Fortschritt aller Teams löschen? Die gelaufenen Routen gehen dabei auch verloren.")) return false;
-    S.admin.state = await rpc("admin_reset", { p_pin: S.admin.pin });
-    S.admin.tracks = null; S.admin.syncedAt = null; S.admin.cursor = null; stopPlay();
-  },
-  async "a-clearpos"() {
-    if (!confirm("Alle gespeicherten Standortdaten löschen? Damit sind auch die gelaufenen Routen weg.")) return false;
-    S.admin.state = await rpc("admin_clear_positions", { p_pin: S.admin.pin });
-    S.admin.tracks = null; S.admin.syncedAt = null; S.admin.cursor = null; stopPlay();
-    S.msg = { type: "ok", text: "Standortdaten und Routen gelöscht." };
+  // Löschen: erst den Dialog öffnen, gelöscht wird erst nach dem getippten Wort
+  "a-danger"(d) { S.admin.confirm = { key: d.key, id: d.id, name: d.name }; S.msg = null; },
+  "a-dlg-cancel"() { S.admin.confirm = null; S.msg = null; },
+  async "a-dlg-ok"() {
+    const c = S.admin.confirm;
+    if (!c || !wordOk(val("dlgword"))) return false;
+    const text = await DANGER[c.key].run(c);
+    S.admin.confirm = null;
+    S.msg = { type: "ok", text };
   },
   async "a-add"() { S.admin.state = await rpc("admin_add_participant", { p_pin: S.admin.pin, p_name: val("aadd") }); },
-  async "a-del"(d) { S.admin.state = await rpc("admin_delete_participant", { p_pin: S.admin.pin, p_id: d.id }); },
   async "a-unlock"(d) { S.admin.state = await rpc("admin_unlock_station", { p_pin: S.admin.pin, p_team: d.id }); },
   "a-edit"(d) { S.admin.edit = d.id; },
   "a-cancel"() { S.admin.edit = null; },
@@ -852,9 +960,15 @@ function render() {
     syncTracks().then(() => { drawMap(false); renderTimeline(); }).catch(() => { });
   }
   if (S.view === "team") liveUpdate();
+  if (S.admin.confirm) $("#dlgword")?.focus();
 }
 // Zeitachse: Schieber zieht den Zeitpunkt, ganz rechts heißt "jetzt"
 document.addEventListener("input", e => {
+  // Löschdialog: der Knopf wird erst scharf, wenn das Wort stimmt
+  if (e.target.id === "dlgword") {
+    const ok = $("#dlgok"); if (ok) ok.disabled = !wordOk(e.target.value);
+    return;
+  }
   if (e.target.id !== "tlslider") return;
   const A = S.admin, W = A.window;
   if (!W || !W.start) return;
@@ -880,7 +994,9 @@ document.addEventListener("click", async e => {
   }
 });
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && S.admin.confirm) { S.admin.confirm = null; render(); return; }
   if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
+  if (e.target.id === "dlgword") { const ok = $("#dlgok"); if (ok && !ok.disabled) ok.click(); return; }
   const box = e.target.closest(".stack") || e.target.closest(".panel");
   const btn = box && box.querySelector(".btn[data-act]");
   if (btn && !btn.disabled) btn.click();
@@ -896,7 +1012,7 @@ setInterval(() => {
     rpc("admin_state", { p_pin: S.admin.pin }).then(s => {
       S.admin.state = s;
       if (S.admin.tab === "map") syncTracks().then(() => { drawMap(false); renderTimeline(); }).catch(() => { });
-      else if (!busyTyping && !S.admin.edit) render();
+      else if (!busyTyping && !S.admin.edit && !S.admin.confirm) render();
     }).catch(() => { });
     return;
   }
