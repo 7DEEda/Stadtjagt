@@ -143,7 +143,33 @@ Jede dieser Aktionen fragt zweimal: erst der Dialog, dann muss das Wort
 vorher ohne jede Rückfrage gelöscht hat. Neue Löschaktionen gehören in die
 Liste `DANGER` in `index.html`, dann bekommen sie den Dialog automatisch.
 
+## SQL ausführen ohne den Browser
+
+`tools/sql.py` schickt SQL über die Supabase Management-API an die Datenbank,
+damit Migrationen nicht mehr von Hand in den SQL-Editor kopiert werden müssen.
+
+```
+python tools/sql.py supabase/migrations/20260918160000_routes.sql
+python tools/sql.py --read-only -c "select status from game_state"
+```
+
+Der Zugang braucht einen Personal Access Token von
+https://supabase.com/dashboard/account/tokens. Er steht **nicht** im Repo,
+sondern in `%USERPROFILE%\.supabase\stadtjagt.token`, also außerhalb von
+OneDrive, oder in der Umgebungsvariable `SUPABASE_ACCESS_TOKEN`. Ein solcher
+Token gilt fürs ganze Supabase-Konto, nicht nur für dieses Projekt; nach dem
+Event auf derselben Seite zurückziehen. Der Publishable key aus `config.js` ist
+hier der falsche Schlüssel, das Skript sagt das auch.
+
+Eingebaute Bremse: Anweisungen, die Daten oder Tabellen vernichten, lehnt das
+Skript ab, solange nicht `--force` dabeisteht. Das schützt vor allem vor der
+Init-Migration, die mit `drop table ... cascade` anfängt. UPDATE und DELETE
+innerhalb von Funktionskörpern (`$$ ... $$`) zählen nicht mit, sonst käme jeder
+Nachtrag durch die Bremse. Die Projektkennung liest das Skript aus `config.js`,
+sie steht also nur an einer Stelle.
+
 ## Einrichtung
+
 
 ### Supabase
 1. Projekt auf supabase.com anlegen, Region Frankfurt.
