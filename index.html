@@ -1591,7 +1591,9 @@ setInterval(() => {
   }
   if (busyTyping) return;
   if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(s => { S.team.state = s; render(); }).catch(() => { });
-  if (S.view === "public") rpc("public_state", {}).then(async s => { S.pub = s; await eigenesTeam(); render(); }).catch(() => { });
+  // Beim Hochhalten nicht neu zeichnen: die Vollbild-Ansicht würde jedes Mal neu einblenden und flackern.
+  // Die Daten kommen trotzdem, beim Schließen ist alles aktuell.
+  if (S.view === "public") rpc("public_state", {}).then(async s => { S.pub = s; await eigenesTeam(); if (!S.hoch) render(); }).catch(() => { });
 }, 10000);
 refresh();
 </script>
