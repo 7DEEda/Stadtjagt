@@ -97,8 +97,10 @@ ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line
 .riddle{font-size:19px;border-left:4px solid var(--flag);padding-left:12px}
 .share{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin-top:10px}
 .dot{width:10px;height:10px;border-radius:50%;background:var(--flag);flex:none}
-.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-top:14px;overflow-x:auto}
-.tabs button{background:none;border:0;padding:10px 12px;font:600 17px var(--head);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+/* graue Linie als Innenschatten: die Reiter dürfen sie überdecken, ohne über den Rand zu ragen (sonst Scrollbalken) */
+.tabs{display:flex;gap:4px;box-shadow:inset 0 -2px var(--line);margin-top:14px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{background:none;border:0;padding:10px 12px;font:600 17px var(--head);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
 .tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--flag)}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
 .chip{display:inline-block;padding:4px 10px;border-radius:99px;font:600 13px var(--body);background:var(--paper);border:1px solid var(--line)}
