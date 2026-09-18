@@ -113,6 +113,9 @@ th{font:600 14px var(--body);color:var(--muted)}
 #map.full{position:fixed;inset:0;height:100vh;z-index:50;border-radius:0;margin:0}
 .mapbadge{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--flag);color:#fff;font:700 15px var(--head);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .mapbadge.team{background:var(--water)}
+.mapbadge.start{background:#17302A}
+.mapbadge.start svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+select.sm{width:auto;max-width:100%;font-size:14px;padding:6px 8px;margin-top:4px}
 .mapbadge.stale{background:#8b9c95}
 .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .tchip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 8px;border-radius:99px;font:600 14px var(--body);background:var(--card);border:1.5px solid var(--line);color:var(--ink);cursor:pointer;white-space:nowrap}
@@ -264,6 +267,9 @@ const fmtDist = m => m < 1000 ? Math.round(m) + " m"
 // Übungsziel vor dem Start: so lassen sich Kompass und Entfernung schon ausprobieren.
 // Bergiusstraße 52, 12057 Berlin, Koordinaten aus OpenStreetMap.
 const PROBEZIEL = { name: "TSE AG in Berlin", lat: 52.46175, lng: 13.46070 };
+// Startpunkt der Route, als Haus auf der Karte der Spielleitung (Hotel Mama Shelter, Holešovice)
+const START = { name: "Mama Shelter Prague", lat: 50.102458, lng: 14.431681 };
+const HAUS = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>`;
 function ago(ts) {
   if (!ts) return "nie";
   const s = Math.max(0, Math.round((Date.now() - new Date(ts).getTime()) / 1000));
@@ -516,18 +522,20 @@ function viewPublic() {
         <td>${teamEmoji(r.teamName)} ${esc(r.teamName)}</td>
         <td style="white-space:nowrap">${r.place ? (vorbei ? "im Ziel " : "") + uhrzeit(r.finishedAt) : r.solved + " / " + p.stationCount}</td></tr>`).join("")}</table></div>`;
   }
-  const t = S.lookup;
+  // Eigenes Team: über den Namen gefunden, oder über Geräte- bzw. Mitlese-Schlüssel bekannt
+  const t = S.lookup || (S.mit && S.mit.team ? { name: S.mit.team.name, leaderName: S.mit.team.leaderName, members: S.mit.team.members } : null);
+  const eigen = S.lookup ? S.lookupEigen : !!t;
   if (t) {
     // Farbe wie auf der Karte der Spielleitung: beide sortieren die Teams nach Namen
     const farbe = teamColor(Math.max(0, (p.teams || []).findIndex(x => x.name === t.name)));
     if (mit) out += `<p style="text-align:center;margin:10px 0 0"><button class="link" data-act="pub-hoch">${teamEmoji(t.name)} Team-Zeichen zum Hochhalten</button></p>`;
     else out += `<div class="panel teamkarte" style="--c:${farbe}">
-      <p class="muted small">${S.lookupEigen ? `Dein Team, ${esc(vorname(S.myName))}` : "Gefundenes Team"}</p>
+      <p class="muted small">${eigen ? (S.myName ? `Dein Team, ${esc(vorname(S.myName))}` : "Euer Team") : "Gefundenes Team"}</p>
       <div class="kreis" data-act="pub-hoch" role="button" aria-label="Team-Zeichen groß zeigen" title="Antippen zum Hochhalten">${teamEmoji(t.name)}</div>
       <h1>Team ${esc(t.name)}</h1>
       <p>Sucht die anderen mit ${teamEmoji(t.name)}. Teamleitung: <b>${esc(t.leaderName || "offen")}</b></p>
       <button class="btn" data-act="pub-hoch">Zum Hochhalten</button>
-      ${!S.lookupEigen && !S.myName ? `<button class="btn alt" data-act="pub-ich">Das bin ich, merken</button>` : ""}
+      ${!eigen && !S.myName ? `<button class="btn alt" data-act="pub-ich">Das bin ich, merken</button>` : ""}
       <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`
       // vor dem Start: Standort und Kompass schon freigeben, am Übungsziel ausprobieren
       + (S.mit && S.mit.team && p.status === "drawn" ? vorbereitenHTML() : "");
@@ -537,7 +545,7 @@ function viewPublic() {
   }
   // Teamsuche: groß nur auf Handys, die ihr eigenes Team nicht kennen (von anderen angemeldet,
   // von der Spielleitung nachgetragen, anderer Browser). Sonst ein kleiner Link für Kollegen.
-  const eigenBekannt = !!(t && S.lookupEigen);
+  const eigenBekannt = !!(t && eigen);
   if (!eigenBekannt || S.sucheOffen) {
     const f = S.fremd;
     out += `<div class="panel"><label for="plook">${eigenBekannt ? "Anderes Team nachschauen" : "In welchem Team bin ich?"}</label>
@@ -643,7 +651,7 @@ function viewTeam() {
 function teamAnsicht(st, lesen) {
   const leitung = vorname(st.team.leaderName) || "eure Teamleitung";
   const kennung = lesen ? `Team ${st.team.name}` : `Team ${st.team.name} (${st.team.code})`;
-  const ende = lesen ? "" : abmeldenHTML() + nav();
+  const ende = lesen ? "" : leitungHTML(st) + abmeldenHTML() + nav();
   let out = `<div class="bar"><div>${FLAG}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
     <div class="muted small">${lesen ? `Teamleitung: ${esc(st.team.leaderName || "offen")}`
       : `${esc(st.team.code)}, Leitung ${esc(st.team.leaderName || "offen")}`}</div></div></div>`;
@@ -741,6 +749,21 @@ function teamAnsicht(st, lesen) {
   out += helpBtn(`Stadtjagd: Hier ist ${kennung}. `
     + (s ? `Wir brauchen Hilfe bei Station ${s.position}.` : "Wir brauchen Hilfe."));
   return out + ende;
+}
+// Nur für die Teamleitung: Mitlese-Link fürs Team und die Leitung abgeben
+function leitungHTML(st) {
+  let h = "";
+  if (st.team.readToken) h += `<div class="panel"><h3>Mitlesen fürs Team</h3>
+    <p class="small muted">Wer diesen Link öffnet, sieht auf dem eigenen Handy alles, was ihr hier seht: Station, Rätsel, Ziffern. Eingeben könnt nur ihr.</p>
+    <div class="row2"><button class="btn alt" data-act="t-mit-teilen">Link teilen</button><button class="btn alt" data-act="t-mit-kopieren">Link kopieren</button></div>${msgBox("mit")}</div>`;
+  const andere = (st.team.members || []).filter(m => m !== st.team.leaderName);
+  if (!andere.length) return h;
+  return h + (S.team.abgeben
+    ? `<div class="panel"><h3>Leitung abgeben</h3>
+        <p class="small muted">Die neue Leitung loggt sich mit demselben Team-Code ein. Danach kannst du dich hier abmelden.</p>
+        <div style="margin-top:12px"><label for="tneu">Neue Teamleitung</label><select id="tneu">${andere.map(m => `<option>${esc(m)}</option>`).join("")}</select></div>
+        <div class="row2"><button class="btn alt" data-act="t-abgeben-nein">Abbrechen</button><button class="btn" data-act="t-abgeben">Leitung übergeben</button></div></div>`
+    : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-abgeben-frage">Leitung abgeben</button></p>`);
 }
 // Abmelden ist selten gewollt: kleiner Link, dann eine Rückfrage
 function abmeldenHTML() {
@@ -847,15 +870,21 @@ function viewAdmin() {
     const spaeter = laeuft ? `<p class="small muted" style="margin-top:12px">Neu auslosen geht erst wieder nach „Fortschritt zurücksetzen“ im Reiter Daten löschen.
         Solange das Spiel ${st.status === "running" ? "läuft" : "beendet ist"}, wäre sonst der Fortschritt der Teams verloren.</p>` : "";
     out += `<div class="panel"><table><tr><th>Team</th><th>Code</th><th>Stand</th><th></th></tr>
-      ${reihe.map(t => `<tr><td><b>${teamEmoji(t.name)} ${esc(t.name)}</b><br><span class="small muted">Leitung ${esc(t.leaderName || "offen")}, ${t.memberCount} Pers.</span></td>
-        <td class="small">${esc(t.code)}</td>
+      ${reihe.map(t => `<tr><td><b>${teamEmoji(t.name)} ${esc(t.name)}</b><br><span class="small muted">${t.memberCount} Pers., Leitung</span><br>
+          <select class="sm" data-chg="a-leader" data-id="${t.id}" aria-label="Teamleitung von Team ${esc(t.name)}">
+            ${!t.leaderId ? `<option value="" selected>offen</option>` : ""}
+            ${(st.participants || []).filter(p => p.teamId === t.id).map(p => `<option value="${p.id}" ${p.id === t.leaderId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}
+          </select></td>
+        <td class="small" style="white-space:nowrap">${esc(t.code)}<br>${t.readToken ? `<button class="btn sm alt" style="margin-top:6px" data-act="a-mit" data-token="${esc(t.readToken)}" data-name="${esc(t.name)}">Mitlese-Link</button>` : ""}</td>
         <td><div class="prog"><span style="width:${(t.solved / Math.max(1, (st.stations || []).length)) * 100}%"></span></div>
           <span class="small muted">${t.solved} / ${(st.stations || []).length} gelöst${st.status === "running" && t.currentPosition && !t.place ? `, bei Station ${t.currentPosition}` : ""}${t.lastActivity ? ", zuletzt " + ago(t.lastActivity) : ", noch keine Aktivität"}</span>
           ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}</td>
         <td>${st.status === "running" && t.currentPosition ? `<div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm alt" data-act="a-unlock" data-id="${t.id}">Freischalten</button>
           <button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-name="${esc(t.name)}">Rätsel werten</button></div>` : ""}</td></tr>`).join("")}
       </table><p class="small muted">„Freischalten“ ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.
-        „Rätsel werten“ zählt die aktuelle Station als gelöst, wenn ein Rätsel klemmt.</p>${spaeter}</div>`;
+        „Rätsel werten“ zählt die aktuelle Station als gelöst, wenn ein Rätsel klemmt.
+        Die Teamleitung wechselst du über das Auswahlfeld; der Team-Code bleibt derselbe.
+        „Mitlese-Link“ kopiert den Link, mit dem Nachzügler bei ihrem Team mitlesen.</p>${spaeter}</div>`;
   }
   if (A.tab === "people") {
     out += `<div class="panel"><h3>Mehrere auf einmal</h3>
@@ -1027,7 +1056,12 @@ async function drawMap(first) {
   }
   layers.stations.forEach(l => map.removeLayer(l));
   layers.stations = [];
-  const pts = [];
+  const pts = [[START.lat, START.lng]];
+  // Startpunkt als Haus, unter den Stationen
+  const haus = L.marker([START.lat, START.lng], { zIndexOffset: 900,
+    icon: L.divIcon({ html: `<div class="mapbadge start" title="Start">${HAUS}</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) })
+    .bindPopup(`<b>Start</b><br>${esc(START.name)}`);
+  haus.addTo(map); layers.stations.push(haus);
   (st.stations || []).forEach(s => {
     if (s.lat == null || s.lng == null) return;
     const icon = L.divIcon({ html: `<div class="mapbadge">${s.position}</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] });
@@ -1240,7 +1274,8 @@ const ACT = {
     localStorage.removeItem("sj.token"); S.mit = null; S.myName = null; localStorage.removeItem("sj.name"); },
   async "pub-look"(d) {
     const r = await rpc("lookup_participant", { p_name: d.name || val("plook") });
-    const eigen = !!(S.lookup && S.lookupEigen);
+    // eigenes Team bekannt (per Name oder per Schlüssel): Suchergebnis daneben zeigen, Karte behalten
+    const eigen = !!(S.lookup && S.lookupEigen) || (!S.lookup && !!(S.mit && S.mit.team));
     S.kandidaten = null; S.fremd = null;
     if (eigen) {
       if (!r.found && r.candidates) {
@@ -1269,6 +1304,26 @@ const ACT = {
   "t-logout"() { S.team.code = null; S.team.state = null; S.team.abmelden = false; localStorage.removeItem("sj.code"); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
+  // Mitlese-Link fürs Team: teilen (Share-Sheet, sonst WhatsApp) oder kopieren
+  async "t-mit-teilen"() {
+    const link = mitleseLink(S.team.state.team.readToken), text = `Stadtjagd, Team ${S.team.state.team.name}: Mit diesem Link lest ihr auf eurem Handy mit. ${link}`;
+    if (navigator.share) { try { await navigator.share({ title: "Stadtjagd mitlesen", text, url: link }); } catch { /* abgebrochen */ } return false; }
+    window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+    return false;
+  },
+  async "t-mit-kopieren"() {
+    const link = mitleseLink(S.team.state.team.readToken);
+    try { await navigator.clipboard.writeText(link); S.msg = { type: "ok", ort: "mit", text: "Link kopiert. Schickt ihn in eure Team-Gruppe." }; }
+    catch { S.msg = { type: "info", ort: "mit", text: link }; }
+  },
+  "t-abgeben-frage"() { S.team.abgeben = true; S.msg = null; },
+  "t-abgeben-nein"() { S.team.abgeben = false; S.msg = null; },
+  async "t-abgeben"() {
+    const name = val("tneu");
+    S.team.state = await rpc("team_set_leader", { p_code: S.team.code, p_name: name });
+    S.team.abgeben = false;
+    S.msg = { type: "ok", text: `${vorname(name)} ist jetzt Teamleitung. Gib ${vorname(name)} den Team-Code ${S.team.state.team.code} zum Einloggen. Danach kannst du dich hier abmelden.` };
+  },
   "t-gps"() { startGps(); },
   "t-kal"() { kalStart(); },
   "t-kal-skip"() { kalEnde(false); },
@@ -1370,6 +1425,17 @@ const ACT = {
     S.msg = { type: "ok", text: neu && neu.teamName ? `${neu.name} ist jetzt in Team ${neu.teamName}.` : `${name.trim()} ist angemeldet.` };
   },
   async "a-unlock"(d) { S.admin.state = await rpc("admin_unlock_station", { p_pin: S.admin.pin, p_team: d.id }); },
+  // Teamleitung im Reiter Teams per Auswahlfeld setzen
+  async "a-leader"(d) {
+    S.admin.state = await rpc("admin_set_leader", { p_pin: S.admin.pin, p_team: d.id, p_participant: d.value });
+    const t = (S.admin.state.teams || []).find(x => x.id === d.id);
+    S.msg = { type: "ok", text: t ? `${t.leaderName} leitet jetzt Team ${t.name}. Den Team-Code ${t.code} bekommt die neue Leitung von dir.` : "Teamleitung geändert." };
+  },
+  async "a-mit"(d) {
+    const link = mitleseLink(d.token);
+    try { await navigator.clipboard.writeText(link); S.msg = { type: "ok", text: `Mitlese-Link von Team ${d.name} kopiert. Wer ihn öffnet, liest bei diesem Team mit.` }; }
+    catch { S.msg = { type: "info", text: link }; }
+  },
   "a-edit"(d) { S.admin.edit = d.id; },
   "a-cancel"() { S.admin.edit = null; },
   "a-here"() {
@@ -1641,16 +1707,31 @@ function teamNachziehen() {
   if (!neu) S.hoch = false;
   return geaendert;
 }
-// Mitlesen: Stand des eigenen Teams über den Geräte-Schlüssel aus der Anmeldung
+// Mitlesen: Stand des eigenen Teams über den Geräte-Schlüssel aus der Anmeldung, sonst über den
+// Mitlese-Link der Teamleitung (sj.mit, gilt für das Team, nicht für eine Person)
 async function mitlesen() {
-  const tok = localStorage.getItem("sj.token");
-  if (!tok || !S.pub || S.pub.status === "registration") { S.mit = null; return; }
-  try { S.mit = await rpc("member_state", { p_token: tok }); namenUebernehmen(S.mit.name); }
-  catch (e) {
+  const tok = localStorage.getItem("sj.token"), mitTok = localStorage.getItem("sj.mit");
+  if ((!tok && !mitTok) || !S.pub || S.pub.status === "registration") { S.mit = null; return; }
+  try {
+    if (tok) {
+      S.mit = await rpc("member_state", { p_token: tok }); namenUebernehmen(S.mit.name);
+    } else S.mit = await rpc("member_state_by_team", { p_read_token: mitTok });
+  } catch (e) {
     if (String(e.message).includes("Unbekanntes Gerät")) localStorage.removeItem("sj.token");
+    if (String(e.message).includes("Unbekannter Mitlese-Link")) localStorage.removeItem("sj.mit");
     S.mit = null;
   }
 }
+// Mitlese-Link geöffnet (#/mit/<schlüssel>): Schlüssel merken, dann die normale Ansicht zeigen
+function mitLinkPruefen() {
+  const m = location.hash.match(/^#\/mit\/([0-9a-f]{32})$/i);
+  if (!m) return false;
+  localStorage.setItem("sj.mit", m[1].toLowerCase());
+  history.replaceState(null, "", location.pathname + location.search + "#/public");
+  S.view = "public"; S.mit = null;
+  return true;
+}
+const mitleseLink = token => token ? `${location.origin}${location.pathname}#/mit/${token}` : "";
 // Die Spielleitung kann Namen berichtigen: den neuen Namen übernehmen, damit Anrede und Team-Karte stimmen
 function namenUebernehmen(neu) {
   if (!neu || neu === S.myName) return;
@@ -1789,8 +1870,15 @@ document.addEventListener("keydown", e => {
   if (btn && !btn.disabled) btn.click();
 });
 window.addEventListener("hashchange", () => {
-  S.view = location.hash.replace("#/", "") || "public";
+  if (!mitLinkPruefen()) S.view = location.hash.replace("#/", "") || "public";
   S.msg = null; refresh();
+});
+// Auswahlfelder (etwa die Teamleitung im Admin) lösen ihre Aktion beim Ändern aus
+document.addEventListener("change", async e => {
+  const s = e.target.closest("select[data-chg]"); if (!s) return;
+  const fn = ACT[s.dataset.chg]; if (!fn) return;
+  try { if (await fn({ id: s.dataset.id, value: s.value }) !== false) render(); }
+  catch (err) { S.msg = { type: "err", text: err.message || "Etwas ist schiefgelaufen." }; render(); }
 });
 // Denkpause sekundengenau herunterzählen, am Ende das Feld wieder freigeben
 setInterval(() => {
@@ -1822,6 +1910,7 @@ setInterval(() => {
     if (!S.hoch || neu) render();
   }).catch(() => { });
 }, 10000);
+mitLinkPruefen();
 refresh();
 </script>
 </body>

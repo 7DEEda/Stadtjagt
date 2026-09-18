@@ -5,7 +5,7 @@ welche Zustände und Abläufe es gibt und wo das im Code steht. Den Verlauf der
 Entscheidungen und die Betriebsnotizen (Zugänge, Umgebung, Historie) enthält
 `HANDOFF.md`.
 
-Stand: 18.09.2026, Nachträge 1 bis 13.
+Stand: 19.09.2026, Nachträge 1 bis 14.
 
 ---
 
@@ -26,13 +26,15 @@ App eingeben.
 
 | Rolle | Zugang | Kann | Sieht |
 |---|---|---|---|
-| **Teilnehmende** | Link, Name bei der Anmeldung | sich anmelden (nur bis zum Auslosen), Team nachschauen | eigenes Team groß mit Emoji; ab dem Start alles, was die Teamleitung sieht (nur wer auf diesem Handy angemeldet ist) |
-| **Teamleitung** | Team-Code (`FUCHS-4711`) unter `#/team` | einchecken, Rätsel beantworten, Koffer-Code eingeben | Station, Kompass, Rätsel, Ziffern, Platz |
-| **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, freischalten, Stationen pflegen, Leute eintragen, löschen, Testmodus | Karte mit Routen, Zeitachse, alle Teams mit Codes, Koffer-Code |
+| **Teilnehmende** | Link, Name bei der Anmeldung; oder Mitlese-Link des Teams | sich anmelden (nur bis zum Auslosen), Team nachschauen | eigenes Team groß mit Emoji; ab dem Start alles, was die Teamleitung sieht (Geräte-Schlüssel aus der Anmeldung oder Mitlese-Link) |
+| **Teamleitung** | Team-Code (`FUCHS-4711`) unter `#/team` | einchecken, Rätsel beantworten, Koffer-Code eingeben, Mitlese-Link teilen, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
+| **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, fortsetzen, freischalten, Rätsel werten, Teamleitung wählen, Stationen pflegen, Leute eintragen, löschen, Testmodus | Karte mit Routen, Zeitachse, alle Teams mit Codes und Mitlese-Links, Koffer-Code |
 
 Die Teamleitung wird beim Auslosen je Team zufällig bestimmt
-(`teams.leader_participant_id`). Den Team-Code gibt die Spielleitung ihr
-persönlich.
+(`teams.leader_participant_id`); die Spielleitung kann sie ändern
+(`admin_set_leader`), die Teamleitung selbst abgeben (`team_set_leader`).
+Den Team-Code gibt die Spielleitung ihr persönlich; bei einem Wechsel bleibt
+er derselbe.
 
 ---
 
@@ -155,6 +157,10 @@ Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
   Standort und Kompass freigeben, Kompass einmessen, Übungsziel TSE AG Berlin
   (`PROBEZIEL`).
 - Nachzügler: nur über die Spielleitung (Hilfe-Knöpfe auf der Anmeldeseite).
+  Zum Mitlesen bekommen sie den Mitlese-Link ihres Teams (Reiter Teams oder
+  von der Teamleitung).
+- Teamleitung: „Mitlesen fürs Team“ (Link teilen oder kopieren) und „Leitung
+  abgeben“ stehen unten in ihrer Ansicht, in jeder Phase.
 
 ### 5.4 Spiel (`running`)
 - Teamleitung (`#/team`): Station, Ortshinweis, Kompass und Entfernung,
@@ -184,10 +190,11 @@ Zusätzliche Schalter in `game_state`: `test_mode` (siehe 9.), `prize_count`
 
 ## 6. Wer sieht was (Sichtbarkeit)
 
-| Daten | öffentlich (`public_state`) | Mitglied mit Token (`member_state`) | Teamleitung (`team_state`) | Spielleitung (`admin_state`) |
+| Daten | öffentlich (`public_state`) | Mitglied (`member_state`, `member_state_by_team`) | Teamleitung (`team_state`) | Spielleitung (`admin_state`) |
 |---|---|---|---|---|
 | Teams, Mitglieder, Teamleitung | ja | eigenes | eigenes | alle |
 | Team-Code | nein | **nein** | eigener | alle |
+| Mitlese-Schlüssel | nein | **nein** | eigener | alle |
 | Station, Ortshinweis, Koordinaten | nein | eigene | eigene | alle |
 | Rätsel | nein | nach Check-in | nach Check-in | alle |
 | Lösung | nein | nein | nein | alle |
@@ -212,8 +219,12 @@ mit dem Team-Code.
 - Admin-Funktionen prüfen die PIN serverseitig (`require_admin`).
 - Team-Codes: Tiername plus vier Ziffern. `team_by_code` vergleicht nur
   Buchstaben und Ziffern (`EULE 8765` = `eule-8765`).
-- Mitlesen nur mit Geräte-Token aus der eigenen Anmeldung, nie über den Namen:
-  Namen sind öffentlich, und alle Teams haben dieselben Rätsel und Ziffern.
+- Mitlesen nur mit Geräte-Token aus der eigenen Anmeldung oder mit dem
+  Mitlese-Schlüssel des Teams (`teams.read_token`, kommt nur von der
+  Teamleitung oder Spielleitung), nie über den Namen: Namen sind öffentlich,
+  und alle Teams haben dieselben Rätsel und Ziffern. Wer den Mitlese-Link
+  weitergibt, gibt Einblick ins eigene Team, nichts weiter; eingeben kann er
+  nichts.
 - Selbstanmeldung nur bis zum Auslosen, sonst bekäme ein erfundener Name
   mitten im Spiel Einblick in ein fremdes Team.
 - Supabase lädt `pg-safeupdate`: **jedes** `UPDATE`/`DELETE` braucht ein
@@ -279,9 +290,10 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
   Ein zweites Intervall (1 s) zählt die Denkpause herunter.
 - **Löschen:** alles über die Liste `DANGER` und einen Dialog, meist mit
   getipptem Wort `LÖSCHEN`; `wort: false` für Person und Spielende.
-- **Speicher im Browser:** `sj.name`, `sj.token`, `sj.code` (Teamleitung),
-  `sj.kal` (Einmessen heute erledigt), `sj.url`/`sj.key` (nur ohne
-  `config.js`) im `localStorage`; `sj.pin` im `sessionStorage`.
+- **Speicher im Browser:** `sj.name`, `sj.token`, `sj.mit` (Mitlese-Schlüssel
+  des Teams), `sj.code` (Teamleitung), `sj.kal` (Einmessen heute erledigt),
+  `sj.url`/`sj.key` (nur ohne `config.js`) im `localStorage`; `sj.pin` im
+  `sessionStorage`.
 
 ### GPS und Kompass
 - `startGps` (Standort beobachten, Kompass-Erlaubnis auf iOS aus einem Klick),
@@ -293,6 +305,10 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
   nimmt dann die Laufrichtung aus zwei GPS-Punkten (> 6 m).
 - Einmessen: `KAL_*`-Konstanten; einmal pro Handy und Tag, überspringbar.
 - `aktuellesZiel()`: Station, vor dem Start `PROBEZIEL` (TSE AG Berlin).
+- `START` (Hotel Mama Shelter): nur als Haus auf der Admin-Karte, nicht in
+  der Datenbank.
+- Mitlese-Link: `#/mit/<schlüssel>` → `mitLinkPruefen()` speichert `sj.mit`
+  und leitet auf `#/public`; `mitlesen()` nimmt `sj.token` vor `sj.mit`.
   `aktiverStand()` liefert `S.team.state` (Teamleitung) oder `S.mit` (Mitglied).
 - Ohne Richtung zeigt der Kompass ein Fragezeichen statt eines Pfeils.
 
@@ -305,14 +321,15 @@ Check-in, gelöst, Fehlversuche, Sperre), `finishes` (Platz), `team_positions`,
 
 Endpunkte:
 - öffentlich: `public_state`, `register_participant`, `lookup_participant`
-  (auch Namensteile, bis zu acht Vorschläge), `member_state`
+  (auch Namensteile, bis zu acht Vorschläge), `member_state`,
+  `member_state_by_team`
 - Teamleitung: `team_state`, `check_in`, `submit_answer`, `submit_final`,
-  `report_position`
+  `report_position`, `team_set_leader`
 - Spielleitung: `admin_state`, `admin_tracks`, `admin_draw`, `admin_start`,
   `admin_finish`, `admin_resume`, `admin_reset`, `admin_clear_positions`,
   `admin_clear_participants`, `admin_add_participant`,
   `admin_add_participants`, `admin_delete_test_participants`,
-  `admin_rename_participant`, `admin_delete_participant`,
+  `admin_rename_participant`, `admin_delete_participant`, `admin_set_leader`,
   `admin_save_station`, `admin_unlock_station`, `admin_solve_station`,
   `admin_set_pin`, `admin_set_test_mode`
 - intern (für `anon` gesperrt): `norm`, `answer_ok`, `dist_m`, `team_by_code`,
@@ -370,16 +387,14 @@ node -e 'const h=require("fs").readFileSync("index.html","utf8");[...h.matchAll(
 
 ---
 
-## 10. Offene Punkte (Stand 18.09.2026)
+## 10. Offene Punkte (Stand 19.09.2026)
 
 - Rätsel, Lösungen und Ortshinweise der fünf Stationen fehlen (Platzhalter).
 - Öffentliche Auslieferung des ganzen Repos (siehe 7.), neuer Koffer-Code.
 - Echte Nummer für die Hilfe-Knöpfe statt `491720000000`.
-- Mitlesen nur auf dem Gerät der Anmeldung: Nachzügler aus dem Admin, wer sich
-  am Rechner angemeldet hat oder die Seite in einem anderen Browser öffnet,
-  liest nicht mit (Idee: Mitlese-QR oder -Link von der Teamleitung mit einem
-  Lese-Token je Team).
-- Live-PIN prüfen und verlängern (siehe 7.).
+- Mitlese-Link als QR-Code auf dem Handy der Teamleitung (Generator lokal
+  einbetten).
+- Live-PIN verlängern (siehe 7.); `2026` ist sie nicht mehr.
 - Hintergrund-Variante wählen (`mockups/hintergrund-varianten.html`).
 - Testumgebung und Testskripte ins Repo übernehmen.
 - Probelauf draußen mit echten Handys.

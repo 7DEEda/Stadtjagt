@@ -57,6 +57,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260919010000_mitlesen.sql     das ganze Team liest mit (Geräte-Schlüssel)
   20260919020000_anmeldung_bis_auslosen.sql  Selbstanmeldung wieder nur bis zum Auslosen
   20260919030000_wasserdicht.sql  Koffer-Code nur am Ziel, Fortsetzen, Rätsel werten, mehrere Lösungen, Testdaten entfernen
+  20260919040000_leitung_und_mitlesen.sql  Teamleitung zuweisen und abgeben, Mitlese-Link je Team
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -563,6 +564,51 @@ Prüfungen) und im Browser: Rätsel werten, Testdaten entfernen, Pflicht-Ziffer,
 Beenden und Fortsetzen, Koffer-Code aus 31 km Entfernung abgelehnt und am Ziel
 Platz 1, umbenannte Person bleibt angemeldet.
 
+## Teamleitung und Mitlese-Link (Nachtrag 14, 19.09.2026)
+
+**Teamleitung wechseln.** Die Spielleitung wählt im Reiter Teams je Team die
+Leitung über ein Auswahlfeld (`admin_set_leader`). Die Teamleitung kann ihre
+Leitung in ihrer Ansicht abgeben („Leitung abgeben“ unten, `team_set_leader`
+nach Namen aus dem eigenen Team). Der Team-Code bleibt in beiden Fällen
+derselbe: Wer übernimmt, bekommt den Code und loggt sich damit ein; das alte
+Handy kann sich abmelden. Wer den Code hat, spielt, das ist unverändert.
+
+**Mitlese-Link.** Jedes Team hat einen Mitlese-Schlüssel (`teams.read_token`,
+32 Hex, Vorgabe beim Anlegen, neu bei jedem Auslosen). Die Teamleitung sieht
+unten „Mitlesen fürs Team“ mit „Link teilen“ (Share-Sheet, sonst WhatsApp) und
+„Link kopieren“; die Spielleitung hat je Team „Mitlese-Link“ im Reiter Teams
+für Nachzügler. Der Link ist `index.html#/mit/<schlüssel>`: die App merkt sich
+den Schlüssel als `sj.mit`, springt auf `#/public` und liest ab dann über
+`member_state_by_team` mit (wie `member_state`, aber ohne Namen). Ein
+Geräte-Schlüssel aus der Anmeldung hat Vorrang. Damit lesen auch die mit, die
+sich am Rechner angemeldet haben, einen anderen Browser nutzen oder von der
+Spielleitung nachgetragen wurden. Team-Code und Mitlese-Schlüssel kommen nur in
+`team_state` (Teamleitung) und `admin_state` vor; `member_state`,
+`member_state_by_team` und `public_state` lassen beide weg.
+
+**Start auf der Karte.** Das Hotel Mama Shelter steht als Haus auf der Karte
+der Spielleitung (Konstante `START` in `index.html`, nicht in der Datenbank).
+
+Getestet lokal (`test_leitung.py`, 18 Prüfungen) und im Browser: Link öffnen
+auf einem fremden Handy zeigt das Team, Leitung abgeben, Leitung im Admin
+wählen, Mitlese-Link kopieren, Haus auf der Karte.
+
+## UI-Runde (19.09.2026)
+
+Durchgang mit Bildschirmfotos (Handy 390 px für Teilnehmende und Teamleitung,
+Tablet 1024 px für die Spielleitung). Behoben: Fehlermeldungen blieben über
+einen Phasenwechsel stehen („Leider falsch“ noch auf dem Koffer-Bildschirm;
+jetzt `phaseKey`/`teamStandSetzen`), Hilfe-Knöpfe fehlten am Koffer, Kompass
+und Entfernung waren unbeschriftet, der GPS-Status war ein Bandwurmsatz,
+gesperrte Knöpfe sahen wie blasses Orange aus (jetzt grau), kein Hinweis
+während des Standortholens (Knopf sagt „Standort wird bestimmt …“ über
+`data-wait`), „Wir sind da“ ohne Erklärung, Admin-Teamzeile „0 / 5, nie“ (jetzt
+„0 / 5 gelöst, bei Station 1, noch keine Aktivität“).
+
+Nicht geändert, aber notiert: Schriften kommen von Google Fonts und Leaflet
+von unpkg (CDN); für das Event mit Mobilfunk in Prag geht das, die
+TSE-Regel „lokal vendoren“ wäre für einen späteren Stand einzuhalten.
+
 ## GPS und Kompass
 
 - Entfernung per Haversine, Richtung per Kurswinkel, beides in `index.html`.
@@ -774,7 +820,10 @@ oder einen Tunnel.
 5. Vor dem Auslosen: Zahl der Angemeldeten mit der Gästeliste abgleichen,
    Testeinträge über „Testdaten entfernen“ wegräumen.
 6. Am Treffpunkt: Reiter Teams, Teamgröße wählen, auslosen, Codes an die
-   Teamleitungen geben. Den Teams sagen, dass der Weg aufgezeichnet wird.
+   Teamleitungen geben. Den Teams sagen, dass der Weg aufgezeichnet wird und
+   dass die Teamleitung den Mitlese-Link in die Team-Gruppe schickt. Passt
+   eine Leitung nicht (nicht da, kein Handy), im Auswahlfeld eine andere
+   wählen. Nachzügler: eintragen, dann „Mitlese-Link“ des Teams schicken.
 7. „Spiel starten“, danach die Karte offen lassen.
 8. Wenn ein Team hängt: „Freischalten“ im Reiter Teams ersetzt den Check-in, das
    Rätsel bleibt. Klemmt das Rätsel selbst: „Rätsel werten“ daneben.
@@ -817,11 +866,9 @@ oder einen Tunnel.
   öffentlichen Repo, und es gibt keine Bremse gegen Durchprobieren. Vor dem
   Event prüfen, dass live nicht mehr `2026` gilt, und eine lange PIN setzen
   (Passphrase, 12 und mehr Zeichen, Reiter Daten löschen oder `admin_set_pin`).
-- **Mitlese-Link:** Wer sich am Rechner angemeldet hat oder die Seite in
-  einem anderen Browser öffnet (Safari statt WhatsApp-Ansicht, „Zum
-  Home-Bildschirm“), hat auf dem Handy keinen Geräte-Schlüssel und liest nicht
-  mit. Idee: QR oder Link auf dem Handy der Teamleitung mit einem Lese-Token
-  je Team. Nicht gebaut.
+- **Mitlese-Link als QR:** Der Link ist da (Nachtrag 14), ein QR-Code auf dem
+  Handy der Teamleitung wäre noch bequemer als Teilen per Nachricht. Braucht
+  einen kleinen QR-Generator, lokal eingebettet.
 - Optional: Startreihenfolge versetzen, Team-Chat, Fotoaufgaben.
 
 ## Historie und Entscheidungen

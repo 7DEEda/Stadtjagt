@@ -46,6 +46,7 @@ update game_state set admin_pin = 'neuePIN' where id = 1;
    supabase/migrations/20260919010000_mitlesen.sql
    supabase/migrations/20260919020000_anmeldung_bis_auslosen.sql
    supabase/migrations/20260919030000_wasserdicht.sql
+   supabase/migrations/20260919040000_leitung_und_mitlesen.sql
    ```
 
    Die Init-Datei beginnt mit `drop table ... cascade`. Auf einer Datenbank mit
