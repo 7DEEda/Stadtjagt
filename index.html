@@ -33,16 +33,18 @@ body.fest{overflow:hidden}
    die Spielleitung wählt im Reiter Stationen. Alle Linien bleiben auf jedem Bildschirm gleich fein. */
 /* Höhe in lvh (großer Viewport): ändert sich nicht, wenn Android die Adressleiste ein- oder ausblendet,
    sonst springt die Karte bei jedem Wechsel */
-.topo{position:fixed;top:0;left:0;z-index:0;pointer-events:none;width:100%;height:100vh;height:100lvh;overflow:hidden}
+/* Der Rahmen ragt 18 px über das Fenster hinaus: so viel darf die Neigung ihn verschieben, ohne dass ein Rand entsteht */
+.topo{position:fixed;top:-18px;left:-18px;z-index:0;pointer-events:none;width:calc(100% + 36px);height:calc(100vh + 36px);height:calc(100lvh + 36px);overflow:hidden;
+  transform:translate(var(--nx,0px),var(--ny,0px));will-change:transform}
 /* Parallax ohne Skript: die Karte ist um --px-hub höher als das Fenster; eine scroll-gebundene Animation
    schiebt sie über die ganze Seitenlänge genau um diesen Überstand nach oben. Rechnet der Browser im
    Compositor, darum ruckelfrei. Browser ohne animation-timeline zeigen die Karte still. */
 :root{--px-hub:40lvh}
-.topo svg{display:block;width:100%;height:calc(100lvh + var(--px-hub));will-change:transform;
+.topo svg{display:block;width:100%;height:calc(100lvh + 36px + var(--px-hub));will-change:transform;
   animation:parallax linear both;animation-timeline:scroll(root)}
 @keyframes parallax{from{transform:translateY(0)}to{transform:translateY(calc(-1 * var(--px-hub)))}}
-@supports not (animation-timeline:scroll()){.topo svg{animation:none;height:100lvh}}
-@media (prefers-reduced-motion:reduce){.topo svg{animation:none;height:100lvh}}
+@supports not (animation-timeline:scroll()){.topo svg{animation:none;height:calc(100lvh + 36px)}}
+@media (prefers-reduced-motion:reduce){.topo svg{animation:none;height:calc(100lvh + 36px)}.topo{transform:none}}
 .topo *{vector-effect:non-scaling-stroke}
 .topo text{vector-effect:none}
 @media (min-width:700px){.topo text{display:none}}   /* Beschriftungen wären am Laptop riesig */
@@ -1747,7 +1749,7 @@ async function startGps() {
     else if (typeof DOE.requestPermission === "function") {
       // iOS: muss aus einem Fingertipp kommen, sonst wird abgelehnt
       const r = await DOE.requestPermission();
-      if (r === "granted") { g.kompass = "wartet"; addOrient(); }
+      if (r === "granted") { g.kompass = "wartet"; addOrient(); neigungStart(); }
       else g.kompass = "abgelehnt";
     } else { g.kompass = "wartet"; addOrient(); }
   } catch { g.kompass = "abgelehnt"; }
@@ -1975,6 +1977,34 @@ function hintergrundSetzen(name) {
     .finally(() => { hintergrundLaeuft = null; });
 }
 try { const bg = localStorage.getItem("sj.bg"); if (bg) hintergrundSetzen(bg); } catch { /* egal */ }
+// Neigungs-Parallax: bewegt man das Handy, rutscht die Karte ein Stück in die Neigungsrichtung (höchstens
+// 18 px, so weit ragt der Rahmen über das Fenster). Bezug ist nicht "flach liegend", sondern die Haltung,
+// in der das Handy gerade ruht: ein Tiefpass zieht den Bezug langsam nach, so bleibt die Karte bei ruhiger
+// Hand still und reagiert nur auf Bewegung. Android liefert die Ereignisse ohne Nachfrage, iOS erst nach
+// der Freigabe, die startGps() für den Kompass einholt; dann hängt sich neigungStart() erneut ein.
+let neigungAn = false, neigungBezug = null, neigungTick = false, neigungZiel = { x: 0, y: 0 };
+function neigungStart() {
+  if (neigungAn || !window.DeviceOrientationEvent || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  neigungAn = true;
+  addEventListener("deviceorientation", e => {
+    if (e.beta == null || e.gamma == null) return;
+    // Hochkant: gamma = links/rechts, beta = vor/zurück. Querformat: vertauscht.
+    const quer = Math.abs(screen.orientation?.angle ?? window.orientation ?? 0) === 90;
+    const x = quer ? e.beta : e.gamma, y = quer ? -e.gamma : e.beta;
+    if (!neigungBezug) neigungBezug = { x, y };
+    neigungBezug.x += (x - neigungBezug.x) * 0.02; neigungBezug.y += (y - neigungBezug.y) * 0.02;
+    const k = d => Math.max(-18, Math.min(18, (d / 25) * 18));   // 25° Neigung = voller Weg
+    neigungZiel = { x: k(x - neigungBezug.x), y: k(y - neigungBezug.y) };
+    if (!neigungTick) { neigungTick = true; requestAnimationFrame(neigungZeichnen); }
+  }, { passive: true });
+}
+function neigungZeichnen() {
+  neigungTick = false;
+  const t = $("#topo"); if (!t) return;
+  t.style.setProperty("--nx", neigungZiel.x.toFixed(1) + "px");
+  t.style.setProperty("--ny", neigungZiel.y.toFixed(1) + "px");
+}
+neigungStart();
 
 function render() {
   const app = $("#app");

@@ -446,6 +446,16 @@ die Karte exakt mit dem Fensterrand ab. Browser ohne `animation-timeline`
 (ältere Firefox, Safari vor 26) und „Bewegung reduzieren“ zeigen die Karte
 still.
 
+**Neigungs-Parallax (19.09.2026):** Bewegt man das Handy, rutscht die Karte
+bis 18 px in die Neigungsrichtung (`neigungStart()`, `deviceorientation`,
+ein Transform pro Bild auf dem Rahmen `.topo`, der dafür 18 px über das
+Fenster hinausragt). Bezug ist die Haltung, in der das Handy gerade ruht: ein
+Tiefpass (2 % je Ereignis) zieht den Bezug nach, bei ruhiger Hand steht die
+Karte, 25° Ausschlag sind der volle Weg. Querformat vertauscht die Achsen.
+Android liefert die Ereignisse ohne Nachfrage; iOS erst nach der
+Bewegungsfreigabe, die `startGps()` für den Kompass einholt, danach hängt
+sich `neigungStart()` erneut ein. „Bewegung reduzieren“ schaltet es ab.
+
 Variante B zeigt noch den Altstadt-Ausschnitt; Route und Stationsmarken wurden
 beim Kopieren entfernt, weil sie die alte Route zeigten. Für die Holešovice-
 Route müsste `tools/hintergrund/hintergrund.py` mit neuem Ausschnitt laufen
