@@ -5,7 +5,7 @@ welche Zustände und Abläufe es gibt und wo das im Code steht. Den Verlauf der
 Entscheidungen und die Betriebsnotizen (Zugänge, Umgebung, Historie) enthält
 `HANDOFF.md`.
 
-Stand: 19.09.2026, Nachträge 1 bis 15.
+Stand: 19.09.2026, Nachträge 1 bis 16.
 
 ---
 
@@ -50,7 +50,8 @@ registration ──admin_draw──▶ drawn ──admin_start──▶ running 
       └──admin_clear_participants (von überall)
 ```
 
-`admin_start` geht nur aus `drawn` und nur mit Testmodus aus. `admin_resume`
+`admin_start` geht nur aus `drawn`; bei eingeschaltetem Testmodus warnt es
+(Nachtrag 16, vorher verweigerte es). `admin_resume`
 (Nachtrag 13) holt ein versehentlich beendetes Spiel zurück, ohne etwas zu
 löschen.
 
@@ -358,7 +359,8 @@ anon, authenticated`, am Ende `notify pgrst, 'reload schema';`.
 - `admin_set_test_mode` (Reiter Stationen): Check-in und Koffer-Code ohne
   Entfernung, jede Antwort zählt, keine Denkpause; der Koffer-Code selbst wird
   weiter geprüft. Rotes „Testmodus an“ in Admin und Team-Ansicht.
-  „Spiel starten“ verweigert, solange er an ist.
+  „Spiel starten“ warnt, solange er an ist (bleibt beim Testen dauerhaft an,
+  Entscheidung 19.09.2026).
 - „Testdaten einfügen“ im Reiter Teilnehmende: 90 Namen mit „(Test)“;
   „Testdaten entfernen“ nimmt genau die wieder raus.
 

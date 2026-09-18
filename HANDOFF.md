@@ -59,6 +59,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260919030000_wasserdicht.sql  Koffer-Code nur am Ziel, Fortsetzen, Rätsel werten, mehrere Lösungen, Testdaten entfernen
   20260919040000_leitung_und_mitlesen.sql  Teamleitung zuweisen und abgeben, Mitlese-Link je Team
   20260919050000_review.sql       name_key nachgezogen, Fehlversuche unter Zeilensperre (Code-Review)
+  20260919060000_start_im_testmodus.sql  Starten im Testmodus wieder erlaubt, mit Warnung
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -536,8 +537,10 @@ Auslosen, Spiel, Ziel, Ende, Spielleitung). Eingebaut:
 - **Versehentlich beendet:** „Spiel fortsetzen“ (`admin_resume`) bringt
   `finished` zurück auf `running`, ohne etwas zu löschen. Vorher gab es nur
   „Fortschritt zurücksetzen“, das alles wegwarf.
-- **Starten nur aus `drawn` und nur mit Testmodus aus:** `admin_start` prüft
-  das jetzt selbst, nicht nur der Knopf. Mit Testmodus an bricht es ab.
+- **Starten nur aus `drawn`:** `admin_start` prüft das jetzt selbst, nicht
+  nur der Knopf. Mit Testmodus an brach es zunächst ab; seit Nachtrag 16
+  (19.09.2026) warnt es nur noch, damit der Testmodus beim Testen dauerhaft
+  an bleiben kann.
 - **Rätsel werten:** im Reiter Teams neben „Freischalten“. Zählt die aktuelle
   Station eines Teams als gelöst (`admin_solve_station`), wenn ein Rätsel
   klemmt. Fragt nach, löscht nichts.
@@ -830,8 +833,8 @@ oder einen Tunnel.
 ## Ablauf am Eventtag
 
 1. **Vorher: Testmodus aus!** Reiter Stationen, oben. Im Kopf der Spielleitung
-   darf kein rotes „Testmodus an“ mehr stehen („Spiel starten“ verweigert es
-   sonst). Testdaten wegräumen: „Testdaten entfernen“ im Reiter Teilnehmende.
+   darf kein rotes „Testmodus an“ mehr stehen („Spiel starten“ warnt sonst
+   rot). Testdaten wegräumen: „Testdaten entfernen“ im Reiter Teilnehmende.
 2. **Vorher:** Route ablaufen, jede Station im Reiter Stationen prüfen, Rätsel
    und Antworten vor Ort bestätigen, notfalls „Meinen Standort übernehmen“
    drücken. Alle drei Koffer auf den Code aus dem Reiter Stationen stellen und
