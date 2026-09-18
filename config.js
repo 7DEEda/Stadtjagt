@@ -16,6 +16,6 @@ window.SJ_CONFIG = {
   // Nimm eine Nummer, bei der das in Ordnung ist, etwa ein Diensthandy.
   support: {
     name: "der Spielleitung",
-    phone: ""
+    phone: "491720000000"   // TESTNUMMER 0172 0000000, vor dem Event durch die echte ersetzen
   }
 };

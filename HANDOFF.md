@@ -14,7 +14,8 @@ Holešovice, dann Planetarium, Rudolfstollen, Wasserturm Letná, Bergstation der
 Křižík-Seilbahn, Metronom (siehe „Route“). Die Orte stehen in
 `supabase/seed-stationen-prag.sql` und seit 18.09.2026 auch in der Datenbank,
 mit Platzhaltern statt Rätseln. Offen sind Rätsel und Ortshinweise, der
-Praxistest draußen und die WhatsApp-Nummer für den Hilfe-Knopf.
+Praxistest draußen und die echte WhatsApp-Nummer für den Hilfe-Knopf (bis dahin
+steht die Testnummer 0172 0000000 drin).
 
 ## Stack und Aufbau
 
@@ -48,6 +49,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260918210000_testmodus.sql    Durchklicken ohne Entfernung und Rätsel
   20260918220000_durchsicht.sql   Code ohne Bindestrich, Namenssuche, Positionsprüfung
   20260918230000_viele_namen.sql  viele Namen auf einmal, Testdaten
+  20260919000000_nachmelden.sql   Nachzügler melden sich selbst an
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -239,6 +241,16 @@ Neu auslosen und Löschen ziehen die Handys selbst nach (behoben 18.09.2026):
   Name noch angemeldet ist (beim Laden und wenn die Zahl der Angemeldeten
   sinkt). Wenn nicht, erscheint wieder das Anmeldeformular statt „Du bist
   dabei“.
+
+## Nachzügler melden sich selbst an (Nachtrag 10)
+
+Die Anmeldung bleibt bis zum Spielende offen. Vor dem Auslosen wie bisher ohne
+Team; danach kommt die Person ins gerade kleinste Team, und `register_participant`
+gibt das Team gleich mit zurück (Name, Leitung, Mitglieder, kein Team-Code).
+Die Anmeldeseite zeigt nach dem Auslosen unter der Teamsuche „Noch nicht
+angemeldet?“, nur auf Handys, auf denen noch niemand angemeldet ist; nach dem
+Nachmelden erscheint sofort die große Team-Karte. Nach „Spiel beenden“ lehnt die
+Datenbank ab: „Das Spiel ist vorbei, die Anmeldung ist geschlossen.“
 
 ## Viele Namen und Testdaten (Nachtrag 9)
 
@@ -543,7 +555,7 @@ wird, und nach der Auswertung löschen.
 | Publishable key | `sb_publishable_7uEQEkFwi27XJdGLSoso5w_TMxHJYUq` (steht in `config.js`, darf öffentlich sein) |
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
-Init-Migration und Nachträge 1 bis 9 sind eingespielt, geprüft über `pg_proc`
+Init-Migration und Nachträge 1 bis 10 sind eingespielt, geprüft über `pg_proc`
 und Aufrufe der Endpunkte. Wer die Datenbank neu aufsetzt, spielt sie in der
 Reihenfolge ein, in der sie unter „Alle Dateien“ stehen: ohne Nachtrag 1
 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne
@@ -680,7 +692,9 @@ oder einen Tunnel.
   `webkitCompassHeading` mit ±10°, also brauchbar. Die zwölf gleichen Werte im
   Bericht kamen dort vom still liegenden Handy. Beim Pro deshalb erneut testen
   und sich dabei einmal im Kreis drehen.
-- **WhatsApp-Nummer** fehlt in `config.js`, deshalb erscheint kein Hilfe-Knopf.
+- **WhatsApp-Nummer:** In `config.js` steht seit 19.09.2026 die Testnummer
+  `491720000000` (0172 0000000), damit der Hilfe-Knopf sichtbar ist. Vor dem
+  Event durch die echte Nummer der Spielleitung ersetzen und pushen.
 - An den Koffern muss jemand von der Spielleitung stehen: alle drei haben
   denselben Code, erst der Platz-Bildschirm entscheidet, welcher Koffer dran ist.
 - Optional: Startreihenfolge versetzen, Team-Chat, Fotoaufgaben.

@@ -415,8 +415,9 @@ function helpBtn(text, klasse) {
   return `<a class="btn ${klasse || "alt"} help" href="${href}" target="_blank" rel="noopener">${CHAT}Hilfe von ${esc(name)}</a>`;
 }
 const brand = sub => `<div class="brand">${FLAG}<div><h1>Stadtjagd</h1><div class="muted small">${esc(sub)}</div></div></div>`;
-const msgBox = () => {
+const msgBox = ort => {
   if (!S.msg) return "";
+  if (S.msg.ort && S.msg.ort !== ort) return "";
   S.msg.at = S.msg.at || Date.now();
   // Erfolgsmeldungen verschwinden nach einer Weile, sonst hängen sie noch an der nächsten Station
   if (S.msg.type === "ok" && Date.now() - S.msg.at > 12000) return "";
@@ -450,7 +451,7 @@ function viewPublic() {
          <button class="btn alt" data-act="pub-again">Weitere Person anmelden</button>`
       : `<div class="panel"><h2>Mitmachen</h2><p class="muted">Trag deinen Namen ein. Die Teams werden später zufällig ausgelost.</p>
          <div style="margin-top:12px"><label for="pname">Vor- und Nachname</label><input id="pname" autocomplete="name" autocapitalize="words" enterkeyhint="send"></div>
-         <button class="btn" data-act="pub-reg" ${S.busy ? "disabled" : ""}>Anmelden</button>${msgBox()}</div>`;
+         <button class="btn" data-act="pub-reg" ${S.busy ? "disabled" : ""}>Anmelden</button>${msgBox("anm")}</div>`;
     out += `<div class="panel"><div class="count">${p.participantCount}</div><div class="muted small">Personen angemeldet</div></div>`;
     out += helpBtn("Stadtjagd: Ich komme bei der Anmeldung nicht weiter.");
     return out + nav();
@@ -485,6 +486,12 @@ function viewPublic() {
     <input id="plook" value="${esc(S.myName || "")}" autocapitalize="words" enterkeyhint="search">
     <button class="btn" data-act="pub-look">Team anzeigen</button>${msgBox()}
     ${S.kandidaten ? `<div class="wahl">${S.kandidaten.map(n => `<button class="btn sm alt" data-act="pub-look" data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : ""}</div>`;
+  // Nachzügler: nach dem Auslosen und während des Spiels selbst anmelden, kommt ins kleinste Team
+  if (!S.myName && !vorbei) out += `<div class="panel"><h3>Noch nicht angemeldet?</h3>
+    <p class="small muted">${p.status === "running" ? "Das Spiel läuft schon. Trag dich nach, dann siehst du dein Team und kannst dazustoßen."
+      : "Trag dich nach. Du kommst in ein Team, das noch Platz hat."}</p>
+    <div style="margin-top:10px"><label for="pname">Vor- und Nachname</label><input id="pname" autocomplete="name" autocapitalize="words" enterkeyhint="send"></div>
+    <button class="btn alt" data-act="pub-reg" ${S.busy ? "disabled" : ""}>Nachmelden</button>${msgBox("anm")}</div>`;
   out += helpBtn("Stadtjagd: Ich finde mein Team nicht.");
   return out + nav();
 }
@@ -1122,8 +1129,13 @@ const ACT = {
     S.msg = null; await refresh();
   },
   async "pub-reg"() {
-    const r = await rpc("register_participant", { p_name: val("pname") });
-    S.myName = r.name; localStorage.setItem("sj.name", r.name); S.msg = null; await refresh();
+    let r;
+    try { r = await rpc("register_participant", { p_name: val("pname") }); }
+    catch (e) { S.msg = { type: "err", text: e.message, ort: "anm" }; return; }
+    S.myName = r.name; localStorage.setItem("sj.name", r.name); S.msg = null;
+    // nach dem Auslosen kommt das Team gleich mit: große Karte sofort zeigen
+    if (r.team) { S.lookup = r.team; S.lookupName = r.name; S.lookupEigen = true; S.autoLook = true; }
+    await refresh();
   },
   async "pub-hoch"() {
     S.hoch = true;
