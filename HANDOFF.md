@@ -51,6 +51,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260918230000_viele_namen.sql  viele Namen auf einmal, Testdaten
   20260919000000_nachmelden.sql   Nachzügler melden sich selbst an
   20260919010000_mitlesen.sql     das ganze Team liest mit (Geräte-Schlüssel)
+  20260919020000_anmeldung_bis_auslosen.sql  Selbstanmeldung wieder nur bis zum Auslosen
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
 mockups/kompass-einmessen.html  Entwurf für das Einmessen des Kompasses
@@ -264,7 +265,7 @@ Geräte-Schlüssel zurück (64 Hex-Zeichen), die App speichert ihn als `sj.token
 `member_state(p_token)` liefert damit `team_state` ohne Team-Code, alle zehn
 Sekunden neu. Mitglieder teilen ihren Standort nicht, nur die Teamleitung.
 
-Lücke: Wer von der Spielleitung eingetragen wurde (Nachzügler im Admin-Bereich,
+Wer von der Spielleitung eingetragen wurde (Nachzügler im Admin-Bereich,
 Sammeleingabe, Testdaten) oder sich vor dem 19.09.2026 angemeldet hat, hat
 keinen Schlüssel und sieht nur die Team-Karte. Abhilfe wäre ein Mitlese-Link
 auf dem Handy der Teamleitung; gebaut ist das noch nicht.
@@ -272,7 +273,30 @@ auf dem Handy der Teamleitung; gebaut ist das noch nicht.
 `teamAnsicht(st, lesen)` in `index.html` baut beide Ansichten; `lesen` blendet
 die Eingaben aus. Die Ansicht der Teamleitung (`#/team`) ist unverändert.
 
-## Nachzügler melden sich selbst an (Nachtrag 10)
+## Anmeldung nur bis zum Auslosen (Nachtrag 12, ersetzt Nachtrag 10)
+
+Nachtrag 10 hatte die Selbstanmeldung bis zum Spielende geöffnet. Zusammen mit
+dem Mitlesen (Nachtrag 11) war das eine Lücke: Wer mitten im Spiel einen
+erfundenen Namen anmeldete, bekam einen Geräte-Schlüssel und las bei dem Team
+mit, in das er kam. Alle Teams haben dieselben Ziffern, also genügte ein
+schnelles Team für den Koffer-Code.
+
+Seit 19.09.2026 schließt die Selbstanmeldung wieder mit dem Auslosen. Danach
+zeigt die Anmeldeseite unter „Noch nicht angemeldet?“ nur die Hilfe-Knöpfe
+(WhatsApp mit „Ich bin noch nicht angemeldet. Mein Name:“), die Spielleitung
+trägt Nachzügler im Reiter Teilnehmende ein (ins kleinste Team). Solche
+Nachzügler lesen nicht mit, sie sehen ihr Team über die Namenssuche.
+
+Übrig bleibt: Vor dem Auslosen könnte jemand zusätzlich einen erfundenen Namen
+anmelden. Das Los entscheidet das Team, ein Handy behält nur den Schlüssel der
+letzten Anmeldung, und der Name steht sichtbar in der Liste. Deshalb steht
+beim Auslosen die Zahl der Angemeldeten groß mit dem Hinweis, sie mit der
+Gästeliste abzugleichen.
+
+Auf der Team-Karte öffnet auch ein Tipp aufs große Emoji die Vollbild-Ansicht
+zum Hochhalten.
+
+## Nachzügler melden sich selbst an (Nachtrag 10, abgelöst durch Nachtrag 12)
 
 Die Anmeldung bleibt bis zum Spielende offen. Vor dem Auslosen wie bisher ohne
 Team; danach kommt die Person ins gerade kleinste Team, und `register_participant`
@@ -585,7 +609,7 @@ wird, und nach der Auswertung löschen.
 | Publishable key | `sb_publishable_7uEQEkFwi27XJdGLSoso5w_TMxHJYUq` (steht in `config.js`, darf öffentlich sein) |
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
-Init-Migration und Nachträge 1 bis 11 sind eingespielt, geprüft über `pg_proc`
+Init-Migration und Nachträge 1 bis 12 sind eingespielt, geprüft über `pg_proc`
 und Aufrufe der Endpunkte. Wer die Datenbank neu aufsetzt, spielt sie in der
 Reihenfolge ein, in der sie unter „Alle Dateien“ stehen: ohne Nachtrag 1
 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne

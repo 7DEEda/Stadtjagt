@@ -148,6 +148,8 @@ th{font:600 14px var(--body);color:var(--muted)}
 .teamkarte .kreis{width:min(56vw,220px);aspect-ratio:1;border-radius:50%;margin:10px auto 12px;display:grid;place-items:center;
   background:var(--c);font-size:min(32vw,130px);line-height:1;box-shadow:0 4px 12px rgba(17,17,17,.12)}
 .teamkarte h1{font-size:38px}
+.teamkarte .kreis{cursor:pointer;transition:transform .16s cubic-bezier(.32,.72,.4,1)}
+.teamkarte .kreis:active{transform:scale(.96)}
 .teamkarte .names{text-align:left;margin-top:14px}
 .hochhalten{position:fixed;inset:0;z-index:120;background:var(--c);display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:8px;color:#fff;cursor:pointer;padding:16px;animation:ovin .16s cubic-bezier(.32,.72,.4,1)}
@@ -489,7 +491,7 @@ function viewPublic() {
     if (mit) out += `<p style="text-align:center;margin:10px 0 0"><button class="link" data-act="pub-hoch">${teamEmoji(t.name)} Team-Zeichen zum Hochhalten</button></p>`;
     else out += `<div class="panel teamkarte" style="--c:${farbe}">
       <p class="muted small">${S.lookupEigen ? `Dein Team, ${esc(vorname(S.myName))}` : "Gefundenes Team"}</p>
-      <div class="kreis" aria-hidden="true">${teamEmoji(t.name)}</div>
+      <div class="kreis" data-act="pub-hoch" role="button" aria-label="Team-Zeichen groß zeigen" title="Antippen zum Hochhalten">${teamEmoji(t.name)}</div>
       <h1>Team ${esc(t.name)}</h1>
       <p>Sucht die anderen mit ${teamEmoji(t.name)}. Teamleitung: <b>${esc(t.leaderName || "offen")}</b></p>
       <button class="btn" data-act="pub-hoch">Zum Hochhalten</button>
@@ -504,13 +506,14 @@ function viewPublic() {
     <input id="plook" value="${esc(S.myName || "")}" autocapitalize="words" enterkeyhint="search">
     <button class="btn" data-act="pub-look">Team anzeigen</button>${msgBox()}
     ${S.kandidaten ? `<div class="wahl">${S.kandidaten.map(n => `<button class="btn sm alt" data-act="pub-look" data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : ""}</div>`;
-  // Nachzügler: nach dem Auslosen und während des Spiels selbst anmelden, kommt ins kleinste Team
-  if (!S.myName && !vorbei) out += `<div class="panel"><h3>Noch nicht angemeldet?</h3>
-    <p class="small muted">${p.status === "running" ? "Das Spiel läuft schon. Trag dich nach, dann siehst du dein Team und kannst dazustoßen."
-      : "Trag dich nach. Du kommst in ein Team, das noch Platz hat."}</p>
-    <div style="margin-top:10px"><label for="pname">Vor- und Nachname</label><input id="pname" autocomplete="name" autocapitalize="words" enterkeyhint="send"></div>
-    <button class="btn alt" data-act="pub-reg" ${S.busy ? "disabled" : ""}>Nachmelden</button>${msgBox("anm")}</div>`;
-  if (!mit) out += helpBtn("Stadtjagd: Ich finde mein Team nicht.");
+  // Nach dem Auslosen ist die Selbstanmeldung zu (sonst ließe sich mit erfundenen Namen bei
+  // fremden Teams mitlesen). Nachzügler melden sich bei der Spielleitung, die trägt sie nach.
+  if (!S.myName && !vorbei) {
+    const hilfe = helpBtn("Stadtjagd: Ich bin noch nicht angemeldet. Mein Name: ");
+    out += `<div class="panel"><h3>Noch nicht angemeldet?</h3>
+      <p class="small muted">Die Teams stehen schon. Melde dich bei der Spielleitung, sie trägt dich nach und sagt dir dein Team.</p>
+      ${hilfe || `<p class="small">Sprich die Spielleitung direkt an.</p>`}</div>`;
+  } else if (!mit) out += helpBtn("Stadtjagd: Ich finde mein Team nicht.");
   return out + nav();
 }
 
@@ -775,7 +778,10 @@ function viewAdmin() {
       // steht jetzt unter der Tabelle: im Spiel braucht man hier vor allem "Freischalten"
     } else {
       out += `<div class="panel"><h3>Teams auslosen</h3>
-        <p class="small muted">${n} ${n === 1 ? "Person ist" : "Personen sind"} angemeldet.${st.status === "drawn" ? " Neu auslosen wirft die bestehenden Teams und ihre Codes weg und fragt deshalb noch einmal nach." : ""}</p>
+        <div style="margin-top:8px"><span class="count">${n}</span> <span class="muted">${n === 1 ? "Person angemeldet" : "Personen angemeldet"}</span></div>
+        <p class="small muted">${st.status === "registration" ? `Vor dem Auslosen mit der Gästeliste abgleichen: Wer hier steht und nicht dabei ist, im Reiter Teilnehmende löschen.
+          Mit dem Auslosen schließt die Anmeldung, Nachzügler trägst du danach dort ein.`
+          : "Neu auslosen wirft die bestehenden Teams und ihre Codes weg und fragt deshalb noch einmal nach."}</p>
         <div style="display:grid;grid-template-columns:1fr 96px;gap:8px;margin-top:12px">
           <div><label for="dmode">Aufteilen nach</label>
             <select id="dmode">
