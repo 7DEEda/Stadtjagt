@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Variante C: Logbuch</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="fonts.css">
+<style>
+/* Variante C: TSE-Marke, gebaut für die, die mitlesen. Die Jagd ist ein Logbuch:
+   erledigte Stationen stehen mit Uhrzeit und Ziffer da, die aktuelle ist aufgeklappt,
+   was die Teamleitung tut, erscheint bei allen. Token aus TSE/Tools/shared/tokens.css. */
+:root{
+  --red:#801624; --red-dark:#5C0F19; --red-wash:#F2E4E5;
+  --ink:#1F1F1F; --charcoal:#3A3A3A; --steel:#6B6B6B; --silver:#C9C9C9; --fog:#E5E5E5; --mist:#F2F2F2; --paper:#FAFAFA; --white:#FFFFFF;
+  --success:#2E7D4F; --info:#2E5B7D;
+  --shadow-1:0 1px 2px rgba(17,17,17,.06),0 1px 1px rgba(17,17,17,.04);
+  --shadow-2:0 4px 12px rgba(17,17,17,.08),0 1px 2px rgba(17,17,17,.04);
+  --shadow-3:0 12px 32px rgba(17,17,17,.14),0 2px 6px rgba(17,17,17,.06);
+  --shadow-focus:0 0 0 3px rgba(17,17,17,.08); --shadow-red-glow:0 0 0 3px rgba(128,22,36,.18);
+  --ease:cubic-bezier(.32,.72,.4,1);
+  --f:"Libre Franklin",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--ink);font:400 16px/1.5 var(--f);font-variant-numeric:tabular-nums}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:none;box-shadow:var(--shadow-red-glow)}
+h1,h2,h3,p{margin:0}
+.leise{color:var(--steel)}
+.nowrap{white-space:nowrap}
+
+#app{max-width:430px;min-height:100%;margin:0 auto;position:relative}
+.inhalt{padding:0 16px 40px}
+
+.kopf{position:sticky;top:0;z-index:5;background:var(--white);border-bottom:1px solid var(--fog);padding:10px 16px;display:flex;align-items:center;gap:10px}
+.kopf img{width:28px;height:28px}
+.kopf .titel{font:600 15px var(--f)}
+.kopf .titel small{display:block;font:400 12px var(--f);color:var(--steel)}
+.kopf .uhr{margin-left:auto;font:600 13px var(--f);padding:5px 8px;border:1px solid var(--silver);border-radius:4px;white-space:nowrap}
+
+/* Teamzeile mit dem Code, der sich füllt */
+.teamzeile{display:flex;align-items:center;gap:12px;margin-top:16px}
+.teamzeile .e{width:44px;height:44px;border-radius:4px;background:var(--tf);display:grid;place-items:center;font-size:26px;flex:none}
+.teamzeile h1{font:700 22px/1.15 var(--f);letter-spacing:-.01em}
+.teamzeile p{font-size:13px;color:var(--steel)}
+.code{display:flex;gap:4px;margin-left:auto}
+.code b{width:24px;height:32px;border-radius:2px;border:1px solid var(--silver);background:var(--white);display:grid;place-items:center;font:700 16px var(--f)}
+.code b.voll{border-color:var(--ink);color:var(--red)}
+.code b.p{border-style:dashed}
+
+/* Das Logbuch: eine Linie, Einträge daran */
+.log{list-style:none;padding:0;margin:20px 0 0;position:relative}
+.log::before{content:"";position:absolute;left:11px;top:6px;bottom:6px;width:2px;background:var(--fog)}
+.eintrag{position:relative;padding:0 0 18px 36px}
+.eintrag .punkt{position:absolute;left:4px;top:4px;width:16px;height:16px;border-radius:50%;background:var(--white);border:2px solid var(--silver)}
+.eintrag.fertig .punkt{background:var(--ink);border-color:var(--ink)}
+.eintrag.jetzt .punkt{border-color:var(--red);box-shadow:0 0 0 4px var(--red-wash)}
+.eintrag.jetzt .punkt::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--red)}
+.eintrag .zeit{font:600 12px var(--f);color:var(--steel);white-space:nowrap}
+.eintrag .was{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.eintrag .was h3{font:600 15px var(--f)}
+.eintrag.offen h3{color:var(--steel);font-weight:500}
+.eintrag .ziffer{font:700 18px var(--f);color:var(--red);white-space:nowrap}
+.eintrag .ziffer small{font:500 12px var(--f);color:var(--steel);margin-right:4px}
+
+/* Die aktuelle Station ist eine aufgeklappte Karte */
+.karte{margin-top:8px;background:var(--white);border:1px solid var(--fog);border-radius:4px;box-shadow:var(--shadow-2);padding:16px;animation:auf .16s var(--ease)}
+@keyframes auf{from{opacity:0;transform:translateY(-6px) scale(.98)}}
+.karte h2{font:700 24px/1.15 var(--f);letter-spacing:-.01em}
+.karte .text{font-size:16px;margin-top:6px;color:var(--charcoal)}
+.navi{display:flex;align-items:center;gap:14px;margin-top:14px;padding:12px;background:var(--mist);border-radius:4px}
+.navi svg{width:56px;height:56px;flex:none}
+.navi .n{transform-origin:28px 28px;transform:rotate(var(--nadel,0deg));transition:transform .9s var(--ease)}
+.navi .m{font:700 30px/1 var(--f);letter-spacing:-.01em;white-space:nowrap}
+.navi .s{font-size:12px;color:var(--steel);margin-top:3px}
+.sim{margin-left:auto;background:none;border:1px dashed var(--silver);border-radius:4px;padding:0 10px;min-height:42px;font:500 12px var(--f);color:var(--steel);cursor:pointer}
+.frage{font:500 19px/1.4 var(--f);margin-top:8px;padding-left:12px;border-left:3px solid var(--red)}
+label{display:block;font:600 13px var(--f);margin:14px 0 6px}
+input{width:100%;padding:11px 12px;border:1px solid var(--silver);border-radius:4px;background:var(--white);font-size:17px}
+input:focus{outline:none;border-color:var(--ink);box-shadow:var(--shadow-focus)}
+input:disabled{background:var(--mist)}
+.versuche{font-size:13px;color:var(--steel);margin-top:8px}
+.msg{border-radius:4px;padding:10px 12px;margin-top:10px;font-size:14px}
+.msg.err{background:var(--red-wash);color:var(--red-dark)}
+.msg.tipp{background:var(--mist);color:var(--ink)}
+.aktion{display:flex;gap:8px;margin-top:14px}
+.btn{flex:1;min-height:48px;padding:0 16px;border:1px solid var(--ink);border-radius:4px;background:var(--ink);color:var(--white);font:600 13px var(--f);cursor:pointer;transition:background .16s var(--ease),box-shadow .16s var(--ease)}
+.btn:hover{background:var(--charcoal)}
+.btn:disabled{background:var(--fog);border-color:var(--fog);color:var(--steel);cursor:not-allowed}
+.btn.alt{background:var(--white);color:var(--ink);border-color:var(--silver)}
+.btn.alt:hover{border-color:var(--ink)}
+.btn.text{flex:0 0 auto;background:none;border-color:transparent;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.anwesend{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--steel)}
+.anwesend i{width:8px;height:8px;border-radius:50%;background:var(--success);flex:none}
+.wartet{margin-top:14px;padding:12px;border:1px solid var(--fog);border-radius:4px;font-size:14px;color:var(--charcoal);display:flex;gap:8px;align-items:center}
+.wartet i{width:8px;height:8px;border-radius:50%;background:var(--red);flex:none;animation:puls 1.6s infinite}
+@keyframes puls{50%{opacity:.3}}
+
+/* Toast nach Kanon: dunkel, unten links, mit Aktionslink */
+.toast{position:fixed;left:16px;bottom:16px;z-index:12;max-width:360px;background:#111111;color:var(--white);border-radius:4px;box-shadow:var(--shadow-3);padding:12px 14px;display:flex;gap:14px;align-items:center;font-size:14px;animation:auf .16s var(--ease)}
+.toast button{background:none;border:0;color:var(--white);font:600 13px var(--f);text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:42px;white-space:nowrap}
+
+/* Anmeldung */
+.start{padding:28px 0 0}
+.start img{width:44px;height:44px}
+.start h1{font:700 34px/1.1 var(--f);letter-spacing:-.02em;margin-top:22px}
+.start p{font-size:17px;color:var(--charcoal);margin-top:10px;max-width:34ch}
+.fakten{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--fog);border-bottom:1px solid var(--fog);margin-top:22px}
+.fakten div{padding:12px 0}
+.fakten div+div{padding-left:12px;border-left:1px solid var(--fog)}
+.fakten b{display:block;font:700 22px var(--f)}
+.fakten span{font-size:12px;color:var(--steel)}
+.feld{margin-top:18px}
+
+/* Team */
+.teamblatt{margin-top:18px;background:var(--white);border:1px solid var(--fog);border-radius:4px;box-shadow:var(--shadow-1);overflow:hidden}
+.teamblatt .farbe{background:var(--tf);display:flex;align-items:center;justify-content:center;height:180px;font-size:110px;border:0;width:100%;cursor:pointer}
+.teamblatt .t{padding:16px}
+.teamblatt h1{font:700 28px var(--f);letter-spacing:-.01em}
+.namen{list-style:none;padding:0;margin:12px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:0 14px;font-size:14px}
+.namen li{padding:6px 0;border-top:1px solid var(--fog)}
+.namen li.lt::after{content:"Leitung";margin-left:6px;font-size:11px;font-weight:600;color:var(--red)}
+.hoch{position:fixed;inset:0;z-index:20;background:var(--tf);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;cursor:pointer}
+.hoch .riesig{font-size:min(68vw,50vh);line-height:1.05}
+.hoch b{font:700 40px var(--f)}
+
+/* Ziel: das Logbuch als Auswertung */
+.bilanz{margin-top:18px;background:var(--white);border:1px solid var(--fog);border-radius:4px;box-shadow:var(--shadow-2);padding:18px}
+.bilanz .platz{display:flex;align-items:baseline;gap:12px}
+.bilanz .platz b{font:800 64px/1 var(--f);color:var(--red);letter-spacing:-.03em}
+.bilanz table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
+.bilanz td{padding:8px 0;border-top:1px solid var(--fog)}
+.bilanz td:last-child{text-align:right;white-space:nowrap}
+.bilanz tr.summe td{font-weight:700;border-top:1px solid var(--ink)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="schalter" data-schalter></div>
+<div id="app"></div>
+<script src="gemeinsam.js"></script>
+<script>
+const LOGO = `<img src="bildmarke.png" alt="TSE">`;
+const PFEIL = `<svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="26" fill="#fff" stroke="#C9C9C9"/><g class="n" data-nadel><path d="M28 8 L36 34 L28 29 L20 34 Z" fill="#801624"/></g></svg>`;
+
+function kopf(S) {
+  return `<div class="kopf">${LOGO}<div class="titel">Stadtjagd<small>Teamfahrt Prag</small></div>
+    ${["weg", "raetsel", "koffer"].includes(S.screen) ? `<span class="uhr">${uhrText()}</span>` : ""}</div>`;
+}
+function teamzeile(S) {
+  const z = [...S.ziffern, S.ziffern.length === 5 ? PRUEF : null];
+  return `<div class="teamzeile" style="--tf:${TEAM.farbe}"><div class="e">${TEAM.emoji}</div>
+    <div><h1>Team ${TEAM.name}</h1><p class="nowrap">${leitung() ? TEAM.code : TEAM.mitglieder.length + " Personen"}</p></div>
+    <div class="code" aria-label="Koffer-Code bisher">${[0,1,2,3,4,5].map(k => `<b class="${z[k] != null ? "voll" : ""} ${k === 5 ? "p" : ""}">${z[k] ?? ""}</b>`).join("")}</div></div>`;
+}
+const wartet = was => `<div class="wartet"><i></i><span><b>${esc(vorname(TEAM.leitung))}</b> ${was}</span></div>`;
+const anwesend = () => `<div class="anwesend"><i></i><span>${leitung() ? "Dein Standort geht an die Spielleitung, zuletzt vor 12 s" : `${esc(vorname(TEAM.leitung))} ist 40 m vor euch, zuletzt vor 12 s`}</span></div>`;
+
+function aktuelleKarte(S) {
+  const s = stn(), pause = S.pause > 0;
+  if (S.screen === "weg") return `<div class="karte"><h2>${esc(s.name)}</h2><p class="text">${esc(s.hinweis)}</p>
+      <div class="navi">${PFEIL}<div><div class="m">${fmtM(dist())}</div><div class="s">GPS ±6 m, Kompass eingemessen</div></div>
+        <button class="sim" data-act="naeher">Näher gehen</button></div>
+      ${S.fehler ? `<div class="msg err">${esc(S.fehler)}</div>` : ""}
+      ${leitung() ? `<div class="aktion"><button class="btn" data-act="da">Wir sind da</button></div>` : wartet("checkt ein, sobald ihr da seid. Dann steht das Rätsel hier.")}
+      ${anwesend()}</div>`;
+  if (S.screen === "raetsel") return `<div class="karte"><p class="frage">${esc(s.raetsel)}</p>
+      ${S.tipp ? `<div class="msg tipp"><b>Tipp:</b> ${esc(s.tipp)}</div>` : ""}
+      ${leitung() ? `<label for="antwort">Eure Antwort</label><input id="antwort" autocomplete="off" ${pause ? "disabled" : ""}>` : ""}
+      <p class="versuche">${pause ? `Denkpause, noch ${S.pause} s` : `${S.versuche} von 3 Versuchen, danach 2 Minuten Pause`}</p>
+      ${S.fehler ? `<div class="msg err">${esc(S.fehler)}</div>` : ""}
+      ${leitung() ? `<div class="aktion">${!S.tipp && S.versuche ? `<button class="btn text" data-act="tipp">Tipp aufdecken</button>` : ""}<button class="btn" data-act="antwort" data-enter ${pause ? "disabled" : ""}>Antwort prüfen</button></div>`
+        : wartet("gibt die Antwort ein. Überlegt gemeinsam.")}</div>`;
+  return "";
+}
+
+function logbuch(S) {
+  const erledigt = S.ziffern.length, offenKarte = S.geloest == null;
+  let h = `<ol class="log"><li class="eintrag fertig"><span class="punkt"></span><div class="zeit">14:02</div><div class="was"><h3>Start am Hotel Mama Shelter</h3></div></li>`;
+  STATIONEN.forEach((s, k) => {
+    if (k < erledigt) h += `<li class="eintrag fertig"><span class="punkt"></span><div class="zeit">${zeitStation(k)}, Station ${s.n}</div>
+      <div class="was"><h3>${esc(s.name)}</h3><span class="ziffer"><small>Ziffer</small>${s.ziffer}</span></div></li>`;
+    else if (k === erledigt && offenKarte && ["weg", "raetsel"].includes(S.screen)) h += `<li class="eintrag jetzt"><span class="punkt"></span><div class="zeit">Jetzt, Station ${s.n} von 5, ${S.screen === "weg" ? "unterwegs" : "Rätsel"}</div>${aktuelleKarte(S)}</li>`;
+    else h += `<li class="eintrag offen"><span class="punkt"></span><div class="zeit">Station ${s.n}</div><div class="was"><h3>${k === erledigt ? "Als Nächstes" : "Noch verdeckt"}</h3></div></li>`;
+  });
+  const kofferJetzt = S.screen === "koffer";
+  h += `<li class="eintrag ${kofferJetzt ? "jetzt" : "offen"}"><span class="punkt"></span><div class="zeit">${kofferJetzt ? "Jetzt, Ziel" : "Ziel"}</div>`
+    + (kofferJetzt ? `<div class="karte"><h2>Die Koffer</h2><p class="text">Am Metronom, unter dem Pendel. Noch 2 von 3 Koffern sind zu haben.</p>
+      ${leitung() ? `<label for="code">Koffer-Code, 6 Stellen</label><input id="code" inputmode="numeric" maxlength="6" style="letter-spacing:.3em;font-weight:700">
+        <p class="versuche">Eingeben, wenn ihr am Koffer steht. Die App prüft den Standort.</p>
+        ${S.codeFehler ? `<div class="msg err">${esc(S.codeFehler)}</div>` : ""}
+        <div class="aktion"><button class="btn" data-act="koffer" data-enter>Koffer öffnen</button></div>` : wartet("gibt den Code am Koffer ein.")}</div>`
+      : `<div class="was"><h3>Drei Koffer am Metronom</h3></div>`) + `</li></ol>`;
+  return h;
+}
+
+window.ZEICHNE = S => {
+  if (S.screen === "anmeldung") return `<div class="inhalt"><div class="start">${LOGO}
+      <h1>Stadtjagd durch Holešovice und Letná</h1>
+      <p>Wir laufen in Teams fünf Stationen ab. Jede gibt eine Ziffer, zusammen öffnen sie einen Koffer.</p>
+      <div class="fakten"><div><b>5</b><span>Stationen</span></div><div><b>3</b><span>Koffer</span></div><div><b class="nowrap">2 h</b><span>Spielzeit</span></div></div>
+      ${S.registriert ? `<div class="karte" style="margin-top:22px"><h2>Du bist dabei, ${esc(vorname(S.name))}.</h2>
+          <p class="text">Nach dem Auslosen steht hier dein Team. Öffne die Seite dann im selben Browser.</p>
+          <div class="aktion"><button class="btn alt" data-act="auslosen">Auslosen ansehen (Simulation)</button></div></div>`
+        : `<div class="feld"><label for="name">Vor- und Nachname</label><input id="name" autocomplete="name" value="Jonas Weber"></div>
+          <div class="aktion"><button class="btn" data-act="anmelden" data-enter>Anmelden</button></div>`}
+      <p class="leise" style="font-size:13px;margin-top:14px">63 Kolleginnen und Kollegen sind angemeldet.</p></div></div>`;
+
+  if (S.screen === "team") return kopf(S) + `<div class="inhalt" style="--tf:${TEAM.farbe}">
+      <div class="teamblatt"><button class="farbe" data-act="hoch" aria-label="Team-Zeichen zum Hochhalten zeigen">${TEAM.emoji}</button>
+        <div class="t"><p class="leise" style="font-size:13px">Dein Team, ${esc(vorname(S.name || "Jonas"))}</p><h1>Team ${TEAM.name}</h1>
+        <ul class="namen">${TEAM.mitglieder.map(m => `<li class="${m === TEAM.leitung ? "lt" : ""}">${esc(m)}</li>`).join("")}</ul>
+        <div class="aktion"><button class="btn alt" data-act="hoch">Zum Hochhalten</button><button class="btn" data-act="start">Start (Simulation)</button></div></div></div>
+      <ol class="log"><li class="eintrag offen"><span class="punkt"></span><div class="zeit">Vor dem Start</div>
+        <div class="karte" style="box-shadow:var(--shadow-1)"><h2 style="font-size:18px">Standort freigeben</h2>
+        <p class="text">Dann zeigt dein Handy beim Start sofort Richtung und Entfernung. Einchecken macht ${esc(vorname(TEAM.leitung))}, mitsehen können alle.</p>
+        <div class="aktion"><button class="btn alt">Standort freigeben</button></div></div></li></ol></div>
+    ${S.hoch ? `<div class="hoch" style="--tf:${TEAM.farbe}" data-act="hoch-zu"><div class="riesig">${TEAM.emoji}</div><b>Team ${TEAM.name}</b></div>` : ""}`;
+
+  if (S.screen === "ziel") return kopf(S) + `<div class="inhalt">${teamzeile(S)}
+      <div class="bilanz"><div class="platz"><b>2.</b><div><h2 style="font:700 20px var(--f)">Platz 2, ein Koffer</h2><p class="leise" style="font-size:14px">Zeigt diesen Bildschirm der Spielleitung am Koffer.</p></div></div>
+        <table>${STATIONEN.map((s, k) => `<tr><td>${esc(s.name)}</td><td>${[17, 22, 14, 19, 11][k]} min</td></tr>`).join("")}
+        <tr><td>Weg zu den Koffern</td><td>15 min</td></tr><tr class="summe"><td>Gesamt, ein Tipp</td><td>1:38 h</td></tr></table>
+        <div class="aktion"><button class="btn alt" data-act="neu">Noch einmal von vorn</button></div></div></div>`;
+
+  const toast = S.geloest != null ? `<div class="toast" role="status"><span>Station ${S.station} gelöst, Ziffer ${S.geloest}.</span><button data-act="weiter">${S.station >= 5 ? "Zu den Koffern" : "Weiter zu Station " + (S.station + 1)}</button></div>` : "";
+  return kopf(S) + `<div class="inhalt">${teamzeile(S)}${logbuch(S)}</div>${toast}`;
+};
+starten();
+</script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stadtjagd: drei UI-Varianten</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="fonts.css">
+<style>
+:root{--ink:#1F1F1F;--steel:#6B6B6B;--silver:#C9C9C9;--fog:#E5E5E5;--mist:#F2F2F2;--paper:#FAFAFA;--red:#801624;--ease:cubic-bezier(.32,.72,.4,1)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--mist);color:var(--ink);font:400 15px/1.5 "Libre Franklin",system-ui,sans-serif}
+header{max-width:1340px;margin:0 auto;padding:28px 24px 8px}
+h1{font:700 28px/1.15 "Libre Franklin";letter-spacing:-.01em;margin:0}
+.lead{color:var(--steel);margin:6px 0 0;max-width:80ch}
+details{margin-top:16px;background:#fff;border:1px solid var(--fog);border-radius:4px;max-width:900px}
+summary{cursor:pointer;padding:12px 16px;font-weight:600;min-height:42px}
+details ol{margin:0;padding:0 16px 14px 36px}
+details li{margin:6px 0}
+.steuer{position:sticky;top:0;z-index:5;background:var(--mist);border-bottom:1px solid var(--fog)}
+.steuer div{max-width:1340px;margin:0 auto;padding:10px 24px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.steuer span{font-size:13px;color:var(--steel);margin-right:4px}
+.steuer .trenn{width:16px}
+.steuer button{min-height:42px;padding:0 14px;border:1px solid var(--silver);border-radius:4px;background:#fff;font:600 13px "Libre Franklin";cursor:pointer;transition:border-color .16s var(--ease)}
+.steuer button:hover{border-color:var(--ink)}
+.steuer button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.steuer button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(128,22,36,.18)}
+main{max-width:1340px;margin:0 auto;padding:18px 24px 48px;display:flex;flex-wrap:wrap;gap:28px;justify-content:center}
+.variante{width:410px}
+.variante h2{font:700 20px "Libre Franklin";margin:0}
+.variante .idee{margin:4px 0 12px;color:var(--steel);min-height:66px}
+.handy{width:410px;height:820px;border-radius:34px;background:#1F1F1F;padding:10px;box-shadow:0 12px 32px rgba(17,17,17,.14),0 2px 6px rgba(17,17,17,.06)}
+.handy iframe{width:390px;height:800px;border:0;border-radius:26px;background:#fff;display:block}
+.variante ul{margin:14px 0 0;padding-left:18px}
+.variante li{margin:5px 0}
+.variante .aufwand{margin-top:10px;font-size:13px;color:var(--steel)}
+.variante a{color:var(--ink);font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>Stadtjagd: drei Varianten für Oberfläche und Ablauf</h1>
+  <p class="lead">Alle drei Handys laufen mit derselben Spiellogik und denselben Beispieldaten. Oben wählt ihr den Bildschirm und die Rolle, dann springen alle drei mit. In jedem Handy lässt sich auch einzeln weiterklicken, etwa „Näher gehen“, eine falsche Antwort oder ein leeres Feld als richtige Antwort. Die Rätsel sind Platzhalter.</p>
+  <details>
+    <summary>Was uns an der heutigen Oberfläche aufgefallen ist</summary>
+    <ol>
+      <li><b>Die Teamleitung sieht einen langen Stapel.</b> Station, Ziffern, Mitglieder, Hilfe, Mitlese-Link, Leitung abgeben, Abmelden und Navigation stehen untereinander. „Wir sind da“ und „Antwort prüfen“ rutschen bei jeder Meldung weiter nach unten.</li>
+      <li><b>Der Kompass ist klein.</b> Unterwegs ist er das wichtigste Werkzeug, heute misst er 78 px neben viel Erklärtext.</li>
+      <li><b>Zahlenschloss und Routenleiste zeigen dasselbe zweimal.</b> Beide sagen, wie viele Stationen gelöst sind.</li>
+      <li><b>Die meisten lesen nur mit.</b> Rund 90 von 100 Leuten sind Mitglied, nicht Leitung. Sie sehen die Ansicht der Leitung mit Lücken, aber nicht, was die Leitung gerade tut.</li>
+      <li><b>„Wir sind da“ geht auch 400 m vor dem Ziel.</b> Erst die Ablehnung des Servers verrät, dass es einen Umkreis gibt.</li>
+      <li><b>Draußen in der Sonne</b> folgt die App dem dunklen Modus des Handys. Dunkle Flächen mit grauer Schrift sind im Freien schwer zu lesen.</li>
+      <li><b>Die Hilfe-Knöpfe stehen groß auf jeder Seite</b>, auch wenn nichts klemmt, und drücken die eigentliche Aufgabe nach unten.</li>
+    </ol>
+  </details>
+</header>
+<div class="steuer"><div id="steuer"></div></div>
+<main>
+  <section class="variante">
+    <h2>A: Postenkarte</h2>
+    <p class="idee">Der heutige Orientierungslauf-Look, aufgeräumt. Eine feste Leiste unten trägt immer genau eine Handlung, die Postenkarte ersetzt Schloss und Routenleiste.</p>
+    <div class="handy"><iframe src="a-postenkarte.html" title="Variante A: Postenkarte"></iframe></div>
+    <ul>
+      <li>Hauptknopf steht immer an derselben Stelle, unten rechts unter dem Daumen.</li>
+      <li>Gelöste Posten werden „gestempelt“ wie mit der Nadelzange am OL-Posten.</li>
+      <li>Mitlese-Link, Leitung abgeben und Hilfe wandern in ein Blatt hinter dem Fragezeichen.</li>
+      <li>Kompass doppelt so groß, Entfernung in großer Schrift daneben.</li>
+    </ul>
+    <p class="aufwand">Umbau: klein bis mittel, gleiche Schriften und Farben, vor allem neue Anordnung. <a href="a-postenkarte.html">Einzeln öffnen</a></p>
+  </section>
+  <section class="variante">
+    <h2>B: Wegweiser</h2>
+    <p class="idee">Das Handy wird zum Schild für unterwegs. Ein Modus pro Bildschirm (Weg, Rätsel, Code), Schwarz auf Signalgelb, lesbar im Gehen und in praller Sonne.</p>
+    <div class="handy"><iframe src="b-wegweiser.html" title="Variante B: Wegweiser"></iframe></div>
+    <ul>
+      <li>Pfeil und Meter füllen den Bildschirm, der Rest ist eine Zeile.</li>
+      <li>„Wir sind da“ zeigt die Restmeter und schaltet erst im Umkreis frei.</li>
+      <li>Das Rätsel öffnet sich erst nach dem Check-in, der Code ist jederzeit als Anzeigetafel einsehbar.</li>
+      <li>Das Team-Zeichen ist gleich der ganze Bildschirm, zum Hochhalten beim Sammeln.</li>
+    </ul>
+    <p class="aufwand">Umbau: mittel, neue Schrift (Archivo, lokal), neue Navigation mit drei Reitern. <a href="b-wegweiser.html">Einzeln öffnen</a></p>
+  </section>
+  <section class="variante">
+    <h2>C: Logbuch</h2>
+    <p class="idee">Im TSE-Design, gebaut für die, die mitlesen. Die Jagd steht als Logbuch da: erledigte Stationen mit Uhrzeit und Ziffer, die aktuelle aufgeklappt.</p>
+    <div class="handy"><iframe src="c-logbuch.html" title="Variante C: Logbuch"></iframe></div>
+    <ul>
+      <li>Mitglieder sehen, was die Leitung gerade tut und wo sie ist.</li>
+      <li>Der Code füllt sich oben rechts, Ziffer für Ziffer.</li>
+      <li>Gelöst meldet ein Hinweis unten links mit „Weiter“, wie in den anderen TSE-Tools.</li>
+      <li>Am Ziel wird das Logbuch zur Auswertung mit den Zeiten je Station.</li>
+    </ul>
+    <p class="aufwand">Umbau: mittel bis groß, Wechsel auf Libre Franklin und TSE-Palette, neue Struktur der Team-Ansicht. <a href="c-logbuch.html">Einzeln öffnen</a></p>
+  </section>
+</main>
+<script>
+const SCREENS = [["anmeldung","Anmeldung"],["team","Team"],["weg","Unterwegs"],["raetsel","Rätsel"],["koffer","Koffer"],["ziel","Ziel"]];
+const q = new URLSearchParams(location.search);
+let stand = { screen: q.get("screen") || "weg", rolle: q.get("rolle") || "leitung" };
+const frames = () => [...document.querySelectorAll("iframe")];
+function steuer() {
+  document.getElementById("steuer").innerHTML = `<span>Bildschirm</span>`
+    + SCREENS.map(([k, t]) => `<button data-screen="${k}" aria-pressed="${stand.screen === k}">${t}</button>`).join("")
+    + `<span class="trenn"></span><span>Rolle</span>`
+    + [["leitung","Teamleitung"],["mitglied","Mitglied"]].map(([k, t]) => `<button data-rolle="${k}" aria-pressed="${stand.rolle === k}">${t}</button>`).join("");
+}
+function senden(ausser) { frames().forEach(f => { if (f.contentWindow !== ausser) f.contentWindow.postMessage({ typ: "setze", ...stand }, "*"); }); }
+document.getElementById("steuer").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.screen) stand.screen = b.dataset.screen;
+  if (b.dataset.rolle) stand.rolle = b.dataset.rolle;
+  steuer(); senden();
+});
+// Klickt jemand in einem Handy weiter, ziehen die anderen beiden mit
+window.addEventListener("message", e => {
+  if (e.data?.typ !== "stand") return;
+  stand = { screen: e.data.screen, rolle: e.data.rolle };
+  steuer(); senden(e.source);
+});
+frames().forEach(f => f.addEventListener("load", () => f.contentWindow.postMessage({ typ: "setze", ...stand }, "*")));
+steuer();
+</script>
+</body>
+</html>

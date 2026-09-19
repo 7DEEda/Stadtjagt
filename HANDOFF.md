@@ -1005,6 +1005,23 @@ oder einen Tunnel.
    gedrückt: „Spiel fortsetzen“, nichts geht verloren.
 11. **Danach:** Zeitachse und Routen ansehen, dann „Standortdaten löschen“.
 
+## UI-Varianten als Mockup (19.09.2026, gespeichert, nicht gebaut)
+
+Drei klickbare Entwürfe unter `mockups/ui-varianten/`, Einstieg `index.html`
+(drei Handys nebeneinander, eine Steuerung für Bildschirm und Rolle, dazu die
+Befunde der Durchsicht). Gemeinsame Spiellogik in `gemeinsam.js`, Schriften
+und Bildmarke lokal daneben.
+
+- **A Postenkarte:** heutiger OL-Look, feste Aktionsleiste unten, Postenkarte
+  statt Schloss und Routenleiste, Nebensachen in einem Blatt.
+- **B Wegweiser:** ein Modus pro Bildschirm (Weg, Rätsel, Code), Schwarz auf
+  Signalgelb, Check-in erst im Umkreis.
+- **C Logbuch:** TSE-Design, Stationen als Zeitleiste, zeigt den
+  Mitlesenden, was die Leitung tut.
+
+Entscheidung 19.09.2026: vorerst keine der drei; erst das bestehende Design
+in sich verbessern (UI-Workflow).
+
 ## Ideen für ein kniffligeres Spiel (19.09.2026, gespeichert, nicht gebaut)
 
 Befund: Das Spiel ist heute ein Geocache, „von A nach B“: Ortshinweis,

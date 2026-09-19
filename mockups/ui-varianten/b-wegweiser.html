@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Variante B: Wegweiser</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="fonts.css">
+<style>
+/* Variante B: das Handy als Wegweiser. Ein Modus pro Bildschirm (Weg, Rätsel, Code),
+   lesbar im Gehen und in praller Sonne: Schwarz auf Signalgelb, Zahlen in breiter Schrift. */
+:root{
+  --gelb:#FFCC00; --asphalt:#1A1A18; --weiss:#FFFFFF; --stein:#E9E9E6; --grau:#6E6E69;
+  --gruen:#12804A; --rot:#C8102E; --rot-bg:#FBE3E6;
+  --f:"Archivo",system-ui,sans-serif;
+  --ease:cubic-bezier(.32,.72,.4,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--asphalt);color:var(--asphalt);font:500 17px/1.4 var(--f)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:4px solid var(--asphalt);outline-offset:3px;box-shadow:0 0 0 7px var(--gelb)}
+h1,h2,h3,p{margin:0}
+.breit{font-stretch:125%}
+.schmal{font-stretch:75%}
+.nowrap{white-space:nowrap}
+
+#app{max-width:430px;min-height:100%;margin:0 auto;position:relative;display:flex;flex-direction:column;background:var(--weiss)}
+.flaeche{flex:1;display:flex;flex-direction:column;padding:16px 18px 170px}
+.gelb{background:var(--gelb)}
+.dunkel{background:var(--asphalt);color:var(--weiss)}
+
+/* Statuszeile: klein, damit darunter alles dem Weg gehört */
+.kopf{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 18px;background:inherit;font:700 15px var(--f);font-stretch:75%}
+.kopf .team{display:flex;align-items:center;gap:6px}
+.kopf .team span{font-size:20px}
+.punkte{display:flex;gap:4px;margin-left:auto}
+.punkte i{width:18px;height:6px;border-radius:1px;background:currentColor;opacity:.22}
+.punkte i.ja{opacity:1}
+.punkte i.jetzt{opacity:.6;animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.2}}
+.kopf .uhr{white-space:nowrap}
+
+/* Der Wegweiser: Pfeil und Entfernung füllen den Bildschirm */
+.ziel-name{font:800 30px/1.05 var(--f);font-stretch:100%;margin-top:4px}
+.stat{font:700 14px var(--f);font-stretch:75%;letter-spacing:.02em}
+.pfeil{display:block;width:min(46vw,180px);height:auto;margin:18px auto 4px;transform:rotate(var(--nadel,0deg));transition:transform .9s var(--ease)}
+.meter{text-align:center;font:800 80px/0.95 var(--f);font-stretch:125%;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.meter small{font-size:34px;font-weight:700}
+.genau{text-align:center;font:600 14px var(--f);font-stretch:75%;margin-top:6px}
+.hinweis{background:var(--weiss);border:3px solid var(--asphalt);border-radius:6px;padding:12px 14px;margin-top:16px;font-size:17px}
+.hinweis b{display:block;font:800 13px var(--f);font-stretch:75%;letter-spacing:.04em;margin-bottom:2px}
+.sim{align-self:center;background:none;border:2px dashed currentColor;border-radius:6px;padding:8px 14px;min-height:42px;margin-top:14px;font:600 14px var(--f);cursor:pointer;opacity:.75}
+
+/* Rätsel */
+.nr{font:800 15px var(--f);font-stretch:75%;letter-spacing:.03em}
+.frage{font:700 27px/1.2 var(--f);margin-top:10px}
+.feld{margin-top:22px}
+.feld label{display:block;font:800 14px var(--f);font-stretch:75%;letter-spacing:.03em;margin-bottom:6px}
+input{width:100%;padding:14px 16px;border:3px solid var(--asphalt);border-radius:6px;background:var(--weiss);color:var(--asphalt);font:700 24px var(--f)}
+input:focus{outline:none;box-shadow:0 0 0 4px var(--gelb)}
+input:disabled{background:var(--stein);border-color:var(--grau)}
+.kaestchen{display:flex;gap:6px;margin-top:14px;align-items:center;font:600 14px var(--f);font-stretch:75%}
+.kaestchen i{width:26px;height:26px;border:3px solid var(--asphalt);border-radius:3px;display:grid;place-items:center;font-style:normal;font-weight:800}
+.kaestchen i.x{background:var(--rot);border-color:var(--rot);color:#fff}
+.msg{border-radius:6px;padding:12px 14px;margin-top:14px;font-size:16px;font-weight:600}
+.msg.err{background:var(--rot-bg);color:var(--rot)}
+.msg.tipp{background:var(--gelb)}
+.link{background:none;border:0;padding:12px 0;min-height:44px;font:700 16px var(--f);text-decoration:underline;text-underline-offset:4px;cursor:pointer;align-self:flex-start}
+.geschafft{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.geschafft .riesig{font:800 180px/0.9 var(--f);font-stretch:125%;animation:fall .5s var(--ease) both}
+@keyframes fall{from{transform:translateY(-30px);opacity:0}}
+
+/* Code: Klappziffern wie an einer Anzeigetafel */
+.tafel{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:16px}
+.tafel b{position:relative;aspect-ratio:3/4.2;border-radius:4px;background:var(--asphalt);color:var(--gelb);display:grid;place-items:center;font:800 40px var(--f);font-stretch:112%}
+.tafel b::after{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:var(--gelb);opacity:.9;mix-blend-mode:multiply}
+.tafel b.leer{color:#4a4a45}
+.tafel-leg{display:flex;justify-content:space-between;font:600 13px var(--f);font-stretch:75%;margin-top:6px;color:var(--grau)}
+
+/* Unten: die eine Handlung, darunter die drei Modi */
+.unten{position:fixed;left:0;right:0;bottom:0;z-index:6;max-width:430px;margin:0 auto;background:var(--weiss);border-top:3px solid var(--asphalt)}
+.haupt{display:block;width:calc(100% - 24px);margin:12px;min-height:64px;border:0;border-radius:6px;background:var(--asphalt);color:var(--gelb);font:800 23px var(--f);font-stretch:112%;cursor:pointer;transition:transform .16s var(--ease)}
+.haupt:active{transform:scale(.98)}
+.haupt:disabled{background:var(--stein);color:var(--grau);cursor:not-allowed}
+.haupt small{display:block;font:600 13px var(--f);font-stretch:75%;opacity:.8}
+.wartet{margin:12px;min-height:64px;display:flex;align-items:center;justify-content:center;gap:10px;border:3px dashed var(--asphalt);border-radius:6px;font:700 17px var(--f)}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--stein)}
+.tabs button{background:none;border:0;min-height:56px;font:800 15px var(--f);font-stretch:75%;letter-spacing:.03em;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--grau);position:relative}
+.tabs button svg{width:22px;height:22px}
+.tabs button[aria-selected="true"]{color:var(--asphalt)}
+.tabs button[aria-selected="true"]::before{content:"";position:absolute;top:-1px;left:22%;right:22%;height:5px;background:var(--gelb);border:2px solid var(--asphalt);border-top:0}
+.tabs button:disabled{opacity:.35;cursor:not-allowed}
+
+/* Anmeldung: ein Straßenschild */
+.schild{margin:40px 0 0;background:var(--gelb);color:var(--asphalt);border-radius:10px;padding:18px 18px 16px;box-shadow:inset 0 0 0 4px var(--asphalt),inset 0 0 0 7px var(--gelb),inset 0 0 0 9px var(--asphalt)}
+.schild .oben{display:flex;justify-content:space-between;font:800 14px var(--f);font-stretch:75%;letter-spacing:.04em}
+.schild h1{font:800 54px/0.95 var(--f);font-stretch:125%;margin-top:14px;letter-spacing:-.02em}
+.schild .richtung{display:flex;align-items:center;gap:10px;margin-top:14px;font:700 19px var(--f)}
+.schild .richtung svg{width:40px;height:40px;flex:none}
+.anmelde{margin-top:24px}
+.anmelde label{color:var(--gelb)}
+.anmelde input{border-color:var(--gelb)}
+.gezaehlt{margin-top:16px;font:600 15px var(--f);color:#c9c9c2}
+.gezaehlt b{font:800 26px var(--f);font-stretch:125%;color:var(--weiss)}
+
+/* Team: der Bildschirm ist das Schild zum Hochhalten */
+.teamschild{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:var(--tf);color:#fff;margin:-16px -18px 0;padding:24px 18px;cursor:pointer;border:0;min-height:62vh;width:calc(100% + 36px)}
+.teamschild .e{font-size:150px;line-height:1}
+.teamschild h1{font:800 50px/1 var(--f);font-stretch:125%;margin-top:6px}
+.teamschild p{font:600 15px var(--f);margin-top:10px;opacity:.9}
+.leute{margin-top:18px}
+.leute h3{font:800 14px var(--f);font-stretch:75%;letter-spacing:.04em}
+.leute ul{list-style:none;padding:0;margin:8px 0 0;columns:2;font-size:16px}
+.leute li{padding:5px 0;border-bottom:2px solid var(--stein);break-inside:avoid}
+.leute li.lt{font-weight:800}
+.hoch{position:fixed;inset:0;z-index:20;background:var(--tf);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;cursor:pointer}
+.hoch .riesig{font-size:min(70vw,52vh);line-height:1}
+.hoch b{font:800 48px var(--f);font-stretch:125%}
+
+.platz{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center}
+.platz .gross{font:800 150px/0.85 var(--f);font-stretch:125%}
+.platz h1{font:800 34px var(--f);margin-top:10px}
+.platz p{font-size:18px;margin-top:10px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="schalter" data-schalter></div>
+<div id="app"></div>
+<script src="gemeinsam.js"></script>
+<script>
+const ICON = {
+  weg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M12 2l8 19-8-5-8 5z"/></svg>`,
+  raetsel: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8.5 8.5a3.5 3.5 0 1 1 5 3.2c-.9.4-1.5 1.3-1.5 2.3v.5"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>`,
+  code: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="9" width="18" height="12" rx="2"/><path d="M7 9V7a5 5 0 0 1 10 0v2"/></svg>`
+};
+// Pfeil wie auf einem Wegweiser: breit, ohne Kompassrose
+const PFEIL = `<svg class="pfeil" data-nadel viewBox="0 0 200 200" aria-hidden="true"><path d="M100 8 L176 104 L128 104 L128 192 L72 192 L72 104 L24 104 Z" fill="#1A1A18"/></svg>`;
+
+// Tabs: ein Modus ist offen; Rätsel erst nach dem Check-in, der Code ist immer einsehbar
+ACT.tab = d => { S.tabB = d.tab; S.tabFuer = S.screen + S.station; };
+const modus = () => S.tabB && S.tabFuer === S.screen + S.station ? S.tabB : S.screen;
+
+function kopf(S, gelb) {
+  const punkte = [0,1,2,3,4].map(k => `<i class="${k < S.ziffern.length ? "ja" : k === S.ziffern.length && S.screen !== "koffer" ? "jetzt" : ""}"></i>`).join("");
+  return `<div class="kopf ${gelb ? "gelb" : ""}"><span class="team"><span>${TEAM.emoji}</span>${TEAM.name.toUpperCase()}</span>
+    <span class="punkte" aria-label="${S.ziffern.length} von 5 Stationen">${punkte}</span><span class="uhr">${uhrText().replace("Noch ", "")}</span></div>`;
+}
+function unten(S, haupt) {
+  const m = modus();
+  const tab = (k, t) => `<button role="tab" data-act="tab" data-tab="${k === "code" ? "koffer" : k}" aria-selected="${(m === k) || (k === "code" && m === "koffer")}" ${k === "raetsel" && !S.eingecheckt ? "disabled" : ""}>${ICON[k]}${t}</button>`;
+  return `<div class="unten">${haupt}<div class="tabs" role="tablist">${tab("weg", "WEG")}${tab("raetsel", "RÄTSEL")}${tab("code", "CODE")}</div></div>`;
+}
+const wartet = was => `<div class="wartet">${esc(vorname(TEAM.leitung))} ${was}</div>`;
+function tafel(S, mitLeg) {
+  const z = [...S.ziffern, S.ziffern.length === 5 ? PRUEF : null];
+  return `<div class="tafel" role="img" aria-label="Code bisher: ${z.map(x => x ?? "leer").join(", ")}">${[0,1,2,3,4,5].map(k => `<b class="${z[k] == null ? "leer" : ""}">${z[k] ?? "?"}</b>`).join("")}</div>`
+    + (mitLeg ? `<div class="tafel-leg"><span>STATION 1 BIS 5</span><span>6 = EINERSTELLE DER SUMME</span></div>` : "");
+}
+
+function wegAnsicht(S) {
+  const s = stn(), nah = imRadius();
+  return kopf(S, true) + `<div class="flaeche gelb">
+      <div class="stat">STATION ${s.n} VON 5</div><h1 class="ziel-name">${esc(s.name)}</h1>
+      ${PFEIL}
+      <div class="meter">${Math.round(dist())}<small> m</small></div>
+      <div class="genau">GPS ±6 m, KOMPASS EINGEMESSEN</div>
+      <div class="hinweis"><b>HINWEIS</b>${esc(s.hinweis)}</div>
+      <button class="sim" data-act="naeher">Näher gehen (Simulation)</button></div>`
+    + unten(S, leitung()
+      ? `<button class="haupt" data-act="da" ${nah ? "" : "disabled"}>${nah ? "Wir sind da" : `Noch ${fmtM(dist())}`}<small>${nah ? "Check-in öffnet das Rätsel" : `Check-in ab ${RADIUS} m Nähe`}</small></button>`
+      : wartet(nah ? "checkt gleich ein" : "führt euch hin"));
+}
+function raetselAnsicht(S) {
+  const s = stn(), pause = S.pause > 0;
+  if (S.geloest != null) return kopf(S) + `<div class="flaeche"><div class="geschafft"><div class="nr">STATION ${s.n} GELÖST</div>
+      <div class="riesig">${S.geloest}</div><p style="font-size:18px">Ziffer ${s.n} steht auf der Tafel unter CODE.</p></div></div>`
+    + unten(S, `<button class="haupt" data-act="weiter">${S.station >= 5 ? "Zu den Koffern" : "Weiter zu Station " + (S.station + 1)}</button>`);
+  return kopf(S) + `<div class="flaeche"><div class="nr">STATION ${s.n}, ${esc(s.name).toUpperCase()}</div>
+      <p class="frage">${esc(s.raetsel)}</p>
+      ${S.tipp ? `<div class="msg tipp">Tipp: ${esc(s.tipp)}</div>` : ""}
+      ${leitung() ? `<div class="feld"><label for="antwort">EURE ANTWORT</label><input id="antwort" autocomplete="off" ${pause ? "disabled" : ""}></div>` : ""}
+      <div class="kaestchen">${[0,1,2].map(i => `<i class="${i < S.versuche ? "x" : ""}">${i < S.versuche ? "×" : ""}</i>`).join("")}<span>${pause ? `DENKPAUSE, NOCH ${S.pause} S` : "3 VERSUCHE, DANN 2 MIN PAUSE"}</span></div>
+      ${S.fehler ? `<div class="msg err">${esc(S.fehler)}</div>` : ""}
+      ${!S.tipp && leitung() && S.versuche ? `<button class="link" data-act="tipp">Tipp aufdecken</button>` : ""}</div>`
+    + unten(S, leitung() ? `<button class="haupt" data-act="antwort" data-enter ${pause ? "disabled" : ""}>Antwort prüfen</button>` : wartet("gibt die Antwort ein"));
+}
+function codeAnsicht(S) {
+  const alle = S.ziffern.length === 5;
+  return kopf(S) + `<div class="flaeche"><div class="nr">${alle ? "ALLE STATIONEN GELÖST" : "EUER CODE BISHER"}</div>
+      <h1 class="ziel-name" style="margin-top:6px">${alle ? "Ab zu den Koffern" : `${S.ziffern.length} von 6 Ziffern`}</h1>
+      ${tafel(S, true)}
+      ${alle ? `<div class="hinweis"><b>WO</b>Am Metronom, unter dem Pendel. Noch 2 von 3 Koffern sind zu haben.</div>
+        ${leitung() ? `<div class="feld"><label for="code">KOFFER-CODE</label><input id="code" inputmode="numeric" maxlength="6" style="letter-spacing:.35em;font-stretch:125%"></div>` : ""}
+        ${S.codeFehler ? `<div class="msg err">${esc(S.codeFehler)}</div>` : ""}`
+      : `<p style="margin-top:16px;font-size:17px">Jede Station gibt eine Ziffer. Die sechste ist die Einerstelle der Summe.</p>`}</div>`
+    + unten(S, !alle ? `<button class="haupt" data-act="tab" data-tab="${S.eingecheckt ? "raetsel" : "weg"}">Zurück ${S.eingecheckt ? "zum Rätsel" : "zum Weg"}</button>`
+      : leitung() ? `<button class="haupt" data-act="koffer" data-enter>Koffer öffnen<small>Die App prüft, ob ihr am Koffer steht</small></button>` : wartet("öffnet gleich den Koffer"));
+}
+
+window.ZEICHNE = S => {
+  document.body.style.background = S.screen === "anmeldung" ? "var(--asphalt)" : S.screen === "weg" && modus() === "weg" ? "var(--gelb)" : "var(--weiss)";
+  if (S.screen === "anmeldung") return `<div class="flaeche dunkel">
+      <div class="schild"><div class="oben"><span>PRAHA 7</span><span>HOLEŠOVICE, LETNÁ</span></div>
+        <h1>Stadt&shy;jagd</h1>
+        <div class="richtung"><svg viewBox="0 0 40 40"><path d="M4 16h20V6l14 14-14 14V24H4z" fill="#1A1A18"/></svg><span>5 Stationen, 3 Koffer, ein Code</span></div></div>
+      ${S.registriert
+        ? `<h2 style="font:800 30px var(--f);margin-top:28px;color:var(--gelb)">Du bist dabei, ${esc(vorname(S.name))}.</h2><p style="margin-top:8px;font-size:17px">Nach dem Auslosen zeigt diese Seite dein Team.</p>`
+        : `<div class="anmelde feld"><label for="name">VOR- UND NACHNAME</label><input id="name" autocomplete="name" value="Jonas Weber"></div>`}
+      <p class="gezaehlt"><b>63</b> angemeldet</p></div>
+    <div class="unten" style="background:var(--asphalt);border-color:var(--gelb)">${S.registriert
+      ? `<button class="haupt" style="background:var(--gelb);color:var(--asphalt)" data-act="auslosen">Auslosen ansehen (Simulation)</button>`
+      : `<button class="haupt" style="background:var(--gelb);color:var(--asphalt)" data-act="anmelden" data-enter>Anmelden</button>`}</div>`;
+
+  if (S.screen === "team") return `<div class="flaeche" style="--tf:${TEAM.farbe};padding-bottom:110px">
+      <button class="teamschild" data-act="hoch" aria-label="Team-Zeichen bildschirmfüllend zeigen"><span class="e">${TEAM.emoji}</span><h1>${TEAM.name.toUpperCase()}</h1>
+        <p>Antippen und hochhalten, dann findet ihr euch.</p></button>
+      <div class="leute"><h3>EUER TEAM, LEITUNG ${esc(TEAM.leitung).toUpperCase()}</h3>
+      <ul>${TEAM.mitglieder.map(m => `<li class="${m === TEAM.leitung ? "lt" : ""}">${esc(m)}</li>`).join("")}</ul></div></div>
+    <div class="unten"><button class="haupt" data-act="start">Start (Simulation)<small>Beim Signal der Spielleitung</small></button></div>
+    ${S.hoch ? `<div class="hoch" style="--tf:${TEAM.farbe}" data-act="hoch-zu"><div class="riesig">${TEAM.emoji}</div><b>${TEAM.name.toUpperCase()}</b></div>` : ""}`;
+
+  if (S.screen === "ziel") return `<div class="flaeche gelb"><div class="platz"><div class="nr">IHR SEID IM ZIEL</div>
+      <div class="gross">2.</div><h1>Platz 2, ein Koffer</h1><p>Zeigt diesen Bildschirm der Spielleitung am Koffer.</p>${tafel(S)}</div></div>
+    <div class="unten"><button class="haupt" data-act="neu">Noch einmal von vorn</button></div>`;
+
+  const m = modus();
+  if (m === "koffer") return codeAnsicht(S);
+  if (m === "raetsel" && S.eingecheckt) return raetselAnsicht(S);
+  return wegAnsicht(S);
+};
+starten();
+</script>
+</body>
+</html>

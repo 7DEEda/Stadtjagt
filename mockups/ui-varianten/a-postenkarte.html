@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Variante A: Postenkarte</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="fonts.css">
+<style>
+/* Variante A: Orientierungslauf, weitergedacht. Die Postenkarte ersetzt Zahlenschloss und
+   Routenleiste, eine feste Leiste unten trägt immer genau eine Handlung. */
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF;
+  --contour:#CFDBC8; --flag:#EE5F1B; --flag-dunkel:#C94A0E; --flag-wash:#FDEBE1; --water:#2F6E9E;
+  --ok:#2E7D4F; --ok-bg:#E3F1E7; --err:#B3261E; --err-bg:#FBE9E7;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,sans-serif;
+  --ease:cubic-bezier(.32,.72,.4,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--ink);font:17px/1.45 var(--body);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'%3E%3Cg fill='none' stroke='%23CFDBC8' stroke-width='1'%3E%3Cpath d='M-20 80C60 40 120 110 200 70S330 20 420 60'/%3E%3Cpath d='M-20 110C60 70 130 140 210 100S330 50 420 90'/%3E%3Cpath d='M-20 140C70 100 140 170 220 130S330 80 420 120' stroke-width='1.8'/%3E%3Cpath d='M-20 290C50 250 110 330 190 300S320 240 420 280'/%3E%3Cpath d='M-20 320C60 280 120 360 200 330S330 270 420 310'/%3E%3C/g%3E%3C/svg%3E")}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--water);outline-offset:2px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.08;font-weight:700}
+p{margin:0}
+.muted{color:var(--muted)}
+.nowrap{white-space:nowrap}
+
+#app{max-width:430px;min-height:100%;margin:0 auto;position:relative;display:flex;flex-direction:column}
+.inhalt{flex:1;padding:0 16px 120px}
+
+/* Kopf: Team und Restzeit, bleibt stehen */
+.kopf{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:12px 16px;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:saturate(1.2)}
+.kopf .emoji{width:40px;height:40px;border-radius:50%;background:var(--tf);display:grid;place-items:center;font-size:22px;flex:none}
+.kopf h1{font-size:22px}
+.kopf .sub{font-size:13px;color:var(--muted)}
+.kopf .uhr{margin-left:auto;font:600 15px var(--head);padding:6px 10px;border:1.5px solid var(--line);border-radius:6px;background:var(--card);white-space:nowrap}
+
+/* Die Postenkarte: fünf Felder plus Prüfziffer. Gelöste Posten sind "gestanzt". */
+.pk{display:grid;grid-template-columns:repeat(5,1fr) 1.05fr;border:2px solid var(--ink);border-radius:6px;background:var(--card);overflow:hidden;margin-top:6px}
+.pk .f{position:relative;aspect-ratio:1/1.12;border-right:1px solid var(--ink);display:grid;place-items:center}
+.pk .f:last-child{border-right:0;background:var(--paper)}
+.pk .nr{position:absolute;top:3px;left:5px;font:700 12px var(--head);color:var(--muted)}
+.pk .z{font:700 30px var(--head);position:relative;z-index:1}
+.pk .loch{position:absolute;inset:14px 8px 8px;opacity:.9}
+.pk .f.jetzt{background:var(--flag-wash);box-shadow:inset 0 0 0 2px var(--flag)}
+.pk .f.jetzt .nr{color:var(--flag-dunkel)}
+.pk .f.neu .loch{animation:stanz .45s var(--ease) both}
+.pk .f.neu .z{animation:ziff .45s .12s var(--ease) both}
+@keyframes stanz{from{transform:scale(1.4);opacity:0}}
+@keyframes ziff{from{transform:translateY(6px);opacity:0}}
+.pk-leg{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:6px}
+
+.karte{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:18px 16px;margin-top:14px}
+.eyebrow{font:600 14px var(--head);color:var(--flag-dunkel)}
+.karte h2{font-size:30px;margin-top:2px}
+.hinweis{font-size:18px;margin-top:8px}
+
+/* Kompass groß: das ist das Werkzeug unterwegs */
+.navi{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:center;margin-top:18px}
+.kompass{width:150px;height:150px}
+.kompass .ring{fill:var(--paper);stroke:var(--line);stroke-width:2}
+.kompass .tick{stroke:var(--muted);stroke-width:1.5}
+.kompass .nord{font:700 12px var(--head);fill:var(--muted)}
+.kompass .nadel{transform-origin:75px 75px;transform:rotate(var(--nadel,0deg));transition:transform .9s var(--ease)}
+.kompass .nadel path{fill:var(--flag)}
+.dist{font:700 52px/1 var(--head);letter-spacing:-.01em}
+.dist small{font-size:22px}
+.status{font-size:14px;color:var(--muted);margin-top:6px}
+.status b{color:var(--ok);font-weight:600}
+.sim{background:none;border:1.5px dashed var(--line);border-radius:6px;padding:8px 12px;min-height:42px;margin-top:14px;font:500 14px var(--body);color:var(--muted);cursor:pointer;width:100%}
+
+.raetsel{font-size:21px;line-height:1.4;border-left:4px solid var(--flag);padding-left:14px;margin-top:10px}
+label{display:block;font:600 15px var(--body);margin:16px 0 6px}
+input{width:100%;padding:13px 14px;border:2px solid var(--line);border-radius:6px;background:var(--paper);font-size:19px}
+input:focus{border-color:var(--ink);outline:none}
+input:disabled{opacity:.5}
+.versuche{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--muted);margin-top:10px}
+.versuche i{width:12px;height:12px;border-radius:50%;border:2px solid var(--muted)}
+.versuche i.weg{background:var(--err);border-color:var(--err)}
+.msg{border-radius:6px;padding:10px 12px;margin-top:12px;font-size:15px}
+.msg.err{background:var(--err-bg);color:var(--err)}
+.msg.ok{background:var(--ok-bg);color:var(--ok)}
+.msg.tipp{background:#E6EEF4;color:var(--ink)}
+.link{background:none;border:0;padding:10px 0;min-height:42px;font:600 15px var(--body);color:var(--water);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+.geloest{text-align:center}
+.geloest .gross{font:700 96px/1 var(--head);color:var(--flag);margin:6px 0}
+
+/* Feste Leiste unten: links Team und Hilfe, rechts die eine Handlung */
+.leiste{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+  background:var(--card);border-top:1px solid var(--line);max-width:430px;margin:0 auto}
+.btn{flex:1;min-height:56px;border:0;border-radius:6px;background:var(--flag);color:#fff;font:700 20px var(--head);cursor:pointer;transition:background .16s var(--ease),transform .16s var(--ease)}
+.btn:active{transform:scale(.98)}
+.btn:hover{background:var(--flag-dunkel)}
+.btn.alt{background:var(--card);color:var(--ink);border:2px solid var(--ink)}
+.btn.klein{flex:0 0 auto;padding:0 14px;min-width:56px;background:var(--card);color:var(--ink);border:2px solid var(--line);font-size:16px;display:flex;align-items:center;gap:8px}
+.btn.klein svg{width:22px;height:22px}
+.wer{flex:1;display:flex;align-items:center;gap:10px;font-size:15px;color:var(--muted);padding:0 4px}
+.wer b{color:var(--ink)}
+.puls{width:10px;height:10px;border-radius:50%;background:var(--ok);flex:none;animation:puls 1.8s infinite}
+@keyframes puls{50%{opacity:.35}}
+
+/* Anmeldung: die Bahn in OL-Schreibweise, Start Dreieck, Posten Kreise, Ziel Doppelkreis */
+.held{padding:28px 0 4px}
+.held .marke{display:flex;align-items:center;gap:10px;font:700 18px var(--head)}
+.held h1{font-size:46px;margin-top:18px;letter-spacing:-.01em}
+.held p{font-size:18px;margin-top:8px;color:var(--muted)}
+.bahn{display:block;width:100%;height:auto;margin-top:14px}
+.bahn .l{stroke:var(--flag);stroke-width:2.2;fill:none}
+.bahn .k{stroke:var(--flag);stroke-width:2.2;fill:none}
+.bahn text{font:700 13px var(--head);fill:var(--flag-dunkel)}
+.bahn .ort{font:500 11px var(--body);fill:var(--muted)}
+.zahl{display:flex;align-items:baseline;gap:8px;margin-top:14px;font-size:15px;color:var(--muted)}
+.zahl b{font:700 28px var(--head);color:var(--ink)}
+
+/* Team gefunden */
+.teamkarte{text-align:center;padding-top:22px}
+.teamkarte .kreis{width:190px;height:190px;border-radius:50%;margin:10px auto 14px;background:var(--tf);display:grid;place-items:center;font-size:112px;cursor:pointer;border:0;
+  box-shadow:0 0 0 6px var(--paper),0 0 0 8px var(--tf)}
+.teamkarte h1{font-size:40px}
+.namen{list-style:none;padding:0;margin:14px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:0 14px;text-align:left;font-size:15px}
+.namen li{padding:6px 0;border-bottom:1px dotted var(--line)}
+.namen li.lt{color:var(--flag-dunkel);font-weight:600}
+.hoch{position:fixed;inset:0;z-index:20;background:var(--tf);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;cursor:pointer;animation:ein .16s var(--ease)}
+.hoch .riesig{font-size:min(68vw,50vh);line-height:1.05}
+.hoch b{font:700 46px var(--head)}
+@keyframes ein{from{opacity:0}}
+
+/* Team und Hilfe als Blatt von unten */
+.decke{position:fixed;inset:0;z-index:9;background:rgba(23,48,42,.35);animation:ein .16s var(--ease)}
+.blatt{position:fixed;left:0;right:0;bottom:0;z-index:10;max-width:430px;margin:0 auto;background:var(--card);border-radius:12px 12px 0 0;padding:10px 16px 24px;
+  animation:hoch .2s var(--ease);max-height:80vh;overflow:auto}
+@keyframes hoch{from{transform:translateY(40px);opacity:0}}
+.blatt .griff{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
+.blatt h3{font-size:20px;margin-top:14px}
+.zeile{display:flex;gap:10px;margin-top:10px}
+.zeile .btn{font-size:17px;min-height:48px}
+.klein-t{font-size:14px;color:var(--muted);margin-top:4px}
+
+.ziel{text-align:center;padding-top:30px}
+.ziel .medaille{font-size:90px;line-height:1}
+.ziel h1{font-size:56px;margin-top:6px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="schalter" data-schalter></div>
+<div id="app"></div>
+<script src="gemeinsam.js"></script>
+<script>
+const FAHNE = `<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="1" y="1" width="24" height="24" fill="#fff" stroke="#17302A" stroke-width="1.5"/><path d="M1 1H25V25Z" fill="#EE5F1B"/></svg>`;
+const HILFE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><circle cx="12" cy="17.5" r=".6" fill="currentColor"/></svg>`;
+
+// Stanzmuster je Posten, wie die Nadelzange an echten OL-Posten
+const MUSTER = [[0,2,4,6,8],[1,3,4,5,7],[0,1,2,6,7,8],[0,3,4,5,8],[2,4,6,1,7]];
+function loch(k) {
+  const m = MUSTER[k] || [];
+  return `<svg class="loch" viewBox="0 0 30 30" aria-hidden="true">${m.map(i => `<circle cx="${5 + (i % 3) * 10}" cy="${5 + Math.floor(i / 3) * 10}" r="2.6" fill="#EE5F1B" opacity=".28"/>`).join("")}</svg>`;
+}
+function postenkarte(S, neu) {
+  let h = `<div class="pk" role="img" aria-label="Postenkarte: ${S.ziffern.length} von 5 Posten gestempelt">`;
+  for (let k = 0; k < 5; k++) {
+    const z = S.ziffern[k], jetzt = S.screen !== "koffer" && S.screen !== "ziel" && k === S.ziffern.length;
+    h += `<div class="f ${jetzt ? "jetzt" : ""} ${neu && k === S.ziffern.length - 1 ? "neu" : ""}"><span class="nr">${k + 1}</span>${z != null ? loch(k) + `<span class="z">${z}</span>` : ""}</div>`;
+  }
+  const alle = S.ziffern.length === 5;
+  h += `<div class="f"><span class="nr">P</span>${alle ? `<span class="z">${PRUEF}</span>` : `<span class="z muted" style="font-size:20px">Σ</span>`}</div></div>`;
+  return h + `<div class="pk-leg"><span>Postenkarte</span><span>${alle ? "Code vollständig" : "P = Einerstelle der Summe"}</span></div>`;
+}
+function kopf(S) {
+  return `<div class="kopf" style="--tf:${TEAM.farbe}"><div class="emoji">${TEAM.emoji}</div>
+    <div><h1>Team ${TEAM.name}</h1><div class="sub nowrap">${leitung() ? TEAM.code : "Leitung " + esc(vorname(TEAM.leitung))}</div></div>
+    ${S.screen === "koffer" || S.screen === "weg" || S.screen === "raetsel" ? `<span class="uhr">${uhrText()}</span>` : ""}</div>`;
+}
+function leiste(haupt) {
+  return `<div class="leiste"><button class="btn klein" data-act="sheet" aria-label="Team und Hilfe">${HILFE}</button>${haupt}</div>`;
+}
+const wartet = was => `<div class="wer"><span class="puls"></span><span><b>${esc(vorname(TEAM.leitung))}</b> ${was}</span></div>`;
+
+function blatt(S) {
+  if (!S.sheet) return "";
+  return `<div class="decke" data-act="sheet"></div><div class="blatt" role="dialog" aria-label="Team und Hilfe"><div class="griff"></div>
+    <h3>Hilfe von der Spielleitung</h3>
+    <div class="zeile"><button class="btn alt">WhatsApp</button><button class="btn alt">Anrufen</button></div>
+    ${leitung() ? `<h3>Mitlesen fürs Team</h3><p class="klein-t">Wer den Link öffnet, sieht alles mit. Eingeben kannst nur du.</p>
+    <div class="zeile"><button class="btn alt">Link teilen</button></div>` : ""}
+    <h3>Team ${TEAM.name}</h3>
+    <ul class="namen">${TEAM.mitglieder.map(m => `<li class="${m === TEAM.leitung ? "lt" : ""}">${esc(m)}</li>`).join("")}</ul>
+    ${leitung() ? `<div class="zeile" style="margin-top:14px"><button class="link">Leitung abgeben</button><button class="link" style="margin-left:auto;color:var(--err)">Abmelden</button></div>` : ""}
+  </div>`;
+}
+
+window.ZEICHNE = S => {
+  if (S.screen === "anmeldung") return `<div class="inhalt"><div class="held">
+      <div class="marke">${FAHNE} Stadtjagd</div>
+      <h1>Prag, fünf Posten, drei Koffer.</h1>
+      <p>Tragt euch ein. Die Teams lost die Spielleitung am Treffpunkt aus.</p>
+      <svg class="bahn" viewBox="0 0 360 120" aria-label="Die Bahn: Start am Hotel, fünf Posten, Ziel am Metronom">
+        <path class="l" d="M26 96 L78 70 M92 64 L140 40 M156 38 L204 56 M218 62 L262 44 M276 36 L318 26"/>
+        <path class="k" d="M16 104 L36 104 L26 87 Z"/>
+        ${[[85,67],[148,36],[211,59],[269,40],[325,24]].map(([x,y],i)=>`<circle class="k" cx="${x}" cy="${y}" r="8"/><text x="${x-4}" y="${y-13}">${i+1}</text>`).join("")}
+        <circle class="k" cx="325" cy="24" r="12"/>
+        <text class="ort" x="6" y="118">Mama Shelter</text><text class="ort" x="286" y="52">Metronom</text></svg></div>
+    <div class="karte">${S.registriert
+      ? `<h2>Du bist dabei, ${esc(vorname(S.name))}.</h2><p class="hinweis muted">Nach dem Auslosen steht hier dein Team. Öffne die Seite dann im selben Browser.</p>`
+      : `<label for="name" style="margin-top:0">Vor- und Nachname</label><input id="name" autocomplete="name" value="Jonas Weber">`}
+      <div class="zahl"><b>63</b> sind angemeldet</div></div></div>
+    ${leiste(S.registriert ? `<button class="btn alt" data-act="auslosen">Auslosen ansehen (Simulation)</button>` : `<button class="btn" data-act="anmelden" data-enter>Anmelden</button>`)}${blatt(S)}`;
+
+  if (S.screen === "team") return `<div class="inhalt" style="--tf:${TEAM.farbe}"><div class="teamkarte">
+      <p class="muted">Dein Team, ${esc(vorname(S.name || "Jonas"))}</p>
+      <button class="kreis" data-act="hoch" aria-label="Team-Zeichen groß zeigen">${TEAM.emoji}</button>
+      <h1>Team ${TEAM.name}</h1>
+      <p class="muted" style="margin-top:6px">Leitung: <b style="color:var(--ink)">${esc(TEAM.leitung)}</b></p></div>
+      <div class="karte"><ul class="namen" style="margin:0">${TEAM.mitglieder.map(m => `<li class="${m === TEAM.leitung ? "lt" : ""}">${esc(m)}</li>`).join("")}</ul></div>
+      <div class="karte"><h3>Vor dem Start</h3><p class="muted" style="margin-top:4px;font-size:15px">Standort und Kompass jetzt freigeben, dann geht es beim Signal sofort los.</p>
+      <button class="sim" style="border-style:solid;color:var(--ink)">Standort freigeben</button></div></div>
+    ${leiste(`<button class="btn alt" data-act="hoch">Zum Hochhalten</button><button class="btn" data-act="start" style="flex:.8">Start</button>`)}
+    ${S.hoch ? `<div class="hoch" style="--tf:${TEAM.farbe}" data-act="hoch-zu"><div class="riesig">${TEAM.emoji}</div><b>Team ${TEAM.name}</b><small>Tippen zum Schließen</small></div>` : ""}${blatt(S)}`;
+
+  if (S.screen === "weg") {
+    const s = stn();
+    return kopf(S) + `<div class="inhalt">${postenkarte(S)}
+      <div class="karte"><div class="eyebrow">Posten ${s.n} von 5</div><h2>${esc(s.name)}</h2><p class="hinweis">${esc(s.hinweis)}</p>
+        <div class="navi"><svg class="kompass" viewBox="0 0 150 150" aria-hidden="true"><circle class="ring" cx="75" cy="75" r="70"/>
+          ${Array.from({length:12},(_, i)=>`<line class="tick" x1="75" y1="9" x2="75" y2="${i%3?15:19}" transform="rotate(${i*30} 75 75)"/>`).join("")}
+          <text class="nord" x="75" y="32" text-anchor="middle">N</text>
+          <g class="nadel" data-nadel><path d="M75 22 L90 88 L75 78 L60 88 Z"/></g></svg>
+          <div><div class="dist">${Math.round(dist())}<small> m</small></div><div class="status"><b>GPS ±6 m</b><br>Kompass eingemessen</div></div></div>
+        <button class="sim" data-act="naeher">Näher gehen (Simulation)</button>
+        ${S.fehler ? `<div class="msg err">${esc(S.fehler)}</div>` : ""}</div></div>
+      ${leiste(leitung() ? `<button class="btn" data-act="da">Wir sind da</button>` : wartet("checkt ein, sobald ihr da seid"))}${blatt(S)}`;
+  }
+
+  if (S.screen === "raetsel") {
+    const s = stn();
+    if (S.geloest != null) return kopf(S) + `<div class="inhalt">${postenkarte(S, true)}
+      <div class="karte geloest"><div class="eyebrow">Posten ${s.n} gestempelt</div><div class="gross">${S.geloest}</div>
+      <p class="muted">Ziffer ${s.n} steht auf eurer Postenkarte.</p></div></div>
+      ${leiste(`<button class="btn" data-act="weiter">${S.station >= 5 ? "Zu den Koffern" : "Weiter zu Posten " + (S.station + 1)}</button>`)}${blatt(S)}`;
+    const pause = S.pause > 0;
+    return kopf(S) + `<div class="inhalt">${postenkarte(S)}
+      <div class="karte"><div class="eyebrow">Posten ${s.n}, ${esc(s.name)}</div>
+        <p class="raetsel">${esc(s.raetsel)}</p>
+        ${S.tipp ? `<div class="msg tipp"><b>Tipp:</b> ${esc(s.tipp)}</div>` : ""}
+        ${leitung() ? `<label for="antwort">Eure Antwort</label><input id="antwort" autocomplete="off" ${pause ? "disabled" : ""}>` : `<p class="muted" style="margin-top:14px;font-size:15px">Überlegt gemeinsam. Die Antwort gibt ${esc(vorname(TEAM.leitung))} ein.</p>`}
+        <div class="versuche" aria-label="${S.versuche} von 3 Versuchen verbraucht">${[0,1,2].map(i => `<i class="${i < S.versuche ? "weg" : ""}"></i>`).join("")}<span>${pause ? `Denkpause, noch ${S.pause} s` : "3 Versuche, dann 2 Minuten Pause"}</span></div>
+        ${S.fehler ? `<div class="msg err">${esc(S.fehler)}</div>` : ""}
+        ${!S.tipp && leitung() && S.versuche ? `<button class="link" data-act="tipp">Tipp aufdecken</button>` : ""}</div></div>
+      ${leiste(leitung() ? `<button class="btn" data-act="antwort" data-enter ${pause ? "disabled" : ""}>Antwort prüfen</button>` : wartet("gibt die Antwort ein"))}${blatt(S)}`;
+  }
+
+  if (S.screen === "koffer") return kopf(S) + `<div class="inhalt">${postenkarte(S)}
+      <div class="karte"><div class="eyebrow">Alle Posten gestempelt</div><h2>Zu den Koffern</h2>
+        <p class="hinweis">Die Koffer stehen am Metronom, unter dem Pendel. Noch 2 von 3 sind zu haben.</p>
+        ${leitung() ? `<label for="code">Koffer-Code, 6 Stellen</label><input id="code" inputmode="numeric" maxlength="6" style="letter-spacing:.4em;font:700 28px var(--head)" placeholder="${"• ".repeat(6).trim()}">
+        <p class="muted" style="font-size:14px;margin-top:6px">Eingeben, wenn ihr am Koffer steht. Die App prüft den Standort.</p>` : `<p class="muted" style="margin-top:12px">Den Code gibt ${esc(vorname(TEAM.leitung))} am Koffer ein. Er steht oben auf der Postenkarte.</p>`}
+        ${S.codeFehler ? `<div class="msg err">${esc(S.codeFehler)}</div>` : ""}</div></div>
+      ${leiste(leitung() ? `<button class="btn" data-act="koffer" data-enter>Koffer öffnen</button>` : wartet("öffnet gleich den Koffer"))}${blatt(S)}`;
+
+  if (S.screen === "ziel") return `<div class="inhalt"><div class="ziel"><div class="medaille">🥈</div><h1>Platz 2</h1>
+      <p class="hinweis">Ihr habt einen Koffer gewonnen. Zeigt diesen Bildschirm der Spielleitung am Koffer.</p></div>
+      ${postenkarte(S)}<div class="karte"><div class="eyebrow">Eure Runde</div><p style="margin-top:4px">1:38 h unterwegs, 5 Posten, 1 Tipp.</p></div></div>
+      ${leiste(`<button class="btn alt" data-act="neu">Noch einmal von vorn</button>`)}${blatt(S)}`;
+  return "";
+};
+starten();
+</script>
+</body>
+</html>
