@@ -9,10 +9,10 @@ ersten drei Teams, die den vollständigen Code eingeben, bekommen Platz 1 bis 3
 und je einen Koffer. Alle anderen laufen weiter und kommen mit Platz ins Ziel.
 
 **Stand 19.09.2026:** Live auf GitHub Pages, Datenbank eingerichtet, Nachträge 1
-bis 19 eingespielt (6: drei Koffer, 7: Testmodus, 11: Mitlesen, 12: Anmeldung
+bis 20 eingespielt (6: drei Koffer, 7: Testmodus, 11: Mitlesen, 12: Anmeldung
 bis zum Auslosen, 13: Randfälle, 14: Teamleitung und Mitlese-Link, 17:
 Spieldauer, Tipp, Koffer-Hinweis, 18: Teamleitung ohne Code, 19: Hintergrund
-umschaltbar; Überblick in [SPIEL.md](SPIEL.md)). **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
+umschaltbar, 20: Funde der Bugjagd; Überblick in [SPIEL.md](SPIEL.md)). **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
 Holešovice, dann Planetarium, Rudolfstollen, Wasserturm Letná, Bergstation der
 Aussicht Letná (ehemalige Bergstation der Standseilbahn), Metronom (siehe „Route“). Die Orte stehen in
 `supabase/seed-stationen-prag.sql` und seit 18.09.2026 auch in der Datenbank,
@@ -710,8 +710,8 @@ Lücken hinaus. Behoben (Nachtrag 15 und `index.html`):
 Multi-Agent-Bugjagd über das ganze Repo (4 Winkel, Jury aus drei Prüfern je
 Fund, Kritiker): 10 Funde bestätigt, alle 3 von 3, 2 verworfen (beide in
 `tools/hintergrund/hintergrund.py`, Entwicklerwerkzeug ohne Folge für das
-Spiel). Stand: im Repo, aber **noch nicht live** (weder gepusht noch
-Nachtrag 20 eingespielt); beides gehört zusammen, siehe unten. Behoben:
+Spiel). Stand: live seit 19.09.2026 (gepusht, Nachtrag 20 eingespielt und über
+`pg_proc`/`pg_trigger` geprüft). Behoben:
 
 - **Weiße Seite bei blockierten Website-Daten** (major). `index.html` las
   `localStorage` ungeschützt beim Laden. Jetzt `LS`/`SS` über
@@ -752,10 +752,8 @@ eingespielt, 34 Prüfungen zu norm, Anmeldung, Werten, PIN und erneutem
 Einspielen grün. Die Sperren gegen Gleichzeitigkeit lassen sich dort nicht
 nachstellen (eine Verbindung).
 
-Live schalten, in dieser Reihenfolge: erst `python tools/sql.py
-supabase/migrations/20260919100000_bugjagd.sql`, dann pushen. Andersherum
-würde die neue Seite `p_position` an eine Funktion schicken, die es noch
-nicht kennt.
+Wer neu aufsetzt: erst die Migration, dann die Seite. Andersherum schickt
+die neue Seite `p_position` an eine Funktion, die es noch nicht kennt.
 
 Deckung: Der Scout ließ nur Doku (README, HANDOFF, SPIEL.md) und
 `.gitignore` aus; die OSM-Rohdaten unter `tools/hintergrund/` hat kein
@@ -882,7 +880,7 @@ wird, und nach der Auswertung löschen.
 | Publishable key | `sb_publishable_7uEQEkFwi27XJdGLSoso5w_TMxHJYUq` (steht in `config.js`, darf öffentlich sein) |
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
-Init-Migration und Nachträge 1 bis 19 sind eingespielt, geprüft über `pg_proc`
+Init-Migration und Nachträge 1 bis 20 sind eingespielt, geprüft über `pg_proc`
 und Aufrufe der Endpunkte. Wer die Datenbank neu aufsetzt, spielt sie in der
 Reihenfolge ein, in der sie unter „Alle Dateien“ stehen: ohne Nachtrag 1
 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne
