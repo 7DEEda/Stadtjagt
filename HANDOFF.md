@@ -8,11 +8,14 @@ Summe der fünf. Am Ziel stehen drei Koffer mit absteigendem Preisgeld: die
 ersten drei Teams, die den vollständigen Code eingeben, bekommen Platz 1 bis 3
 und je einen Koffer. Alle anderen laufen weiter und kommen mit Platz ins Ziel.
 
-**Stand 19.09.2026:** Live auf GitHub Pages, Datenbank eingerichtet, Nachträge 1
-bis 20 eingespielt (6: drei Koffer, 7: Testmodus, 11: Mitlesen, 12: Anmeldung
+**Stand 19.09.2026, abends:** Live auf GitHub Pages, Datenbank eingerichtet,
+Nachträge 1 bis 22 live (6: drei Koffer, 7: Testmodus, 11: Mitlesen, 12: Anmeldung
 bis zum Auslosen, 13: Randfälle, 14: Teamleitung und Mitlese-Link, 17:
 Spieldauer, Tipp, Koffer-Hinweis, 18: Teamleitung ohne Code, 19: Hintergrund
-umschaltbar, 20: Funde der Bugjagd; Überblick in [SPIEL.md](SPIEL.md)). **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
+umschaltbar, 20: Funde der Bugjagd, 21: UI-Durchsicht mit Zustand der Teams,
+22: ein Handy, eine Person, kein Code; 22 ist nur Frontend; Überblick in
+[SPIEL.md](SPIEL.md)). Kein aktives Spiel, Datenbank leer, Status
+Anmeldung, aktiver Hintergrund A. Die Fahrt ist Ende April 2027. **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
 Holešovice, dann Planetarium, Rudolfstollen, Wasserturm Letná, Bergstation der
 Aussicht Letná (ehemalige Bergstation der Standseilbahn), Metronom (siehe „Route“). Die Orte stehen in
 `supabase/seed-stationen-prag.sql` und seit 18.09.2026 auch in der Datenbank,
@@ -881,7 +884,7 @@ wird, und nach der Auswertung löschen.
 | Publishable key | `sb_publishable_7uEQEkFwi27XJdGLSoso5w_TMxHJYUq` (steht in `config.js`, darf öffentlich sein) |
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
-Init-Migration und Nachträge 1 bis 20 sind eingespielt, geprüft über `pg_proc`
+Init-Migration und Nachträge 1 bis 21 sind eingespielt (22 braucht keine Migration), geprüft über `pg_proc`
 und Aufrufe der Endpunkte. Wer die Datenbank neu aufsetzt, spielt sie in der
 Reihenfolge ein, in der sie unter „Alle Dateien“ stehen: ohne Nachtrag 1
 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne
@@ -1033,6 +1036,12 @@ Bekannte Grenze: Nachzügler, die die Spielleitung einträgt, haben keinen
 Geräte-Schlüssel. Sie lesen über den Mitlese-Link mit, können aber nicht
 Teamleitung sein (der Wechsel-Dialog sagt das).
 
+Danach, ebenfalls live: Das Hauszeichen im Hintergrund (klassisch und A,
+Mitte links) ist entfernt, auch im Generator `tools/hintergrund/hintergrund.py`.
+Die Leiste unten markiert die aktuelle Seite (`aria-current`); ein Tipp darauf
+springt nach oben und lädt neu. Vorher tat er auf der eigenen Seite nichts,
+weil sich die Adresse nicht ändert und kein `hashchange` kommt.
+
 ## UI-Durchsicht des bestehenden Designs (Nachtrag 21, 19.09.2026)
 
 Workflow mit neun Agenten über die echte App: ein Prüfstand mit gespielter
@@ -1123,11 +1132,16 @@ Schlüssel am Ort; Frage, die das Herumgehen ums Objekt verlangt).
 
 ## Offene Punkte
 
-- **Probelauf draußen** mit einem echten Handy steht aus. Ablauf: auslosen,
-  starten, mit dem Team-Code einloggen, Standort und Kompass aktivieren,
+- **Probelauf draußen** mit echten Handys steht aus, am besten ein iPhone und
+  ein Android. Ablauf: jede Person meldet sich auf dem eigenen Handy an,
+  auslosen, starten, die Leitung tippt auf „Teamleitung“ (ohne Code),
+  Standort und Kompass freigeben,
   Entfernung und Pfeil beim Gehen prüfen, einchecken, Rätsel lösen, danach die
   Karte und die Zeitachse im Admin-Bereich ansehen. Anschließend „Fortschritt
-  zurücksetzen“.
+  zurücksetzen“. Dabei auch prüfen, was der Prüfstand nicht kann: iOS-Freigabe
+  des Kompasses nach Neuladen („Kompass wieder einschalten“), Bildschirm
+  bleibt an (Wake Lock, iOS), „Link teilen“ über das Share-Sheet, Leitung
+  abgeben (altes Handy meldet sich ab).
 - **Rätsel und Ortshinweise** für die neue Route ausdenken, dann vor Ort
   prüfen: nur dort lösbar, etwa über Jahreszahlen, Inschriften oder Zählaufgaben.
 - **Kompass auf dem iPhone 17 Pro:** Ursache gefunden, siehe GPS und Kompass.
@@ -1155,6 +1169,11 @@ Schlüssel am Ort; Frage, die das Herumgehen ums Objekt verlangt).
 - **Mitlese-Link als QR:** Der Link ist da (Nachtrag 14), ein QR-Code auf dem
   Handy der Teamleitung wäre noch bequemer als Teilen per Nachricht. Braucht
   einen kleinen QR-Generator, lokal eingebettet.
+- **Prüfstand:** Der UI-Prüfstand liegt unter `tools/pruefstand/` (gespielte
+  Datenbank `mock.js`, Fotos `shoot.py` mit Playwright, siehe README dort).
+  Die PGlite-Tests der Migrationen liegen nicht im Repo; sie ließen sich bei
+  Bedarf aus SPIEL.md und den Nachträgen 20 und 21 neu schreiben.
+- **Hintergrund festlegen:** aktiv ist A; B zeigt noch den Altstadt-Ausschnitt.
 - Optional: Startreihenfolge versetzen, Team-Chat, Fotoaufgaben.
 
 ## Historie und Entscheidungen

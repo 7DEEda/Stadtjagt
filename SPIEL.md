@@ -465,18 +465,23 @@ node -e 'const h=require("fs").readFileSync("index.html","utf8");[...h.matchAll(
 
 ---
 
-## 10. Offene Punkte (Stand 19.09.2026)
+## 10. Offene Punkte (Stand 19.09.2026, abends, Nachträge 1 bis 22 live)
 
 - Rätsel, Lösungen und Ortshinweise der fünf Stationen fehlen (Platzhalter).
 - Öffentliche Auslieferung des ganzen Repos (siehe 7.), neuer Koffer-Code.
 - Echte Nummer für die Hilfe-Knöpfe statt `491720000000`.
 - Mitlese-Link als QR-Code auf dem Handy der Teamleitung (Generator lokal
   einbetten).
-- Live-PIN verlängern (siehe 7.); `2026` ist sie nicht mehr.
-- Hintergrund-Variante festlegen (umschaltbar im Reiter Stationen; B zeigt
-  noch den Altstadt-Ausschnitt, Neuerzeugung siehe HANDOFF).
+- Live-PIN verlängern (siehe 7.); `2026` ist sie nicht mehr, hat aber nur
+  4 Zeichen. Neue PINs verlangen seit Nachtrag 20 mindestens 12.
+- Hintergrund-Variante festlegen (umschaltbar im Reiter Stationen; aktiv ist
+  A; B zeigt noch den Altstadt-Ausschnitt, Neuerzeugung siehe HANDOFF).
 - Testumgebung und Testskripte ins Repo übernehmen.
-- Probelauf draußen mit echten Handys.
+- Probelauf draußen mit echten Handys, dabei die Punkte, die nur auf dem
+  Gerät prüfbar sind (siehe HANDOFF, Offene Punkte).
+- UI-Varianten A, B, C liegen als Mockup unter `mockups/ui-varianten/`,
+  vorerst nicht gebaut; das bestehende Design wurde stattdessen verbessert
+  (`mockups/ui-durchsicht/`).
 - Gespeicherte Ideen für ein kniffligeres Spiel (Ort als Rätsel mit verborgener
   Entfernung, Hinweise plus Schlussrätsel statt sichtbarer Ziffern, versetzte
   Stationsreihenfolge je Team, Kompass entschärfen): siehe HANDOFF.md

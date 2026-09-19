@@ -76,6 +76,7 @@ index.html                     komplette App, kein Build nötig
 config.js                      Supabase-Zugang und WhatsApp-Nummer
 kompass-test.html              Diagnoseseite für Kompassprobleme
 tools/sql.py                   SQL an die Datenbank schicken, ohne den SQL-Editor
+tools/pruefstand/              UI-Prüfstand: App ohne Datenbank in jedem Zustand fotografieren
 supabase/migrations/*.sql      Schema, Rechte und die gesamte Spiellogik
 supabase/seed-*.sql            Prager Stationen und Testpersonen
 .github/workflows/pages.yml    Deployment auf GitHub Pages
