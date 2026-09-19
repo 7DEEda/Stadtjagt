@@ -66,6 +66,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260919080000_leitung_ohne_code.sql  Teamleitung loggt sich über den Geräte-Schlüssel ein (leader_code)
   20260919090000_hintergrund.sql  Hintergrund umschaltbar (game_state.background, admin_set_background)
   20260919100000_bugjagd.sql      Funde der Bugjagd: norm mit Háček, Sperren beim Auslosen, Station beim Werten, lange PIN
+  20260919110000_team_zustand.sql admin_state mit checkedInAt und lastSolvedAt (Zustandszeile im Reiter Teams)
 hintergrund/a.svg, b.svg, c.svg  die drei Hintergrund-Varianten, werden nachgeladen
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
@@ -1004,6 +1005,46 @@ oder einen Tunnel.
    erscheint öffentlich, die Routen bleiben zum Auswerten erhalten. Zu früh
    gedrückt: „Spiel fortsetzen“, nichts geht verloren.
 11. **Danach:** Zeitachse und Routen ansehen, dann „Standortdaten löschen“.
+
+## UI-Durchsicht des bestehenden Designs (Nachtrag 21, 19.09.2026)
+
+Workflow mit neun Agenten über die echte App: ein Prüfstand mit gespielter
+Datenbank (Scratchpad, `mock.js` beantwortet alle RPCs, `shoot.py` fotografiert
+mit Playwright) lieferte 78 Bilder: iPhone 390 px hell und dunkel, Android
+360 px, Querformat, Tablet 820 hoch und quer, 768 px. Sechs Linsen
+(Teilnehmende, Teamleitung, Spielleitung, Lesbarkeit, Handy und Tablet als
+Gerät, Texte), Gegenprüfung, Kritiker: 64 Roh-Funde, 45 bestätigt plus 6 vom
+Kritiker, 10 muss. Alle eingebaut, im bestehenden Design (Schriften, Farben,
+Topo, Aufbau unverändert). Vorher und nachher mit allen Funden:
+`mockups/ui-durchsicht/index.html`.
+
+Die wichtigsten:
+
+- **Meldungen an genau einer Stelle.** Eine Ablehnung stand bei der Teamleitung
+  dreimal, Suchfehler standen unter dem Rätsel der Mitlesenden (Regel siehe
+  SPIEL.md, Meldungen).
+- **Getipptes bleibt.** Die 10-s-Abfrage zeichnete Antwort- und Koffer-Feld leer,
+  sobald die iPhone-Tastatur zu war.
+- **Funkloch:** Mitlesende fliegen nicht mehr aus der Team-Ansicht, Netz- und
+  Standortfehler kommen auf Deutsch mit Handlungshinweis, „Stand 13:27“ im
+  Kopf nach 30 s ohne Server, sofortiges Nachladen nach der Rückkehr in die App.
+- **Unterwegs:** Ohne Standort ist „Standort und Kompass freigeben“ der
+  Hauptknopf; „Wir sind da“ steht direkt unter dem Kompass, der Kompass ist
+  größer, darunter „Einchecken ab etwa 60 m“ bzw. „Ihr seid im Umkreis“;
+  Einmessen blendet den Weg nicht mehr aus; abgelehnter Standort ist keine
+  Sackgasse mehr; nach Neuladen startet der Standort von selbst, wenn er
+  schon erlaubt war; der Bildschirm bleibt an.
+- **Spielleitung am Tablet:** PIN-Feld mit Buchstaben-Tastatur (Passphrase),
+  „Vollbild“ der Karte sperrte das Tablet, Zustandszeile je Team mit
+  GPS-Alter, nur der passende Knopf, Rückmeldung in der Zeile, „Bereit zum
+  Start“ mit Rückfrage, Leitungswechsel mit Rückfrage, Testdaten nur vor dem
+  Auslosen, Tippziele mindestens 42 px.
+- **Lesbarkeit:** Feldränder 3:1, Schrift auf Orange im Dunkelmodus dunkel,
+  Hochhalten mit dunkler Schrift auf hellen Teamfarben.
+
+Offen und nur auf dem Gerät prüfbar: die iOS-Freigabe des Kompasses nach
+Neuladen (Knopf „Kompass wieder einschalten“), Wake Lock auf iOS, Teilen über
+das Share-Sheet.
 
 ## UI-Varianten als Mockup (19.09.2026, gespeichert, nicht gebaut)
 

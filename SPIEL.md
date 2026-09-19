@@ -192,9 +192,14 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
   Eingaben („Einchecken macht Silke“, „Die Antwort gibt Silke ein“).
   Kompass und Entfernung mit dem eigenen GPS, keine Positionsmeldung.
 - Öffentliche Seite: „Zieleinlauf“ live, sobald das erste Team im Ziel ist.
-- Spielleitung: Karte mit Routen, Zeitachse, Teams nach Platz und Fortschritt,
-  „Freischalten“ ersetzt einen Check-in (`admin_unlock_station`), „Rätsel
-  werten“ zählt die Station als gelöst (`admin_solve_station`, fragt nach).
+- Spielleitung: Karte mit Routen, Zeitachse, Teams nach Platz und Fortschritt.
+  Je Team steht, wo es ist und seit wann („unterwegs zu Station 2 seit 14 min“,
+  „an Station 2 seit 22 min“), dazu das Alter der letzten GPS-Meldung, rot ab
+  5 Minuten (Nachtrag 21: `checkedInAt`, `lastSolvedAt` in `admin_state`).
+  Unterwegs steht nur „Freischalten“ (ersetzt den Check-in,
+  `admin_unlock_station`), nach dem Check-in nur „Rätsel werten“
+  (`admin_solve_station`, fragt nach). Rückmeldungen dazu stehen in der
+  Zeile des Teams. Teamleitung wechseln fragt ebenfalls nach.
 
 ### 5.5 Ziel
 - Alle fünf Ziffern: großes Zahlenschloss, Koffer-Hinweis
@@ -314,10 +319,27 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
   solange ein Eingabefeld den Fokus hat, die Seite verdeckt ist oder die
   Vollbild-Ansicht zum Hochhalten offen ist (außer das Team hat sich geändert).
   Ein zweites Intervall (1 s) zählt die Denkpause herunter.
-- **Löschen:** alles über die Liste `DANGER` und einen Dialog, meist mit
-  getipptem Wort `LÖSCHEN`; `wort: false` für Person und Spielende.
+- **Löschen und Rückfragen:** alles über die Liste `DANGER` und einen Dialog,
+  meist mit getipptem Wort `LÖSCHEN`; `wort: false` für Person und Spielende.
+  `neutral: true` (Start, Teamleitung wechseln, Rätsel werten) zeigt den Dialog
+  ohne Rot und mit orangem Knopf.
+- **Meldungen:** `S.msg` mit optionalem `ort`. `msgBox(ort)` zeigt nur Meldungen
+  mit genau diesem ort, `msgBox()` nur die ohne. Jede Ansicht ruft `msgBox()`
+  genau einmal auf, sonst steht eine Meldung doppelt. Feste Orte: `anm`,
+  `suche`, `karte`, `mit`, `abgeben`, `settings`, `bg`, `dlg`, `t:<Team-ID>`.
+  Knöpfe mit `data-ort` geben ihren ort an Fehler aus dem Klick-Handler weiter.
+- **Eingaben:** `render()` rettet Getipptes und Fokus über jedes Neuzeichnen,
+  solange derselbe Zustand zu sehen ist (`feldKontext`). Nach einer
+  erfolgreichen Aktion leert es die Felder (`S.felderFrisch`).
+- **Bildschirm an:** `wachHaltenPruefen()` hält per Wake Lock den Bildschirm an,
+  beim Hochhalten und unterwegs mit Standort; nach der Rückkehr in die App
+  (`visibilitychange`) neu, dabei lädt die Seite auch sofort nach.
+- **Stand:** kommt 30 s nichts vom Server, steht im Kopf „Stand 13:27“.
 - **Speicher im Browser:** `sj.name`, `sj.token`, `sj.mit` (Mitlese-Schlüssel
   des Teams), `sj.code` (Teamleitung), `sj.kal` (Einmessen heute erledigt),
+  `sj.gps` (Standort war schon freigegeben: nach Neuladen ohne Tipp wieder
+  starten, den iOS-Kompass nur per Knopf), `sj.abgemeldet` (Teamleitung hat
+  sich abgemeldet: nicht still per Geräte-Schlüssel wieder einloggen),
   `sj.url`/`sj.key` (nur ohne `config.js`) im `localStorage`; `sj.pin` im
   `sessionStorage`. Zugriff nur über `LS`/`SS`: Blockiert der Browser
   Website-Daten, fallen beide auf eine Map im Speicher zurück, statt die

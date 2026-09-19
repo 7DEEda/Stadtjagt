@@ -54,6 +54,7 @@ update game_state set admin_pin = 'vier lange Wörter hier' where id = 1;
    supabase/migrations/20260919080000_leitung_ohne_code.sql
    supabase/migrations/20260919090000_hintergrund.sql
    supabase/migrations/20260919100000_bugjagd.sql
+   supabase/migrations/20260919110000_team_zustand.sql
    ```
 
    Die Init-Datei beginnt mit `drop table ... cascade`. Auf einer Datenbank mit

@@ -12,6 +12,7 @@
   --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF;
   --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#FFFFFF; --water:#2F6E9E;
   --ok:#2E7D4F; --err:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7; --err-btn:#B3261E; --info-bg:#E6EEF4;
+  --feld:#7D9189;   /* Rand der Eingabefelder, mindestens 3:1 auf der Karte, damit sie in der Sonne nicht verschwinden */
   --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
   /* Farben der Hintergrund-Varianten A bis C (Werte aus tools/hintergrund/vergleich.py) */
@@ -20,11 +21,12 @@
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38;
-  --contour:#1C312B; --flag:#FF7A3A; --water:#6FA8D6; --ok:#6CCB8E; --err:#FF8A80; --err-btn:#C5372C;
+  --contour:#1C312B; --flag:#FF7A3A; --flag-ink:#0F1B18; --feld:#5E786F; --water:#6FA8D6; --ok:#6CCB8E; --err:#FF8A80; --err-btn:#C5372C;
   --ok-bg:#16332A; --err-bg:#3A1F1C; --info-bg:#172A36;
   --park:#142A20; --baum:#1D3A2B; --strasse:#1F352E; --strasse-haupt:#29443A;
   --ol-braun:#332A21; --ol-gelb:#1E2419; --ol-gruen:#142A1E; --ol-dicht:#1A3524; --ol-schwarz:#3B4C45;}}
 *{box-sizing:border-box}
+[hidden]{display:none!important}   /* sonst schlägt .chip{display:inline-block} das hidden-Attribut */
 html,body{margin:0}
 body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);min-height:100vh}
 body.fest{overflow:hidden}
@@ -113,9 +115,11 @@ p{margin:.4em 0 0}
 .flag{width:32px;height:32px;flex:none}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
 label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
-input,textarea,select{width:100%;font:500 17px var(--body);padding:11px 13px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink)}
+input,textarea,select{width:100%;font:500 17px var(--body);padding:11px 13px;border-radius:10px;border:1.5px solid var(--feld);background:var(--paper);color:var(--ink)}
+input:focus,textarea:focus,select:focus{border-color:var(--flag);outline:2px solid transparent}
+input:disabled,textarea:disabled{opacity:.55;cursor:not-allowed}
 textarea{min-height:64px;font-size:16px}
-.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 18px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);margin-top:12px}
+.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 19px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);margin-top:12px}
 .btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
 .btn.sm{display:inline-block;width:auto;padding:8px 12px;font-size:15px;margin:0 6px 6px 0;min-height:42px}
 /* Gesperrt sieht nach "noch nicht" aus, nicht nach einem blassen Orange */
@@ -131,7 +135,7 @@ textarea{min-height:64px;font-size:16px}
 .count{font:700 42px var(--head);line-height:1}
 ul.names{list-style:none;padding:0;margin:10px 0 0;columns:2;column-gap:14px;font-size:15px}
 ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line)}
-.leader{color:var(--flag);font-weight:600}
+.leader{color:var(--ink);font-weight:700;border-left:3px solid var(--flag);padding-left:6px}
 .lock{display:flex;gap:6px;justify-content:center;margin:4px 0}
 .wheel{width:44px;height:58px;border-radius:8px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font:700 32px var(--head)}
 .wheel.klein{width:34px;height:42px;font-size:22px;border-radius:6px}
@@ -141,16 +145,19 @@ ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line
 .route i{flex:1;height:3px;background:var(--line)}.route i.done{background:var(--flag)}
 .route b{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--line);display:grid;place-items:center;font:700 14px var(--head);background:var(--card);color:var(--muted)}
 .route b.done{background:var(--flag);border-color:var(--flag);color:var(--flag-ink)}
-.route b.now{border-color:var(--flag);color:var(--flag)}
+.route b.now{border-color:var(--flag);color:var(--ink)}
 .compass{display:flex;gap:16px;align-items:center;margin-top:12px}
 .compass svg{width:78px;height:78px;flex:none}
+/* unterwegs der größte Bildschirmteil nach der Entfernung: auf Armlänge und über die Schulter lesbar */
+.compass.gross svg{width:min(32vw,120px);height:min(32vw,120px)}
+.compass.gross .ring{stroke-width:4}
 .ring{fill:none;stroke:var(--line);stroke-width:3}
 .needle{fill:var(--flag);transform-origin:39px 39px}
 /* Richtung noch unbekannt: kein Pfeil, der etwas vortäuscht, sondern ein Fragezeichen */
 .compass .nq{display:none;font:700 26px var(--head);fill:var(--muted)}
 .compass.unsicher .nq{display:inline}
 .compass.unsicher .needle{display:none}
-.names .del{min-width:40px;min-height:40px;padding:0;margin:0 0 0 6px;font-size:18px;line-height:1}
+.names .del{min-width:42px;min-height:42px;padding:0;margin:0 0 0 6px;font-size:18px;line-height:1}
 .fehlt{color:var(--err);font-weight:600}
 .row2{display:flex;gap:8px}.row2 .btn{flex:1}
 .wahl{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
@@ -175,26 +182,28 @@ ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line
 .tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--flag)}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
 .chip{display:inline-block;padding:4px 10px;border-radius:99px;font:600 13px var(--body);background:var(--paper);border:1px solid var(--line)}
-.chip.live{background:var(--flag);color:var(--flag-ink);border-color:var(--flag)}
+.chip.live{background:var(--flag);color:var(--flag-ink);border-color:var(--flag);font:700 14px var(--body)}
 .chip.test{background:var(--err-bg);color:var(--err);border-color:var(--err);margin-left:6px}
 /* Restzeit: neutral, in den letzten 15 Minuten und danach rot */
-.chip.uhr{white-space:nowrap;margin-left:6px}
-.chip.uhr.knapp{background:var(--err-bg);color:var(--err);border-color:var(--err)}
+.chip.uhr{white-space:nowrap;margin-left:6px;font-size:15px;padding:5px 11px}
+.chip.uhr.knapp{background:var(--err-bg);color:var(--err);border-color:var(--err);font-weight:700}
 table{width:100%;border-collapse:collapse;font-size:15px}
 td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 th{font:600 14px var(--body);color:var(--muted)}
 .prog{height:8px;border-radius:4px;background:var(--line);min-width:80px;overflow:hidden}
 .prog span{display:block;height:100%;background:var(--flag)}
 #map{height:62vh;min-height:320px;border-radius:12px;border:1px solid var(--line);margin-top:12px;background:var(--paper)}
-#map.full{position:fixed;inset:0;height:100vh;z-index:50;border-radius:0;margin:0}
+/* Leaflet setzt beim Anlegen position:relative inline, darum !important; sonst bleibt die Karte im Seitenfluss */
+#map.full{position:fixed!important;inset:0;height:100vh;height:100dvh;z-index:50;border-radius:0;margin:0}
+.kartezu{position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;z-index:1001;margin:0!important;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 .mapbadge{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--flag);color:#fff;font:700 15px var(--head);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .mapbadge.team{background:var(--water)}
 .mapbadge.start{background:#17302A}
 .mapbadge.start svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-select.sm{width:auto;max-width:100%;font-size:14px;padding:6px 8px;margin-top:4px}
+select.sm{width:auto;max-width:100%;font-size:16px;padding:6px 8px;margin-top:4px;min-height:42px}
 .mapbadge.stale{background:#8b9c95}
 .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.tchip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 8px;border-radius:99px;font:600 14px var(--body);background:var(--card);border:1.5px solid var(--line);color:var(--ink);cursor:pointer;white-space:nowrap}
+.tchip{display:inline-flex;align-items:center;gap:7px;min-height:42px;padding:8px 12px 8px 10px;border-radius:99px;font:600 14px var(--body);background:var(--card);border:1.5px solid var(--line);color:var(--ink);cursor:pointer;white-space:nowrap}
 .tchip i{width:12px;height:12px;border-radius:50%;background:var(--c);display:inline-block;flex:none}
 .tchip.off{opacity:.4}
 .tchip.off i{background:transparent;border:2px solid var(--c)}
@@ -202,7 +211,8 @@ select.sm{width:auto;max-width:100%;font-size:14px;padding:6px 8px;margin-top:4p
 .tl-head input[type=range]{flex:1;min-width:140px;width:auto;padding:0;border:0;background:none;accent-color:var(--flag)}
 .tl-time{font:700 22px var(--head);min-width:62px;text-align:center;white-space:nowrap}
 .tl-rows{position:relative;margin-top:14px}
-.tl-row{display:grid;grid-template-columns:104px 1fr 80px;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line);cursor:pointer}
+.tl-row{display:grid;grid-template-columns:104px 1fr 80px;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.tl-name[data-act]{cursor:pointer;min-height:42px}
 .tl-row.off{opacity:.35}
 .tl-name{font:600 15px var(--body);display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden}
 .tl-name i{width:12px;height:12px;border-radius:50%;flex:none}
@@ -224,6 +234,7 @@ select.sm{width:auto;max-width:100%;font-size:14px;padding:6px 8px;margin-top:4p
 .tl-key b.solve{background:repeating-linear-gradient(135deg,var(--muted) 0 3px,transparent 3px 6px);opacity:.6}
 .tl-key b.dot{width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--muted)}
 .btn.warn{background:var(--err-btn);color:#fff}
+.btn.warn:disabled{background:var(--line);color:var(--muted)}
 .panel.danger{border-color:var(--err);border-left-width:4px}
 .panel.danger h3{color:var(--err)}
 /* Nach dem Auslosen: großes Team-Zeichen, damit sich die Gruppen finden */
@@ -235,14 +246,22 @@ select.sm{width:auto;max-width:100%;font-size:14px;padding:6px 8px;margin-top:4p
 .teamkarte .kreis:active{transform:scale(.96)}
 .teamkarte .names{text-align:left;margin-top:14px}
 .hochhalten{position:fixed;inset:0;z-index:1200;background:var(--c);display:flex;flex-direction:column;align-items:center;
-  justify-content:center;gap:8px;color:#fff;cursor:pointer;padding:16px;animation:ovin .16s cubic-bezier(.32,.72,.4,1)}
+  justify-content:center;gap:8px;color:var(--c-ink,#fff);cursor:pointer;padding:16px;animation:ovin .16s cubic-bezier(.32,.72,.4,1)}
 .hochhalten .riesig{font-size:min(68vw,52vh);line-height:1.05}
 .hochhalten b{font:700 46px var(--head);text-shadow:0 1px 4px rgba(0,0,0,.4)}
 .hochhalten small{font:500 16px var(--body);opacity:.92;text-shadow:0 1px 3px rgba(0,0,0,.4)}
+.hochhalten.hellgrund b,.hochhalten.hellgrund small{text-shadow:none}
+/* Mitlesen: hat sich die Phase geändert, blinkt das neue Panel einmal auf */
+.panel.neu{animation:aufmerken 2s ease-out}
+@keyframes aufmerken{0%{box-shadow:0 0 0 4px var(--flag)}100%{box-shadow:0 0 0 0 transparent}}
+.wheel.neu{outline:3px solid var(--flag);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.panel.neu{animation:none;box-shadow:0 0 0 3px var(--flag)}}
 /* über Leaflet (Ebenen bis 1000), sonst deckt die Karte den Dialog ab */
 .overlay{position:fixed;inset:0;z-index:1100;background:rgba(17,17,17,.45);display:grid;place-items:center;padding:16px;animation:ovin .16s cubic-bezier(.32,.72,.4,1)}
 .dialog{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;width:100%;max-width:430px;box-shadow:0 12px 32px rgba(17,17,17,.28),0 2px 6px rgba(17,17,17,.12);animation:dgin .16s cubic-bezier(.32,.72,.4,1)}
 .dialog h2{color:var(--err)}
+.dialog.neutral h2{color:var(--ink)}
+.dialog.neutral .why{background:var(--info-bg);color:var(--ink)}
 .dialog .why{background:var(--err-bg);color:var(--err);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:15px}
 .dialog .keeps{font-size:14px;color:var(--muted);margin-top:8px}
 .dialog .row{display:flex;gap:8px;margin-top:16px}
@@ -261,6 +280,8 @@ a.btn{text-decoration:none;text-align:center}
 .nav a{color:var(--muted);display:inline-block;padding:10px 8px;min-height:42px}
 .nav span{color:var(--line);align-self:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* Tablet hochkant: die Karte lässt Platz zum Wischen, sonst fängt sie jedes Scrollen ab */
+@media (orientation:portrait){#map{height:min(62vh,560px)}}
 </style>
 </head>
 <body>
@@ -368,11 +389,18 @@ function ago(ts) {
 
 async function rpc(fn, args) {
   if (!cfg.url || !cfg.key) throw new Error("Die App ist noch nicht mit Supabase verbunden.");
-  const res = await fetch(cfg.url.replace(/\/$/, "") + "/rest/v1/rpc/" + fn, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: cfg.key, Authorization: "Bearer " + cfg.key },
-    body: JSON.stringify(args || {})
-  });
+  let res;
+  try {
+    res = await fetch(cfg.url.replace(/\/$/, "") + "/rest/v1/rpc/" + fn, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: cfg.key, Authorization: "Bearer " + cfg.key },
+      body: JSON.stringify(args || {})
+    });
+  } catch {
+    // "Failed to fetch" oder "Load failed": draußen heißt das fast immer Funkloch
+    throw new Error("Keine Verbindung. Wartet kurz und tippt noch mal.");
+  }
+  S.zuletzt = Date.now();
   const text = await res.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = text; }
@@ -400,6 +428,11 @@ const S = {
 const TEAM_COLORS = ["#2F6E9E", "#2E7D4F", "#7B3FA0", "#C62828", "#F9A825", "#00838F", "#AD1457", "#4E6E1F",
   "#E65100", "#3949AB", "#00695C", "#8D6E63", "#D81B60", "#455A64", "#0277BD", "#9E9D24"];
 const teamColor = i => TEAM_COLORS[i % TEAM_COLORS.length];
+// Schrift auf einer Teamfarbe: auf hellen Farben (Gelb, Oliv) Tinte statt Weiß
+const schriftAuf = hex => {
+  const n = parseInt(String(hex).slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.55 ? "#17302A" : "#FFFFFF";
+};
 // Tier zum Teamnamen. Die Namen kommen aus admin_draw in der Datenbank.
 const TEAM_EMOJI = {
   fuchs: "🦊", wolf: "🐺", eule: "🦉", tiger: "🐯", panda: "🐼", einhorn: "🦄",
@@ -421,6 +454,33 @@ const teamEmoji = name => TEAM_EMOJI[String(name || "").trim().toLowerCase()] ||
 const DANGER_WORD = "LÖSCHEN";
 const wordOk = v => ["löschen", "loeschen"].includes(String(v || "").trim().toLowerCase());
 const DANGER = {
+  // Start: kein Löschen, aber nicht umkehrbar ohne "Fortschritt zurücksetzen", darum mit Rückfrage
+  start: {
+    when: () => false, wort: false, neutral: true,
+    title: "Spiel starten",
+    lead: st => `Alle Handys springen auf Station 1, die Uhr zählt ${st.durationMin ?? 180} Minuten herunter.`
+      + (st.testMode ? " Achtung: Der Testmodus ist noch an, Entfernung und Antworten werden nicht geprüft." : ""),
+    keeps: "Zurück geht es nur über „Fortschritt zurücksetzen“ im Reiter Daten löschen.",
+    btn: "Spiel starten",
+    async run() {
+      const r = await rpc("admin_start", { p_pin: S.admin.pin });
+      S.admin.state = r.state; S.admin.tab = "map";
+      return r.warning ? { type: "err", text: r.warning } : "Das Spiel läuft.";
+    }
+  },
+  // Teamleitung im Reiter Teams wechseln: ein Fehlgriff im Auswahlfeld gäbe sonst still einem anderen Handy die Eingabe
+  leader: {
+    when: () => false, wort: false, neutral: true,
+    title: "Teamleitung wechseln",
+    lead: () => { const c = S.admin.confirm || {}; return `$NAME leitet dann Team ${c.team}.` + (c.alt ? ` ${c.alt} gibt nichts mehr ein.` : "")
+      + ` Hat sich $NAME auf dem eigenen Handy angemeldet, geht es unter Teamleitung ohne Code, sonst mit ${c.code}.`; },
+    keeps: "Der Team-Code bleibt derselbe.",
+    btn: "Leitung wechseln",
+    async run(c) {
+      S.admin.state = await rpc("admin_set_leader", { p_pin: S.admin.pin, p_team: c.id, p_participant: c.value });
+      return `${c.name} leitet jetzt Team ${c.team}.`;
+    }
+  },
   clearpos: {
     when: st => (st.teams || []).some(t => t.position),
     title: "Standortdaten löschen",
@@ -485,7 +545,7 @@ const DANGER = {
   // Rätsel für ein Team werten: kein Löschen, aber ein Eingriff ins Spiel, darum die Rückfrage
   solve: {
     when: () => false,   // kommt über den Knopf im Reiter Teams
-    wort: false,
+    wort: false, neutral: true,
     title: "Rätsel werten",
     lead: st => "Team $NAME bekommt Station " + (S.admin.confirm?.pos || "") + " als gelöst, mit Check-in und Ziffer. Das Team sieht sofort die nächste Station.",
     keeps: "Nichts wird gelöscht.",
@@ -552,9 +612,11 @@ function helpBtn(text, klasse) {
     <a class="btn ${klasse || "alt"} help" href="${tel}">${TEL_ICON}Anrufen</a></div></div>`;
 }
 const brand = sub => `<div class="brand">${FLAG}<div><h1>Stadtjagd</h1><div class="muted small">${esc(sub)}</div></div></div>`;
+// Jede Meldung steht genau an einer Stelle: msgBox(ort) zeigt nur Meldungen mit demselben ort,
+// msgBox() nur die ohne ort. Jede Ansicht ruft msgBox() für allgemeine Meldungen genau einmal auf.
 const msgBox = ort => {
   if (!S.msg) return "";
-  if (S.msg.ort && S.msg.ort !== ort) return "";
+  if ((S.msg.ort || "") !== (ort || "")) return "";
   S.msg.at = S.msg.at || Date.now();
   // Erfolgsmeldungen verschwinden nach einer Weile, sonst hängen sie noch an der nächsten Station
   if (S.msg.type === "ok" && Date.now() - S.msg.at > 12000) return "";
@@ -579,7 +641,10 @@ function viewSetup() {
 function viewPublic() {
   const p = S.pub;
   if (!p) return brand("Teamfahrt") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
-  let out = brand(p.status === "registration" ? "Anmeldung offen" : p.status === "finished" ? "Spiel beendet" : "Die Teams stehen");
+  let out = brand(p.status === "registration" ? "Anmeldung offen" : p.status === "finished" ? "Spiel beendet" : p.status === "running" ? "Das Spiel läuft" : "Die Teams stehen");
+  // allgemeine Meldungen (Funkloch beim Laden): oben, außer beim Mitlesen, da stehen sie in der Team-Ansicht
+  const mitDa = S.mit && S.mit.team && (p.status === "running" || p.status === "finished");
+  if (!mitDa) out += msgBox();
 
   if (p.status === "registration") {
     out += S.myName
@@ -587,7 +652,8 @@ function viewPublic() {
          <p>Sobald die Spielleitung auslost, siehst du hier dein Team.</p>
          <p class="small muted" style="margin-top:8px">Öffne diese Seite später im selben Browser, am besten über ein Lesezeichen.
            Dann erkennt sie dich wieder und zeigt dein Team von selbst.</p></div>
-         <button class="btn alt" data-act="pub-again">Weitere Person anmelden</button>`
+         <button class="btn alt" data-act="pub-again">Jemanden ohne eigenes Handy anmelden</button>
+         <p class="small muted" style="margin-top:6px">Dieses Handy merkt sich danach die andere Person, nicht mehr dich. Besser meldet sich jede Person auf dem eigenen Handy an.</p>`
       : `<div class="panel"><h2>Mitmachen</h2><p class="muted">Trag deinen Namen ein. Die Teams werden später zufällig ausgelost.</p>
          <div style="margin-top:12px"><label for="pname">Vor- und Nachname</label><input id="pname" autocomplete="name" autocapitalize="words" enterkeyhint="send"></div>
          <button class="btn" data-act="pub-reg" ${S.busy ? "disabled" : ""}>Anmelden</button>${msgBox("anm")}</div>`;
@@ -599,6 +665,7 @@ function viewPublic() {
   // Mitlesen: wer sich auf diesem Handy angemeldet hat, sieht ab dem Start, was die Teamleitung sieht
   const mit = S.mit && S.mit.team && (p.status === "running" || p.status === "finished") ? S.mit : null;
   if (mit) out = teamAnsicht(mit, true);
+  const hochFarbe = farbe => `--c:${farbe};--c-ink:${schriftAuf(farbe)}`;
 
   const vorbei = p.status === "finished";
   out += ranglisteHTML(p, mit ? mit.team.name : null);
@@ -616,31 +683,34 @@ function viewPublic() {
       <p class="muted small">${eigen ? (S.myName ? `Dein Team, ${esc(vorname(S.myName))}` : "Euer Team") : "Gefundenes Team"}</p>
       <div class="kreis" data-act="pub-hoch" role="button" aria-label="Team-Zeichen groß zeigen" title="Antippen zum Hochhalten">${teamEmoji(t.name)}</div>
       <h1>Team ${esc(t.name)}</h1>
-      <p>Sucht die anderen mit ${teamEmoji(t.name)}. Teamleitung: <b>${esc(t.leaderName || "offen")}</b></p>
+      <p>${p.status === "drawn" ? `Sucht die anderen mit ${teamEmoji(t.name)}. ` : ""}Teamleitung: <b>${esc(t.leaderName || "offen")}</b></p>
+      ${p.status === "drawn" && eigen && !ichLeite ? `<p class="small" style="margin-top:6px">Alle Teams starten gleichzeitig. ${S.mit ? `Lass diese Seite offen: ab dem Start siehst du hier Station und Rätsel. Eingeben macht ${esc(vorname(t.leaderName) || "eure Teamleitung")}.` : `Station und Rätsel siehst du ab dem Start über den Mitlese-Link, den ${esc(vorname(t.leaderName) || "eure Teamleitung")} in eure Gruppe schickt.`}</p>` : ""}
+      ${p.status === "running" && !ichLeite ? `<div class="msg info" style="text-align:left">Das Spiel läuft. Station und Rätsel siehst du über den Mitlese-Link. Frag ${esc(vorname(t.leaderName) || "eure Teamleitung")} danach.</div>` : ""}
+      ${msgBox("karte")}
       ${ichLeite ? `<a class="btn" href="#/team">Du bist Teamleitung: loslegen</a>
         <p class="small muted">${LS.getItem("sj.token") ? "Dein Handy kennt dich, ein Code ist nicht nötig." : "Den Team-Code bekommst du von der Spielleitung."}</p>` : ""}
-      <button class="btn ${ichLeite ? "alt" : ""}" data-act="pub-hoch">Zum Hochhalten</button>
-      ${!eigen && !S.myName ? `<button class="btn alt" data-act="pub-ich">Das bin ich, merken</button>` : ""}
+      ${!eigen && !S.myName ? `<button class="btn" data-act="pub-ich">Das bin ich, merken</button>` : ""}
+      <button class="btn ${ichLeite || (!eigen && !S.myName) ? "alt" : ""}" data-act="pub-hoch">Zum Hochhalten</button>
       <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`
       // vor dem Start: Standort und Kompass schon freigeben, am Übungsziel ausprobieren
       + (S.mit && S.mit.team && p.status === "drawn" ? vorbereitenHTML() : "");
     // ganzer Bildschirm in Teamfarbe, zum Hochhalten auf dem Platz
-    if (S.hoch) out += `<div class="hochhalten" style="--c:${farbe}" data-act="pub-hoch-zu" role="button" aria-label="Schließen">
+    if (S.hoch) out += `<div class="hochhalten ${schriftAuf(farbe) === "#FFFFFF" ? "" : "hellgrund"}" style="${hochFarbe(farbe)}" data-act="pub-hoch-zu" role="button" aria-label="Schließen">
       <div class="riesig" aria-hidden="true">${teamEmoji(t.name)}</div><b>Team ${esc(t.name)}</b><small>Tippen zum Schließen</small></div>`;
   }
   // Teamsuche: groß nur auf Handys, die ihr eigenes Team nicht kennen (von anderen angemeldet,
   // von der Spielleitung nachgetragen, anderer Browser). Sonst ein kleiner Link für Kollegen.
   const eigenBekannt = !!(t && eigen);
-  if (!eigenBekannt || S.sucheOffen) {
+  if (!t || S.sucheOffen) {
     const f = S.fremd;
     out += `<div class="panel"><label for="plook">${eigenBekannt ? "Anderes Team nachschauen" : "In welchem Team bin ich?"}</label>
     <input id="plook" value="${eigenBekannt ? "" : esc(S.myName || "")}" autocapitalize="words" enterkeyhint="search">
-    <button class="btn" data-act="pub-look">Team anzeigen</button>${msgBox()}
+    <button class="btn" data-act="pub-look">Team anzeigen</button>${msgBox("suche")}
     ${S.kandidaten ? `<div class="wahl">${S.kandidaten.map(n => `<button class="btn sm alt" data-act="pub-look" data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : ""}
     ${f ? `<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px"><h3>${teamEmoji(f.name)} Team ${esc(f.name)}</h3>
       <p class="small">Teamleitung: <b>${esc(f.leaderName || "offen")}</b></p>
       <p class="small muted">${(f.members || []).map(esc).join(", ")}</p></div>` : ""}</div>`;
-  } else out += `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="pub-suche">Anderes Team nachschauen</button></p>`;
+  } else out += `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="pub-suche">${eigenBekannt ? "Anderes Team nachschauen" : "Anderen Namen suchen"}</button></p>`;
   // Nach dem Auslosen ist die Selbstanmeldung zu (sonst ließe sich mit erfundenen Namen bei
   // fremden Teams mitlesen). Nachzügler melden sich bei der Spielleitung, die trägt sie nach.
   if (!S.myName && !t && !vorbei) {
@@ -660,13 +730,13 @@ function pauseText(bis) {
 // Restzeit der festen Spieldauer, ab dem Start heruntergezählt; die Logik hängt nicht daran
 function uhrText(ende) {
   const s = Math.round((new Date(ende).getTime() - Date.now()) / 1000);
-  if (s <= 0) return "Zeit ist um, zurück zum Ziel";
+  if (s <= 0) return "Zeit ist um";
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
   return "Noch " + (h ? `${h}:${String(m).padStart(2, "0")} h` : s >= 60 ? `${m} min` : `${s} s`);
 }
 const uhrKnapp = ende => new Date(ende).getTime() - Date.now() < 15 * 60000;
 function uhrHTML(st) {
-  if (st.status !== "running" || !st.endsAt) return "";
+  if (st.status !== "running" || !st.endsAt || st.place) return "";
   return `<span class="chip uhr ${uhrKnapp(st.endsAt) ? "knapp" : ""}" id="uhr" data-ende="${esc(st.endsAt)}">${uhrText(st.endsAt)}</span>`;
 }
 // Rangliste, auf der Anmeldeseite und nach dem Ende auch bei der Teamleitung
@@ -677,7 +747,7 @@ function ranglisteHTML(p, eigenes) {
   return `<div class="panel"><h2>${vorbei ? "Rangliste" : "Zieleinlauf"}</h2>
     ${vorbei ? "" : `<p class="small muted">Das Spiel läuft noch. Jedes Team erscheint hier, sobald es den Koffer-Code eingegeben hat.</p>`}
     <table><tr><th>Platz</th><th>Team</th><th>${vorbei ? "Stand" : "Im Ziel"}</th></tr>
-    ${(vorbei ? p.ranking || [] : ziel).map(r => `<tr ${r.teamName === eigenes ? 'style="font-weight:700"' : ""}><td style="white-space:nowrap">${r.place ? platzZeichen(r.place, prizes) : "-"}</td>
+    ${(vorbei ? p.ranking || [] : ziel).map(r => `<tr ${r.teamName === eigenes ? 'style="font-weight:700"' : ""}><td style="white-space:nowrap">${r.place ? (r.place <= prizes ? platzZeichen(r.place, prizes) + " " + r.place : r.place) : "-"}</td>
       <td>${teamEmoji(r.teamName)} ${esc(r.teamName)}${r.teamName === eigenes ? " (ihr)" : ""}</td>
       <td style="white-space:nowrap">${r.place ? (vorbei ? "im Ziel " : "") + uhrzeit(r.finishedAt) : r.solved + " / " + p.stationCount}</td></tr>`).join("")}</table></div>`;
 }
@@ -686,7 +756,8 @@ function lockHTML(st, klein) {
   let h = '<div class="lock">';
   for (let k = 0; k < 6; k++) {
     const v = k < 5 ? d[k] : st.finalDigit;
-    h += `<div class="wheel ${klein ? "klein" : ""} ${v == null ? "empty" : ""}">${v == null ? "?" : v}</div>`;
+    const neu = S.neueZiffer && S.neueZiffer.i === k && S.neueZiffer.bis > Date.now();
+    h += `<div class="wheel ${klein ? "klein" : ""} ${v == null ? "empty" : ""} ${neu ? "neu" : ""}">${v == null ? "?" : v}</div>`;
   }
   return h + "</div>";
 }
@@ -705,10 +776,11 @@ function kompassText() {
     if (g.kompass !== "kalibrieren")
       return "Kompass aktiv" + (g.kompassAcc != null && g.kompassAcc >= 0 ? ", " + accText(g.kompassAcc) : "");
     const wie = g.kompassAcc != null && g.kompassAcc >= 0 ? ` (${accText(g.kompassAcc)})` : "";
-    return `Kompass ungenau${wie}, ` + (lauf ? "Pfeil folgt eurer Laufrichtung" : "Handy in einer liegenden Acht schwenken");
+    return `Kompass ungenau${wie}` + (lauf ? ", Pfeil folgt eurer Laufrichtung" : "");
   }
   // iOS: Ereignisse kommen an, aber ohne Nordbezug, das ist der Kalibrierfall
-  if (g.kompass === "kalibrieren") return "Kompass findet Norden nicht, Handy in einer liegenden Acht schwenken";
+  if (g.kompass === "kalibrieren") return "Kompass findet Norden nicht";
+  if (g.kompass === "tippen") return "Kompass aus, einmal tippen";
   if (g.kompass === "wartet") return lauf ? "Richtung aus Laufrichtung" : "Suche Kompass …";
   const warum = { abgelehnt: "Kompass nicht freigegeben", relativ: "Kompass ohne Nordbezug" }[g.kompass] || "kein Kompass";
   return warum + (lauf ? ", Richtung aus Laufrichtung" : ", erst ein paar Schritte gehen");
@@ -747,7 +819,8 @@ function gpsNote() {
 }
 function viewTeam() {
   if (!S.team.code) return brand("Teamleitung") + `<div class="panel">
-    <h2>Team-Code eingeben</h2><p class="muted">Den Code bekommt die Teamleitung von der Spielleitung. Wer sich auf diesem Handy angemeldet hat und Teamleitung ist, ist hier schon eingeloggt.</p>
+    <h2>Team-Code eingeben</h2><p class="muted">Den Code gibt euch die Spielleitung.${LS.getItem("sj.token") ? " Du leitest ein Team und hast dich auf diesem Handy angemeldet? Dann geht es auch ohne Code." : ""}</p>
+    ${LS.getItem("sj.token") ? `<button class="btn alt" data-act="t-ohne-code">Ohne Code versuchen</button>` : ""}
     <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="FUCHS-1234"></div>
     <button class="btn" data-act="t-login" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox()}</div>`
     + helpBtn("Stadtjagd: Wir haben keinen Team-Code.") + nav();
@@ -759,11 +832,13 @@ function viewTeam() {
 // Ohne lesen = Teamleitung mit Team-Code: checkt ein, beantwortet Rätsel, gibt den Koffer-Code ein.
 function teamAnsicht(st, lesen) {
   const leitung = vorname(st.team.leaderName) || "eure Teamleitung";
+  // Liest die Teamleitung selbst mit, spricht die Seite sie nicht in der dritten Person an
+  const ichSelbst = lesen && st.name && st.name === st.team.leaderName;
   const kennung = lesen ? `Team ${st.team.name}` : `Team ${st.team.name} (${st.team.code})`;
-  const ende = lesen ? "" : leitungHTML(st) + abmeldenHTML() + nav();
+  const ende = lesen ? "" : (st.status === "finished" ? "" : leitungHTML(st)) + abmeldenHTML() + nav();
   let out = `<div class="bar"><div>${FLAG}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
     <div class="muted small">${lesen ? `Teamleitung: ${esc(st.team.leaderName || "offen")}`
-      : `${esc(st.team.code)}, Leitung ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}</div></div></div>`;
+      : `${esc(st.team.code)}, Leitung ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div></div>`;
 
   if (st.testMode) out += `<div class="msg err">Testmodus: Entfernung und Antworten werden nicht geprüft.</div>`;
   // Liest die Teamleitung selbst nur mit, fehlt ihr der Einstieg zur Eingabe
@@ -773,7 +848,7 @@ function teamAnsicht(st, lesen) {
       <a class="btn" href="#/team">Zur Teamleitung</a></div>`;
 
   if (st.status === "drawn") return out + `<div class="panel"><h3>Ihr seid startklar</h3>
-    <p>Alle Teams starten gleichzeitig. Wartet auf das Signal der Spielleitung.</p>
+    <p>Alle Teams starten gleichzeitig. Wartet auf das Signal der Spielleitung.</p>${msgBox()}
     <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>`
     // vor dem Start ist der Mitlese-Link der wichtigste Handgriff: einmal in die Gruppe, dann sehen alle mit
     + (lesen ? "" : mitlesePanelHTML(st, "Schick den Link jetzt in eure Team-Gruppe. Wer ihn öffnet, sieht ab dem Start auf dem eigenen Handy alles, was du hier siehst. Eingeben kannst nur du."))
@@ -783,22 +858,24 @@ function teamAnsicht(st, lesen) {
   // Unterwegs zählt die Station: das Schloss steht dann klein unter ihr,
   // groß erst wieder beim Koffer und am Ende (Entscheidung 18.09.2026, Variante B)
   const unterwegs = !st.place && st.status === "running" && !st.allSolved && !!st.station;
-  if (!unterwegs) out += `<div class="panel">${lockHTML(st)}${routeHTML(st)}
-    <p class="small muted" style="text-align:center">Die 6. Ziffer ist die Einerstelle der Summe eurer fünf Ziffern.</p></div>`;
+  const schloss = `<div class="panel">${lockHTML(st)}${routeHTML(st)}
+    <p class="small muted" style="text-align:center">${st.finalDigit != null ? "Das ist euer Koffer-Code." : "Die 6. Ziffer ist die Einerstelle der Summe eurer fünf Ziffern."}</p></div>`;
+  if (!unterwegs && !st.place) out += schloss;
 
   if (st.place) {
     const koffer = st.place <= st.prizeCount;
+    // Für die Aufsicht am Koffer zählt der Platz: der steht zuerst, das Schloss darunter
     return out + `<div class="panel" style="text-align:center">
       <div style="font-size:56px;line-height:1.1">${koffer ? platzZeichen(st.place, st.prizeCount) : "🏁"}</div>
       <h2>Platz ${st.place}</h2>
       <p>${koffer ? "Ihr habt einen Koffer gewonnen. Zeigt diesen Bildschirm der Spielleitung am Koffer."
-        : "Ihr seid im Ziel. Die Koffer sind schon vergeben, euer Platz steht in der Rangliste."}</p></div>`
+        : "Ihr seid im Ziel. Die Koffer sind schon vergeben, euer Platz steht in der Rangliste."}</p>${msgBox()}</div>` + schloss
       // nach dem Ende auch hier die Rangliste, das eigene Team hervorgehoben
       + (st.status === "finished" && !lesen && S.pub ? ranglisteHTML(S.pub, st.team.name) : "")
       + (koffer ? helpBtn(`Stadtjagd: ${kennung} hat Platz ${st.place}.`) : "") + ende;
   }
   if (st.status === "finished") return out + `<div class="panel"><h2>Das Spiel ist vorbei</h2>
-    <p>Die Spielleitung hat das Spiel beendet. ${lesen ? "Die Rangliste steht unten." : "Danke fürs Mitspielen."}</p></div>`
+    <p>Die Spielleitung hat das Spiel beendet. ${lesen ? "Die Rangliste steht unten." : "Danke fürs Mitspielen."}</p>${msgBox()}</div>`
     + (lesen ? "" : (S.pub ? ranglisteHTML(S.pub, st.team.name) : `<div class="panel"><p class="muted">Rangliste wird geladen …</p></div>`)) + ende;
 
   if (st.allSolved) {
@@ -807,65 +884,74 @@ function teamAnsicht(st, lesen) {
       <p class="small ${left ? "" : "muted"}" style="margin-top:8px">${left
         ? `Noch ${left} von ${st.prizeCount} Koffern zu vergeben. Es zählt, wer den Code zuerst eingibt.`
         : "Alle Koffer sind vergeben. Gebt den Code trotzdem ein, dann steht ihr mit Platz in der Rangliste."}</p>
-      ${lesen ? `<p class="small" style="margin-top:12px">Den Koffer-Code gibt <b>${esc(leitung)}</b> ein. Er steht oben im Zahlenschloss.</p>`
-        : `<div style="margin-top:12px"><label for="tfin">Koffer-Code, 6 Stellen</label><input id="tfin" inputmode="numeric" maxlength="6"></div>
-      <p class="small muted">Gebt ihn ein, wenn ihr am Koffer steht. Die App prüft dabei euren Standort.</p>
-      <button class="btn" data-act="t-final" data-wait="Standort wird bestimmt …" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Code eingeben"}</button>${msgBox()}`}</div>`;
+      ${lesen ? (ichSelbst ? "" : `<p class="small" style="margin-top:12px">Den Koffer-Code gibt <b>${esc(leitung)}</b> ein. Er steht oben im Zahlenschloss.</p>`)
+        : `<div style="margin-top:12px"><label for="tfin">Koffer-Code, 6 Stellen</label>
+      <p class="small muted" style="margin:0 0 6px">Tippt die sechs Ziffern aus dem Schloss oben ab, wenn ihr am Koffer steht. Die App prüft dabei euren Standort.</p>
+      <input id="tfin" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" enterkeyhint="go"></div>
+      <button class="btn" data-act="t-final" data-wait="Standort wird bestimmt …" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Koffer-Code eingeben"}</button>`}${msgBox()}</div>`;
     return out + helpBtn(`Stadtjagd: Hier ist ${kennung}. Wir stehen am Koffer und brauchen Hilfe.`) + ende;
   }
 
   const s = st.station;
   if (!s) return out + `<div class="panel"><p>Das Spiel läuft gerade nicht.</p></div>` + (lesen ? "" : nav());
 
+  // Wechsel bei Mitlesenden (Rätsel offen, nächste Station): das neue Panel kurz umranden
+  const neuKlasse = lesen && S.mitNeuBis > Date.now() ? "neu" : "";
+  // Erfolg steht oben im Panel, Fehler direkt unter dem Knopf, der sie ausgelöst hat
+  const okOben = S.msg && S.msg.type === "ok" && !S.msg.ort;
   if (!st.checkedIn) {
     const g = S.gps, hasTarget = s.lat != null && s.lng != null;
     const dist = hasTarget && g.pos ? fmtDist(haversine(g.pos, { lat: s.lat, lng: s.lng })) : "- -";
     const kalOk = kalOkHTML();
-    out += `<div class="panel"><p class="muted small">Station ${s.position} von ${st.totalStations}</p>
-      <h2>${esc(s.name)}</h2><p class="hint" style="margin-top:8px">${esc(s.locationHint)}</p>`;
-    if (g.kal && hasTarget) out += kalHTML();
-    else out += `<div class="compass ${richtungBekannt() ? "" : "unsicher"}"><div><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
+    out += `<div class="panel ${neuKlasse}"><p class="muted small">Station ${s.position} von ${st.totalStations}</p>${okOben ? msgBox() : ""}
+      <h2>${esc(s.name)}</h2><p class="hint" style="margin-top:8px">${esc(s.locationHint)}</p>
+      <div class="compass gross ${richtungBekannt() ? "" : "unsicher"}"><div><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
         <polygon class="needle" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/>
         <text class="nq" x="39" y="48" text-anchor="middle">?</text></svg><div class="cap">Richtung</div></div>
-        <div><div class="muted small">Entfernung</div><div class="dist" id="dist">${dist}</div><div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div></div></div>
+        <div><div class="muted small">Entfernung</div><div class="dist" id="dist">${dist}</div>
+          <div class="small" id="umkreis">${umkreisHTML()}</div>
+          <div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div></div></div>
       ${!hasTarget ? `<div class="msg err">Für diese Station fehlen die Koordinaten. Die Spielleitung muss sie setzen.</div>` : ""}
-      ${!g.on ? `<button class="btn alt" data-act="t-gps">Standort und Kompass aktivieren</button>
-        ${lesen ? `<p class="small muted" style="margin-top:6px">Freiwillig: dann zeigt dein Handy Richtung und Entfernung. Den Weg finden muss ${esc(leitung)}, eingecheckt wird dort.</p>` : ""}` : ""}
+      ${!g.on ? `<button class="btn ${lesen ? "alt" : ""}" data-act="t-gps">Standort und Kompass freigeben</button>
+        ${lesen ? (ichSelbst ? "" : `<p class="small muted" style="margin-top:6px">Freiwillig: Dann zeigt auch dein Handy Richtung und Entfernung.</p>`)
+          : st.testMode ? "" : `<p class="small muted" style="text-align:center;margin-top:6px">Erst den Standort freigeben, dann könnt ihr einchecken.</p>`}` : ""}
+      ${lesen ? (ichSelbst ? "" : `<p class="small muted" style="margin-top:12px">Einchecken macht <b>${esc(leitung)}</b>, sobald ihr da seid. Dann erscheint hier das Rätsel.</p>`)
+        : g.on || st.testMode ? `<button class="btn" data-act="t-check" data-wait="Standort wird bestimmt …" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>Wir sind da</button>
+      ${!st.testMode && hasTarget && g.on && !g.pos ? `<p class="small muted" style="text-align:center;margin-top:6px">Sobald der Standort da ist, könnt ihr einchecken.</p>` : ""}` : ""}
+      ${okOben ? "" : msgBox()}
+      ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
+      ${g.kal && hasTarget ? kalHTML() : ""}
       ${kalOk}
+      ${g.on && g.kompass === "tippen" ? `<div class="msg info">Der Kompass ist nach dem Neuladen aus. Einmal tippen, dann zeigt der Pfeil wieder zur Station.
+        <button class="btn alt" data-act="t-gps">Kompass wieder einschalten</button></div>` : ""}
       ${g.on && ["fehlt", "relativ"].includes(g.kompass) && g.gpsHeading == null ? `<div class="msg info">Dieses Handy hat keinen Kompass.
         Kein Problem: Der Pfeil richtet sich nach eurer Laufrichtung. Geht ein paar Schritte geradeaus
         und haltet das Handy dabei vor euch. Die Entfernung stimmt immer.</div>` : ""}
-      ${g.on && g.kompass === "abgelehnt" ? `<div class="msg err">Der Kompass ist nicht freigegeben.
+      ${g.on && g.kompass === "abgelehnt" ? `<div class="msg info">Der Kompass ist nicht freigegeben.
         Schließt diese Seite, öffnet den Link neu und tippt bei der Nachfrage auf „Erlauben“.
         Fragt das Handy nicht mehr nach, den Browser ganz beenden und neu öffnen.
         Bis dahin zeigt der Pfeil die Richtung aus eurer Laufrichtung, sobald ihr ein paar Schritte gegangen seid.
         <button class="btn alt" data-act="t-gps">Kompass erneut versuchen</button></div>` : ""}
-      ${g.on && g.kompass === "kalibrieren" && !kalOk ? `<div class="msg err">Der Kompass ist ungenau.
+      ${g.on && g.kompass === "kalibrieren" && !kalOk && !g.kal ? `<div class="msg info">Der Kompass ist ungenau.
         Schwenkt das Handy ein paar Mal in einer liegenden Acht, dann fängt sich der Pfeil.
         <button class="btn alt" data-act="t-kal">Jetzt einmessen</button></div>` : ""}
-      ${lesen ? `<p class="small muted" style="margin-top:12px">Einchecken macht <b>${esc(leitung)}</b>, sobald ihr da seid. Dann erscheint hier das Rätsel.</p>`
-        : `<button class="btn" data-act="t-check" data-wait="Standort wird bestimmt …" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>Wir sind da</button>
-      ${!st.testMode && hasTarget && g.on && !g.pos ? `<p class="small muted" style="text-align:center;margin-top:6px">Sobald der Standort da ist, könnt ihr einchecken.</p>` : ""}`}
-      ${msgBox()}
-      ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
-      ${kompassDa() && (g.kompass !== "kalibrieren" || kalOk) ? `<button class="link" data-act="t-kal">Kompass neu einmessen</button>` : ""}`;
-    out += `
-      ${!lesen && g.on && st.status === "running" ? `<div class="share"><span class="dot"></span><span>Standort wird mit der Spielleitung geteilt${S.gps.sentAt ? ", zuletzt " + S.gps.sentAt : ""}</span></div>` : ""}
+      ${kompassDa() && !g.kal && (g.kompass !== "kalibrieren" || kalOk) ? `<button class="link" data-act="t-kal">Kompass neu einmessen</button>` : ""}
+      ${!lesen && g.on && st.status === "running" ? `<div class="share"><span class="dot"></span><span>Standort wird mit der Spielleitung geteilt${S.gps.sentAt ? ", zuletzt " + S.gps.sentAt : ""}${S.wachHalten ? ". Der Bildschirm bleibt an." : ""}</span></div>` : ""}
       </div>`;
   } else {
-    // Nach drei Fehlversuchen: Feld sperren und die Pause sichtbar herunterzählen
+    // Nach drei Fehlversuchen: Feld sperren und die Pause sichtbar herunterzählen, über dem Feld
     const pause = !st.testMode && st.lockedUntil && new Date(st.lockedUntil).getTime() > Date.now();
     // Tipp: nach der ersten Denkpause aufdeckbar, danach für alle im Team sichtbar
     const tipp = s.tip ? `<div class="msg info"><b>Tipp:</b> ${esc(s.tip)}</div>`
-      : s.tipAvailable ? (lesen ? `<p class="small muted">${esc(leitung)} kann jetzt einen Tipp aufdecken.</p>`
+      : s.tipAvailable ? (lesen ? `<p class="small muted">${ichSelbst ? "Du kannst" : esc(leitung) + " kann"} jetzt einen Tipp aufdecken.</p>`
         : `<button class="btn alt" data-act="t-tip">Tipp aufdecken</button>`) : "";
-    out += `<div class="panel"><p class="muted small">Station ${s.position}: ${esc(s.name)}</p>
+    out += `<div class="panel ${neuKlasse}"><p class="muted small">Station ${s.position}: ${esc(s.name)}</p>${okOben ? msgBox() : ""}
       <p class="riddle" style="margin-top:8px">${esc(s.riddle || "")}</p>${tipp}
-      ${lesen ? `<p class="small" style="margin-top:12px">Die Antwort gibt <b>${esc(leitung)}</b> ein. Überlegt gemeinsam.</p>`
-        : `<div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans" autocomplete="off" enterkeyhint="send" ${pause ? "disabled" : ""}></div>
+      ${pause ? `<div class="msg err" id="pause" data-bis="${esc(st.lockedUntil)}">${pauseText(st.lockedUntil)}</div>` : ""}
+      ${lesen ? (ichSelbst ? "" : `<p class="small" style="margin-top:12px">Die Antwort gibt <b>${esc(leitung)}</b> ein. Überlegt gemeinsam.</p>`)
+        : `<div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" ${pause ? "disabled" : ""}></div>
       <button class="btn" data-act="t-answer" data-wait="Wird geprüft …" ${S.busy || pause ? "disabled" : ""}>Antwort prüfen</button>`}
-      ${pause ? `<div class="msg err" id="pause" data-bis="${esc(st.lockedUntil)}">${pauseText(st.lockedUntil)}</div>`
-        : msgBox() + `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
+      ${pause ? "" : (okOben ? "" : msgBox()) + `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
           : `Fehlversuche: ${st.failedAttempts} von 3, danach 2 Minuten Pause.`}</p>`}</div>`;
   }
   if (unterwegs) out += `<div class="panel ziffern"><div class="bar"><h3>Eure Ziffern</h3>
@@ -888,15 +974,15 @@ function leitungHTML(st, ohneMit) {
   if (!andere.length) return h;
   return h + (S.team.abgeben
     ? `<div class="panel"><h3>Leitung abgeben</h3>
-        <p class="small muted">Die neue Leitung loggt sich mit demselben Team-Code ein. Danach kannst du dich hier abmelden.</p>
-        <div style="margin-top:12px"><label for="tneu">Neue Teamleitung</label><select id="tneu">${andere.map(m => `<option>${esc(m)}</option>`).join("")}</select></div>
-        <div class="row2"><button class="btn alt" data-act="t-abgeben-nein">Abbrechen</button><button class="btn" data-act="t-abgeben">Leitung übergeben</button></div>${msgBox("abgeben")}</div>`
+        <p class="small muted">Die neue Leitung tippt auf ihrem Handy auf „Teamleitung“. Hat sie sich dort angemeldet, ist sie gleich drin, sonst mit dem Code <b style="white-space:nowrap">${esc(st.team.code)}</b>. Danach kannst du dich hier abmelden.</p>
+        <div style="margin-top:12px"><label for="tneu">Neue Teamleitung</label><select id="tneu"><option value="" selected disabled>Person wählen</option>${andere.map(m => `<option>${esc(m)}</option>`).join("")}</select></div>
+        <div class="row2"><button class="btn alt" data-act="t-abgeben-nein">Abbrechen</button><button class="btn" id="tabgeben" data-act="t-abgeben" disabled>Übergeben</button></div>${msgBox("abgeben")}</div>`
     : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-abgeben-frage">Leitung abgeben</button></p>${msgBox("abgeben")}`);
 }
 // Abmelden ist selten gewollt: kleiner Link, dann eine Rückfrage
 function abmeldenHTML() {
   return S.team.abmelden
-    ? `<div class="panel"><p><b>Wirklich abmelden?</b> Danach braucht ihr den Team-Code wieder.</p>
+    ? `<div class="panel"><p><b>Wirklich abmelden?</b> Dieses Handy gibt dann nichts mehr ein. Zurück geht es mit dem Team-Code.</p>
         <div class="row2"><button class="btn alt" data-act="t-logout-nein">Nein</button>
         <button class="btn warn" data-act="t-logout">Ja, abmelden</button></div></div>`
     : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-logout-frage">Abmelden</button></p>`;
@@ -917,6 +1003,7 @@ function vorbereitenHTML() {
         <div><div class="dist" id="dist">${g.pos ? fmtDist(haversine(g.pos, PROBEZIEL)) : "- -"}</div>
           <div class="muted small" id="gstat">${esc(gpsNote())}</div></div></div>
       ${kalOkHTML()}
+      ${g.kompass === "tippen" ? `<button class="btn alt" data-act="t-gps">Kompass wieder einschalten</button>` : ""}
       ${kompassDa() ? `<button class="btn alt" data-act="t-kal">Kompass einmessen</button>` : ""}`}
     ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}</div>`;
 }
@@ -924,8 +1011,8 @@ function vorbereitenHTML() {
 /* ---------- Spielleitung ---------- */
 function viewAdmin() {
   const A = S.admin;
-  if (!A.pin) return brand("Spielleitung") + `<div class="panel"><h2>PIN</h2>
-    <div style="margin-top:12px"><input id="apin" type="password" inputmode="numeric"></div>
+  if (!A.pin) return brand("Spielleitung") + `<div class="panel"><h2>Einloggen</h2>
+    <div style="margin-top:12px"><label for="apin">PIN</label><input id="apin" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"></div>
     <button class="btn" data-act="a-login" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox()}</div>` + nav();
   const st = A.state;
   if (!st) return brand("Spielleitung") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
@@ -949,9 +1036,10 @@ function viewAdmin() {
 
   if (A.tab === "map") {
     const withPos = (st.teams || []).filter(t => t.position);
-    out += `<div id="map"></div>
+    out += `<div id="map" class="${A.full ? "full" : ""}"></div>
+      ${A.full ? `<button class="btn sm kartezu" data-act="a-full">Vollbild beenden</button>` : ""}
       <div class="bar" style="margin-top:8px"><span class="small muted">${withPos.length} von ${(st.teams || []).length} Teams melden eine Position. Aktualisierung alle 10 Sekunden.</span>
-      <span><button class="btn sm alt" data-act="a-full">Vollbild</button></span></div>
+      <span><button class="btn sm alt" data-act="a-alle">Alle zeigen</button><button class="btn sm alt" data-act="a-full">Vollbild</button></span></div>
       <div class="legend" id="legend">${(st.teams || []).map((t, i) => `<button class="tchip ${A.hidden[t.id] ? "off" : ""}" style="--c:${teamColor(i)}" data-act="a-team" data-id="${t.id}"><i></i>${teamEmoji(t.name)} ${esc(t.name)}</button>`).join("")}</div>`;
     const without = (st.teams || []).filter(t => !t.position);
     if (without.length) out += `<p class="small muted">Ohne Position: ${without.map(t => esc(t.name)).join(", ")}</p>`;
@@ -964,15 +1052,18 @@ function viewAdmin() {
       <div class="tl-rows" id="tlrows"><div class="tl-cursor" id="tlcursor"></div></div>
       <div class="tl-axis" id="tlaxis"></div>
       <div class="tl-key"><span><b></b> unterwegs</span><span><b class="solve"></b> an der Station, Rätsel lösen</span><span><b class="dot"></b> Ziffer erhalten</span></div>
-      <p class="small muted">Ein Team anklicken blendet seine Route aus oder ein. Die Standortdaten bleiben nach dem Spielende gespeichert, bis du auf „Standortdaten löschen“ drückst.</p></div>`;
+      <p class="small muted">Ein Teamname antippen blendet seine Route aus oder ein. Die Standortdaten bleiben nach dem Spielende gespeichert, bis du auf „Standortdaten löschen“ drückst.</p></div>`;
   }
   if (A.tab === "teams") {
     const n = (st.participants || []).length, d = A.draw;
     const laeuft = st.status === "running" || st.status === "finished";
+    // Nach dem Auslosen ist Starten der nächste Schritt, nicht Neu auslosen
+    if (st.status === "drawn") out += `<div class="panel"><h3>Bereit zum Start</h3>
+        <p class="small muted">Codes an die Teamleitungen gegeben, Mitlese-Links in den Gruppen? Dann kann es losgehen. Vorher fragt die App noch einmal nach.</p>
+        ${st.testMode ? `<div class="msg err">Der Testmodus ist noch an: Entfernung und Antworten werden nicht geprüft. Ausschalten im Reiter Stationen.</div>` : ""}
+        <button class="btn" data-act="a-start">Spiel starten</button></div>`;
     if (laeuft) {
-      // Nach dem Start sperrt die Datenbank das Auslosen. Statt das Formular
-      // wortlos zu verstecken, steht hier der Weg zurück.
-      // steht jetzt unter der Tabelle: im Spiel braucht man hier vor allem "Freischalten"
+      // Nach dem Start sperrt die Datenbank das Auslosen; der Weg zurück steht unter der Tabelle
     } else {
       out += `<div class="panel"><h3>Teams auslosen</h3>
         <div style="margin-top:8px"><span class="count">${n}</span> <span class="muted">${n === 1 ? "Person angemeldet" : "Personen angemeldet"}</span></div>
@@ -989,7 +1080,7 @@ function viewAdmin() {
             <input id="dval" inputmode="numeric" value="${esc(d.value)}"></div>
         </div>
         <p class="small" id="dprev" style="margin-top:10px">&nbsp;</p>
-        <button class="btn" data-act="a-draw" ${n < 2 ? "disabled" : ""}>${st.status === "drawn" ? "Neu auslosen" : "Auslosen"}</button>
+        <button class="btn ${st.status === "drawn" ? "alt" : ""}" data-act="a-draw" ${n < 2 ? "disabled" : ""}>${st.status === "drawn" ? "Neu auslosen" : "Auslosen"}</button>
         ${n < 2 ? `<p class="small muted">Es müssen mindestens zwei Personen angemeldet sein.</p>` : ""}</div>`;
     }
     // im Spiel nach Platz und Fortschritt, sonst alphabetisch
@@ -999,37 +1090,43 @@ function viewAdmin() {
         Solange das Spiel ${st.status === "running" ? "läuft" : "beendet ist"}, wäre sonst der Fortschritt der Teams verloren.</p>` : "";
     out += `<div class="panel"><table><tr><th>Team</th><th>Code</th><th>Stand</th><th></th></tr>
       ${reihe.map(t => `<tr><td><b>${teamEmoji(t.name)} ${esc(t.name)}</b><br><span class="small muted">${t.memberCount} Pers., Leitung</span><br>
-          <select class="sm" data-chg="a-leader" data-id="${t.id}" aria-label="Teamleitung von Team ${esc(t.name)}">
+          <select class="sm" data-chg="a-leader" data-id="${t.id}" data-ort="t:${t.id}" aria-label="Teamleitung von Team ${esc(t.name)}">
             ${!t.leaderId ? `<option value="" selected>offen</option>` : ""}
             ${(st.participants || []).filter(p => p.teamId === t.id).map(p => `<option value="${esc(p.id)}" ${p.id === t.leaderId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}
           </select></td>
-        <td class="small" style="white-space:nowrap">${esc(t.code)}<br>${t.readToken ? `<button class="btn sm alt" style="margin-top:6px" data-act="a-mit" data-token="${esc(t.readToken)}" data-name="${esc(t.name)}">Mitlese-Link</button>` : ""}</td>
+        <td class="small" style="white-space:nowrap">${esc(t.code)}<br>${t.readToken ? `<button class="btn sm alt" style="margin-top:6px" data-act="a-mit" data-id="${t.id}" data-ort="t:${t.id}" data-token="${esc(t.readToken)}" data-name="${esc(t.name)}">Mitlese-Link</button>` : ""}</td>
         <td><div class="prog"><span style="width:${(t.solved / Math.max(1, (st.stations || []).length)) * 100}%"></span></div>
-          <span class="small muted">${t.solved} / ${(st.stations || []).length} gelöst${st.status === "running" && t.currentPosition && !t.place ? `, bei Station ${t.currentPosition}` : ""}${t.lastActivity ? ", zuletzt " + ago(t.lastActivity) : ", noch keine Aktivität"}</span>
-          ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}</td>
-        <td>${st.status === "running" && t.currentPosition ? `<div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm alt" data-act="a-unlock" data-id="${t.id}" data-pos="${t.currentPosition}">Freischalten</button>
-          <button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Rätsel werten</button></div>` : ""}</td></tr>`).join("")}
-      </table><p class="small muted">„Freischalten“ ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.
-        „Rätsel werten“ zählt die aktuelle Station als gelöst, wenn ein Rätsel klemmt.
+          <span class="small muted">${t.solved} / ${(st.stations || []).length} gelöst</span>${zustandHTML(t, st)}
+          ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}
+          ${msgBox("t:" + t.id)}</td>
+        <td>${st.status === "running" && t.currentPosition && !t.place ? `<div style="display:flex;flex-direction:column;gap:6px">
+          ${"checkedInAt" in t && t.checkedInAt ? "" : `<button class="btn sm alt" data-act="a-unlock" data-id="${t.id}" data-pos="${t.currentPosition}" data-ort="t:${t.id}">Freischalten</button>`}
+          ${"checkedInAt" in t && !t.checkedInAt ? "" : `<button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Rätsel werten</button>`}</div>` : ""}</td></tr>`).join("")}
+      </table><p class="small muted">„Freischalten“ steht da, solange ein Team unterwegs ist, und ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.
+        „Rätsel werten“ steht da, sobald es eingecheckt hat, und zählt die Station als gelöst, wenn ein Rätsel klemmt.
         Die Teamleitung wechselst du über das Auswahlfeld; der Team-Code bleibt derselbe.
         „Mitlese-Link“ kopiert den Link, mit dem Nachzügler bei ihrem Team mitlesen.</p>${spaeter}</div>`;
   }
   if (A.tab === "people") {
-    out += `<div class="panel"><h3>Mehrere auf einmal</h3>
+    // Testdaten nur vor dem Auslosen oder im Testmodus: am Eventtag steht hier sonst ein Fehlgriff neben "Alle eintragen"
+    const testKnopf = st.status === "registration" || st.testMode;
+    const viele = `<div class="panel"><h3>Mehrere auf einmal</h3>
       <p class="small muted">Ein Name pro Zeile, etwa aus einer Liste kopiert. Namen, die es schon gibt, werden übersprungen.
         Sind schon Teams ausgelost, kommt jede neue Person ins gerade kleinste Team.</p>
       <textarea id="aviele" rows="5" placeholder="Anna Beispiel&#10;Ben Muster"></textarea>
       <div class="row2" style="margin-top:8px"><button class="btn alt" data-act="a-viele">Alle eintragen</button>
-        <button class="btn alt" data-act="a-testdaten">Testdaten einfügen</button></div>
-      <p class="small muted">„Testdaten einfügen“ trägt 90 erfundene Namen mit dem Zusatz „(Test)“ ein. Die Suche findet sie mit „Test“,
-        „Testdaten entfernen“ löscht genau diese wieder und lässt echte Anmeldungen stehen.</p></div>`;
-    out += `<div class="panel"><div class="bar"><div><span class="count">${(st.participants || []).length}</span> <span class="muted">angemeldet</span></div>
+        ${testKnopf ? `<button class="btn alt" data-act="a-testdaten">Testdaten einfügen</button>` : ""}</div>
+      ${testKnopf ? `<p class="small muted">„Testdaten einfügen“ trägt 90 erfundene Namen mit dem Zusatz „(Test)“ ein. Die Suche findet sie mit „Test“,
+        „Testdaten entfernen“ löscht genau diese wieder und lässt echte Anmeldungen stehen.</p>` : ""}</div>`;
+    const liste = `<div class="panel"><div class="bar"><div><span class="count">${(st.participants || []).length}</span> <span class="muted">angemeldet</span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${DANGER.testdaten.when(st) ? `<button class="btn sm alt" data-act="a-danger" data-key="testdaten">Testdaten entfernen</button>` : ""}
       ${(st.participants || []).length ? `<button class="btn sm alt" data-act="a-danger" data-key="people">Alle löschen</button>` : ""}</div></div>
-      <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen" autocapitalize="words"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
-      <div style="margin-top:8px"><input id="asuche" placeholder="Name oder Team suchen" autocomplete="off" data-enter="none" value="${esc(A.suche || "")}"></div>
+      <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen" autocapitalize="words" aria-label="Name des Nachzüglers"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
+      <div style="margin-top:8px"><input id="asuche" placeholder="Name oder Team suchen" autocomplete="off" data-enter="none" aria-label="Name oder Team suchen" value="${esc(A.suche || "")}"></div>
       <ul class="names">${(st.participants || []).map(p => `<li data-such="${esc((p.name + " " + (p.teamName || "")).toLowerCase())}" ${treffer(p) ? "" : "hidden"}>${esc(p.name)}${p.teamName ? ` <span class="small muted">${esc(p.teamName)}</span>` : ""}
         <button class="btn sm alt del" data-act="a-danger" data-key="person" data-id="${p.id}" data-name="${esc(p.name)}" title="Diese Person löschen" aria-label="${esc(p.name)} löschen">×</button></li>`).join("")}</ul></div>`;
+    // Nach dem Auslosen trägt man hier vor allem Nachzügler ein: dann steht dieses Feld zuerst
+    out += st.status === "registration" ? viele + liste : liste + viele;
   }
   if (A.tab === "stations") {
     out += `<div class="panel"><h3>Spieldauer und Koffer-Hinweis</h3>
@@ -1051,30 +1148,30 @@ function viewAdmin() {
       ${(st.stations || []).map(s => S.admin.edit === s.id ? `
         <div class="stack" style="border-top:1px solid var(--line);padding-top:12px;margin-top:12px">
           <h3>Station ${s.position}</h3>
-          <div style="margin-top:8px"><label>Name</label><input id="e-name" value="${esc(s.name)}"></div>
-          <div style="margin-top:8px"><label>Ortshinweis</label><textarea id="e-hint">${esc(s.locationHint)}</textarea></div>
-          <div style="margin-top:8px"><label>Rätsel</label><textarea id="e-riddle">${esc(s.riddle)}</textarea></div>
+          <div style="margin-top:8px"><label for="e-name">Name</label><input id="e-name" value="${esc(s.name)}"></div>
+          <div style="margin-top:8px"><label for="e-hint">Ortshinweis</label><textarea id="e-hint">${esc(s.locationHint)}</textarea></div>
+          <div style="margin-top:8px"><label for="e-riddle">Rätsel</label><textarea id="e-riddle">${esc(s.riddle)}</textarea></div>
           <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-top:8px">
-            <div><label>Lösung</label><input id="e-answer" value="${esc(s.answer)}" placeholder="mehrere mit | trennen"></div>
-            <div><label>Ziffer</label><input id="e-digit" inputmode="numeric" maxlength="1" value="${s.digit}" required></div>
-            <div><label>Radius m</label><input id="e-radius" inputmode="numeric" value="${s.radiusM}"></div></div>
+            <div><label for="e-answer">Lösung</label><input id="e-answer" value="${esc(s.answer)}" placeholder="mehrere mit | trennen"></div>
+            <div><label for="e-digit">Ziffer</label><input id="e-digit" inputmode="numeric" maxlength="1" value="${s.digit}" required></div>
+            <div><label for="e-radius">Radius m</label><input id="e-radius" inputmode="numeric" value="${s.radiusM}"></div></div>
           <p class="small muted" style="margin-top:6px">Mehrere richtige Antworten mit | trennen, etwa „5|fünf“. Groß und klein, Umlaute, Akzente wie é oder ř und Satzzeichen zählen nicht.</p>
-          <div style="margin-top:8px"><label>Tipp (optional, aufdeckbar nach der ersten Denkpause)</label><textarea id="e-tip">${esc(s.tip || "")}</textarea></div>
+          <div style="margin-top:8px"><label for="e-tip">Tipp (optional, aufdeckbar nach der ersten Denkpause)</label><textarea id="e-tip">${esc(s.tip || "")}</textarea></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-            <div><label>Breite</label><input id="e-lat" inputmode="decimal" value="${s.lat ?? ""}"></div>
-            <div><label>Länge</label><input id="e-lng" inputmode="decimal" value="${s.lng ?? ""}"></div></div>
+            <div><label for="e-lat">Breite</label><input id="e-lat" inputmode="decimal" value="${s.lat ?? ""}"></div>
+            <div><label for="e-lng">Länge</label><input id="e-lng" inputmode="decimal" value="${s.lng ?? ""}"></div></div>
           <div style="margin-top:10px"><button class="btn sm alt" data-act="a-here">Meinen Standort übernehmen</button>
             <span class="small muted" id="e-here"></span></div>
           <div style="margin-top:6px"><button class="btn sm" data-act="a-save" data-id="${s.id}">Speichern</button>
             <button class="btn sm alt" data-act="a-cancel">Abbrechen</button></div>
         </div>` : `
-        <div style="border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px">
+        <div style="border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px;align-items:flex-start">
           <b style="font:700 22px var(--head);color:var(--flag);width:20px">${s.position}</b>
           <div style="flex:1"><h3>${esc(s.name)}</h3>
             <p class="small">Ortshinweis: ${offen(s.locationHint) ? '<span class="fehlt">fehlt</span>' : esc(s.locationHint)}</p>
             <p class="small">Rätsel: ${offen(s.riddle) ? '<span class="fehlt">fehlt</span>' : esc(s.riddle)}</p>
             <p class="small muted">Lösung: ${offen(s.answer) ? '<span class="fehlt">fehlt</span>' : esc(s.answer)}, Ziffer ${s.digit}, Radius ${s.radiusM} m${s.tip ? `, Tipp: ${esc(s.tip)}` : ""}<br>
-            Koordinaten: ${s.lat != null ? Number(s.lat).toFixed(5) + ", " + Number(s.lng).toFixed(5) : "fehlen noch"}</p></div>
+            Koordinaten: ${s.lat != null ? `<span style="white-space:nowrap">${Number(s.lat).toFixed(5)}, ${Number(s.lng).toFixed(5)}</span>` : "fehlen noch"}</p></div>
           <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
         </div>`).join("")}
       <p class="small" style="border-top:1px solid var(--line);padding-top:12px">Koffer-Code: <b style="white-space:nowrap">${esc(st.caseCode || "")}</b>, gilt für alle ${st.prizeCount ?? 3} Koffer.
@@ -1104,23 +1201,40 @@ function viewAdmin() {
     const D = DANGER[A.confirm.key];
     const txt = (v) => {
       const roh = typeof v === "function" ? v(st) : v;
-      return A.confirm.name ? roh.replace("$NAME", () => A.confirm.name) : roh;   // Funktion, damit $& im Namen nicht als Muster zählt
+      return A.confirm.name ? roh.replaceAll("$NAME", () => A.confirm.name) : roh;   // Funktion, damit $& im Namen nicht als Muster zählt
     };
     const titel = txt(D.title), lead = txt(D.lead);
-    out += `<div class="overlay"><div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlgt">
+    out += `<div class="overlay"><div class="dialog ${D.neutral ? "neutral" : ""}" role="alertdialog" aria-modal="true" aria-labelledby="dlgt">
       <h2 id="dlgt">${esc(titel)}</h2>
       <div class="why">${esc(lead)}</div>
       <p class="keeps">${esc(txt(D.keeps))}</p>
       ${brauchtWort(A.confirm.key) ? `<div style="margin-top:16px"><label for="dlgword">Tippe <b>${DANGER_WORD}</b>, um es wirklich zu löschen</label>
         <input id="dlgword" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>` : ""}
+      ${msgBox("dlg")}
       <div class="row">
         <button class="btn alt" data-act="a-dlg-cancel">Abbrechen</button>
-        <button class="btn warn" id="dlgok" data-act="a-dlg-ok" ${brauchtWort(A.confirm.key) ? "disabled" : ""}>${esc(D.btn)}</button>
+        <button class="btn ${D.neutral ? "" : "warn"}" id="dlgok" data-act="a-dlg-ok" data-ort="dlg" ${brauchtWort(A.confirm.key) ? "disabled" : ""}>${esc(D.btn)}</button>
       </div></div></div>`;
   }
   return out + nav();
 }
 
+// Wo steht ein Team gerade, seit wann, und meldet sein GPS noch? Hängt ein Team, sieht man es hier.
+function zustandHTML(t, st) {
+  if (st.status !== "running" || t.place || !t.currentPosition)
+    return t.lastActivity ? `<br><span class="small muted">zuletzt ${ago(t.lastActivity)}</span>` : "";
+  if (!("checkedInAt" in t))   // Datenbank ohne Nachtrag 21: wie bisher
+    return `<br><span class="small muted">bei Station ${t.currentPosition}${t.lastActivity ? ", zuletzt " + ago(t.lastActivity) : ""}</span>`;
+  const seit = ts => { if (!ts) return ""; const m = Math.max(0, Math.round((Date.now() - new Date(ts).getTime()) / 60000));
+    return " seit " + (m < 60 ? m + " min" : Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0") + " h"); };
+  const wo = t.checkedInAt ? `an Station ${t.currentPosition}${seit(t.checkedInAt)}`
+    : `unterwegs zu Station ${t.currentPosition}${seit(t.lastSolvedAt || st.startedAt)}`;
+  const upd = t.position && t.position.updatedAt, alt = upd ? Date.now() - new Date(upd).getTime() : null;
+  const gps = alt == null ? `<span class="chip test" style="margin:0">kein GPS</span>`
+    : alt > 5 * 60000 ? `<span class="chip test" style="margin:0;white-space:nowrap">GPS ${ago(upd)}</span>`
+      : `<span class="small muted" style="white-space:nowrap">GPS ${ago(upd)}</span>`;
+  return `<br><b class="small">${wo}</b><br>${gps}`;
+}
 // leer oder noch der Platzhalter aus der Seed-Datei
 const offen = v => !v || !String(v).trim() || /^(Ortshinweis|Rätsel) folgt$/.test(String(v).trim());
 async function vieleEintragen(text) {
@@ -1181,6 +1295,7 @@ function loadLeaflet() {
   });
   return leafletReady;
 }
+let kartenPunkte = [];
 async function drawMap(first) {
   const el = $("#map"); if (!el || !S.admin.state) return;
   try { await loadLeaflet(); } catch (e) { el.innerHTML = `<p class="msg err">${esc(e.message)}</p>`; return; }
@@ -1251,6 +1366,7 @@ async function drawMap(first) {
       layers.teams[t.id] = L.marker(at, { icon, zIndexOffset: 500 }).bindPopup(popup).addTo(map);
     }
   });
+  kartenPunkte = pts;
   if (first && pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.2));
   setTimeout(() => map.invalidateSize(), 60);
 }
@@ -1336,9 +1452,10 @@ function renderTimeline() {
       segs += `<span class="win ${pct(bei) > 85 ? "links" : ""}" style="left:${pct(bei)}%" title="Platz ${r.t.place}">${r.t.place <= pz ? platzZeichen(r.t.place, pz) : "Platz " + r.t.place}</span>`;
     }
     const note = r.finish ? `${fmtDur(r.finish - start)}<small>${r.solved} Ziffern</small>`
-      : `<small style="font-size:14px;color:var(--ink)">${W.status === "finished" ? "nicht fertig" : "unterwegs"}</small><small>${r.solved} von ${total} Ziffern</small>`;
-    html += `<div class="tl-row ${A.hidden[r.t.id] ? "off" : ""}" data-act="a-team" data-id="${r.t.id}">
-      <div class="tl-name"><i style="background:${r.color}"></i>${teamEmoji(r.t.name)} ${esc(r.t.name)}</div>
+      : `<small style="font-size:14px;color:var(--ink)">${W.status === "finished" ? "nicht fertig" : last && last.inAt && !last.okAt ? "an Station " + last.position : "unterwegs"}</small><small>${r.solved} von ${total} Ziffern</small>`;
+    // nur der Name schaltet die Route um, nicht die ganze Zeile: der Finger trifft sonst leicht das Nachbarteam
+    html += `<div class="tl-row ${A.hidden[r.t.id] ? "off" : ""}">
+      <div class="tl-name" data-act="a-team" data-id="${r.t.id}" role="button" tabindex="0" aria-pressed="${!A.hidden[r.t.id]}"><i style="background:${r.color}"></i>${teamEmoji(r.t.name)} ${esc(r.t.name)}</div>
       <div class="tl-bar" style="--c:${r.color}">${segs}</div><div class="tl-total">${note}</div></div>`;
   });
   rows.innerHTML = html;
@@ -1402,14 +1519,11 @@ const ACT = {
     if (!S.lookupName) return;
     S.myName = S.lookupName; LS.setItem("sj.name", S.myName);
     S.lookupEigen = true; S.nameGeprueft = true; S.letzteAnzahl = null;
-    S.msg = { type: "ok", text: "Gemerkt. Dieses Handy zeigt jetzt dein Team." };
+    S.msg = { type: "ok", ort: "karte", text: "Gemerkt. Dieses Handy zeigt jetzt dein Team." };
   },
-  async "pub-hoch"() {
-    S.hoch = true;
-    // Bildschirm anlassen, solange das Handy hochgehalten wird (wo der Browser es kann)
-    try { S.wachHalten = await navigator.wakeLock?.request("screen"); } catch { /* dann eben nicht */ }
-  },
-  "pub-hoch-zu"() { S.hoch = false; try { S.wachHalten?.release(); } catch { } S.wachHalten = null; },
+  // Den Bildschirm hält wachHaltenPruefen() an, solange hochgehalten wird
+  "pub-hoch"() { S.hoch = true; },
+  "pub-hoch-zu"() { S.hoch = false; },
   "pub-again"() {
     LS.removeItem("sj.token"); S.mit = null; S.myName = null; LS.removeItem("sj.name"); },
   async "pub-look"(d) {
@@ -1420,35 +1534,45 @@ const ACT = {
     if (eigen) {
       if (!r.found && r.candidates) {
         S.kandidaten = r.candidates;
-        S.msg = { type: "err", text: "Mehrere Namen passen. Tipp auf den gesuchten" + (r.more ? " oder schreib etwas genauer." : ".") };
-      } else if (!r.found) S.msg = { type: "err", text: "Kein Name gefunden. Prüfe die Schreibweise." };
-      else if (!r.team) S.msg = { type: "ok", text: r.name + " ist angemeldet, aber noch keinem Team zugeteilt." };
-      else { S.fremd = r.team; S.msg = { type: "ok", text: r.name + " ist in Team " + r.team.name + "." }; }
+        S.msg = { type: "info", ort: "suche", text: "Welchen Namen meinst du? Tipp drauf" + (r.more ? " oder schreib etwas genauer." : ".") };
+      } else if (!r.found) S.msg = { type: "err", ort: "suche", text: "Kein Name gefunden. Prüfe die Schreibweise." };
+      else if (!r.team) S.msg = { type: "ok", ort: "suche", text: r.name + " ist angemeldet, aber noch keinem Team zugeteilt." };
+      else { S.fremd = r.team; S.msg = { type: "ok", ort: "suche", text: r.name + " ist in Team " + r.team.name + "." }; }
       return;
     }
     S.lookupEigen = false;
     if (!r.found && r.candidates) {
       S.lookup = null; S.kandidaten = r.candidates;
-      S.msg = { type: "err", text: "Mehrere Namen passen. Tipp auf deinen" + (r.more ? " oder schreib etwas genauer." : ".") };
+      S.msg = { type: "info", ort: "suche", text: "Welcher Name ist deiner? Tipp drauf" + (r.more ? " oder schreib etwas genauer." : ".") };
       return;
     }
-    if (!r.found) { S.lookup = null; S.msg = { type: "err", text: "Kein Name gefunden. Prüfe die Schreibweise." }; return; }
-    if (!r.team) { S.lookup = null; S.msg = { type: "ok", text: r.name + " ist angemeldet, aber noch keinem Team zugeteilt." }; return; }
-    S.lookup = r.team; S.lookupName = r.name; S.msg = { type: "ok", text: r.name + " ist in Team " + r.team.name + "." };
+    if (!r.found) { S.lookup = null; S.msg = { type: "err", ort: "suche", text: "Kein Name gefunden. Prüfe die Schreibweise." }; return; }
+    if (!r.team) { S.lookup = null; S.msg = { type: "ok", ort: "suche", text: r.name + " ist angemeldet, aber noch keinem Team zugeteilt." }; return; }
+    // gefunden: die Meldung gehört in die Team-Karte, die Suche klappt zu
+    S.lookup = r.team; S.lookupName = r.name; S.sucheOffen = false; S.msg = { type: "ok", ort: "karte", text: r.name + " ist in Team " + r.team.name + "." };
+  },
+  async "t-ohne-code"() {
+    LS.removeItem("sj.abgemeldet");
+    if (await leitungOhneCode()) { S.msg = null; await refresh(); return false; }
+    S.msg = { type: "err", text: "Dieses Handy leitet gerade kein Team. Gebt den Team-Code ein." };
   },
   async "t-login"() {
     const code = val("tcode");
-    const st = await rpc("team_state", { p_code: code });
+    let st;
+    try { st = await rpc("team_state", { p_code: code }); }
+    catch (e) { throw String(e.message).includes("Unbekannter Team-Code") ? new Error("Diesen Team-Code gibt es nicht. Prüft die Schreibweise, etwa FUCHS-1234.") : e; }
+    LS.removeItem("sj.abgemeldet");
     S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
   },
-  "t-logout"() { S.team.code = null; S.team.state = null; S.team.abmelden = false; LS.removeItem("sj.code"); stopGps(); },
+  "t-logout"() { S.team.code = null; S.team.state = null; S.team.abmelden = false; LS.removeItem("sj.code"); LS.setItem("sj.abgemeldet", "1"); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
   // Mitlese-Link fürs Team: teilen (Share-Sheet, sonst WhatsApp) oder kopieren
   async "t-mit-teilen"() {
-    const link = mitleseLink(S.team.state.team.readToken), text = `Stadtjagd, Team ${S.team.state.team.name}: Mit diesem Link lest ihr auf eurem Handy mit. ${link}`;
+    const link = mitleseLink(S.team.state.team.readToken), text = `Stadtjagd, Team ${S.team.state.team.name}: Mit diesem Link lest ihr auf eurem Handy mit.`;
+    // Share-Sheet: der Link nur als url, sonst steht er in WhatsApp doppelt
     if (navigator.share) { try { await navigator.share({ title: "Stadtjagd mitlesen", text, url: link }); } catch { /* abgebrochen */ } return false; }
-    window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+    window.open("https://wa.me/?text=" + encodeURIComponent(text + " " + link), "_blank");
     return false;
   },
   async "t-mit-kopieren"() {
@@ -1475,11 +1599,18 @@ const ACT = {
     const pos = await standortFuerEingabe();
     const r = await rpc("check_in", { p_code: S.team.code, p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc });
     S.team.state = r.state;
-    S.msg = { type: r.ok ? "ok" : "err", text: r.message + ungenauHinweis(r, pos) };
+    // Zu weit weg: sagen, wie weit, und was zu tun ist
+    const text = !r.ok && r.distance != null ? `Noch ${fmtDist(r.distance)} bis zur Station. Geht näher heran und tippt noch mal.` : r.message;
+    S.msg = { type: r.ok ? "ok" : "err", text: text + ungenauHinweis(r, pos) };
   },
   async "t-answer"() {
+    const pos = S.team.state && S.team.state.station && S.team.state.station.position;
     const r = await rpc("submit_answer", { p_code: S.team.code, p_answer: val("tans") });
-    S.team.state = r.state; S.msg = { type: r.ok ? "ok" : "err", text: r.message };
+    S.team.state = r.state;
+    // Richtig: den Moment benennen, mit der Ziffer, und das neue Rad im Schloss kurz markieren
+    const ziffer = r.ok && pos && r.state && r.state.digits ? r.state.digits[pos - 1] : null;
+    if (r.ok && ziffer != null) { S.neueZiffer = { i: pos - 1, bis: Date.now() + 8000 }; S.msg = { type: "ok", text: `Richtig. Station ${pos} gelöst, eure Ziffer: ${ziffer}.` }; }
+    else S.msg = { type: r.ok ? "ok" : "err", text: r.message };
   },
   async "t-tip"() {
     const r = await rpc("reveal_tip", { p_code: S.team.code });
@@ -1490,7 +1621,10 @@ const ACT = {
     const pos = await standortFuerEingabe();
     const r = await rpc("submit_final", { p_code: S.team.code, p_value: val("tfin"), p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc });
     S.team.state = r.state;
-    S.msg = { type: r.ok ? "ok" : "err", text: r.message + ungenauHinweis(r, pos) };
+    const text = r.ok ? r.message
+      : r.distance != null ? `Noch ${fmtDist(r.distance)} bis zu den Koffern. Geht näher heran und tippt noch mal.`
+        : /bleibt zu/.test(r.message || "") ? "Der Code stimmt nicht. Vergleicht ihn Ziffer für Ziffer mit dem Schloss oben." : r.message;
+    S.msg = { type: r.ok ? "ok" : "err", text: text + ungenauHinweis(r, pos) };
   },
   async "a-test"(d) {
     S.admin.state = await rpc("admin_set_test_mode", { p_pin: S.admin.pin, p_on: d.on === "1" });
@@ -1501,8 +1635,10 @@ const ACT = {
     S.admin.state = await rpc("admin_state", { p_pin: pin });
     S.admin.pin = pin; SS.setItem("sj.pin", pin); S.msg = null;
   },
-  "a-tab"(d) { S.admin.tab = d.tab; S.admin.edit = null; S.msg = null; },
-  "a-full"() { S.admin.full = !S.admin.full; $("#map")?.classList.toggle("full"); document.body.classList.toggle("fest", S.admin.full); setTimeout(() => map && map.invalidateSize(), 80); return false; },
+  "a-tab"(d) { S.admin.tab = d.tab; S.admin.edit = null; S.admin.full = false; S.msg = null; },
+  // Vollbild steht im Zustand und wird mitgezeichnet, sonst geht es beim nächsten Neuzeichnen verloren
+  "a-full"() { S.admin.full = !S.admin.full; setTimeout(() => map && map.invalidateSize(), 80); },
+  "a-alle"() { if (map && kartenPunkte.length) map.fitBounds(L.latLngBounds(kartenPunkte).pad(0.2)); return false; },
   "a-team"(d) {
     const A = S.admin;
     A.hidden[d.id] = !A.hidden[d.id];
@@ -1531,11 +1667,7 @@ const ACT = {
     A.tracks = null; A.syncedAt = null; A.hidden = {}; A.tab = "teams";
     S.msg = { type: "ok", text: "Ausgelost. Gib jeder Teamleitung ihren Code." };
   },
-  async "a-start"() {
-    const r = await rpc("admin_start", { p_pin: S.admin.pin });
-    S.admin.state = r.state; S.admin.tab = "map";
-    S.msg = r.warning ? { type: "err", text: r.warning } : { type: "ok", text: "Das Spiel läuft." };
-  },
+  "a-start"() { S.admin.confirm = { key: "start" }; S.msg = null; },
   // Versehentlich beendet: weiter geht es ohne Verlust, Plätze und Fortschritt bleiben
   async "a-resume"() {
     S.admin.state = await rpc("admin_resume", { p_pin: S.admin.pin });
@@ -1550,9 +1682,11 @@ const ACT = {
     const c = S.admin.confirm;
     if (!c) return false;
     if (brauchtWort(c.key) && !wordOk(val("dlgword"))) return false;
-    const text = await DANGER[c.key].run(c);
+    const r = await DANGER[c.key].run(c);
     S.admin.confirm = null;
-    S.msg = { type: "ok", text };
+    // Aktionen an einem Team melden sich in dessen Tabellenzeile, nicht oben außer Sicht
+    S.msg = { type: (r && r.type) || "ok", text: typeof r === "string" ? r : r.text,
+              ort: ["solve", "leader"].includes(c.key) ? "t:" + c.id : undefined };
   },
   async "a-viele"() { await vieleEintragen(val("aviele")); },
   async "a-testdaten"() {
@@ -1572,7 +1706,11 @@ const ACT = {
     const neu = (S.admin.state.participants || []).find(p => p.name.toLowerCase() === name.trim().replace(/\s+/g, " ").toLowerCase());
     S.msg = { type: "ok", text: neu && neu.teamName ? `${neu.name} ist jetzt in Team ${neu.teamName}.` : `${name.trim()} ist angemeldet.` };
   },
-  async "a-unlock"(d) { S.admin.state = await rpc("admin_unlock_station", { p_pin: S.admin.pin, p_team: d.id, p_position: Number(d.pos) }); },
+  async "a-unlock"(d) {
+    S.admin.state = await rpc("admin_unlock_station", { p_pin: S.admin.pin, p_team: d.id, p_position: Number(d.pos) });
+    const t = (S.admin.state.teams || []).find(x => x.id === d.id);
+    S.msg = { type: "ok", ort: "t:" + d.id, text: `${t ? "Team " + t.name : "Das Team"} ist an Station ${d.pos} eingecheckt. Das Rätsel ist jetzt offen.` };
+  },
   async "a-bg"(d) {
     S.admin.state = await rpc("admin_set_background", { p_pin: S.admin.pin, p_background: d.bg });
     S.msg = { type: "ok", ort: "bg", text: `Hintergrund: ${HINTERGRUENDE[d.bg]}. Die Handys übernehmen das mit der nächsten Abfrage.` };
@@ -1584,15 +1722,16 @@ const ACT = {
     S.msg = { type: "ok", ort: "settings", text: `Gespeichert: ${min} Minuten Spieldauer.` };
   },
   // Teamleitung im Reiter Teams per Auswahlfeld setzen
-  async "a-leader"(d) {
-    S.admin.state = await rpc("admin_set_leader", { p_pin: S.admin.pin, p_team: d.id, p_participant: d.value });
-    const t = (S.admin.state.teams || []).find(x => x.id === d.id);
-    S.msg = { type: "ok", text: t ? `${t.leaderName} leitet jetzt Team ${t.name}. Den Team-Code ${t.code} bekommt die neue Leitung von dir.` : "Teamleitung geändert." };
+  "a-leader"(d) {
+    const st = S.admin.state, team = (st.teams || []).find(x => x.id === d.id), p = (st.participants || []).find(x => x.id === d.value);
+    if (!team || !p) return;
+    S.admin.confirm = { key: "leader", id: d.id, value: d.value, name: p.name, team: team.name, alt: team.leaderName, code: team.code };
+    S.msg = null;
   },
   async "a-mit"(d) {
     const link = mitleseLink(d.token);
-    try { await navigator.clipboard.writeText(link); S.msg = { type: "ok", text: `Mitlese-Link von Team ${d.name} kopiert. Wer ihn öffnet, liest bei diesem Team mit.` }; }
-    catch { S.msg = { type: "info", text: link }; }
+    try { await navigator.clipboard.writeText(link); S.msg = { type: "ok", ort: "t:" + d.id, text: `Mitlese-Link kopiert. Wer ihn öffnet, liest bei Team ${d.name} mit.` }; }
+    catch { S.msg = { type: "info", ort: "t:" + d.id, text: "Kopieren ging nicht. Hier der Link zum Markieren: " + link }; }
   },
   "a-edit"(d) { S.admin.edit = d.id; },
   "a-cancel"() { S.admin.edit = null; },
@@ -1601,7 +1740,11 @@ const ACT = {
     navigator.geolocation.getCurrentPosition(p => {
       $("#e-lat").value = p.coords.latitude.toFixed(6);
       $("#e-lng").value = p.coords.longitude.toFixed(6);
-      const i = $("#e-here"); if (i) i.textContent = `übernommen (±${Math.round(p.coords.accuracy)} m), jetzt speichern`;
+      // Grobe Werte (Tablet ohne GPS, erster Fix) nicht still übernehmen: sonst checkt am Eventtag niemand ein
+      const i = $("#e-here"), acc = Math.round(p.coords.accuracy), radius = parseInt(val("e-radius"), 10) || 50;
+      if (i) i.innerHTML = acc > Math.max(20, radius / 2)
+        ? `<span class="fehlt">Ungenau (±${acc} m). Kurz warten und noch einmal tippen, am besten mit dem Handy statt dem Tablet.</span>`
+        : `übernommen (±${acc} m), jetzt speichern`;
     }, e => { const i = $("#e-here"); if (i) i.textContent = e.code === 1 ? "Standortzugriff abgelehnt." : "Standort nicht verfügbar."; },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
     return false;
@@ -1695,10 +1838,18 @@ function aktuellesZiel() {
   if (st && st.status === "drawn") return PROBEZIEL;
   return null;
 }
+// Unter der Entfernung: ab wann der Check-in klappt, damit niemand auf Verdacht tippt
+function umkreisHTML() {
+  const st = aktiverStand(), s = st && st.station, g = S.gps;
+  if (!s || s.lat == null || s.lng == null || !g.pos || !s.radiusM || (st && st.checkedIn)) return "";
+  return haversine(g.pos, { lat: s.lat, lng: s.lng }) <= s.radiusM
+    ? `<b style="color:var(--ok)">Ihr seid im Umkreis</b>` : `Einchecken ab etwa ${s.radiusM} m`;
+}
 function liveUpdate() {
   const g = S.gps, ziel = aktuellesZiel();
+  const um = $("#umkreis"); if (um) um.innerHTML = umkreisHTML();
   kalZeigen();
-  const note = $("#gnote"); if (note && ziel) note.textContent = gpsNote();
+  const note = $("#gnote"); if (note && ziel) note.textContent = gpsNote() || "Standort noch nicht aktiv";
   const n = $("#needle"); if (n) n.closest(".compass").classList.toggle("unsicher", !richtungBekannt());
   const gs = $("#gstat"); if (gs) gs.textContent = gpsNote();
   if (!g.pos || !ziel) return;
@@ -1753,12 +1904,14 @@ function addOrient() {
   if ("ondeviceorientationabsolute" in window) window.addEventListener("deviceorientationabsolute", h);
   else window.addEventListener("deviceorientation", h);
 }
-async function startGps() {
+async function startGps(auto) {
   const g = S.gps;
   if (!navigator.geolocation) { g.err = "Dieses Gerät liefert keinen Standort."; render(); return; }
+  if (!auto) LS.setItem("sj.gps", "1");
   try {
     const DOE = window.DeviceOrientationEvent;
     if (!DOE) g.kompass = "fehlt";
+    else if (typeof DOE.requestPermission === "function" && auto) g.kompass = "tippen";
     else if (typeof DOE.requestPermission === "function") {
       // iOS: muss aus einem Fingertipp kommen, sonst wird abgelehnt
       const r = await DOE.requestPermission();
@@ -1785,7 +1938,7 @@ async function startGps() {
     if (last && haversine(last, next) > 6 && S.gps.kompass !== "an") S.gps.gpsHeading = bearingTo(last, next);
     last = next;
     const firstFix = !S.gps.pos;
-    S.gps.pos = next; S.gps.acc = p.coords.accuracy ?? 999; S.gps.err = null;
+    S.gps.pos = next; S.gps.acc = p.coords.accuracy ?? 999; S.gps.err = null; S.gps.posAt = Date.now();
     maybeReport();
     if (firstFix) render(); else liveUpdate();
   }, e => {
@@ -1793,25 +1946,59 @@ async function startGps() {
       // Ohne je einen Standort liegt es meist an der Erlaubnis, nicht am Signal
       S.gps.err = S.gps.pos ? "GPS-Signal ist schwach, die App sucht weiter."
         : "Noch kein Standort. Hat das Handy nach der Erlaubnis gefragt? Dann „Erlauben“ tippen. Die App sucht weiter.";
-      render(); return;
+      if (kompassSichtbar()) render(); return;
     }
-    S.gps.err = e.code === 1 ? "Standortzugriff wurde abgelehnt. Erlaube ihn in den Browser-Einstellungen." : "Standort nicht verfügbar.";
+    // Abgelehnt oder kein Standort: Beobachter beenden, damit der Knopf zum Freigeben wiederkommt
+    if (watchId != null) navigator.geolocation.clearWatch(watchId);
+    watchId = null; S.gps.on = false; S.gps.pos = null;
+    S.gps.err = e.code === 1 ? STANDORT_BLOCKIERT : "Dieses Handy findet gerade keinen Standort. Geht ein paar Schritte ins Freie und tippt noch mal auf „Standort und Kompass freigeben“.";
     render();
   }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
   render();
 }
+const STANDORT_BLOCKIERT = "Der Standort ist für diese Seite gesperrt. iPhone: Einstellungen, Datenschutz, Ortungsdienste, Safari-Websites, „Beim Verwenden“. Android: Schloss links in der Adresszeile, Berechtigungen, Standort erlauben. Dann „Standort und Kompass freigeben“ noch mal tippen.";
 // Manche Geräte melden ohne Fix 0/0 oder Genauigkeit 0; solche Punkte verwerfen
 const brauchbar = c => c && c.accuracy > 0 && c.accuracy <= 1000
   && !(Math.abs(c.latitude) < 0.01 && Math.abs(c.longitude) < 0.01);
+// Bildschirm anlassen, solange er gebraucht wird: beim Hochhalten und unterwegs mit Standort.
+// Der Browser gibt die Sperre beim Wechsel in eine andere App frei; visibilitychange holt sie neu.
+function wachHaltenPruefen() {
+  const st = aktiverStand();
+  const unterwegs = st && st.status === "running" && st.station && !st.checkedIn && S.gps.on;
+  const soll = !document.hidden && (S.hoch || (unterwegs && (S.view === "team" || S.view === "public")));
+  if (soll && !S.wachHalten && !S.wachAnfrage && navigator.wakeLock) {
+    S.wachAnfrage = true;
+    navigator.wakeLock.request("screen").then(l => { S.wachHalten = l; l.addEventListener("release", () => { S.wachHalten = null; }); })
+      .catch(() => { }).finally(() => { S.wachAnfrage = false; });
+  } else if (!soll && S.wachHalten) { S.wachHalten.release().catch(() => { }); S.wachHalten = null; }
+}
+// Nach dem Neuladen (Tab verworfen, WhatsApp geöffnet) den Standort wieder starten, wenn er schon
+// erlaubt war. Den iOS-Kompass nicht: der braucht einen Fingertipp, dafür steht ein Knopf da.
+async function gpsWiederStarten() {
+  if (S.gps.on || S.gpsAuto || LS.getItem("sj.gps") !== "1") return;
+  const st = aktiverStand();
+  if (!st || !["drawn", "running"].includes(st.status)) return;
+  S.gpsAuto = true;
+  try {
+    const p = await navigator.permissions?.query({ name: "geolocation" });
+    if (p && p.state === "granted") startGps(true);
+  } catch { /* dann per Knopf */ }
+}
 function stopGps() {
   if (watchId != null) navigator.geolocation.clearWatch(watchId);
   watchId = null; S.gps.on = false; S.gps.pos = null; S.gps.kal = null;
 }
+// Frischer Standort für Check-in und Koffer. Nie die Meldung des Browsers zeigen (englisch, technisch).
+// Kommt in 10 s nichts, aber die laufende Beobachtung hat einen Punkt von eben, zählt der.
 function freshPosition() {
   return new Promise((res, rej) => navigator.geolocation.getCurrentPosition(
     p => res({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy ?? 999 }),
-    e => rej(new Error(e.message || "Standort nicht verfügbar.")),
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }));
+    e => {
+      const g = S.gps;
+      if (e.code !== 1 && g.pos && g.posAt && Date.now() - g.posAt < 15000) return res({ ...g.pos, acc: g.acc });
+      rej(new Error(e.code === 1 ? STANDORT_BLOCKIERT : "Kein Standort gefunden. Geht ein paar Schritte ins Freie und tippt noch mal."));
+    },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }));
 }
 // Frische Position für Check-in und Koffer-Code. Im Testmodus zählt der Ort nicht: dann geht es auch ohne GPS.
 async function standortFuerEingabe() {
@@ -1871,13 +2058,18 @@ async function mitlesen() {
   const tok = LS.getItem("sj.token"), mitTok = LS.getItem("sj.mit");
   if ((!tok && !mitTok) || !S.pub || S.pub.status === "registration") { S.mit = null; return; }
   try {
+    const vorher = S.mit ? phaseKey(S.mit) : null;
     if (tok) {
       S.mit = await rpc("member_state", { p_token: tok }); namenUebernehmen(S.mit.name);
     } else S.mit = await rpc("member_state_by_team", { p_read_token: mitTok });
+    // Rätsel offen oder nächste Station: das neue Panel kurz umranden, damit es beim Mitlesen auffällt
+    if (vorher && vorher !== phaseKey(S.mit)) S.mitNeuBis = Date.now() + 2500;
   } catch (e) {
+    // Nur ein ungültiger Schlüssel beendet das Mitlesen; im Funkloch bleibt der letzte Stand stehen
+    const weg = String(e.message).includes("Unbekanntes Gerät") || String(e.message).includes("Unbekannter Mitlese-Link");
     if (String(e.message).includes("Unbekanntes Gerät")) LS.removeItem("sj.token");
     if (String(e.message).includes("Unbekannter Mitlese-Link")) LS.removeItem("sj.mit");
-    S.mit = null;
+    if (weg) S.mit = null;
   }
 }
 // Mitlese-Link geöffnet (#/mit/<schlüssel>): Schlüssel merken, dann die normale Ansicht zeigen
@@ -1940,7 +2132,7 @@ function teamStandSetzen(s) {
 // Person gerade ein Team, gibt die Datenbank den Code heraus. Sonst bleibt das Eingabefeld.
 async function leitungOhneCode() {
   const tok = LS.getItem("sj.token");
-  if (!tok || S.team.code) return false;
+  if (!tok || S.team.code || LS.getItem("sj.abgemeldet")) return false;
   try {
     const r = await rpc("leader_code", { p_token: tok });
     S.team.code = r.code; LS.setItem("sj.code", r.code);   // der Kopf zeigt dann Team und Code
@@ -1966,6 +2158,7 @@ async function refresh() {
     if (S.view === "team" && !S.team.code) await leitungOhneCode();
     if (S.view === "team" && S.team.code) { teamStandSetzen(await rpc("team_state", { p_code: S.team.code })); await ranglisteHolen(); }
     if (S.view === "admin" && S.admin.pin) S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin });
+    await gpsWiederStarten();
   } catch (e) {
     if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); return render(); }
     if (String(e.message).includes("Falsche PIN")) { S.admin.pin = null; SS.removeItem("sj.pin"); }
@@ -2019,8 +2212,19 @@ function neigungZeichnen() {
 }
 neigungStart();
 
+// Welche Eingabe gehört wozu: ändert sich dieser Schlüssel, ist es ein anderes Feld (nächste Station,
+// anderer Reiter) und das Getippte darf nicht mitwandern
+const feldKontext = () => S.view + "|" + (S.view === "team" ? phaseKey(S.team.state) : S.view === "public" ? phaseKey(S.mit) + (S.pub && S.pub.status) : S.admin.tab + (S.admin.edit || "") + (S.admin.confirm ? S.admin.confirm.key : ""));
 function render() {
   const app = $("#app");
+  // Getipptes und den Fokus über das Neuzeichnen retten: die 10-s-Abfrage, GPS-Meldungen und der
+  // Kompass zeichnen auch dann neu, wenn die Tastatur gerade zu ist (iPhone: "Fertig" nimmt den Fokus)
+  const kontext = feldKontext(), getippt = {};
+  const fokus = document.activeElement && app.contains(document.activeElement) ? document.activeElement : null;
+  const fokusId = fokus && fokus.id, auswahl = fokus && typeof fokus.selectionStart === "number" ? [fokus.selectionStart, fokus.selectionEnd] : null;
+  if (!S.felderFrisch && S.feldKontext === kontext)
+    app.querySelectorAll("input[id]:not([type=range]):not([type=password]), textarea[id]").forEach(el => { getippt[el.id] = el.value; });
+  S.felderFrisch = false;
   app.className = S.view === "admin" && S.admin.pin ? "wide" : "";
   const stand = S.view === "admin" ? S.admin.state : S.view === "team" ? S.team.state : S.pub;
   if (stand && stand.background) hintergrundSetzen(stand.background);
@@ -2029,6 +2233,18 @@ function render() {
   app.innerHTML = (!cfg.url || !cfg.key) ? viewSetup()
     : S.view === "team" ? viewTeam()
       : S.view === "admin" ? viewAdmin() : viewPublic();
+  S.feldKontext = feldKontext();
+  if (S.feldKontext === kontext) {
+    Object.keys(getippt).forEach(id => { const el = document.getElementById(id); if (el && !el.disabled && getippt[id] !== "") el.value = getippt[id]; });
+    const f = fokusId && document.getElementById(fokusId);
+    if (f && !f.disabled) { f.focus({ preventScroll: true }); if (auswahl) try { f.setSelectionRange(auswahl[0], auswahl[1]); } catch { } }
+  }
+  // Läuft eine Aktion noch (Standort holen), sagt ihr Knopf das auch nach dem Neuzeichnen
+  if (S.busy && S.wartetAuf) {
+    const b = app.querySelector(`[data-act="${S.wartetAuf}"][data-wait]`);
+    if (b) { b.textContent = b.dataset.wait; b.disabled = true; b.setAttribute("aria-busy", "true"); }
+  }
+  wachHaltenPruefen();
   if (S.view === "admin" && S.admin.pin && S.admin.tab === "map") {
     drawMap(true); renderTimeline();
     syncTracks().then(() => { drawMap(false); renderTimeline(); }).catch(() => { });
@@ -2068,28 +2284,28 @@ document.addEventListener("click", async e => {
   const fn = ACT[a.dataset.act]; if (!fn) return;
   S.busy = true;
   a.disabled = true;
-  // Geht etwas schief, soll das Getippte stehen bleiben, statt mit dem Neuzeichnen zu verschwinden
-  const getippt = {};
-  document.querySelectorAll("#app input[id], #app textarea[id]").forEach(el => { getippt[el.id] = el.value; });
-  const zurueck = () => {
-    if (!S.msg || S.msg.type !== "err") return;
-    Object.keys(getippt).forEach(id => { const el = document.getElementById(id); if (el && !el.disabled) el.value = getippt[id]; });
-  };
-  // Dauert es (Standort holen, Funk), sagt der Knopf selbst, was gerade passiert
-  if (a.dataset.wait) { a.textContent = a.dataset.wait; a.setAttribute("aria-busy", "true"); }
+  // Dauert es (Standort holen, Funk), sagt der Knopf selbst, was gerade passiert, auch über ein Neuzeichnen hinweg
+  if (a.dataset.wait) { a.textContent = a.dataset.wait; a.setAttribute("aria-busy", "true"); S.wartetAuf = a.dataset.act; }
   try {
     const r = await fn(a.dataset);
-    S.busy = false;
-    if (r !== false) { render(); zurueck(); } else a.disabled = false;
+    S.busy = false; S.wartetAuf = null;
+    // Geklappt: Felder leeren (render rettet sonst das Getippte). Abgelehnt oder Rückfrage: stehen lassen.
+    S.felderFrisch = !(S.msg && (S.msg.type === "err" || S.msg.type === "info"));
+    if (r !== false) render(); else a.disabled = false;
   } catch (err) {
-    S.busy = false;
-    S.msg = { type: "err", text: err.message || "Etwas ist schiefgelaufen." };
-    render(); zurueck();
+    S.busy = false; S.wartetAuf = null;
+    S.msg = { type: "err", text: err.message || "Etwas ist schiefgelaufen.", ort: a.dataset.ort };
+    render();
   }
 });
-document.addEventListener("change", e => { if (e.target.id === "dmode") drawPreview(); });
+document.addEventListener("change", e => {
+  if (e.target.id === "dmode") drawPreview();
+  // Übergeben erst, wenn jemand gewählt ist: sonst ginge die Leitung still an die erste Person der Liste
+  if (e.target.id === "tneu") { const b = $("#tabgeben"); if (b) b.disabled = !e.target.value; }
+});
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && S.admin.confirm) { S.admin.confirm = null; render(); return; }
+  if (e.key === "Escape" && S.admin.full) { S.admin.full = false; render(); return; }
   if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
   if (e.target.id === "dlgword") { const ok = $("#dlgok"); if (ok && !ok.disabled) ok.click(); return; }
   // Enter löst den Knopf aus, der zum Feld gehört: erst in der eigenen Zeile, dann in der Karte,
@@ -2111,12 +2327,15 @@ document.addEventListener("change", async e => {
   const fn = ACT[s.dataset.chg]; if (!fn) return;
   s.disabled = true;   // kein zweiter Wechsel, solange der erste unterwegs ist
   try { if (await fn({ id: s.dataset.id, value: s.value }) !== false) render(); else s.disabled = false; }
-  catch (err) { S.msg = { type: "err", text: err.message || "Etwas ist schiefgelaufen." }; render(); }
+  catch (err) { S.msg = { type: "err", text: err.message || "Etwas ist schiefgelaufen.", ort: s.dataset.ort }; render(); }
 });
 // Denkpause sekundengenau herunterzählen, am Ende das Feld wieder freigeben
 setInterval(() => {
   // Restzeit im Kopf mitlaufen lassen, ohne alles neu zu zeichnen
   const u = $("#uhr"); if (u) { u.textContent = uhrText(u.dataset.ende); u.classList.toggle("knapp", uhrKnapp(u.dataset.ende)); }
+  // Kein Kontakt zum Server seit 30 s: sagen, von wann der Stand ist
+  const sd = $("#stand");
+  if (sd) { const alt = S.zuletzt && Date.now() - S.zuletzt > 30000; sd.hidden = !alt; if (alt) sd.textContent = "Stand " + uhrzeit(S.zuletzt); }
   const p = $("#pause"); if (!p) return;
   if (new Date(p.dataset.bis).getTime() <= Date.now()) render(); else p.textContent = pauseText(p.dataset.bis);
 }, 1000);
@@ -2145,6 +2364,12 @@ setInterval(() => {
     if (!S.hoch || neu) render();
   }).catch(() => { });
 }, 10000);
+// Zurück aus einer anderen App oder vom Sperrbildschirm: sofort nachladen, nicht erst im nächsten Takt
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  S.wachHalten = null;
+  if (cfg.url && cfg.key) refresh();
+});
 mitLinkPruefen();
 refresh();
 </script>
