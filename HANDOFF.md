@@ -8,9 +8,11 @@ Summe der fünf. Am Ziel stehen drei Koffer mit absteigendem Preisgeld: die
 ersten drei Teams, die den vollständigen Code eingeben, bekommen Platz 1 bis 3
 und je einen Koffer. Alle anderen laufen weiter und kommen mit Platz ins Ziel.
 
-**Stand 18.09.2026:** Live auf GitHub Pages, Datenbank eingerichtet, Nachträge 1
-bis 12 eingespielt (6: drei Koffer, 7: Testmodus, 11: Mitlesen, 12: Anmeldung
-bis zum Auslosen; Überblick in [SPIEL.md](SPIEL.md)). **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
+**Stand 19.09.2026:** Live auf GitHub Pages, Datenbank eingerichtet, Nachträge 1
+bis 19 eingespielt (6: drei Koffer, 7: Testmodus, 11: Mitlesen, 12: Anmeldung
+bis zum Auslosen, 13: Randfälle, 14: Teamleitung und Mitlese-Link, 17:
+Spieldauer, Tipp, Koffer-Hinweis, 18: Teamleitung ohne Code, 19: Hintergrund
+umschaltbar; Überblick in [SPIEL.md](SPIEL.md)). **Neue Route am 18.09.2026:** Start am Hotel Mama Shelter in
 Holešovice, dann Planetarium, Rudolfstollen, Wasserturm Letná, Bergstation der
 Aussicht Letná (ehemalige Bergstation der Standseilbahn), Metronom (siehe „Route“). Die Orte stehen in
 `supabase/seed-stationen-prag.sql` und seit 18.09.2026 auch in der Datenbank,
@@ -813,7 +815,7 @@ Positionsmeldungen wird ein vollständiger Bewegungsverlauf der Teamleitungen
 über die ganze Spielzeit. Den Teams vorher sagen, dass der Weg aufgezeichnet
 wird, und nach der Auswertung löschen.
 
-## Umgebung (Stand 18.09.2026, live)
+## Umgebung (Stand 19.09.2026, live)
 
 | Was | Wert |
 |---|---|
@@ -823,7 +825,7 @@ wird, und nach der Auswertung löschen.
 | Publishable key | `sb_publishable_7uEQEkFwi27XJdGLSoso5w_TMxHJYUq` (steht in `config.js`, darf öffentlich sein) |
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
-Init-Migration und Nachträge 1 bis 12 sind eingespielt, geprüft über `pg_proc`
+Init-Migration und Nachträge 1 bis 19 sind eingespielt, geprüft über `pg_proc`
 und Aufrufe der Endpunkte. Wer die Datenbank neu aufsetzt, spielt sie in der
 Reihenfolge ein, in der sie unter „Alle Dateien“ stehen: ohne Nachtrag 1
 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne
@@ -924,7 +926,9 @@ oder einen Tunnel.
    und Antworten vor Ort bestätigen, notfalls „Meinen Standort übernehmen“
    drücken. Alle drei Koffer auf den Code aus dem Reiter Stationen stellen und
    an die letzte Station bringen.
-3. **Vorher:** Support-Nummer in `config.js` eintragen und pushen.
+3. **Vorher:** Support-Nummer in `config.js` eintragen und pushen. Im Reiter
+   Stationen Spieldauer, Koffer-Hinweis, Tipps je Station und den Hintergrund
+   festlegen.
 4. Anmeldelink verteilen, Teilnehmende tragen sich ein.
 5. Vor dem Auslosen: Zahl der Angemeldeten mit der Gästeliste abgleichen,
    Testeinträge über „Testdaten entfernen“ wegräumen.

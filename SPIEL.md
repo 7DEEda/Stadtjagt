@@ -281,7 +281,7 @@ hintergrund/a.svg, b.svg, c.svg  Hintergrund-Varianten, lädt render() nach; kla
 supabase/migrations/*.sql  Schema und Spiellogik, in Dateinamen-Reihenfolge
 supabase/seed-*.sql        Stationen der Prager Route, 100 Testpersonen
 tools/sql.py               SQL über die Supabase Management-API ausführen
-tools/hintergrund/         Generator für die Hintergrund-Varianten (offen)
+tools/hintergrund/         Generator für die Hintergrund-Varianten (OSM-Daten sind gitignored)
 mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrund, Routen)
 ```
 
@@ -327,6 +327,27 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
   und leitet auf `#/public`; `mitlesen()` nimmt `sj.token` vor `sj.mit`.
   `aktiverStand()` liefert `S.team.state` (Teamleitung) oder `S.mit` (Mitglied).
 - Ohne Richtung zeigt der Kompass ein Fragezeichen statt eines Pfeils.
+
+### Hintergrund
+- Vier Varianten: `klassisch` (im HTML), `a`, `b`, `c` (`hintergrund/*.svg`,
+  nachgeladen von `hintergrundSetzen()`). Die Wahl kommt aus
+  `game_state.background` über alle drei Zustandsfunktionen; `render()` setzt
+  sie um, `sj.bg` merkt sie für den nächsten Start. Umschalten im Reiter
+  Stationen (`admin_set_background`).
+- Linien überall gleich fein (`vector-effect: non-scaling-stroke`),
+  Beschriftungen ab 700 px Breite ausgeblendet.
+- Freier Text ohne Karte darunter (direkte Kinder von `main`, die keine
+  Karte, Meldung oder Dialog sind) hat einen Lichthof in Papierfarbe
+  (`text-shadow`); Knöpfe, Felder, Karten setzen ihn zurück.
+- Scroll-Parallax ohne Skript: die Karte ist um `--px-hub` (40lvh) höher als
+  das Fenster, eine scroll-gebundene CSS-Animation (`animation-timeline:
+  scroll(root)`) schiebt sie über die Seitenlänge um den Überstand. `lvh`
+  statt `vh`, sonst springt sie, wenn Android die Adressleiste ausblendet.
+  Ohne Unterstützung oder bei „Bewegung reduzieren“ steht sie still.
+- Neigungs-Parallax: `neigungStart()` hört `deviceorientation`, verschiebt
+  den Rahmen `.topo` (ragt 18 px über das Fenster) bis 18 px in die
+  Neigungsrichtung; Bezug ist die Ruhehaltung (Tiefpass), 25° = voller Weg.
+  iOS erst nach der Bewegungsfreigabe aus `startGps()`.
 
 ### Datenbank
 Tabellen: `participants` (Name, `name_key`, `team_id`, `token`), `teams`
@@ -413,7 +434,8 @@ node -e 'const h=require("fs").readFileSync("index.html","utf8");[...h.matchAll(
 - Mitlese-Link als QR-Code auf dem Handy der Teamleitung (Generator lokal
   einbetten).
 - Live-PIN verlängern (siehe 7.); `2026` ist sie nicht mehr.
-- Hintergrund-Variante wählen (`mockups/hintergrund-varianten.html`).
+- Hintergrund-Variante festlegen (umschaltbar im Reiter Stationen; B zeigt
+  noch den Altstadt-Ausschnitt, Neuerzeugung siehe HANDOFF).
 - Testumgebung und Testskripte ins Repo übernehmen.
 - Probelauf draußen mit echten Handys.
 - Gespeicherte Ideen für ein kniffligeres Spiel (Ort als Rätsel mit verborgener
