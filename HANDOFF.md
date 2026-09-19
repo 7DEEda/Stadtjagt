@@ -65,6 +65,7 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260919070000_koffer_hinweis_spieldauer.sql  Koffer-Hinweis, Spieldauer mit Countdown, Tipp je Station
   20260919080000_leitung_ohne_code.sql  Teamleitung loggt sich über den Geräte-Schlüssel ein (leader_code)
   20260919090000_hintergrund.sql  Hintergrund umschaltbar (game_state.background, admin_set_background)
+  20260919100000_bugjagd.sql      Funde der Bugjagd: norm mit Háček, Sperren beim Auslosen, Station beim Werten, lange PIN
 hintergrund/a.svg, b.svg, c.svg  die drei Hintergrund-Varianten, werden nachgeladen
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
@@ -704,6 +705,62 @@ Lücken hinaus. Behoben (Nachtrag 15 und `index.html`):
 - `submit_answer` zählt Fehlversuche jetzt unter Zeilensperre (`for update`),
   zwei gleichzeitige Falschantworten konnten sonst denselben Stand lesen.
 
+## Bugjagd (Nachtrag 20, 19.09.2026)
+
+Multi-Agent-Bugjagd über das ganze Repo (4 Winkel, Jury aus drei Prüfern je
+Fund, Kritiker): 10 Funde bestätigt, alle 3 von 3, 2 verworfen (beide in
+`tools/hintergrund/hintergrund.py`, Entwicklerwerkzeug ohne Folge für das
+Spiel). Stand: im Repo, aber **noch nicht live** (weder gepusht noch
+Nachtrag 20 eingespielt); beides gehört zusammen, siehe unten. Behoben:
+
+- **Weiße Seite bei blockierten Website-Daten** (major). `index.html` las
+  `localStorage` ungeschützt beim Laden. Jetzt `LS`/`SS` über
+  `speicherOderMap`: wirft der Speicher, merkt sich die App die Werte bis zum
+  Neuladen in einer Map. Geprüft in headless Chrome mit gesperrten Cookies:
+  alter Stand leer, neuer Stand rendert alle drei Ansichten.
+- **`tools/sql.py` ließ `delete from x;` durch**, sobald später im Text
+  irgendein `where` stand (major). Beide Regeln (delete und update) schauen
+  jetzt nur bis zum nächsten `;`. Die Update-Regel meldete umgekehrt
+  `create trigger ... before update of ...` fälschlich, weil sie bis zum
+  nächsten `set search_path` weiterlief.
+- **„Rätsel werten“ und „Freischalten“** werteten die Station, die beim
+  Eintreffen gerade aktuell war: ein zweiter Klick nach einem Netzfehler oder
+  eine veraltete Ansicht schenkte die nächste Station. Jetzt mit `p_position`,
+  der Server lehnt ab, wenn das Team schon weiter ist. Der Dialog nennt die
+  Station. `p_position` ist optional, eine alte Seite läuft weiter.
+- **Tschechische Antworten:** `norm()` löschte ř č š ž ě í, „Křižík“ wurde zu
+  „kik“. Jetzt fallen alle gängigen lateinischen Diakritika auf den
+  Grundbuchstaben, ä ö ü ß wie bisher auf ae oe ue ss. `name_key` nachgezogen.
+- **Leerer Namensschlüssel:** ein Name nur aus Kyrillisch oder Emoji ergab
+  `''`, die zweite solche Person hörte „Dann bist du dabei“. Jetzt abgelehnt
+  in allen vier Wegen, dazu ein Trigger auf `participants`.
+- **Auslosen gegen Anmelden:** zwei gleichzeitige Auslosungen legten doppelt
+  so viele Teams an, eine Anmeldung während des Auslosens blieb ohne Team.
+  `admin_draw` sperrt `game_state` jetzt gleich zu Beginn (`for update`),
+  Anmeldung und Nachtragen warten mit `for share`.
+- **Live-Karte verlor Punkte**, deren Meldung erst nach dem Abruf committete
+  (Zeitfilter `recorded_at > p_since`). Das Frontend lädt jetzt voll neu,
+  sobald seine Punktzahl von `pointCount` abweicht, nicht nur bei zu vielen.
+- **Admin-PIN:** Änderungen verlangen mindestens 12 Zeichen, auch per
+  direktem UPDATE. Live hatte die PIN am 19.09.2026 nur 4 Zeichen (siehe
+  Offene Punkte).
+- **Löschdialog:** ein Name mit `$&` oder `$$` verfälschte den Dialogtext
+  (`String.replace`-Muster). Jetzt mit Replacer-Funktion.
+
+Getestet: alle 21 Migrationen in PGlite (PostgreSQL 17 im Prozess)
+eingespielt, 34 Prüfungen zu norm, Anmeldung, Werten, PIN und erneutem
+Einspielen grün. Die Sperren gegen Gleichzeitigkeit lassen sich dort nicht
+nachstellen (eine Verbindung).
+
+Live schalten, in dieser Reihenfolge: erst `python tools/sql.py
+supabase/migrations/20260919100000_bugjagd.sql`, dann pushen. Andersherum
+würde die neue Seite `p_position` an eine Funktion schicken, die es noch
+nicht kennt.
+
+Deckung: Der Scout ließ nur Doku (README, HANDOFF, SPIEL.md) und
+`.gitignore` aus; die OSM-Rohdaten unter `tools/hintergrund/` hat kein
+Finder vollständig gelesen.
+
 ## UI-Runde (19.09.2026)
 
 Durchgang mit Bildschirmfotos (Handy 390 px für Teilnehmende und Teamleitung,
@@ -1007,9 +1064,11 @@ Schlüssel am Ort; Frage, die das Herumgehen ums Objekt verlangt).
 - An den Koffern muss jemand von der Spielleitung stehen: alle drei haben
   denselben Code, erst der Platz-Bildschirm entscheidet, welcher Koffer dran ist.
 - **Admin-PIN:** Die Vorgabe `2026` steht in der Init-Migration im
-  öffentlichen Repo, und es gibt keine Bremse gegen Durchprobieren. Vor dem
-  Event prüfen, dass live nicht mehr `2026` gilt, und eine lange PIN setzen
-  (Passphrase, 12 und mehr Zeichen, Reiter Daten löschen oder `admin_set_pin`).
+  öffentlichen Repo, und es gibt keine Bremse gegen Durchprobieren. **Live hat
+  die PIN am 19.09.2026 nur 4 Zeichen** (geprüft über `length(admin_pin)`,
+  nicht `2026` selbst). Vor dem Event eine lange PIN setzen (Passphrase, 12
+  und mehr Zeichen, per `admin_set_pin` oder SQL, siehe README). Seit
+  Nachtrag 20 lehnt die Datenbank kürzere ab.
 - **Mitlese-Link als QR:** Der Link ist da (Nachtrag 14), ein QR-Code auf dem
   Handy der Teamleitung wäre noch bequemer als Teilen per Nachricht. Braucht
   einen kleinen QR-Generator, lokal eingebettet.

@@ -41,11 +41,13 @@ TOKEN_FILE = pathlib.Path(os.environ.get("USERPROFILE", pathlib.Path.home())) / 
 API = "https://api.supabase.com/v1/projects/{ref}/database/query"
 
 # Anweisungen, die ohne --force nicht durchgehen: hier gehen Daten verloren
+# Die Muster schauen nur bis zum nächsten ";": ein WHERE oder SET in einer späteren
+# Anweisung darf das Urteil über diese nicht ändern.
 GEFAEHRLICH = [
     (r"\bdrop\s+(table|schema|database|materialized\s+view)\b", "tabelle oder schema löschen"),
     (r"\btruncate\b", "truncate"),
-    (r"\bdelete\s+from\b(?!.*\bwhere\b)", "delete ohne where"),
-    (r"\bupdate\b(?:(?!\bwhere\b).)*?\bset\b(?:(?!\bwhere\b).)*?(?:;|$)", "update ohne where"),
+    (r"\bdelete\s+from\b(?:(?!\bwhere\b)[^;])*(?:;|$)", "delete ohne where"),
+    (r"\bupdate\b[^;]*?\bset\b(?:(?!\bwhere\b)[^;])*(?:;|$)", "update ohne where"),
     (r"\balter\s+table\b.*\bdrop\s+column\b", "spalte entfernen"),
 ]
 

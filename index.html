@@ -315,10 +315,21 @@ a.btn{text-decoration:none;text-align:center}
    Der anon-Key ist öffentlich und darf im Quelltext stehen.
    Der service_role-Key gehört NIEMALS hierher.
    =========================================================== */
+// Speicher, der nie wirft: Blockiert der Browser Cookies und Website-Daten,
+// wirft schon der Zugriff auf localStorage. Dann merkt sich die App die
+// Werte nur bis zum Neuladen, statt als weiße Seite stehenzubleiben.
+const speicherOderMap = name => {
+  try { const s = window[name]; s.setItem("sj._", "1"); s.removeItem("sj._"); return s; }
+  catch {
+    const m = new Map();
+    return { getItem: k => m.has(k) ? m.get(k) : null, setItem: (k, v) => { m.set(k, String(v)); }, removeItem: k => { m.delete(k); } };
+  }
+};
+const LS = speicherOderMap("localStorage"), SS = speicherOderMap("sessionStorage");
 // Die Werte stehen in config.js, die vor diesem Skript geladen wird.
 const cfg = {
-  url: (window.SJ_CONFIG && window.SJ_CONFIG.url) || localStorage.getItem("sj.url") || "",
-  key: (window.SJ_CONFIG && window.SJ_CONFIG.key) || localStorage.getItem("sj.key") || ""
+  url: (window.SJ_CONFIG && window.SJ_CONFIG.url) || LS.getItem("sj.url") || "",
+  key: (window.SJ_CONFIG && window.SJ_CONFIG.key) || LS.getItem("sj.key") || ""
 };
 
 /* ---------- Grundlagen ---------- */
@@ -374,13 +385,13 @@ async function rpc(fn, args) {
 const S = {
   view: (location.hash.replace("#/", "") || "public"),
   msg: null, busy: false,
-  pub: null, myName: localStorage.getItem("sj.name") || null, lookup: null,
-  team: { code: localStorage.getItem("sj.code") || null, state: null },
+  pub: null, myName: LS.getItem("sj.name") || null, lookup: null,
+  team: { code: LS.getItem("sj.code") || null, state: null },
   // kompass: "unbekannt" | "wartet" | "an" | "kalibrieren" | "relativ" | "abgelehnt" | "fehlt"
   gps: { pos: null, acc: null, heading: null, gpsHeading: null, needle: 0, on: false, err: null, kompass: "unbekannt", lastSent: 0, lastSentPos: null, sentAt: null,
          // kompassAcc: Genauigkeit in Grad (nur iOS), kal: laufendes Einmessen, kalOk: Ergebnis für den Hinweis danach
          kompassAcc: null, kal: null, kalOk: null },
-  admin: { pin: sessionStorage.getItem("sj.pin") || null, state: null, tab: "map", edit: null, full: false,
+  admin: { pin: SS.getItem("sj.pin") || null, state: null, tab: "map", edit: null, full: false,
            // Routen: tracks[teamId] = {name, points:[[lat,lng,ms]], stations:[...]}
            tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false, confirm: null,
            draw: { mode: "size", value: 10 } }
@@ -476,12 +487,12 @@ const DANGER = {
     when: () => false,   // kommt über den Knopf im Reiter Teams
     wort: false,
     title: "Rätsel werten",
-    lead: "Team $NAME bekommt die aktuelle Station als gelöst, mit Check-in und Ziffer. Das Team sieht sofort die nächste Station.",
+    lead: st => "Team $NAME bekommt Station " + (S.admin.confirm?.pos || "") + " als gelöst, mit Check-in und Ziffer. Das Team sieht sofort die nächste Station.",
     keeps: "Nichts wird gelöscht.",
     btn: "Als gelöst werten",
     async run(c) {
-      S.admin.state = await rpc("admin_solve_station", { p_pin: S.admin.pin, p_team: c.id });
-      return `Rätsel für Team ${c.name} gewertet.`;
+      S.admin.state = await rpc("admin_solve_station", { p_pin: S.admin.pin, p_team: c.id, p_position: Number(c.pos) });
+      return `Station ${c.pos} für Team ${c.name} gewertet.`;
     }
   },
   finish: {
@@ -607,7 +618,7 @@ function viewPublic() {
       <h1>Team ${esc(t.name)}</h1>
       <p>Sucht die anderen mit ${teamEmoji(t.name)}. Teamleitung: <b>${esc(t.leaderName || "offen")}</b></p>
       ${ichLeite ? `<a class="btn" href="#/team">Du bist Teamleitung: loslegen</a>
-        <p class="small muted">${localStorage.getItem("sj.token") ? "Dein Handy kennt dich, ein Code ist nicht nötig." : "Den Team-Code bekommst du von der Spielleitung."}</p>` : ""}
+        <p class="small muted">${LS.getItem("sj.token") ? "Dein Handy kennt dich, ein Code ist nicht nötig." : "Den Team-Code bekommst du von der Spielleitung."}</p>` : ""}
       <button class="btn ${ichLeite ? "alt" : ""}" data-act="pub-hoch">Zum Hochhalten</button>
       ${!eigen && !S.myName ? `<button class="btn alt" data-act="pub-ich">Das bin ich, merken</button>` : ""}
       <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`
@@ -758,7 +769,7 @@ function teamAnsicht(st, lesen) {
   // Liest die Teamleitung selbst nur mit, fehlt ihr der Einstieg zur Eingabe
   if (lesen && st.name && st.name === st.team.leaderName && st.status !== "finished")
     out += `<div class="panel"><h3>Du bist Teamleitung</h3>
-      <p class="small muted">Hier siehst du nur mit. Eingeben (einchecken, antworten, Koffer-Code) kannst du unter Teamleitung${localStorage.getItem("sj.token") ? ", dein Handy kennt dich" : " mit dem Team-Code von der Spielleitung"}.</p>
+      <p class="small muted">Hier siehst du nur mit. Eingeben (einchecken, antworten, Koffer-Code) kannst du unter Teamleitung${LS.getItem("sj.token") ? ", dein Handy kennt dich" : " mit dem Team-Code von der Spielleitung"}.</p>
       <a class="btn" href="#/team">Zur Teamleitung</a></div>`;
 
   if (st.status === "drawn") return out + `<div class="panel"><h3>Ihr seid startklar</h3>
@@ -996,8 +1007,8 @@ function viewAdmin() {
         <td><div class="prog"><span style="width:${(t.solved / Math.max(1, (st.stations || []).length)) * 100}%"></span></div>
           <span class="small muted">${t.solved} / ${(st.stations || []).length} gelöst${st.status === "running" && t.currentPosition && !t.place ? `, bei Station ${t.currentPosition}` : ""}${t.lastActivity ? ", zuletzt " + ago(t.lastActivity) : ", noch keine Aktivität"}</span>
           ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}</td>
-        <td>${st.status === "running" && t.currentPosition ? `<div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm alt" data-act="a-unlock" data-id="${t.id}">Freischalten</button>
-          <button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-name="${esc(t.name)}">Rätsel werten</button></div>` : ""}</td></tr>`).join("")}
+        <td>${st.status === "running" && t.currentPosition ? `<div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm alt" data-act="a-unlock" data-id="${t.id}" data-pos="${t.currentPosition}">Freischalten</button>
+          <button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Rätsel werten</button></div>` : ""}</td></tr>`).join("")}
       </table><p class="small muted">„Freischalten“ ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.
         „Rätsel werten“ zählt die aktuelle Station als gelöst, wenn ein Rätsel klemmt.
         Die Teamleitung wechselst du über das Auswahlfeld; der Team-Code bleibt derselbe.
@@ -1047,7 +1058,7 @@ function viewAdmin() {
             <div><label>Lösung</label><input id="e-answer" value="${esc(s.answer)}" placeholder="mehrere mit | trennen"></div>
             <div><label>Ziffer</label><input id="e-digit" inputmode="numeric" maxlength="1" value="${s.digit}" required></div>
             <div><label>Radius m</label><input id="e-radius" inputmode="numeric" value="${s.radiusM}"></div></div>
-          <p class="small muted" style="margin-top:6px">Mehrere richtige Antworten mit | trennen, etwa „5|fünf“. Groß und klein, Umlaute und Satzzeichen zählen nicht.</p>
+          <p class="small muted" style="margin-top:6px">Mehrere richtige Antworten mit | trennen, etwa „5|fünf“. Groß und klein, Umlaute, Akzente wie é oder ř und Satzzeichen zählen nicht.</p>
           <div style="margin-top:8px"><label>Tipp (optional, aufdeckbar nach der ersten Denkpause)</label><textarea id="e-tip">${esc(s.tip || "")}</textarea></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
             <div><label>Breite</label><input id="e-lat" inputmode="decimal" value="${s.lat ?? ""}"></div>
@@ -1093,7 +1104,7 @@ function viewAdmin() {
     const D = DANGER[A.confirm.key];
     const txt = (v) => {
       const roh = typeof v === "function" ? v(st) : v;
-      return A.confirm.name ? roh.replace("$NAME", A.confirm.name) : roh;
+      return A.confirm.name ? roh.replace("$NAME", () => A.confirm.name) : roh;   // Funktion, damit $& im Namen nicht als Muster zählt
     };
     const titel = txt(D.title), lead = txt(D.lead);
     out += `<div class="overlay"><div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlgt">
@@ -1259,8 +1270,10 @@ async function syncTracks(full) {
     const e = A.tracks[t.id] || (A.tracks[t.id] = { name: t.name, points: [], stations: [] });
     e.name = t.name; e.stations = t.stations || [];
     if (t.points && t.points.length) e.points = e.points.concat(t.points);
-    // Wurden die Standortdaten zwischendurch gelöscht, haben wir zu viele Punkte
-    if (t.pointCount != null && e.points.length > t.pointCount) stale = true;
+    // Zu viele Punkte: Standortdaten wurden gelöscht. Zu wenige: eine Meldung hat
+    // erst nach dem letzten Abruf committet und fiel durch den Zeitfilter.
+    // Punkte und Zählung stammen aus demselben Snapshot, also neu laden.
+    if (t.pointCount != null && e.points.length !== t.pointCount) stale = true;
   });
   Object.keys(A.tracks).forEach(id => { if (!keep.has(id)) delete A.tracks[id]; });
   A.syncedAt = r.now;
@@ -1370,15 +1383,15 @@ function playStep(now) {
 const ACT = {
   async "cfg-save"() {
     cfg.url = val("surl"); cfg.key = val("skey");
-    localStorage.setItem("sj.url", cfg.url); localStorage.setItem("sj.key", cfg.key);
+    LS.setItem("sj.url", cfg.url); LS.setItem("sj.key", cfg.key);
     S.msg = null; await refresh();
   },
   async "pub-reg"() {
     let r;
     try { r = await rpc("register_participant", { p_name: val("pname") }); }
     catch (e) { S.msg = { type: "err", text: e.message, ort: "anm" }; return; }
-    S.myName = r.name; localStorage.setItem("sj.name", r.name); S.msg = null;
-    if (r.token) localStorage.setItem("sj.token", r.token);   // damit dieses Handy später mitlesen kann
+    S.myName = r.name; LS.setItem("sj.name", r.name); S.msg = null;
+    if (r.token) LS.setItem("sj.token", r.token);   // damit dieses Handy später mitlesen kann
     // nach dem Auslosen kommt das Team gleich mit: große Karte sofort zeigen
     if (r.team) { S.lookup = r.team; S.lookupName = r.name; S.lookupEigen = true; S.autoLook = true; }
     await refresh();
@@ -1387,7 +1400,7 @@ const ACT = {
   // Wer über die Suche sein Team gefunden hat, kann es sich merken: dann steht es auch nach dem Neuladen da
   "pub-ich"() {
     if (!S.lookupName) return;
-    S.myName = S.lookupName; localStorage.setItem("sj.name", S.myName);
+    S.myName = S.lookupName; LS.setItem("sj.name", S.myName);
     S.lookupEigen = true; S.nameGeprueft = true; S.letzteAnzahl = null;
     S.msg = { type: "ok", text: "Gemerkt. Dieses Handy zeigt jetzt dein Team." };
   },
@@ -1398,7 +1411,7 @@ const ACT = {
   },
   "pub-hoch-zu"() { S.hoch = false; try { S.wachHalten?.release(); } catch { } S.wachHalten = null; },
   "pub-again"() {
-    localStorage.removeItem("sj.token"); S.mit = null; S.myName = null; localStorage.removeItem("sj.name"); },
+    LS.removeItem("sj.token"); S.mit = null; S.myName = null; LS.removeItem("sj.name"); },
   async "pub-look"(d) {
     const r = await rpc("lookup_participant", { p_name: d.name || val("plook") });
     // eigenes Team bekannt (per Name oder per Schlüssel): Suchergebnis daneben zeigen, Karte behalten
@@ -1426,9 +1439,9 @@ const ACT = {
   async "t-login"() {
     const code = val("tcode");
     const st = await rpc("team_state", { p_code: code });
-    S.team.code = st.team.code; S.team.state = st; localStorage.setItem("sj.code", st.team.code); S.msg = null;
+    S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
   },
-  "t-logout"() { S.team.code = null; S.team.state = null; S.team.abmelden = false; localStorage.removeItem("sj.code"); stopGps(); },
+  "t-logout"() { S.team.code = null; S.team.state = null; S.team.abmelden = false; LS.removeItem("sj.code"); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
   // Mitlese-Link fürs Team: teilen (Share-Sheet, sonst WhatsApp) oder kopieren
@@ -1486,7 +1499,7 @@ const ACT = {
   async "a-login"() {
     const pin = val("apin");
     S.admin.state = await rpc("admin_state", { p_pin: pin });
-    S.admin.pin = pin; sessionStorage.setItem("sj.pin", pin); S.msg = null;
+    S.admin.pin = pin; SS.setItem("sj.pin", pin); S.msg = null;
   },
   "a-tab"(d) { S.admin.tab = d.tab; S.admin.edit = null; S.msg = null; },
   "a-full"() { S.admin.full = !S.admin.full; $("#map")?.classList.toggle("full"); document.body.classList.toggle("fest", S.admin.full); setTimeout(() => map && map.invalidateSize(), 80); return false; },
@@ -1531,7 +1544,7 @@ const ACT = {
   // Beenden ist endgültig für alle Teams: erst der Dialog
   "a-finish"() { S.admin.confirm = { key: "finish" }; S.msg = null; },
   // Löschen: erst den Dialog öffnen, gelöscht wird erst nach dem getippten Wort
-  "a-danger"(d) { S.admin.confirm = { key: d.key, id: d.id, name: d.name }; S.msg = null; },
+  "a-danger"(d) { S.admin.confirm = { key: d.key, id: d.id, name: d.name, pos: d.pos }; S.msg = null; },
   "a-dlg-cancel"() { S.admin.confirm = null; S.msg = null; },
   async "a-dlg-ok"() {
     const c = S.admin.confirm;
@@ -1559,7 +1572,7 @@ const ACT = {
     const neu = (S.admin.state.participants || []).find(p => p.name.toLowerCase() === name.trim().replace(/\s+/g, " ").toLowerCase());
     S.msg = { type: "ok", text: neu && neu.teamName ? `${neu.name} ist jetzt in Team ${neu.teamName}.` : `${name.trim()} ist angemeldet.` };
   },
-  async "a-unlock"(d) { S.admin.state = await rpc("admin_unlock_station", { p_pin: S.admin.pin, p_team: d.id }); },
+  async "a-unlock"(d) { S.admin.state = await rpc("admin_unlock_station", { p_pin: S.admin.pin, p_team: d.id, p_position: Number(d.pos) }); },
   async "a-bg"(d) {
     S.admin.state = await rpc("admin_set_background", { p_pin: S.admin.pin, p_background: d.bg });
     S.msg = { type: "ok", ort: "bg", text: `Hintergrund: ${HINTERGRUENDE[d.bg]}. Die Handys übernehmen das mit der nächsten Abfrage.` };
@@ -1627,12 +1640,12 @@ const KAL_MS_IOS = 2000;      // iOS: früher fertig, sobald die Genauigkeit sti
 const KAL_GUT = 15;           // Grad, ab da gilt der iOS-Kompass als eingemessen
 const KAL_SCHWENK = 80;       // Grad pro Sekunde, darunter ist es nur Zittern
 const heute = () => new Date().toDateString();
-const kalHeute = () => localStorage.getItem(KAL_KEY) === heute();
+const kalHeute = () => LS.getItem(KAL_KEY) === heute();
 function kalStart() { S.gps.kal = { bewegt: 0, letzt: null }; S.gps.kalOk = null; }
 function kalEnde(fertig) {
   const g = S.gps;
   g.kal = null;
-  localStorage.setItem(KAL_KEY, heute());
+  LS.setItem(KAL_KEY, heute());
   g.kalOk = fertig ? { acc: g.kompassAcc, bis: Date.now() + 8000 } : null;
 }
 // ein Orientierungsereignis auswerten; true, wenn das Einmessen damit fertig ist
@@ -1855,15 +1868,15 @@ function teamNachziehen() {
 // Mitlesen: Stand des eigenen Teams über den Geräte-Schlüssel aus der Anmeldung, sonst über den
 // Mitlese-Link der Teamleitung (sj.mit, gilt für das Team, nicht für eine Person)
 async function mitlesen() {
-  const tok = localStorage.getItem("sj.token"), mitTok = localStorage.getItem("sj.mit");
+  const tok = LS.getItem("sj.token"), mitTok = LS.getItem("sj.mit");
   if ((!tok && !mitTok) || !S.pub || S.pub.status === "registration") { S.mit = null; return; }
   try {
     if (tok) {
       S.mit = await rpc("member_state", { p_token: tok }); namenUebernehmen(S.mit.name);
     } else S.mit = await rpc("member_state_by_team", { p_read_token: mitTok });
   } catch (e) {
-    if (String(e.message).includes("Unbekanntes Gerät")) localStorage.removeItem("sj.token");
-    if (String(e.message).includes("Unbekannter Mitlese-Link")) localStorage.removeItem("sj.mit");
+    if (String(e.message).includes("Unbekanntes Gerät")) LS.removeItem("sj.token");
+    if (String(e.message).includes("Unbekannter Mitlese-Link")) LS.removeItem("sj.mit");
     S.mit = null;
   }
 }
@@ -1873,7 +1886,7 @@ function mitLinkPruefen() {
   if (!m) return false;
   // Läuft beim Start vor refresh(): ein gesperrter Speicher (privates Fenster, Geräterichtlinie)
   // darf höchstens das Mitlesen kosten, nicht die ganze Seite
-  try { localStorage.setItem("sj.mit", m[1].toLowerCase()); } catch { /* dann eben nicht gemerkt */ }
+  try { LS.setItem("sj.mit", m[1].toLowerCase()); } catch { /* dann eben nicht gemerkt */ }
   history.replaceState(null, "", location.pathname + location.search + "#/public");
   S.view = "public"; S.mit = null;
   return true;
@@ -1883,7 +1896,7 @@ const mitleseLink = token => token ? `${location.origin}${location.pathname}#/mi
 function namenUebernehmen(neu) {
   if (!neu || neu === S.myName) return;
   if (S.lookupName === S.myName) S.lookupName = neu;
-  S.myName = neu; localStorage.setItem("sj.name", neu);
+  S.myName = neu; LS.setItem("sj.name", neu);
 }
 // Nach "Alle löschen" steht der eigene Name nur noch im Handy: dann wieder das Anmeldeformular zeigen.
 // Geprüft wird beim ersten Laden und immer, wenn die Zahl der Angemeldeten sinkt.
@@ -1895,7 +1908,7 @@ async function nameNochDa() {
   S.letzteAnzahl = p.participantCount;
   if (!weniger && !erstesMal) return false;
   S.nameGeprueft = true;
-  const tok = localStorage.getItem("sj.token");
+  const tok = LS.getItem("sj.token");
   try {
     if (tok) {
       // Mit Geräte-Schlüssel zählt die Anmeldung selbst, nicht die Schreibweise: wer von der
@@ -1911,7 +1924,7 @@ async function nameNochDa() {
     if (!String(e.message).includes("Unbekanntes Gerät")) return false;   // Funkloch: beim nächsten Mal
   }
   // Name oder Schlüssel gibt es nicht mehr (etwa nach "Alle löschen"): zurück zur Anmeldung
-  S.myName = null; localStorage.removeItem("sj.name"); localStorage.removeItem("sj.token"); S.mit = null;
+  S.myName = null; LS.removeItem("sj.name"); LS.removeItem("sj.token"); S.mit = null;
   if (S.lookupEigen) { S.lookup = null; S.lookupName = null; S.hoch = false; }
   return true;
 }
@@ -1926,11 +1939,11 @@ function teamStandSetzen(s) {
 // Teamleitung ohne Tippen: der Geräte-Schlüssel aus der Anmeldung sagt, wer das Handy ist; leitet die
 // Person gerade ein Team, gibt die Datenbank den Code heraus. Sonst bleibt das Eingabefeld.
 async function leitungOhneCode() {
-  const tok = localStorage.getItem("sj.token");
+  const tok = LS.getItem("sj.token");
   if (!tok || S.team.code) return false;
   try {
     const r = await rpc("leader_code", { p_token: tok });
-    S.team.code = r.code; localStorage.setItem("sj.code", r.code);   // der Kopf zeigt dann Team und Code
+    S.team.code = r.code; LS.setItem("sj.code", r.code);   // der Kopf zeigt dann Team und Code
     return true;
   } catch { return false; }   // kein Schlüssel, keine Leitung oder Funkloch: dann tippen
 }
@@ -1943,7 +1956,7 @@ async function ranglisteHolen() {
 // statt still das alte Team weiter zu zeigen
 function codeUngueltig() {
   S.team.code = null; S.team.state = null; S.team.abmelden = false;
-  localStorage.removeItem("sj.code"); stopGps();
+  LS.removeItem("sj.code"); stopGps();
   S.msg = { type: "err", text: "Dieser Team-Code gilt nicht mehr, vermutlich wurde neu ausgelost. Gebt den neuen Code ein." };
 }
 async function refresh() {
@@ -1955,7 +1968,7 @@ async function refresh() {
     if (S.view === "admin" && S.admin.pin) S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin });
   } catch (e) {
     if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); return render(); }
-    if (String(e.message).includes("Falsche PIN")) { S.admin.pin = null; sessionStorage.removeItem("sj.pin"); }
+    if (String(e.message).includes("Falsche PIN")) { S.admin.pin = null; SS.removeItem("sj.pin"); }
     S.msg = { type: "err", text: e.message };
   }
   render();
@@ -1968,7 +1981,7 @@ let hintergrundAktiv = "klassisch", hintergrundLaeuft = null;
 // Die Wahl bleibt im Speicher, damit der nächste Aufruf gleich richtig startet.
 function hintergrundSetzen(name) {
   if (!HINTERGRUENDE[name] || name === hintergrundAktiv || hintergrundLaeuft === name) return;
-  try { localStorage.setItem("sj.bg", name); } catch { /* egal */ }
+  try { LS.setItem("sj.bg", name); } catch { /* egal */ }
   if (name === "klassisch") { $("#topo").innerHTML = KLASSISCH; hintergrundAktiv = name; return; }
   hintergrundLaeuft = name;
   fetch(`hintergrund/${name}.svg`).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
@@ -1976,7 +1989,7 @@ function hintergrundSetzen(name) {
     .catch(() => { /* Funkloch oder Datei fehlt: der bisherige Hintergrund bleibt */ })
     .finally(() => { hintergrundLaeuft = null; });
 }
-try { const bg = localStorage.getItem("sj.bg"); if (bg) hintergrundSetzen(bg); } catch { /* egal */ }
+try { const bg = LS.getItem("sj.bg"); if (bg) hintergrundSetzen(bg); } catch { /* egal */ }
 // Neigungs-Parallax: bewegt man das Handy, rutscht die Karte ein Stück in die Neigungsrichtung (höchstens
 // 18 px, so weit ragt der Rahmen über das Fenster). Bezug ist nicht "flach liegend", sondern die Haltung,
 // in der das Handy gerade ruht: ein Tiefpass zieht den Bezug langsam nach, so bleibt die Karte bei ruhiger

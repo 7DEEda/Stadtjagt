@@ -86,11 +86,15 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
 
 ### Rätsel (`submit_answer`)
 - Vergleich über `norm()`: klein, Umlaute und Sonderzeichen vereinheitlicht
-  (auch Großbuchstaben mit Umlaut, unabhängig von der Locale).
+  (auch Großbuchstaben mit Umlaut, unabhängig von der Locale). Seit
+  Nachtrag 20 fallen auch Akzente und Háčeks auf den Grundbuchstaben:
+  „Křižík“ und „Krizik“ sind dieselbe Antwort.
 - Mehrere Lösungen mit `|` getrennt (`5|fünf`), geprüft von `answer_ok`.
   Leere Lösung oder leere Teile zählen nie als richtig (Platzhalter).
 - Klemmt ein Rätsel, wertet die Spielleitung die Station für das Team
-  (`admin_solve_station`: Check-in und gelöst in einem).
+  (`admin_solve_station`: Check-in und gelöst in einem). Der Knopf schickt die
+  Station mit (`p_position`); ist das Team schon weiter, wertet der Server
+  nichts (Nachtrag 20).
 - Richtig: `progress.solved_at`, Ziffer frei.
 - Falsch: `failed_attempts` +1; beim dritten Fehlversuch 2 Minuten Sperre
   (`locked_until`), Zähler zurück auf 0, `pauses` +1. Die App zeigt einen
@@ -137,7 +141,10 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
 1. `#/public`, Name eintragen → `register_participant`.
 2. Antwort enthält `token` (64 Hex-Zeichen, Nachtrag 11). Die App speichert
    `sj.name` und `sj.token` im `localStorage`.
-3. Doppelte Namen (über `name_key = norm(name)`) werden abgelehnt.
+3. Doppelte Namen (über `name_key = norm(name)`) werden abgelehnt, ebenso
+   Namen ohne einen lateinischen Buchstaben oder eine Ziffer (leerer
+   Schlüssel, Nachtrag 20). Die Anmeldung wartet mit `for share` auf ein
+   laufendes Auslosen, das Auslosen sperrt `game_state` mit `for update`.
 4. Die Spielleitung kann zusätzlich einzeln (`admin_add_participant`) oder
    viele auf einmal (`admin_add_participants`, eine Zeile pro Name, auch
    „Testdaten einfügen“ mit 90 Namen „… (Test)“) eintragen. Diese haben keinen
@@ -255,7 +262,10 @@ Bewusst akzeptiert oder offen:
   Platz: den Code muss man am Koffer eingeben.
 - Admin-PIN im Klartext in `game_state.admin_pin`, ohne Bremse gegen
   Durchprobieren. Die Vorgabe `2026` steht im öffentlichen Repo: live eine
-  lange PIN setzen.
+  lange PIN setzen. Seit Nachtrag 20 verlangt jede Änderung mindestens 12
+  Zeichen (Trigger auf `game_state`); eine alte kurze PIN gilt, bis sie
+  geändert wird. Ein Fehlversuchszähler geht nicht einfach: `require_admin`
+  bricht mit einer Exception ab, die das Hochzählen zurückrollen würde.
 - Team-Codes (16 Tiere × 9000 Zahlen) lassen sich mit vielen Anfragen raten;
   unter Kollegen hingenommen.
 - **Offen und vor dem Event zu lösen:** Das Repo ist öffentlich, und GitHub
@@ -309,7 +319,9 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
 - **Speicher im Browser:** `sj.name`, `sj.token`, `sj.mit` (Mitlese-Schlüssel
   des Teams), `sj.code` (Teamleitung), `sj.kal` (Einmessen heute erledigt),
   `sj.url`/`sj.key` (nur ohne `config.js`) im `localStorage`; `sj.pin` im
-  `sessionStorage`.
+  `sessionStorage`. Zugriff nur über `LS`/`SS`: Blockiert der Browser
+  Website-Daten, fallen beide auf eine Map im Speicher zurück, statt die
+  Seite beim Laden abzubrechen.
 
 ### GPS und Kompass
 - `startGps` (Standort beobachten, Kompass-Erlaubnis auf iOS aus einem Klick),

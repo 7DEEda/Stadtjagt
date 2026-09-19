@@ -19,10 +19,11 @@ Wie Spiel und Code funktionieren (Regeln, Zustände, Abläufe, Aufbau): **[SPIEL
 | `#/admin` | Spielleitung, Login per PIN |
 
 Die PIN steht in `game_state.admin_pin` und bewusst nicht in diesem Repo, weil
-es öffentlich ist. Ändern über den Endpunkt `admin_set_pin` oder direkt:
+es öffentlich ist. Ändern über den Endpunkt `admin_set_pin` oder direkt, seit
+Nachtrag 20 mit mindestens 12 Zeichen (am besten eine Passphrase):
 
 ```sql
-update game_state set admin_pin = 'neuePIN' where id = 1;
+update game_state set admin_pin = 'vier lange Wörter hier' where id = 1;
 ```
 
 ## Schnellstart
@@ -52,6 +53,7 @@ update game_state set admin_pin = 'neuePIN' where id = 1;
    supabase/migrations/20260919070000_koffer_hinweis_spieldauer.sql
    supabase/migrations/20260919080000_leitung_ohne_code.sql
    supabase/migrations/20260919090000_hintergrund.sql
+   supabase/migrations/20260919100000_bugjagd.sql
    ```
 
    Die Init-Datei beginnt mit `drop table ... cascade`. Auf einer Datenbank mit
