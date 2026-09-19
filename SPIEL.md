@@ -27,14 +27,18 @@ App eingeben.
 | Rolle | Zugang | Kann | Sieht |
 |---|---|---|---|
 | **Teilnehmende** | Link, Name bei der Anmeldung; oder Mitlese-Link des Teams | sich anmelden (nur bis zum Auslosen), Team nachschauen | eigenes Team groß mit Emoji; ab dem Start alles, was die Teamleitung sieht (Geräte-Schlüssel aus der Anmeldung oder Mitlese-Link) |
-| **Teamleitung** | `#/team`: mit Geräte-Schlüssel automatisch, sonst Team-Code (`FUCHS-4711`) | einchecken, Rätsel beantworten, Koffer-Code eingeben, Mitlese-Link teilen, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
+| **Teamleitung** | `#/team`: automatisch auf dem Handy, mit dem sie sich angemeldet hat (Geräte-Schlüssel); Team-Code nur als Ausweg für die Spielleitung am Tablet | einchecken, Rätsel beantworten, Koffer-Code eingeben, Mitlese-Link teilen, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
 | **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, fortsetzen, freischalten, Rätsel werten, Teamleitung wählen, Stationen pflegen, Leute eintragen, löschen, Testmodus | Karte mit Routen, Zeitachse, alle Teams mit Codes und Mitlese-Links, Koffer-Code |
 
 Die Teamleitung wird beim Auslosen je Team zufällig bestimmt
 (`teams.leader_participant_id`); die Spielleitung kann sie ändern
 (`admin_set_leader`), die Teamleitung selbst abgeben (`team_set_leader`).
-Den Team-Code gibt die Spielleitung ihr persönlich; bei einem Wechsel bleibt
-er derselbe.
+Seit Nachtrag 22 meldet sich jede Person nur selbst an, auf dem eigenen Handy
+(„Jemanden ohne eigenes Handy anmelden“ gibt es nicht mehr). Die Teamleitung
+tippt keinen Code: ihr Handy holt ihn über `leader_code`. Wird die Leitung
+gewechselt oder abgegeben, gibt das alte Handy sofort nichts mehr ein
+(`leitungNochDa` nach jedem Abruf). Den Team-Code braucht nur noch die
+Spielleitung, wenn sie am Tablet für ein Team eingibt.
 
 ---
 
@@ -174,8 +178,9 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
 - Gehört das Handy der Teamleitung (Name = `leaderName`), steht auf der
   Team-Karte „Du bist Teamleitung: loslegen“ (Link zu `#/team`). Dort holt
   die App den Team-Code über den Geräte-Schlüssel (`leader_code`, Nachtrag
-  18) und loggt ohne Tippen ein; das Eingabefeld bleibt für Handys ohne
-  Anmeldung.
+  18) und loggt ohne Tippen ein. Andere Handys sehen „Du leitest gerade kein
+  Team“ bzw. „Eingeben kann nur die Teamleitung“; das Code-Feld steht nur
+  hinter „Spielleitung: mit Team-Code eingeben“ (Nachtrag 22).
 - Ab dem Start zeigen alle Ansichten im Kopf die Restzeit (`endsAt`, aus
   `duration_min`), rot in den letzten 15 Minuten, danach „Zeit ist um“.
 - Nachzügler: nur über die Spielleitung (Hilfe-Knöpfe auf der Anmeldeseite).

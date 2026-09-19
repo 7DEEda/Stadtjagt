@@ -15,7 +15,7 @@ Wie Spiel und Code funktionieren (Regeln, Zustände, Abläufe, Aufbau): **[SPIEL
 | Pfad | Für wen |
 |---|---|
 | `#/public` | alle Teilnehmenden: anmelden, Team nachschlagen, Rangliste |
-| `#/team` | Handy der Teamleitung, Login per Team-Code |
+| `#/team` | Handy der Teamleitung, erkannt am eigenen Handy (ohne Code) |
 | `#/admin` | Spielleitung, Login per PIN |
 
 Die PIN steht in `game_state.admin_pin` und bewusst nicht in diesem Repo, weil

@@ -472,9 +472,9 @@ const DANGER = {
   leader: {
     when: () => false, wort: false, neutral: true,
     title: "Teamleitung wechseln",
-    lead: () => { const c = S.admin.confirm || {}; return `$NAME leitet dann Team ${c.team}.` + (c.alt ? ` ${c.alt} gibt nichts mehr ein.` : "")
-      + ` Hat sich $NAME auf dem eigenen Handy angemeldet, geht es unter Teamleitung ohne Code, sonst mit ${c.code}.`; },
-    keeps: "Der Team-Code bleibt derselbe.",
+    lead: () => { const c = S.admin.confirm || {}; return `$NAME leitet dann Team ${c.team}.` + (c.alt ? ` ${c.alt} gibt ab dann nichts mehr ein.` : "")
+      + ` $NAME tippt auf dem eigenen Handy auf „Teamleitung“ und ist gleich drin. Das geht nur, wenn $NAME sich dort selbst angemeldet hat.`; },
+    keeps: "Nichts wird gelöscht.",
     btn: "Leitung wechseln",
     async run(c) {
       S.admin.state = await rpc("admin_set_leader", { p_pin: S.admin.pin, p_team: c.id, p_participant: c.value });
@@ -496,7 +496,7 @@ const DANGER = {
   redraw: {
     when: () => false,   // wird im Reiter Teams ausgelöst, wo auch die Größe eingestellt wird
     title: "Teams neu auslosen",
-    lead: "Die bestehenden Teams werden gelöscht und alle Teilnehmenden neu verteilt. Die bisherigen Team-Codes gelten dann nicht mehr.",
+    lead: "Die bestehenden Teams werden gelöscht und alle Teilnehmenden neu verteilt, mit neuen Teamleitungen.",
     keeps: "Teilnehmende und Stationen bleiben.",
     btn: "Neu auslosen",
     async run(c) {
@@ -652,8 +652,7 @@ function viewPublic() {
          <p>Sobald die Spielleitung auslost, siehst du hier dein Team.</p>
          <p class="small muted" style="margin-top:8px">Öffne diese Seite später im selben Browser, am besten über ein Lesezeichen.
            Dann erkennt sie dich wieder und zeigt dein Team von selbst.</p></div>
-         <button class="btn alt" data-act="pub-again">Jemanden ohne eigenes Handy anmelden</button>
-         <p class="small muted" style="margin-top:6px">Dieses Handy merkt sich danach die andere Person, nicht mehr dich. Besser meldet sich jede Person auf dem eigenen Handy an.</p>`
+         <p class="small muted" style="margin-top:10px;text-align:center">Jede Person meldet sich auf dem eigenen Handy an. Dieses Handy gehört jetzt zu dir.</p>`
       : `<div class="panel"><h2>Mitmachen</h2><p class="muted">Trag deinen Namen ein. Die Teams werden später zufällig ausgelost.</p>
          <div style="margin-top:12px"><label for="pname">Vor- und Nachname</label><input id="pname" autocomplete="name" autocapitalize="words" enterkeyhint="send"></div>
          <button class="btn" data-act="pub-reg" ${S.busy ? "disabled" : ""}>Anmelden</button>${msgBox("anm")}</div>`;
@@ -672,8 +671,9 @@ function viewPublic() {
   // Eigenes Team: über den Namen gefunden, oder über Geräte- bzw. Mitlese-Schlüssel bekannt
   const t = S.lookup || (S.mit && S.mit.team ? { name: S.mit.team.name, leaderName: S.mit.team.leaderName, members: S.mit.team.members } : null);
   const eigen = S.lookup ? S.lookupEigen : !!t;
-  // Gehört dieses Handy der Teamleitung? Dann steht der Einstieg zur Code-Eingabe groß da
-  const ich = S.myName || (S.mit && S.mit.name);
+  // Gehört dieses Handy der Teamleitung? Nur mit eigenem Geräte-Schlüssel: ein per Suche gemerkter
+  // Name gibt keine Eingabe frei, jede Person kann nur sich selbst einloggen
+  const ich = (S.mit && S.mit.name) || (LS.getItem("sj.token") ? S.myName : null);
   const ichLeite = !!(t && ich && t.leaderName === ich);
   if (t) {
     // Farbe wie auf der Karte der Spielleitung: beide sortieren die Teams nach Namen
@@ -688,7 +688,7 @@ function viewPublic() {
       ${p.status === "running" && !ichLeite ? `<div class="msg info" style="text-align:left">Das Spiel läuft. Station und Rätsel siehst du über den Mitlese-Link. Frag ${esc(vorname(t.leaderName) || "eure Teamleitung")} danach.</div>` : ""}
       ${msgBox("karte")}
       ${ichLeite ? `<a class="btn" href="#/team">Du bist Teamleitung: loslegen</a>
-        <p class="small muted">${LS.getItem("sj.token") ? "Dein Handy kennt dich, ein Code ist nicht nötig." : "Den Team-Code bekommst du von der Spielleitung."}</p>` : ""}
+        <p class="small muted">Auf diesem Handy bist du gleich drin.</p>` : ""}
       ${!eigen && !S.myName ? `<button class="btn" data-act="pub-ich">Das bin ich, merken</button>` : ""}
       <button class="btn ${ichLeite || (!eigen && !S.myName) ? "alt" : ""}" data-act="pub-hoch">Zum Hochhalten</button>
       <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`
@@ -817,19 +817,34 @@ function gpsNote() {
   // zwei Zeilen (white-space: pre-line), sonst wird daraus ein Bandwurmsatz
   return (g.pos ? `GPS ±${Math.round(g.acc)} m` : "Warte auf GPS …") + "\n" + kompassText();
 }
+// Ohne Eingaberecht: sagen, warum, und wohin. Eingeben kann nur die Teamleitung auf dem Handy, mit dem
+// sie sich angemeldet hat; ihr Handy holt sich den Team-Code selbst (leader_code). Das Code-Feld bleibt
+// nur als Ausweg für die Spielleitung am Tablet, falls das Handy einer Leitung ausfällt.
 function viewTeam() {
-  if (!S.team.code) return brand("Teamleitung") + `<div class="panel">
-    <h2>Team-Code eingeben</h2><p class="muted">Den Code gibt euch die Spielleitung.${LS.getItem("sj.token") ? " Du leitest ein Team und hast dich auf diesem Handy angemeldet? Dann geht es auch ohne Code." : ""}</p>
-    ${LS.getItem("sj.token") ? `<button class="btn alt" data-act="t-ohne-code">Ohne Code versuchen</button>` : ""}
-    <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="FUCHS-1234"></div>
-    <button class="btn" data-act="t-login" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox()}</div>`
-    + helpBtn("Stadtjagd: Wir haben keinen Team-Code.") + nav();
+  if (!S.team.code) {
+    const tok = LS.getItem("sj.token"), ab = LS.getItem("sj.abgemeldet");
+    const warum = !tok ? `<h2>Eingeben kann nur die Teamleitung</h2>
+        <p class="muted">Und zwar auf dem Handy, mit dem sie sich angemeldet hat. Auf diesem Handy hat sich niemand angemeldet.</p>`
+      : ab ? `<h2>Du hast dich abgemeldet</h2><p class="muted">Dieses Handy gibt gerade nichts ein.</p>
+        <button class="btn" data-act="t-ohne-code">Wieder als Teamleitung einloggen</button>`
+      : `<h2>Du leitest gerade kein Team</h2>
+        <p class="muted">Eingeben kann nur die Teamleitung, auf ihrem eigenen Handy. Station und Rätsel siehst du auf der Anmeldeseite mit.</p>
+        <button class="btn alt" data-act="t-ohne-code">Noch einmal prüfen</button>`;
+    return brand("Teamleitung") + `<div class="panel">${warum}${msgBox()}
+      <a class="btn ${ab ? "alt" : ""}" href="#/public">Zur Anmeldeseite</a></div>
+      ${S.team.codeFeld ? `<div class="panel"><h3>Mit Team-Code eingeben</h3>
+        <p class="small muted">Nur für die Spielleitung, wenn das Handy einer Teamleitung ausfällt. Den Code zeigt der Reiter Teams.</p>
+        <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="FUCHS-1234"></div>
+        <button class="btn" data-act="t-login" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox("code")}</div>`
+      : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-codefeld">Spielleitung: mit Team-Code eingeben</button></p>`}`
+      + helpBtn("Stadtjagd: Ich komme als Teamleitung nicht hinein.") + nav();
+  }
   const st = S.team.state;
   if (!st) return brand("Teamleitung") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
   return teamAnsicht(st, false);
 }
 // Was ein Team sieht. lesen = Mitglied: sieht alles wie die Teamleitung, gibt aber nichts ein.
-// Ohne lesen = Teamleitung mit Team-Code: checkt ein, beantwortet Rätsel, gibt den Koffer-Code ein.
+// Ohne lesen = Teamleitung (Code kommt vom eigenen Handy): checkt ein, beantwortet Rätsel, gibt den Koffer-Code ein.
 function teamAnsicht(st, lesen) {
   const leitung = vorname(st.team.leaderName) || "eure Teamleitung";
   // Liest die Teamleitung selbst mit, spricht die Seite sie nicht in der dritten Person an
@@ -838,13 +853,13 @@ function teamAnsicht(st, lesen) {
   const ende = lesen ? "" : (st.status === "finished" ? "" : leitungHTML(st)) + abmeldenHTML() + nav();
   let out = `<div class="bar"><div>${FLAG}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
     <div class="muted small">${lesen ? `Teamleitung: ${esc(st.team.leaderName || "offen")}`
-      : `${esc(st.team.code)}, Leitung ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div></div>`;
+      : st.team.leaderName === S.myName ? "Du leitest das Team" : `Leitung ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div></div>`;
 
   if (st.testMode) out += `<div class="msg err">Testmodus: Entfernung und Antworten werden nicht geprüft.</div>`;
   // Liest die Teamleitung selbst nur mit, fehlt ihr der Einstieg zur Eingabe
   if (lesen && st.name && st.name === st.team.leaderName && st.status !== "finished")
     out += `<div class="panel"><h3>Du bist Teamleitung</h3>
-      <p class="small muted">Hier siehst du nur mit. Eingeben (einchecken, antworten, Koffer-Code) kannst du unter Teamleitung${LS.getItem("sj.token") ? ", dein Handy kennt dich" : " mit dem Team-Code von der Spielleitung"}.</p>
+      <p class="small muted">Hier siehst du nur mit. Eingeben (einchecken, antworten, Koffer-Code) kannst du unter Teamleitung, auf diesem Handy ohne Code.</p>
       <a class="btn" href="#/team">Zur Teamleitung</a></div>`;
 
   if (st.status === "drawn") return out + `<div class="panel"><h3>Ihr seid startklar</h3>
@@ -974,7 +989,7 @@ function leitungHTML(st, ohneMit) {
   if (!andere.length) return h;
   return h + (S.team.abgeben
     ? `<div class="panel"><h3>Leitung abgeben</h3>
-        <p class="small muted">Die neue Leitung tippt auf ihrem Handy auf „Teamleitung“. Hat sie sich dort angemeldet, ist sie gleich drin, sonst mit dem Code <b style="white-space:nowrap">${esc(st.team.code)}</b>. Danach kannst du dich hier abmelden.</p>
+        <p class="small muted">Die neue Leitung tippt auf ihrem eigenen Handy auf „Teamleitung“ und ist gleich drin. Dieses Handy gibt danach nichts mehr ein.</p>
         <div style="margin-top:12px"><label for="tneu">Neue Teamleitung</label><select id="tneu"><option value="" selected disabled>Person wählen</option>${andere.map(m => `<option>${esc(m)}</option>`).join("")}</select></div>
         <div class="row2"><button class="btn alt" data-act="t-abgeben-nein">Abbrechen</button><button class="btn" id="tabgeben" data-act="t-abgeben" disabled>Übergeben</button></div>${msgBox("abgeben")}</div>`
     : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-abgeben-frage">Leitung abgeben</button></p>${msgBox("abgeben")}`);
@@ -982,7 +997,7 @@ function leitungHTML(st, ohneMit) {
 // Abmelden ist selten gewollt: kleiner Link, dann eine Rückfrage
 function abmeldenHTML() {
   return S.team.abmelden
-    ? `<div class="panel"><p><b>Wirklich abmelden?</b> Dieses Handy gibt dann nichts mehr ein. Zurück geht es mit dem Team-Code.</p>
+    ? `<div class="panel"><p><b>Wirklich abmelden?</b> Dieses Handy gibt dann nichts mehr ein, bis du dich unter Teamleitung wieder einloggst.</p>
         <div class="row2"><button class="btn alt" data-act="t-logout-nein">Nein</button>
         <button class="btn warn" data-act="t-logout">Ja, abmelden</button></div></div>`
     : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-logout-frage">Abmelden</button></p>`;
@@ -1059,7 +1074,7 @@ function viewAdmin() {
     const laeuft = st.status === "running" || st.status === "finished";
     // Nach dem Auslosen ist Starten der nächste Schritt, nicht Neu auslosen
     if (st.status === "drawn") out += `<div class="panel"><h3>Bereit zum Start</h3>
-        <p class="small muted">Codes an die Teamleitungen gegeben, Mitlese-Links in den Gruppen? Dann kann es losgehen. Vorher fragt die App noch einmal nach.</p>
+        <p class="small muted">Die Teamleitungen sind auf ihrem eigenen Handy unter „Teamleitung“ gleich drin, einen Code braucht niemand. Mitlese-Links in den Gruppen? Dann kann es losgehen. Vorher fragt die App noch einmal nach.</p>
         ${st.testMode ? `<div class="msg err">Der Testmodus ist noch an: Entfernung und Antworten werden nicht geprüft. Ausschalten im Reiter Stationen.</div>` : ""}
         <button class="btn" data-act="a-start">Spiel starten</button></div>`;
     if (laeuft) {
@@ -1104,7 +1119,7 @@ function viewAdmin() {
           ${"checkedInAt" in t && !t.checkedInAt ? "" : `<button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Rätsel werten</button>`}</div>` : ""}</td></tr>`).join("")}
       </table><p class="small muted">„Freischalten“ steht da, solange ein Team unterwegs ist, und ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.
         „Rätsel werten“ steht da, sobald es eingecheckt hat, und zählt die Station als gelöst, wenn ein Rätsel klemmt.
-        Die Teamleitung wechselst du über das Auswahlfeld; der Team-Code bleibt derselbe.
+        Die Teamleitung wechselst du über das Auswahlfeld; die neue Leitung ist auf ihrem eigenen Handy gleich drin. Den Code brauchst du nur, wenn du selbst am Tablet für ein Team eingibst.
         „Mitlese-Link“ kopiert den Link, mit dem Nachzügler bei ihrem Team mitlesen.</p>${spaeter}</div>`;
   }
   if (A.tab === "people") {
@@ -1524,8 +1539,6 @@ const ACT = {
   // Den Bildschirm hält wachHaltenPruefen() an, solange hochgehalten wird
   "pub-hoch"() { S.hoch = true; },
   "pub-hoch-zu"() { S.hoch = false; },
-  "pub-again"() {
-    LS.removeItem("sj.token"); S.mit = null; S.myName = null; LS.removeItem("sj.name"); },
   async "pub-look"(d) {
     const r = await rpc("lookup_participant", { p_name: d.name || val("plook") });
     // eigenes Team bekannt (per Name oder per Schlüssel): Suchergebnis daneben zeigen, Karte behalten
@@ -1554,13 +1567,14 @@ const ACT = {
   async "t-ohne-code"() {
     LS.removeItem("sj.abgemeldet");
     if (await leitungOhneCode()) { S.msg = null; await refresh(); return false; }
-    S.msg = { type: "err", text: "Dieses Handy leitet gerade kein Team. Gebt den Team-Code ein." };
+    S.msg = { type: "err", text: S.team.ohneGrund || "Du leitest gerade kein Team." };
   },
+  "t-codefeld"() { S.team.codeFeld = true; S.msg = null; },
   async "t-login"() {
     const code = val("tcode");
     let st;
     try { st = await rpc("team_state", { p_code: code }); }
-    catch (e) { throw String(e.message).includes("Unbekannter Team-Code") ? new Error("Diesen Team-Code gibt es nicht. Prüft die Schreibweise, etwa FUCHS-1234.") : e; }
+    catch (e) { S.msg = { type: "err", ort: "code", text: String(e.message).includes("Unbekannter Team-Code") ? "Diesen Team-Code gibt es nicht. Prüft die Schreibweise, etwa FUCHS-1234." : e.message }; return; }
     LS.removeItem("sj.abgemeldet");
     S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
   },
@@ -1587,9 +1601,11 @@ const ACT = {
   async "t-abgeben"() {
     const name = val("tneu");
     try {
-      S.team.state = await rpc("team_set_leader", { p_code: S.team.code, p_name: name });
-      S.team.abgeben = false;
-      S.msg = { type: "ok", ort: "abgeben", text: `${vorname(name)} ist jetzt Teamleitung und kann sich unter Teamleitung einloggen: mit dem eigenen angemeldeten Handy ohne Code, sonst mit ${S.team.state.team.code}. Danach kannst du dich hier abmelden.` };
+      const team = (await rpc("team_set_leader", { p_code: S.team.code, p_name: name })).team;
+      // Abgegeben: dieses Handy meldet sich ab, die neue Leitung ist auf ihrem Handy gleich drin
+      S.team.code = null; S.team.state = null; S.team.abgeben = false; S.team.abmelden = false;
+      LS.removeItem("sj.code"); stopGps();
+      S.msg = { type: "ok", text: `${vorname(name)} leitet jetzt Team ${team ? team.name : ""} und tippt auf dem eigenen Handy auf „Teamleitung“. Station und Rätsel siehst du auf der Anmeldeseite mit.` };
     } catch (e) { S.msg = { type: "err", ort: "abgeben", text: e.message || "Etwas ist schiefgelaufen." }; }
   },
   "t-gps"() { startGps(); },
@@ -1665,7 +1681,7 @@ const ACT = {
     if (A.state.status === "drawn") { A.confirm = Object.assign({ key: "redraw" }, args); S.msg = null; return; }
     A.state = await rpc("admin_draw", Object.assign({ p_pin: A.pin }, args));
     A.tracks = null; A.syncedAt = null; A.hidden = {}; A.tab = "teams";
-    S.msg = { type: "ok", text: "Ausgelost. Gib jeder Teamleitung ihren Code." };
+    S.msg = { type: "ok", text: "Ausgelost. Die Teamleitungen sind auf ihrem eigenen Handy unter „Teamleitung“ gleich drin." };
   },
   "a-start"() { S.admin.confirm = { key: "start" }; S.msg = null; },
   // Versehentlich beendet: weiter geht es ohne Verlust, Plätze und Fortschritt bleiben
@@ -2137,7 +2153,25 @@ async function leitungOhneCode() {
     const r = await rpc("leader_code", { p_token: tok });
     S.team.code = r.code; LS.setItem("sj.code", r.code);   // der Kopf zeigt dann Team und Code
     return true;
-  } catch { return false; }   // kein Schlüssel, keine Leitung oder Funkloch: dann tippen
+  } catch (e) {
+    // keine Leitung, unbekanntes Gerät oder Funkloch: der Grund steht auf der Seite
+    S.team.ohneGrund = /keine Teamleitung|kein Team/.test(String(e.message)) ? "Du leitest gerade kein Team."
+      : String(e.message).includes("Unbekanntes Gerät") ? "Dieses Handy ist nicht mehr angemeldet." : e.message;
+    return false;
+  }
+}
+// Hat die Spielleitung die Leitung gewechselt oder wurde sie abgegeben, gibt dieses Handy nichts mehr ein.
+// Bisher blieb der gemerkte Code gültig und das Team hatte zwei eingebende Handys.
+async function leitungNochDa(s) {
+  const tok = LS.getItem("sj.token");
+  if (!tok || !s || !s.team || !s.team.leaderName || s.team.leaderName === S.myName) return;
+  try { await rpc("leader_code", { p_token: tok }); return; }   // umbenannt, aber weiter Leitung
+  catch (e) {
+    if (!/keine Teamleitung|kein Team/.test(String(e.message)) && !String(e.message).includes("Unbekanntes Gerät")) return;   // Funkloch
+  }
+  S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.abgeben = false;
+  LS.removeItem("sj.code"); stopGps();
+  S.msg = { type: "info", text: `${vorname(s.team.leaderName)} leitet jetzt Team ${s.team.name}. Station und Rätsel siehst du auf der Anmeldeseite mit.` };
 }
 // Nach dem Ende zeigt auch die Teamleitung die Rangliste: dafür die öffentliche Sicht dazuholen
 async function ranglisteHolen() {
@@ -2149,14 +2183,18 @@ async function ranglisteHolen() {
 function codeUngueltig() {
   S.team.code = null; S.team.state = null; S.team.abmelden = false;
   LS.removeItem("sj.code"); stopGps();
-  S.msg = { type: "err", text: "Dieser Team-Code gilt nicht mehr, vermutlich wurde neu ausgelost. Gebt den neuen Code ein." };
+  // Mit Geräte-Schlüssel holt der nächste Abruf das neue Team von selbst (leitungOhneCode)
+  S.msg = LS.getItem("sj.token") ? { type: "info", text: "Die Teams wurden neu ausgelost." }
+    : { type: "err", ort: "code", text: "Dieser Team-Code gilt nicht mehr, vermutlich wurde neu ausgelost." };
+  if (!LS.getItem("sj.token")) S.team.codeFeld = true;   // Tablet der Spielleitung: das Feld mit der Meldung zeigen
+  if (LS.getItem("sj.token")) setTimeout(refresh, 0);
 }
 async function refresh() {
   if (!cfg.url || !cfg.key) return render();
   try {
     if (S.view === "public") { S.pub = await rpc("public_state", {}); await nameNochDa(); teamNachziehen(); await eigenesTeam(); await mitlesen(); }
     if (S.view === "team" && !S.team.code) await leitungOhneCode();
-    if (S.view === "team" && S.team.code) { teamStandSetzen(await rpc("team_state", { p_code: S.team.code })); await ranglisteHolen(); }
+    if (S.view === "team" && S.team.code) { teamStandSetzen(await rpc("team_state", { p_code: S.team.code })); await leitungNochDa(S.team.state); await ranglisteHolen(); }
     if (S.view === "admin" && S.admin.pin) S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin });
     await gpsWiederStarten();
   } catch (e) {
@@ -2351,7 +2389,7 @@ setInterval(() => {
     return;
   }
   if (busyTyping) return;
-  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(async s => { teamStandSetzen(s); await ranglisteHolen(); render(); })
+  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(async s => { teamStandSetzen(s); await leitungNochDa(s); await ranglisteHolen(); render(); })
     .catch(e => { if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); render(); } });
   // Beim Hochhalten nicht neu zeichnen: die Vollbild-Ansicht würde jedes Mal neu einblenden und flackern.
   // Die Daten kommen trotzdem, beim Schließen ist alles aktuell.

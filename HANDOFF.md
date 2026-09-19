@@ -988,8 +988,9 @@ oder einen Tunnel.
 4. Anmeldelink verteilen, Teilnehmende tragen sich ein.
 5. Vor dem Auslosen: Zahl der Angemeldeten mit der Gästeliste abgleichen,
    Testeinträge über „Testdaten entfernen“ wegräumen.
-6. Am Treffpunkt: Reiter Teams, Teamgröße wählen, auslosen, Codes an die
-   Teamleitungen geben. Den Teams sagen, dass der Weg aufgezeichnet wird und
+6. Am Treffpunkt: Reiter Teams, Teamgröße wählen, auslosen. Codes muss
+   niemand verteilen: jede Teamleitung ist auf ihrem eigenen Handy unter
+   „Teamleitung“ gleich drin. Den Teams sagen, dass der Weg aufgezeichnet wird und
    dass die Teamleitung den Mitlese-Link in die Team-Gruppe schickt. Passt
    eine Leitung nicht (nicht da, kein Handy), im Auswahlfeld eine andere
    wählen. Nachzügler: eintragen, dann „Mitlese-Link“ des Teams schicken.
@@ -1000,11 +1001,37 @@ oder einen Tunnel.
    prüft den Standort. Jedes Team zeigt seinen Platz-Bildschirm, die Aufsicht
    gibt Koffer 1, 2 oder 3 frei. Der Zieleinlauf steht live auf der
    Anmeldeseite. Fällt das Handy eines Teams aus, kann die Spielleitung am
-   Tablet unter `#/team` mit dem Team-Code für das Team eingeben.
+   Tablet unter `#/team` über „Spielleitung: mit Team-Code eingeben“ für das
+   Team eingeben (Code im Reiter Teams).
 10. Wenn alle da sind oder die Zeit um ist: „Spiel beenden“. Die Rangliste
    erscheint öffentlich, die Routen bleiben zum Auswerten erhalten. Zu früh
    gedrückt: „Spiel fortsetzen“, nichts geht verloren.
 11. **Danach:** Zeitachse und Routen ansehen, dann „Standortdaten löschen“.
+
+## Ein Handy, eine Person, kein Code (Nachtrag 22, 19.09.2026)
+
+Entscheidung: Jede Person meldet sich nur selbst an, auf dem eigenen Handy.
+Die Teamleitung braucht deshalb keinen Code. Nur Frontend, keine Migration.
+
+- „Jemanden ohne eigenes Handy anmelden“ entfällt; nach der Anmeldung steht
+  „Dieses Handy gehört jetzt zu dir.“
+- `#/team` ohne Code-Feld. Die Leitung ist über `leader_code` sofort drin,
+  andere Handys sehen den Grund und den Weg zur Anmeldeseite. Das Code-Feld
+  bleibt hinter dem Link „Spielleitung: mit Team-Code eingeben“ als Ausweg,
+  wenn das Handy einer Leitung ausfällt.
+- Ein per Teamsuche gemerkter Name („Das bin ich, merken“) gibt keine
+  Eingabe frei, nur der eigene Geräte-Schlüssel.
+- Wechselt die Spielleitung die Leitung oder gibt die Leitung ab, meldet sich
+  das alte Handy ab (`leitungNochDa` prüft nach jedem Abruf, ein Funkloch
+  meldet nicht ab). Bisher blieb der gemerkte Code gültig, und ein Team
+  konnte zwei eingebende Handys haben.
+- Nach einem Neu-Auslosen loggt das Handy der neuen Leitung von selbst ein.
+- Texte ohne Codes: Auslosen, „Bereit zum Start“, Leitungswechsel, Abgeben,
+  Abmelden.
+
+Bekannte Grenze: Nachzügler, die die Spielleitung einträgt, haben keinen
+Geräte-Schlüssel. Sie lesen über den Mitlese-Link mit, können aber nicht
+Teamleitung sein (der Wechsel-Dialog sagt das).
 
 ## UI-Durchsicht des bestehenden Designs (Nachtrag 21, 19.09.2026)
 
