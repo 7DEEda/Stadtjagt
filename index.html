@@ -278,6 +278,7 @@ a.btn{text-decoration:none;text-align:center}
 .hilfe .wa{width:22px;height:22px}
 .nav{display:flex;gap:6px;justify-content:center;margin-top:24px;font-size:14px}
 .nav a{color:var(--muted);display:inline-block;padding:10px 8px;min-height:42px}
+.nav a[aria-current="page"]{color:var(--ink);font-weight:600;text-decoration:none}
 .nav span{color:var(--line);align-self:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 /* Tablet hochkant: die Karte lässt Platz zum Wischen, sonst fängt sie jedes Scrollen ab */
@@ -321,7 +322,6 @@ a.btn{text-decoration:none;text-align:center}
   <path class="p" d="M74 156L75 146L78 141L81 146L82 156Z"/><path class="p" d="M73 156h10"/>
   <path class="p" d="M330 293L337 305L323 305Z"/>
   <path class="p" d="M120 612v14M115 617h10"/>
-  <path class="p" d="M209 457v-6l6-5 6 5v6Z"/>
   <circle class="p" cx="152" cy="330" r="6"/><circle class="pf" cx="152" cy="330" r="1.8"/>
   <path class="p" d="M293 790h14M293 794h14M295 790v5M305 790v5"/>
   <path class="p" d="M60 661L67 673L53 673Z"/>
@@ -625,7 +625,7 @@ const msgBox = ort => {
 // Die Spielleitung öffnet #/admin direkt, Teilnehmende sehen nur, was sie brauchen
 const nav = () => `<div class="nav">${[["#/public", "Anmeldung"], ["#/team", "Teamleitung"]]
   .concat(S.view === "admin" ? [["#/admin", "Spielleitung"]] : [])
-  .map(([h, t]) => `<a href="${h}">${t}</a>`).join("<span>|</span>")}</div>`;
+  .map(([h, t]) => `<a href="${h}" ${h === "#/" + S.view ? 'aria-current="page"' : ""}>${t}</a>`).join("<span>|</span>")}</div>`;
 
 /* ---------- Setup-Ansicht, falls nicht konfiguriert ---------- */
 function viewSetup() {
@@ -2315,6 +2315,13 @@ document.addEventListener("input", e => {
   const end = Math.max(W.end, W.start + 60000), v = Number(e.target.value) / 1000;
   A.cursor = v >= 1 ? null : W.start + (end - W.start) * v;
   drawMap(false); updateCursor();
+});
+// Link auf die Seite, auf der man schon ist: die Adresse ändert sich nicht, also gäbe es kein hashchange
+// und der Tipp täte nichts. Stattdessen nach oben springen und neu laden.
+document.addEventListener("click", e => {
+  const hier = e.target.closest('.nav a[aria-current="page"]');
+  if (!hier) return;
+  e.preventDefault(); S.msg = null; window.scrollTo({ top: 0, behavior: "smooth" }); refresh();
 });
 document.addEventListener("click", async e => {
   const a = e.target.closest("[data-act]");

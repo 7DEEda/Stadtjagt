@@ -248,7 +248,7 @@ def variante_a():
     teile.append("".join(hp))
     # Wegpunkte wie bisher
     teile.append('<path class="p" d="M330 293l7 12h-14z"/><path class="p" d="M120 612v14M115 617h10"/>'
-                 '<path class="p" d="M209 457v-6l6-5 6 5v6z"/><circle class="p" cx="152" cy="330" r="6"/>'
+                 '<circle class="p" cx="152" cy="330" r="6"/>'
                  '<circle class="pf" cx="152" cy="330" r="1.8"/><path class="p" d="M293 790h14M293 794h14M295 790v5M305 790v5"/>')
     # Nordpfeil und Maßstab
     teile.append('<g class="nord"><path d="M372 36l7 20-7-5-7 5z"/><text x="372" y="31">N</text></g>')
