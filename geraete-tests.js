@@ -74,18 +74,24 @@
             if (h.platform === "Android" && h.platformVersion) os = "Android " + h.platformVersion.split(".")[0];
           }
         } catch { /* dann bleibt es bei der Kennung */ }
+        // Geräteart: kein Browser sagt sie direkt, wir schließen aus Kennung, Zeiger und Bildschirm
+        const mobil = navigator.userAgentData?.mobile ?? /Mobi|iPhone|iPod/.test(ua);
+        const grob = matchMedia("(pointer: coarse)").matches, kurz = Math.min(screen.width, screen.height);
+        const art = /iPhone|iPod/.test(ua) || mobil ? "Telefon"
+          : /iPad/.test(ua) || os === "iPadOS" || /Android/.test(ua) || (grob && kurz >= 600) ? "Tablet"
+          : navigator.maxTouchPoints > 0 ? "Laptop mit Touch" : "Laptop oder PC";
         let akku = null;
         try { if (navigator.getBattery) { const b = await navigator.getBattery(); akku = Math.round(b.level * 100) + " %" + (b.charging ? ", lädt" : ""); } } catch { /* egal */ }
         const mess = {
-          "Modell": modell || "keine Angabe", "Betriebssystem": os, "Browser": browser, "In-App-Browser": inApp || "nein",
+          "Geräteart": art, "Modell": modell || "keine Angabe", "Betriebssystem": os, "Browser": browser, "In-App-Browser": inApp || "nein",
           "HTTPS": janein(window.isSecureContext), "Bildschirm": `${screen.width} x ${screen.height}, Faktor ${rund(devicePixelRatio, 2)}`,
-          "Fenster": `${innerWidth} x ${innerHeight}`, "Als App installiert": janein(matchMedia("(display-mode: standalone)").matches || navigator.standalone === true),
+          "Fenster": `${innerWidth} x ${innerHeight}`, "Zeiger": grob ? "Finger" : "Maus", "Berührungspunkte": navigator.maxTouchPoints, "Als App installiert": janein(matchMedia("(display-mode: standalone)").matches || navigator.standalone === true),
           "Sprache": navigator.language, "Netz laut Browser": navigator.connection ? `${navigator.connection.effectiveType || "?"}, ${navigator.connection.downlink ?? "?"} Mbit/s` : "keine Angabe",
           "Akku": akku || "keine Angabe", "Dunkles Design": janein(matchMedia("(prefers-color-scheme: dark)").matches), "Kennung": ua
         };
         if (!window.isSecureContext) return { art: "err", wert: "kein HTTPS", mess };
         if (inApp) return { art: "warn", wert: "In-App-Browser", mess };
-        return { art: "ok", wert: `${modell ? modell + ", " : ""}${os}, ${browser}`, mess };
+        return { art: "ok", wert: `${art}, ${modell ? modell + ", " : ""}${os}, ${browser}`, mess };
       }
     },
     {
@@ -443,5 +449,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 2, tests };
+  window.SJ_TESTS = { version: 3, tests };
 })();
