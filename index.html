@@ -621,7 +621,7 @@ function fmtDur(ms) {
   return m < 60 ? m + " min" : Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0") + " h";
 }
 // Das Zeichen im Kopf ist ein Kompass. Kennt die App die Blickrichtung, zeigt die orange Spitze nach Norden
-// (logoNadel() im Abschnitt GPS und Kompass). logoDreh steht im Markup, damit die Nadel ein render() übersteht.
+// (logoStart() im Abschnitt GPS und Kompass). logoDreh steht im Markup, damit die Nadel ein render() übersteht.
 let logoDreh = 0;
 const logo = () => `<svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><g class="nadel" style="transform:rotate(${logoDreh.toFixed(1)}deg)"><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></g></svg>`;
 // Hilfe per WhatsApp. Ohne Nummer in config.js erscheint kein Knopf.
@@ -2154,13 +2154,28 @@ function liveUpdate() {
   const d = $("#dist"); if (d) d.textContent = fmtDist(haversine(g.pos, t));
   setNeedle(bearingTo(g.pos, t) - richtung());
 }
-// Nadel im Zeichen oben nachführen, auf dem kürzesten Weg (von 359° auf 1° sind es 2°, nicht 358°)
-function logoNadel() {
-  const g = S.gps;
-  if (g.heading == null || g.kompass !== "an") return;
-  logoDreh += ((-g.heading - logoDreh) % 360 + 540) % 360 - 180;
-  const n = $(".flag .nadel"); if (n) n.style.transform = `rotate(${logoDreh.toFixed(1)}deg)`;
+// Nadel im Zeichen oben: eigener Zuhörer, damit sie überall mitläuft, auch auf der Anmeldeseite und bevor
+// der Standort freigegeben ist (vorher drehte sie nur, solange der Kompass zur Station lief). Android liefert
+// ohne Nachfrage, iOS erst nach der Freigabe; dann hängt logoStart(true) den Zuhörer frisch ein.
+let logoH = null, logoTick = false;
+function logoStart(neu) {
+  if (!window.DeviceOrientationEvent || (logoH && !neu)) return;
+  if (logoH) { window.removeEventListener("deviceorientationabsolute", logoH); window.removeEventListener("deviceorientation", logoH); }
+  logoH = e => {
+    const wch = e.webkitCompassHeading;
+    const hd = typeof wch === "number" ? wch : e.absolute && e.alpha != null ? 360 - e.alpha : null;
+    if (hd == null) return;
+    const blick = hd + ((screen.orientation && screen.orientation.angle) || window.orientation || 0);
+    // auf dem kürzesten Weg nachführen (von 359° auf 1° sind es 2°, nicht 358°)
+    logoDreh += ((-blick - logoDreh) % 360 + 540) % 360 - 180;
+    if (logoTick) return;
+    logoTick = true;
+    requestAnimationFrame(() => { logoTick = false; const n = $(".flag .nadel"); if (n) n.style.transform = `rotate(${logoDreh.toFixed(1)}deg)`; });
+  };
+  if ("ondeviceorientationabsolute" in window) window.addEventListener("deviceorientationabsolute", logoH, { passive: true });
+  else window.addEventListener("deviceorientation", logoH, { passive: true });
 }
+logoStart();
 // neu = true hängt den Zuhörer frisch ein: nach der iOS-Freigabe, falls Safari einen Zuhörer von vor der
 // Freigabe nicht bedient
 function addOrient(neu) {
@@ -2207,7 +2222,6 @@ function addOrient(neu) {
     if (!raf) raf = requestAnimationFrame(() => {
       raf = 0;
       if (kompassNeu && kompassSichtbar()) { kompassNeu = false; render(); } else liveUpdate();
-      logoNadel();
     });
   };
   orientH = h;
@@ -2230,7 +2244,7 @@ async function startGps(auto) {
     } else if (typeof DOE.requestPermission === "function") {
       // iOS: muss aus einem Fingertipp kommen, sonst wird abgelehnt
       const r = await DOE.requestPermission();
-      if (r === "granted") { g.kompass = "wartet"; addOrient(true); neigungStart(); }
+      if (r === "granted") { g.kompass = "wartet"; addOrient(true); neigungStart(); logoStart(true); }
       else g.kompass = "abgelehnt";
     } else { g.kompass = "wartet"; addOrient(); }
   } catch { g.kompass = "abgelehnt"; }
