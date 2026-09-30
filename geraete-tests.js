@@ -195,8 +195,10 @@
       id: "wachhalten", titel: "Wach halten", bezug: "damit das Handy unterwegs nicht sperrt", block: "auto",
       async lauf(ctx) {
         if (!navigator.wakeLock) return { art: "err", wert: "fehlt", mess: { "navigator.wakeLock": "nicht vorhanden" } };
-        try { ctx.wach.sperre = await navigator.wakeLock.request("screen"); return { art: "ok", wert: "erteilt", mess: { "navigator.wakeLock": "ja" } }; }
-        catch (e) { return { art: "warn", wert: "verweigert", mess: { "Fehler": e.name + ": " + e.message, "Häufiger Grund": "Stromsparmodus" } }; }
+        const lage = { "Tipp gilt noch (userActivation)": navigator.userActivation ? (navigator.userActivation.isActive ? "ja" : "nein") : "keine Angabe", "Seite sichtbar": document.visibilityState };
+        try { ctx.wach.sperre = await navigator.wakeLock.request("screen"); ctx.wach.ohneTipp = "erteilt"; return { art: "ok", wert: "erteilt", mess: { "navigator.wakeLock": "ja", ...lage } }; }
+        catch (e) { ctx.wach.ohneTipp = "verweigert";
+          return { art: "warn", wert: "verweigert", mess: { "Fehler": e.name + ": " + e.message, ...lage, "Hinweis": "Mögliche Gründe: Stromsparmodus, oder das Gerät vergibt die Sperre nur direkt aus einem Fingertipp. Der Schritt „Wach halten, mit Tipp“ klärt das." } }; }
       }
     },
     {
@@ -281,6 +283,27 @@
         const mess = { "Weg für s": rund(weg / 1000, 1), "Server gleich wieder erreichbar": janein(netz), "Antwort in ms": Math.round(jetzt() - t),
           "Hinweis": "Lädt die Seite beim Zurückkommen neu, fehlt dieser Eintrag im Lauf." };
         return { art: netz ? "ok" : "warn", wert: netz ? "bleibt" : "Netz hängt", mess };
+      }
+    },
+
+    {
+      // Ein iPhone (iOS 18.7, kein Stromsparmodus) verweigerte die Sperre im automatischen Teil. Dieser Schritt
+      // fragt sie direkt im Fingertipp an: klappt es so, braucht das Gerät den Tipp, und das Spiel muss sie dort holen.
+      id: "wachhalten-tipp", titel: "Wach halten, mit Tipp", bezug: "braucht die Sperre einen Fingertipp?", block: "hand",
+      hand: "Nur auf Los tippen, mehr ist nicht zu tun.", grenze: 20,
+      lauf(ctx) {
+        const ohne = ctx.wach.ohneTipp || "nicht gelaufen";
+        if (!navigator.wakeLock) return { art: "err", wert: "fehlt", mess: { "navigator.wakeLock": "nicht vorhanden", "Ohne Tipp": ohne } };
+        const aktiv = navigator.userActivation ? (navigator.userActivation.isActive ? "ja" : "nein") : "keine Angabe";
+        const anfrage = navigator.wakeLock.request("screen");   // noch im Fingertipp, kein await davor
+        return anfrage.then(l => {
+          ctx.wach.sperre = l;
+          const mess = { "Mit Tipp": "erteilt", "Ohne Tipp": ohne, "Tipp gilt noch (userActivation)": aktiv, "Seite sichtbar": document.visibilityState };
+          if (ohne !== "erteilt") mess["Hinweis"] = "Dieses Gerät vergibt die Sperre nur direkt aus einem Fingertipp. Das Spiel muss sie beim Tippen holen.";
+          return { art: "ok", wert: ohne === "erteilt" ? "erteilt" : "nur mit Tipp", mess };
+        }, e => ({ art: "warn", wert: "auch mit Tipp verweigert", mess: { "Fehler": e.name + ": " + e.message, "Ohne Tipp": ohne,
+          "Tipp gilt noch (userActivation)": aktiv, "Seite sichtbar": document.visibilityState,
+          "Hinweis": "Auch direkt im Tipp verweigert: dann liegt es an einer Einstellung des Geräts oder des Browsers, nicht am Zeitpunkt." } }));
       }
     },
 
@@ -385,5 +408,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 5, tests };
+  window.SJ_TESTS = { version: 6, tests };
 })();

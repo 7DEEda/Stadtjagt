@@ -2293,6 +2293,9 @@ function wachHaltenPruefen() {
       .catch(() => { }).finally(() => { S.wachAnfrage = false; });
   } else if (!soll && S.wachHalten) { S.wachHalten.release().catch(() => { }); S.wachHalten = null; }
 }
+// Ein iPhone (iOS 18.7) verweigerte die Sperre, als sie ohne Fingertipp angefragt wurde (Geräte-Test 30.09.2026).
+// Darum bei jedem Tipp noch einmal versuchen: gehalten oder nicht gebraucht, tut das nichts.
+document.addEventListener("click", () => wachHaltenPruefen(), true);
 // Nach dem Neuladen (Tab verworfen, WhatsApp geöffnet) den Standort wieder starten, wenn er schon
 // erlaubt war. Den iOS-Kompass nicht: der braucht einen Fingertipp, dafür steht ein Knopf da.
 async function gpsWiederStarten() {
