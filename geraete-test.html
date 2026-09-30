@@ -100,6 +100,9 @@ p{margin:.4em 0 0}
 .muted{color:var(--muted)}.small{font-size:14px}
 .brand{display:flex;gap:12px;align-items:center;margin-bottom:16px}
 .flag{width:32px;height:32px;flex:none}
+/* Das Zeichen im Kopf ist ein Kompass. Liefert das Gerät eine Richtung, zeigt die orange Spitze wirklich nach Norden. */
+#nadel{transform-origin:12px 12px;transition:transform .16s linear}
+@media (prefers-reduced-motion:reduce){#nadel{transition:none}}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
 label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
 input{width:100%;font:500 17px var(--body);padding:11px 13px;border-radius:10px;border:1.5px solid var(--feld);background:var(--paper);color:var(--ink)}
@@ -190,7 +193,7 @@ li.ok .wert{color:var(--ok)}li.warn .wert{color:var(--warn)}li.err .wert{color:v
 </svg></div>
 <main>
   <div class="brand">
-    <svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="1" width="22" height="22" fill="#fff" stroke="currentColor" stroke-width="1.2"/><polygon points="1,1 23,1 23,23" fill="var(--flag)"/></svg>
+    <svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><g id="nadel"><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></g></svg>
     <div><h1>Geräte-Test</h1><div class="small muted" id="unter">Stadtjagd</div></div>
   </div>
   <p>Prüft auf diesem Gerät alles, was das Spiel braucht oder brauchen könnte. Ein Tipp startet den Lauf, das Ergebnis wird gespeichert.</p>
@@ -249,13 +252,15 @@ async function rpc(fn, args) {
 
 /* ---------- Ausrichtung: ein Zuhörer für Kompass, Neigung und Hintergrund ---------- */
 const sensor = {
-  n: 0, richtung: null, quelle: null, genau: null, beta: null, gamma: null, faecher: new Set(), an: false, bezug: null, tick: false, ziel: { x: 0, y: 0 },
-  start() {
-    if (this.an || !window.DeviceOrientationEvent) return;
+  dreh: 0, nTick: false, n: 0, richtung: null, quelle: null, genau: null, beta: null, gamma: null, faecher: new Set(), an: false, bezug: null, tick: false, ziel: { x: 0, y: 0 },
+  // neu = true hängt den Zuhörer frisch ein: nach der iOS-Freigabe, falls Safari den alten nicht bedient
+  start(neu) {
+    if (!window.DeviceOrientationEvent || (this.h && !neu)) return;
+    if (this.h) { removeEventListener("deviceorientation", this.h); removeEventListener("deviceorientationabsolute", this.h); }
     this.an = true;
-    const h = e => this.bei(e);
-    addEventListener("deviceorientation", h, { passive: true });
-    if ("ondeviceorientationabsolute" in window) addEventListener("deviceorientationabsolute", h, { passive: true });
+    this.h = e => this.bei(e);
+    addEventListener("deviceorientation", this.h, { passive: true });
+    if ("ondeviceorientationabsolute" in window) addEventListener("deviceorientationabsolute", this.h, { passive: true });
   },
   bei(e) {
     this.n++;
@@ -265,7 +270,12 @@ const sensor = {
       if (typeof e.webkitCompassAccuracy === "number") this.genau = e.webkitCompassAccuracy;
     } else if (e.absolute && e.alpha != null) { this.richtung = (360 - e.alpha) % 360; this.quelle = "alpha (absolut)"; }
     else if (e.alpha != null && !this.quelle) this.quelle = "relativ";
-    if (this.richtung != null && this.quelle !== "relativ") this.faecher.add(Math.floor(this.richtung / 10) % 36);
+    if (this.richtung != null && this.quelle !== "relativ") {
+      this.faecher.add(Math.floor(this.richtung / 10) % 36);
+      // Nadel im Kopf nachführen, auf dem kürzesten Weg (von 359° auf 1° sind es 2°, nicht 358°)
+      this.dreh += ((-this.richtung - this.dreh) % 360 + 540) % 360 - 180;
+      if (!this.nTick) { this.nTick = true; requestAnimationFrame(() => { this.nTick = false; $("#nadel").style.transform = `rotate(${this.dreh.toFixed(1)}deg)`; }); }
+    }
     if (e.beta == null || e.gamma == null) return;
     this.beta = e.beta; this.gamma = e.gamma;
     // Neigungs-Parallax wie neigungStart() in index.html
@@ -287,7 +297,9 @@ const sensor = {
   }
 };
 const brauchtNachfrage = window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === "function";
-if (!brauchtNachfrage) sensor.start();   // Android liefert ohne Nachfrage, iOS erst nach dem Tipp
+// Immer gleich zuhören: Android liefert ohne Nachfrage, iOS erst nach dem Tipp. requestPermission gibt es
+// inzwischen auch in Chrome, am Vorhandensein lässt sich iOS also nicht mehr erkennen.
+sensor.start();
 
 /* ---------- Hintergrund wie im Spiel: die Wahl der Spielleitung ---------- */
 rpc("public_state").then(s => {
@@ -444,7 +456,7 @@ $("#start").onclick = async () => {
   if (brauchtNachfrage) {
     try { basis.bewegung = await DeviceOrientationEvent.requestPermission(); } catch (e) { basis.bewegung = "Fehler: " + e.message; }
   } else basis.bewegung = window.DeviceOrientationEvent ? "nicht nötig" : "nicht vorhanden";
-  sensor.start();
+  sensor.start(true);
   lauf.begonnen = new Date().toISOString();
   for (const z of Z.filter(z => z.selbst)) await fuehre(z);
   lauf.autoFertig = true;

@@ -98,6 +98,7 @@ p{margin:.4em 0 0}
 .muted{color:var(--muted)}.small{font-size:14px}
 .brand{display:flex;gap:12px;align-items:center;margin-bottom:16px}
 .flag{width:32px;height:32px;flex:none}
+#nadel{transform-origin:12px 12px;transition:transform .16s linear}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
 .btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 19px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);min-height:48px}
 .btn.alt{background:var(--card);color:var(--ink);border:1.5px solid var(--feld)}
@@ -168,7 +169,7 @@ li.dran,li.laeuft.hand,li.frage{background:var(--dran-bg);margin:0 -16px;padding
 <div id="mock">Mockup, Werte gespielt</div>
 <main>
   <div class="brand">
-    <svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="1" width="22" height="22" fill="#fff" stroke="currentColor" stroke-width="1.2"/><polygon points="1,1 23,1 23,23" fill="var(--flag)"/></svg>
+    <svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><g id="nadel"><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></g></svg>
     <div><h1>Geräte-Test</h1><div class="small muted">Stadtjagd · Suite 4 · 19 Schritte</div></div>
   </div>
   <p>Prüft, was das Spiel von diesem Gerät braucht oder brauchen könnte. Erlaube Standort und Bewegung, wenn das Handy fragt.</p>
@@ -305,7 +306,7 @@ $("#start").onclick = async () => {
 };
 $("#kopie").onclick = () => { const k = $("#kopie"); k.textContent = "Kopiert"; setTimeout(() => { k.textContent = "Bericht kopieren"; }, 2000); };
 $("#neuLauf").onclick = () => { const o = HAND.filter(z => z.st !== "fertig").length; if (!o || confirm(`Noch ${o} Schritte offen. Trotzdem neu beginnen?`)) location.reload(); };
-addEventListener("mousemove", e => { const t = $("#topo"); t.style.setProperty("--nx", ((e.clientX / innerWidth - .5) * 36).toFixed(1) + "px"); t.style.setProperty("--ny", ((e.clientY / innerHeight - .5) * 36).toFixed(1) + "px"); });
+addEventListener("mousemove", e => { $("#nadel").style.transform = `rotate(${((e.clientX / innerWidth - .5) * 300).toFixed(0)}deg)`; const t = $("#topo"); t.style.setProperty("--nx", ((e.clientX / innerWidth - .5) * 36).toFixed(1) + "px"); t.style.setProperty("--ny", ((e.clientY / innerHeight - .5) * 36).toFixed(1) + "px"); });
 </script>
 </body>
 </html>

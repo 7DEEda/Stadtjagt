@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Icon-Varianten Stadtjagd</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Mockup: Ersatz für die weiß-orange Postenflagge im Kopf. Farben aus index.html. */
+:root{--head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;--body:"Barlow",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:#E9EDE6;color:#17302A;font:16px/1.5 var(--body);padding:24px 16px 60px}
+h1{font:700 28px var(--head);margin:0 0 4px}
+.intro{max-width:760px;margin:0 auto 20px}
+.raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;max-width:1100px;margin:0 auto}
+.karte{background:#fff;border:2px solid #D3DECF;border-radius:14px;padding:14px;cursor:pointer;text-align:left;font:inherit;color:inherit}
+.karte[aria-pressed="true"]{border-color:#EE5F1B}
+.karte h2{font:700 19px var(--head);margin:0}
+.karte p{margin:2px 0 10px;font-size:14px;color:#445650}
+.paar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.probe{border-radius:10px;padding:14px 12px}
+.hell{--paper:#F1F5EE;--ink:#17302A;--muted:#5B6F68;--flag:#EE5F1B;--card:#FFFFFF;background:var(--paper);color:var(--ink)}
+.dunkel{--paper:#0F1B18;--ink:#E4EEE8;--muted:#9BB1A9;--flag:#FF7A3A;--card:#16261F;background:var(--paper);color:var(--ink)}
+.brand{display:flex;gap:10px;align-items:center}
+.brand svg{width:32px;height:32px;flex:none}
+.brand b{display:block;font:700 24px/1.1 var(--head)}
+.brand span{font-size:12px;color:var(--muted)}
+.gross{display:flex;gap:14px;align-items:flex-end;margin-top:12px}
+.gross svg:nth-child(1){width:72px;height:72px}
+.gross svg:nth-child(2){width:20px;height:20px}
+.gross small{font-size:11px;color:var(--muted)}
+#wahl{position:fixed;left:0;right:0;bottom:0;background:#17302A;color:#F1F5EE;padding:10px 16px;text-align:center;font-size:15px}
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Icon im Kopf: sechs Varianten</h1>
+  <p>Jede Karte zeigt das Icon im Kopf der Seite, hell und dunkel, dazu groß (72 px) und klein wie im Browser-Tab (20 px). Tipp auf eine Karte markiert sie.</p>
+</div>
+<div class="raster" id="raster"></div>
+<div id="wahl">Noch nichts gewählt</div>
+
+<script>
+// Alle Icons auf 24er-Raster, Farben über currentColor (Tinte) und var(--flag) (Orange)
+const ICONS = [
+  ["0", "Heute: Postenflagge", "Das Zeichen aus dem Orientierungslauf. Quadrat mit weißer und oranger Hälfte.",
+    `<rect x="1" y="1" width="22" height="22" fill="#fff" stroke="currentColor" stroke-width="1.2"/><polygon points="1,1 23,1 23,23" fill="var(--flag)"/>`],
+  ["A", "Kartennadel", "Der Standort-Pin, den jeder kennt. Sagt sofort: hier geht es um Orte.",
+    `<path d="M12 22.5C12 22.5 4.5 14.6 4.5 9.2a7.5 7.5 0 0 1 15 0c0 5.4-7.5 13.3-7.5 13.3z" fill="var(--flag)"/><circle cx="12" cy="9.2" r="3" fill="var(--paper)"/>`],
+  ["B", "Kompassnadel", "Kreis mit Nadel, die Nordspitze orange. Passt zum Richtungspfeil im Spiel.",
+    `<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/>`],
+  ["C", "Wimpel", "Fähnchen am Stab, wie ein gesteckter Punkt auf der Route. Bleibt nah an der Flagge, wirkt aber leichter.",
+    `<path d="M6 2.5v19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 4h12.5l-3.4 4.5 3.4 4.5H7z" fill="var(--flag)"/>`],
+  ["D", "Route", "Gestrichelter Weg vom Start zum Ziel. Erzählt die Jagd, ist aber klein schwerer zu lesen.",
+    `<circle cx="5" cy="19" r="2.4" fill="currentColor"/><path d="M5 19C5 12 19 15 19 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2.6 2.8" stroke-linecap="round"/><path d="M19 12.2s-4-4.2-4-7a4 4 0 0 1 8 0c0 2.8-4 7-4 7z" fill="var(--flag)"/><circle cx="19" cy="5.2" r="1.4" fill="var(--paper)"/>`],
+  ["E", "Flagge, weich", "Die heutige Flagge, neu gezeichnet: runde Ecken, kein weißer Kasten, keine Kontur.",
+    `<rect x="2" y="2" width="20" height="20" rx="5" fill="currentColor" opacity=".16"/><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-1.46 3.54L3.46 3.46A5 5 0 0 1 7 2z" fill="var(--flag)"/>`],
+  ["F", "Zielkreis", "Ring mit orangem Mittelpunkt: der Eincheck-Radius um eine Station.",
+    `<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8" opacity=".35"/><circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.6" fill="var(--flag)"/>`]
+];
+const svg = s => `<svg viewBox="0 0 24 24" aria-hidden="true">${s}</svg>`;
+const probe = (klasse, s) => `<div class="probe ${klasse}"><div class="brand">${svg(s)}<div><b>Geräte-Test</b><span>Stadtjagd · Suite 4</span></div></div>
+  <div class="gross">${svg(s)}${svg(s)}<small>72 px und 20 px</small></div></div>`;
+$r = document.getElementById("raster");
+for (const [k, name, text, s] of ICONS) {
+  const b = document.createElement("button");
+  b.className = "karte"; b.setAttribute("aria-pressed", "false");
+  b.innerHTML = `<h2>${k === "0" ? "" : k + ": "}${name}</h2><p>${text}</p><div class="paar">${probe("hell", s)}${probe("dunkel", s)}</div>`;
+  b.onclick = () => {
+    document.querySelectorAll(".karte").forEach(x => x.setAttribute("aria-pressed", x === b));
+    document.getElementById("wahl").textContent = k === "0" ? "Gewählt: die heutige Flagge bleibt" : `Gewählt: ${k}, ${name}`;
+  };
+  $r.appendChild(b);
+}
+</script>
+</body>
+</html>
