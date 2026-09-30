@@ -814,7 +814,7 @@ function kompassText() {
     if (g.kompass !== "kalibrieren")
       return "Kompass aktiv" + (g.kompassAcc != null && g.kompassAcc >= 0 ? ", " + accText(g.kompassAcc) : "");
     const wie = g.kompassAcc != null && g.kompassAcc >= 0 ? ` (${accText(g.kompassAcc)})` : "";
-    return `Kompass ungenau${wie}` + (lauf ? ", Pfeil folgt eurer Laufrichtung" : "");
+    return (g.nachPause ? "Kompass nach Pause unsicher" : `Kompass ungenau${wie}`) + (lauf ? ", Pfeil folgt eurer Laufrichtung" : "");
   }
   // iOS: Ereignisse kommen an, aber ohne Nordbezug, das ist der Kalibrierfall
   if (g.kompass === "kalibrieren") return "Kompass findet Norden nicht";
@@ -832,6 +832,7 @@ const kalText = f => f >= 1 ? "Fertig" : f > 0 ? "Bewegung erkannt, weiter so" :
 function kalHTML() {
   const g = S.gps, f = Math.min(1, g.kal.bewegt / KAL_MS);
   return `<div id="kal"><h3 style="margin-top:16px">Kompass einmessen</h3>
+    ${g.nachPause ? `<p><b>Ihr wart kurz in einer anderen App.</b> Der Kompass hat in der Zeit nicht mitgezählt und kann jetzt danebenliegen.</p>` : ""}
     <p>Haltet das Handy flach vor euch und schwenkt es ein paar Mal in einer liegenden Acht, so wie hier.
     Dreht dabei das Handgelenk mit.</p>${ACHT}
     <div class="fort"><span id="kalfort" style="width:${Math.round(f * 100)}%"></span></div>
@@ -2107,7 +2108,7 @@ const kalHeute = () => LS.getItem(KAL_KEY) === heute();
 function kalStart() { S.gps.kal = { bewegt: 0, letzt: null }; S.gps.kalOk = null; }
 function kalEnde(fertig) {
   const g = S.gps;
-  g.kal = null;
+  g.kal = null; g.nachPause = false; g.nachPauseOffen = false;
   LS.setItem(KAL_KEY, heute());
   g.kalOk = fertig ? { acc: g.kompassAcc, bis: Date.now() + 8000 } : null;
 }
@@ -2136,6 +2137,15 @@ function kalZeigen() {
   const a = $("#kalacc"); if (a) a.textContent = accText(S.gps.kompassAcc);
 }
 
+// Zurück aus einer anderen App oder vom Sperrbildschirm. Befund vom 30.09.2026 (Android): der Pfeil zeigte danach
+// mit festem Versatz daneben, als wäre der Kompass angehalten worden, während man sich drehte. Die Sensor-Fusion
+// des Handys läuft im Hintergrund nicht mit und fängt sich erst durch Bewegung. iOS meldet die Genauigkeit selbst
+// (kompassAcc), dort regelt das der Zustand "kalibrieren" schon.
+function kompassNachPause(wegMs) {
+  const g = S.gps;
+  if (wegMs < 3000 || !g.on || !kompassDa() || g.kompassAcc != null) return;
+  g.nachPause = true; g.nachPauseOffen = true; g.kalOk = null; g.kompass = "kalibrieren";
+}
 function setNeedle(target) {
   const g = S.gps;
   g.needle += ((target - g.needle) % 360 + 540) % 360 - 180;
@@ -2222,7 +2232,8 @@ function addOrient(neu) {
       else if (acc < 0 || acc > KOMPASS_GRENZE) g.kompass = "kalibrieren";
       else if (acc <= KOMPASS_GRENZE - 5 || g.kompass !== "kalibrieren") g.kompass = "an";
     } else if (e.absolute && e.alpha != null) {
-      hd = 360 - e.alpha; g.kompass = "an";
+      // nachPause: die Seite war im Hintergrund, der Richtung ist bis zum Einmessen nicht zu trauen (siehe kompassNachPause)
+      hd = 360 - e.alpha; g.kompass = g.nachPause ? "kalibrieren" : "an";
     } else if (wch === null) {
       // iOS: Ereignis kommt an, aber ohne Nordbezug, Magnetsensor nicht kalibriert
       g.kompass = "kalibrieren";
@@ -2239,6 +2250,8 @@ function addOrient(neu) {
     // Kompass des Tages von selbst anbieten
     let kalWechsel = false;
     if (g.kal) kalWechsel = kalSchritt(e);
+    // nach einer Pause das Einmessen von selbst anbieten, sobald der Kompass wieder zu sehen ist
+    else if (g.nachPauseOffen && ($("#needle") || $("#gstat"))) { g.nachPauseOffen = false; kalStart(); kalWechsel = true; }
     else if (kompassDa() && !kalHeute() && ($("#needle") || $("#gstat"))) { kalStart(); kalWechsel = true; }
     // Hinweise und Knöpfe hängen am Zustand: bei einem Wechsel neu zeichnen
     if (kalWechsel || g.kompass + (g.heading == null) !== vorher) kompassNeu = true;
@@ -2760,8 +2773,11 @@ setInterval(() => {
   }).catch(() => { });
 }, 10000);
 // Zurück aus einer anderen App oder vom Sperrbildschirm: sofort nachladen, nicht erst im nächsten Takt
+let wegSeit = 0;
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) return;
+  if (document.hidden) { wegSeit = Date.now(); return; }
+  if (wegSeit) kompassNachPause(Date.now() - wegSeit);
+  wegSeit = 0;
   S.wachHalten = null;
   if (cfg.url && cfg.key) refresh();
 });

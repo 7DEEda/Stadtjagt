@@ -1325,3 +1325,20 @@ stehen: wer neben der Teamleitung steht, scannt ihn mit der Handykamera.
 Generator: `vendor/qrcode.js` (qrcode-generator 1.4.4, MIT), lokal, wird erst
 beim ersten Gebrauch geladen (`qrSvg()`). Der Code steht immer dunkel auf Weiß,
 auch im dunklen Design.
+
+## Kompass nach einer Pause (30.09.2026)
+
+Befund von Friedrich (Android): Kompass eingemessen, in eine andere App
+gewechselt, sich bewegt, zurück auf die Seite, der Pfeil zeigt mit festem
+Versatz daneben, „als wäre er pausiert worden“. Im Spiel gibt es keinen
+gespeicherten Versatz; die Richtung kommt bei jedem Ereignis frisch aus
+`deviceorientationabsolute`. Vermutung: die Sensor-Fusion des Handys hält im
+Hintergrund an und findet Norden erst durch Bewegung wieder. Belegt ist das
+noch nicht, der Geräte-Test misst es ab Suite 7 (Schritt „Kompass nach Pause“).
+
+Was das Spiel jetzt tut: War die Seite mindestens 3 Sekunden im Hintergrund,
+gilt der Kompass als unsicher (`kompassNachPause()`, Zustand „kalibrieren“):
+der Pfeil folgt der Laufrichtung, soweit eine da ist, und das Einmessen
+(liegende Acht) wird von selbst angeboten, mit dem Satz, warum. Nach dem
+Einmessen oder „Überspringen“ gilt der Kompass wieder. Nur Android; iOS meldet
+die Genauigkeit selbst. Geprüft im Prüfstand, auf einem echten Handy noch nicht.

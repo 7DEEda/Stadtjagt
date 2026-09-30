@@ -473,6 +473,7 @@
   };
 
   window.__orient = name => zustellen(ORIENT[name]());   // für Prüfungen von außen (Playwright)
+  window.__zustellen = zustellen;
 
   /* ---------- Schritte nach dem Laden ---------- */
   const warte = ms => new Promise(r => setTimeout(r, ms));
