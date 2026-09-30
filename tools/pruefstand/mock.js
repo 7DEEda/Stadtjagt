@@ -141,6 +141,7 @@
     "leitung-standort-grob": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 1 }, gps: Object.assign({}, GPS_UNTERWEGS, { acc: 4650 }),
       steps: [{ click: "[data-act=t-gps]" }, { wait: 900 }] },
     "name-geheim": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 1 }, gps: GPS_UNTERWEGS, geheim: [340, 170], steps: kompassAn },
+    "name-geheim-test": { welt: "running", view: "team", ls: IM_TEAM, testMode: true, fuchs: { solved: 1 }, geheim: [340, 170] },
     "name-geheim-fern": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 1 }, gps: GPS_UNTERWEGS, geheim: [200, 100], steps: kompassAn },
     "name-geheim-ohne-gps": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 1 }, geheim: [340, 170] },
     "name-geheim-mitglied": { welt: "running", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 1 }, geheim: [340, 170] },

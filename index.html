@@ -823,6 +823,8 @@ function viewPublic() {
 // und löst sich mit der Annäherung auf. Nur die Anzeige: der Name kommt im Klartext vom Server, das Handy
 // verschleiert ihn nach seinem eigenen Standort (Entscheidung 30.09.2026).
 const GEHEIM_ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#%&$@?!/<>*+=";
+const GEHEIM_SIM_WARTEN = 3000, GEHEIM_SIM_DAUER = 7000;   // Testmodus: so lange ganz verschlüsselt, so lange das Auflösen
+const geheimSim = {};   // Startzeit der vorgespielten Annäherung je Station
 const geheimZeichen = () => GEHEIM_ZEICHEN[Math.floor(Math.random() * GEHEIM_ZEICHEN.length)];
 // Reihenfolge, in der die Buchstaben einrasten: zufällig, je Name aber immer dieselbe
 function geheimFolge(zeichen) {
@@ -844,7 +846,15 @@ function geheimStand(st, s) {
     const jetzt = Math.round(Math.max(0, Math.min(1, (s.revealStartM - d) / (s.revealStartM - s.revealClearM))) * n);
     if (jetzt > offen) { offen = jetzt; LS.setItem(k, String(offen)); }
   }
-  return { zeichen, folge, n, offen, klar: offen >= n };
+  // Testmodus: niemand läuft hin, also spielt die Seite die Annäherung vor. Sobald die Station dran ist, bleibt der
+  // Name kurz ganz verschlüsselt, dann rasten die Buchstaben nach und nach ein (GEHEIM_SIM_*). Nach einem Neuladen
+  // geht es dort weiter, wo das Schloss stand.
+  if (st.testMode && offen < n) {
+    if (!geheimSim[k]) geheimSim[k] = Date.now() - (offen ? GEHEIM_SIM_WARTEN + offen / n * GEHEIM_SIM_DAUER : 0);
+    const jetzt = Math.round(Math.max(0, Math.min(1, (Date.now() - geheimSim[k] - GEHEIM_SIM_WARTEN) / GEHEIM_SIM_DAUER)) * n);
+    if (jetzt > offen) { offen = jetzt; LS.setItem(k, String(offen)); }
+  }
+  return { zeichen, folge, n, offen, klar: offen >= n, sim: !!st.testMode };
 }
 // Die Felder eines Namens: die ersten "offen" der Reihenfolge stehen fest, der Rest flimmert
 function geheimFelder(zeichen, folge, offen) {
@@ -856,7 +866,8 @@ function geheimFelder(zeichen, folge, offen) {
   });
   return h + `<span class="wort">${wort}</span>`;
 }
-const geheimText = G => !S.gps.on ? "Gebt den Standort frei. Der Name entschlüsselt sich, je näher ihr kommt."
+const geheimText = G => G.sim ? "Testmodus: Das Entschlüsseln läuft hier von selbst ab. Im Spiel löst sich der Name mit der Entfernung auf."
+  : !S.gps.on ? "Gebt den Standort frei. Der Name entschlüsselt sich, je näher ihr kommt."
   : G.offen ? "Der Name entschlüsselt sich, je näher ihr kommt." : "Folgt dem Pfeil. Der Name der Station ist noch verschlüsselt.";
 // Name und Ortshinweis der nächsten Station. Der Hinweis erscheint erst, wenn der Name ganz lesbar ist.
 function stationsNameHTML(st, s) {
@@ -878,6 +889,8 @@ function geheimNachziehen() {
   const f = $("#geheimfort"); if (f) f.style.width = Math.round(G.offen / G.n * 100) + "%";
   const t = $("#geheimtext"); if (t) t.textContent = geheimText(G);
 }
+// Testmodus: die vorgespielte Annäherung braucht einen Takt, sie hängt nicht am GPS
+setInterval(() => { const st = aktiverStand(); if (st && st.testMode && $("#geheim")) geheimNachziehen(); }, 300);
 // die noch verschlüsselten Felder wechseln ständig ihr Zeichen (auch in der Vorschau der Spielleitung)
 setInterval(() => {
   if (document.hidden || matchMedia("(prefers-reduced-motion: reduce)").matches) return;

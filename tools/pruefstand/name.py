@@ -97,6 +97,18 @@ with sync_playwright() as pw:
     pg.goto(url("leitung-unterwegs-standort")); pg.wait_for_function("S.gps.pos"); pg.wait_for_timeout(300)
     z = pg.evaluate(Z); pruef(not z["da"] and z["h2"] == "Rudolfstollen" and z["hinweis"], "Station ohne Kreise: alles wie bisher")
 
+    print("Testmodus: die Annäherung wird vorgespielt")
+    pg.goto(url("name-geheim-test")); pg.wait_for_selector("#geheim"); pg.wait_for_timeout(1200)
+    z = pg.evaluate(Z); pruef(z["fest"] == 0 and "Testmodus" in z["seite"] and "Rudolfstollen" not in z["seite"], "zuerst ganz verschlüsselt, mit Erklärung")
+    pg.wait_for_timeout(5000); z = pg.evaluate(Z); pruef(z["da"] and 0 < z["fest"] < 13, f"nach 6 s: {z['fest']} von 13 Buchstaben, ohne Standort")
+    pg.wait_for_function("!document.querySelector('#geheim')", timeout=12000); z = pg.evaluate(Z)
+    pruef(z["h2"] == "Rudolfstollen" and z["hinweis"], "nach rund 10 s: Name lesbar, Ortshinweis da")
+    pg.click("[data-act=t-check]"); pg.wait_for_selector("#tans"); pg.fill("#tans", "egal"); pg.click("[data-act=t-answer]")
+    pg.wait_for_selector("#geheim"); z = pg.evaluate(Z)
+    pruef(z["fest"] == 0 and "Wasserturm" not in z["seite"], "nächste Station nach dem Lösen: wieder ganz verschlüsselt")
+    pg.wait_for_function("!document.querySelector('#geheim')", timeout=15000)
+    pruef(pg.evaluate(Z)["h2"] == "Wasserturm Letná", "und löst sich wieder von selbst auf")
+
     print("Spielleitung: Station bearbeiten mit Karte")
     pg.set_viewport_size({"width": 900, "height": 1000})
     pg.goto(url("admin-station-karte")); pg.wait_for_selector("#emap .leaflet-marker-icon", timeout=25000); pg.wait_for_timeout(1200)
