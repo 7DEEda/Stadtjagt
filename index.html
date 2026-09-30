@@ -198,6 +198,8 @@ th{font:600 14px var(--body);color:var(--muted)}
 /* Leaflet setzt beim Anlegen position:relative inline, darum !important; sonst bleibt die Karte im Seitenfluss */
 #map.full{position:fixed!important;inset:0;height:100vh;height:100dvh;z-index:50;border-radius:0;margin:0}
 .kartezu{position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;z-index:1001;margin:0!important;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+/* Lücke in der Route: wie lange das Team kein GPS-Signal gemeldet hat */
+.maplueck{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;background:#fff;color:#17302A;border:1.5px solid var(--c,#5B6F68);border-radius:99px;padding:1px 7px;font:600 12px var(--body);box-shadow:0 1px 3px rgba(17,17,17,.25)}
 .mapbadge{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--flag);color:#fff;font:700 15px var(--head);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .mapbadge.team{background:var(--water)}
 .mapbadge.start{background:#17302A}
@@ -1280,7 +1282,7 @@ function viewAdmin() {
     const withPos = (st.teams || []).filter(t => t.position);
     out += `<div id="map" class="${A.full ? "full" : ""}"></div>
       ${A.full ? `<button class="btn sm kartezu" data-act="a-full">Vollbild beenden</button>` : ""}
-      <div class="bar" style="margin-top:8px"><span class="small muted">${withPos.length} von ${(st.teams || []).length} Teams melden eine Position. Aktualisierung alle 10 Sekunden.</span>
+      <div class="bar" style="margin-top:8px"><span class="small muted">${withPos.length} von ${(st.teams || []).length} Teams melden eine Position. Aktualisierung alle 10 Sekunden. Gestrichelt: Strecke ohne GPS-Signal, mit Dauer.</span>
       <span><button class="btn sm alt" data-act="a-alle">Alle zeigen</button><button class="btn sm alt" data-act="a-full">Vollbild</button></span></div>
       <div class="legend" id="legend">${(st.teams || []).map((t, i) => `<button class="tchip ${A.hidden[t.id] ? "off" : ""}" style="--c:${teamColor(i)}" data-act="a-team" data-id="${t.id}"><i></i>${teamEmoji(t.name)} ${esc(t.name)}</button>`).join("")}</div>`;
     const without = (st.teams || []).filter(t => !t.position);
@@ -1560,6 +1562,7 @@ function loadLeaflet() {
   return leafletReady;
 }
 let kartenPunkte = [];
+const LUECKE_M = 50, LUECKE_MS = 90000;   // ab hier gilt ein Stück der Route als Lücke ohne GPS-Signal
 async function drawMap(first) {
   const el = $("#map"); if (!el || !S.admin.state) return;
   try { await loadLeaflet(); } catch (e) { el.innerHTML = `<p class="msg err">${esc(e.message)}</p>`; return; }
@@ -1568,7 +1571,7 @@ async function drawMap(first) {
     map = L.map(el, { zoomControl: true }).setView([50.0875, 14.4180], 14);   // Prag, Altstadt
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
-    layers = { stations: [], teams: {}, tracks: {} };
+    layers = { stations: [], teams: {}, tracks: {}, luecken: {}, marken: {} };
     first = true;
   }
   layers.stations.forEach(l => map.removeLayer(l));
@@ -1598,13 +1601,33 @@ async function drawMap(first) {
     if (cur != null) line = line.filter(p => p[2] <= cur);
     line = line.filter(p => nah(p[0], p[1]));
 
-    // gelaufene Route
+    // gelaufene Route. Das Handy meldet alle 20 m, im Stand jede Minute. Liegen zwei Meldungen weiter auseinander,
+    // fehlte dazwischen das Signal (Handy in der Tasche, Bildschirm aus, Funkloch): dieses Stück ist nur die gerade
+    // Verbindung, nicht der gelaufene Weg. Es wird gestrichelt gezeichnet und trägt die Dauer.
+    drop(layers.marken, t.id);
     if (!off && line.length > 1) {
-      const ll = line.map(p => [p[0], p[1]]);
-      if (layers.tracks[t.id]) layers.tracks[t.id].setLatLngs(ll);
-      else layers.tracks[t.id] = L.polyline(ll, { color, weight: 4, opacity: .85, lineJoin: "round" }).addTo(map);
-      ll.forEach(p => pts.push(p));
-    } else drop(layers.tracks, t.id);
+      const fest = [], offen = [], marken = []; let stueck = [];
+      line.forEach((p, k) => {
+        if (k) {
+          const q = line[k - 1], m = haversine({ lat: q[0], lng: q[1] }, { lat: p[0], lng: p[1] }), dt = p[2] - q[2];
+          if (m > LUECKE_M || (dt > LUECKE_MS && m > 15)) {
+            if (stueck.length > 1) fest.push(stueck);
+            stueck = []; offen.push([[q[0], q[1]], [p[0], p[1]]]);
+            if (dt >= 60000) marken.push({ at: [(q[0] + p[0]) / 2, (q[1] + p[1]) / 2], von: q[2], bis: p[2], m });
+          }
+        }
+        stueck.push([p[0], p[1]]);
+      });
+      if (stueck.length > 1) fest.push(stueck);
+      if (layers.tracks[t.id]) layers.tracks[t.id].setLatLngs(fest);
+      else layers.tracks[t.id] = L.polyline(fest, { color, weight: 4, opacity: .85, lineJoin: "round" }).addTo(map);
+      if (layers.luecken[t.id]) layers.luecken[t.id].setLatLngs(offen);
+      else layers.luecken[t.id] = L.polyline(offen, { color, weight: 3, opacity: .8, dashArray: "9 9" }).addTo(map);
+      if (marken.length) layers.marken[t.id] = L.layerGroup(marken.map(x => L.marker(x.at, { zIndexOffset: 300,
+        icon: L.divIcon({ html: `<span class="maplueck" style="--c:${color}">${fmtDur(x.bis - x.von)}</span>`, className: "", iconSize: [0, 0] }) })
+        .bindPopup(`<b>${esc(t.name)}</b><br>kein GPS-Signal von ${fmtClock(x.von)} bis ${fmtClock(x.bis)} Uhr<br>${Math.round(x.m)} m Luftlinie`))).addTo(map);
+      line.forEach(p => pts.push([p[0], p[1]]));
+    } else { drop(layers.tracks, t.id); drop(layers.luecken, t.id); }
 
     // aktueller Standort, beim Zurückspulen der letzte Punkt bis dahin
     let at = null, when = null;
