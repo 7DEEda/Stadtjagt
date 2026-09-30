@@ -1316,3 +1316,12 @@ und sagte dazu bisher nichts, das Handy hing ohne Erklärung. Jetzt merkt sich
 Einstellung auf iPhone und Android ändert. Der Geräte-Test (Suite 5) meldet
 denselben Fall als „nur ungefähr“. Geprüft im Prüfstand (Szenario
 `leitung-standort-grob`), auf einem echten iPhone noch nicht.
+
+## Mitlese-Link als QR-Code (30.09.2026)
+
+„Link teilen“ zeigt den Mitlese-Link zusätzlich als QR-Code im Kasten „Mitlesen
+fürs Team“ und öffnet danach wie bisher das Teilen-Fenster. Der Code bleibt
+stehen: wer neben der Teamleitung steht, scannt ihn mit der Handykamera.
+Generator: `vendor/qrcode.js` (qrcode-generator 1.4.4, MIT), lokal, wird erst
+beim ersten Gebrauch geladen (`qrSvg()`). Der Code steht immer dunkel auf Weiß,
+auch im dunklen Design.

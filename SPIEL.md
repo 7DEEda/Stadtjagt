@@ -471,8 +471,6 @@ node -e 'const h=require("fs").readFileSync("index.html","utf8");[...h.matchAll(
 - Rätsel, Lösungen und Ortshinweise der fünf Stationen fehlen (Platzhalter).
 - Öffentliche Auslieferung des ganzen Repos (siehe 7.), neuer Koffer-Code.
 - Echte Nummer für die Hilfe-Knöpfe statt `491720000000`.
-- Mitlese-Link als QR-Code auf dem Handy der Teamleitung (Generator lokal
-  einbetten).
 - Live-PIN verlängern (siehe 7.); `2026` ist sie nicht mehr, hat aber nur
   4 Zeichen. Neue PINs verlangen seit Nachtrag 20 mindestens 12.
 - Hintergrund-Variante festlegen (umschaltbar im Reiter Stationen; aktiv ist

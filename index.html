@@ -285,6 +285,9 @@ a.btn{text-decoration:none;text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 /* Tablet hochkant: die Karte lässt Platz zum Wischen, sonst fängt sie jedes Scrollen ab */
 @media (orientation:portrait){#map{height:min(62vh,560px)}}
+/* QR-Code des Mitlese-Links: immer dunkel auf Weiß, sonst liest ihn im dunklen Design keine Kamera */
+.qr{background:#fff;border-radius:10px;padding:14px;margin-top:12px;display:grid;place-items:center}
+.qr svg{width:min(100%,260px);height:auto;display:block}
 /* Gruppenselfie (Nachtrag 25) */
 .foto{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;margin-top:12px;background:var(--line)}
 .album{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
@@ -1030,8 +1033,25 @@ function teamAnsicht(st, lesen) {
 // Mitlese-Link fürs Team, mit passendem Satz je nach Phase
 function mitlesePanelHTML(st, text) {
   if (!st.team.readToken) return "";
+  // Nach "Link teilen" steht der Link auch als QR-Code da: wer daneben steht, scannt ihn mit der Kamera
+  const qr = S.team.qr ? qrSvg(mitleseLink(st.team.readToken)) : "";
   return `<div class="panel"><h3>Mitlesen fürs Team</h3><p class="small muted">${text}</p>
-    <div class="row2"><button class="btn alt" data-act="t-mit-teilen">Link teilen</button><button class="btn alt" data-act="t-mit-kopieren">Link kopieren</button></div>${msgBox("mit")}</div>`;
+    <div class="row2"><button class="btn alt" data-act="t-mit-teilen">Link teilen</button><button class="btn alt" data-act="t-mit-kopieren">Link kopieren</button></div>${msgBox("mit")}
+    ${S.team.qr ? `<div class="qr" role="img" aria-label="QR-Code des Mitlese-Links">${qr || '<span class="small" style="color:#17302A">QR-Code wird gebaut …</span>'}</div>
+      <p class="small muted" style="text-align:center">Wer neben dir steht, scannt den Code mit der Handykamera und liest sofort mit.</p>` : ""}</div>`;
+}
+// QR-Code als SVG. Die Bibliothek (vendor/qrcode.js, MIT) liegt im Repo und wird erst beim ersten Gebrauch geladen.
+let qrLaden = null;
+const qrFertig = {};
+function qrSvg(text) {
+  if (qrFertig[text]) return qrFertig[text];
+  if (window.qrcode) {
+    const q = window.qrcode(0, "M"); q.addData(text); q.make();
+    return qrFertig[text] = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+  }
+  if (!qrLaden) qrLaden = new Promise((res, rej) => { const s = document.createElement("script"); s.src = "vendor/qrcode.js"; s.onload = res; s.onerror = rej; document.head.appendChild(s); })
+    .then(render, () => { qrLaden = null; });
+  return "";
 }
 // Nur für die Teamleitung: Mitlese-Link fürs Team (außer er steht schon oben) und die Leitung abgeben
 function leitungHTML(st, ohneMit) {
@@ -1568,7 +1588,8 @@ async function drawMap(first) {
   const drop = (store, id) => { if (store[id]) { map.removeLayer(store[id]); delete store[id]; } };
   // Punkte weit weg von der Route (etwa 0/0 eines Geräts ohne Fix) weder zeichnen noch in den Ausschnitt nehmen
   const anker = (st.stations || []).find(s => s.lat != null && s.lng != null);
-  const nah = (lat, lng) => !anker || haversine({ lat, lng }, anker) < 30000;
+  // Im Testmodus gilt die Grenze nicht: wer das Spiel anderswo durchprobiert (Berlin statt Prag), soll sein Team sehen
+  const nah = (lat, lng) => st.testMode || !anker || haversine({ lat, lng }, anker) < 30000;
   (st.teams || []).forEach((t, i) => {
     const color = teamColor(i), off = !!A.hidden[t.id];
     const tr = A.tracks && A.tracks[t.id];
@@ -1812,6 +1833,8 @@ const ACT = {
   // Mitlese-Link fürs Team: teilen (Share-Sheet, sonst WhatsApp) oder kopieren
   async "t-mit-teilen"() {
     const link = mitleseLink(S.team.state.team.readToken), text = `Stadtjagd, Team ${S.team.state.team.name}: Mit diesem Link lest ihr auf eurem Handy mit.`;
+    // Erst den QR-Code zeigen: er bleibt stehen, auch wenn das Teilen-Fenster wieder zugeht
+    S.team.qr = true; render();
     // Share-Sheet: der Link nur als url, sonst steht er in WhatsApp doppelt
     if (navigator.share) { try { await navigator.share({ title: "Stadtjagd mitlesen", text, url: link }); } catch { /* abgebrochen */ } return false; }
     window.open("https://wa.me/?text=" + encodeURIComponent(text + " " + link), "_blank");

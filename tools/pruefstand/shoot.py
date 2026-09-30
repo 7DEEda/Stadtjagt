@@ -22,6 +22,7 @@ def bauen():
     import shutil
     shutil.copy(REPO / "config.js", HIER / "config.js")
     shutil.copytree(REPO / "hintergrund", HIER / "hintergrund", dirs_exist_ok=True)
+    shutil.copytree(REPO / "vendor", HIER / "vendor", dirs_exist_ok=True)   # QR-Generator für den Mitlese-Link
 
 
 UA_IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
