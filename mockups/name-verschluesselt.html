@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Stationsname verschlüsselt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+/* Mockup: der Stationsname entschlüsselt sich mit der Annäherung. Aussehen aus index.html, Entfernung per Regler gespielt. */
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --flag:#EE5F1B; --flag-ink:#FFFFFF;
+  --ok:#2E7D4F; --ok-bg:#E3F1E7; --info-bg:#E6EEF4; --feld:#7D9189;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif; --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38; --flag:#FF7A3A; --flag-ink:#0F1B18;
+  --ok:#6CCB8E; --ok-bg:#16332A; --info-bg:#172A36; --feld:#5E786F}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);min-height:100vh}
+.seite{display:grid;grid-template-columns:minmax(0,420px) minmax(0,360px);gap:28px;max-width:860px;margin:0 auto;padding:20px 16px 60px;align-items:start}
+@media (max-width:800px){.seite{grid-template-columns:1fr}}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+h1{font-size:30px;font-weight:700}h2{font-size:24px;font-weight:700}h3{font-size:19px;font-weight:600}
+p{margin:.4em 0 0}
+.muted{color:var(--muted)}.small{font-size:14px}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.flag{width:32px;height:32px;flex:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 19px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);margin-top:12px;min-height:48px}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line);font-size:16px}
+.btn:disabled{background:var(--line);color:var(--muted)}
+.hint{font-size:19px;font-weight:500}
+.compass{display:flex;gap:18px;align-items:center;margin-top:14px}
+.compass svg{width:120px;height:120px;flex:none}
+.ring{fill:none;stroke:var(--line);stroke-width:5}
+.needle{fill:var(--flag);transform-origin:39px 39px;transition:transform .25s linear}
+.dist{font:700 40px var(--head);line-height:1}
+
+/* der verschlüsselte Name: jeder Buchstabe ein Feld fester Breite, damit nichts springt */
+.geheim{font:700 22px/1.25 var(--mono);display:flex;flex-wrap:wrap;gap:0 .55em;margin-top:2px;min-height:28px;align-items:baseline}
+/* baseline: flimmernde und eingerastete Zeichen stehen auf einer Linie, obwohl es zwei Schriften sind */
+.geheim .wort{display:inline-flex;white-space:nowrap;align-items:baseline}
+.geheim i{font-style:normal;display:inline-block;width:.64em;text-align:center;color:var(--flag);opacity:.8}
+.geheim i.fest{color:var(--ink);opacity:1;font-family:var(--head);font-size:1.12em;width:auto;min-width:.5em;padding:0 .02em}
+.geheim i.neu{animation:einrasten .5s ease-out}
+@keyframes einrasten{0%{color:var(--flag);transform:scale(1.5)}100%{transform:scale(1)}}
+.geheim.klar{display:block;font:700 24px/1.1 var(--head)}
+.fortschritt{height:4px;border-radius:2px;background:var(--line);margin-top:10px;overflow:hidden}
+.fortschritt span{display:block;height:100%;background:var(--flag);transition:width .3s}
+@media (prefers-reduced-motion:reduce){.geheim i.neu{animation:none}}
+
+.regler label{display:flex;justify-content:space-between;font-weight:600;font-size:15px;margin-top:14px}
+.regler input[type=range]{width:100%;accent-color:var(--flag)}
+.regler output{font-variant-numeric:tabular-nums;white-space:nowrap}
+.skala{position:relative;height:26px;margin-top:6px;border-radius:6px;background:linear-gradient(90deg,var(--ok-bg) 0 var(--k),var(--info-bg) var(--k) var(--b),var(--line) var(--b) 100%)}
+.skala b{position:absolute;top:4px;font:600 11px var(--body);color:var(--ink);transform:translateX(-50%);white-space:nowrap}
+.skala .ich{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--flag);border-radius:2px}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+td,th{padding:4px 2px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td:first-child,th:first-child{text-align:left;white-space:normal}
+</style>
+</head>
+<body>
+<div class="seite">
+  <!-- links: das Handy der Teamleitung -->
+  <div>
+    <div class="brand">
+      <svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></svg>
+      <div><h1>🦊 Team Fuchs</h1><div class="muted small">Leitung Anna Berger</div></div>
+    </div>
+    <div class="panel">
+      <p class="muted small">Station 3 von 5</p>
+      <div class="geheim" id="name" aria-label="Name der Station, noch verschlüsselt"></div>
+      <div class="fortschritt" id="fort"><span></span></div>
+      <p class="hint" id="hinweis" style="margin-top:10px"></p>
+      <div class="compass">
+        <svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/><polygon class="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(38deg)"/></svg>
+        <div><div class="muted small">Entfernung</div><div class="dist" id="dist">474 m</div>
+          <div class="small" id="umkreis">Einchecken ab etwa 50 m</div><div class="muted small">GPS ±8 m · Kompass aktiv</div></div>
+      </div>
+      <button class="btn" id="da" disabled>Wir sind da</button>
+    </div>
+    <p class="small muted" style="text-align:center;margin-top:10px">Mockup: die Entfernung kommt vom Regler rechts, nicht vom GPS.</p>
+  </div>
+
+  <!-- rechts: Stellschrauben -->
+  <div class="regler">
+    <div class="panel">
+      <h3>Annäherung spielen</h3>
+      <label for="d">Entfernung zur Station <output id="dAus"></output></label>
+      <input type="range" id="d" min="0" max="474" value="474" step="1" style="direction:rtl">
+      <div class="skala" id="skala"><b style="left:8%">klar</b><b style="left:50%" id="sMitte">entschlüsselt sich</b><b style="left:88%">verschlüsselt</b><span class="ich" id="ich"></span></div>
+      <button class="btn alt" id="lauf">Hinlaufen abspielen</button>
+      <button class="btn alt" id="neu">Von vorn (Schloss lösen)</button>
+      <p class="small muted">Einmal entschlüsselte Buchstaben bleiben stehen. Zieh den Regler wieder nach links: nichts verschlüsselt sich zurück.</p>
+    </div>
+    <div class="panel">
+      <h3>Wann es sich auflöst</h3>
+      <label for="b">Beginnt bei <output id="bAus"></output></label>
+      <input type="range" id="b" min="30" max="100" value="60">
+      <label for="k">Ganz lesbar bei <output id="kAus"></output></label>
+      <input type="range" id="k" min="5" max="60" value="30">
+      <p class="small muted">Anteil der Etappe, der noch vor dem Team liegt. So passt es zu kurzen wie langen Etappen.</p>
+      <table id="tab"></table>
+    </div>
+    <div class="panel">
+      <h3>Station</h3>
+      <label for="st" class="small">Etappe wählen</label>
+      <select id="st" style="width:100%;font:500 16px var(--body);padding:9px;border-radius:10px;border:1.5px solid var(--feld);background:var(--paper);color:var(--ink)"></select>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const ETAPPEN = [
+  { name: "Planetarium Prag", m: 438, hint: "Der Kuppelbau am Rand des Parks. Geht um das Gebäude herum zum Haupteingang." },
+  { name: "Rudolfstollen", m: 568, hint: "Geht in den Park hinein Richtung Westen. Der Eingang zum alten Wasserstollen liegt unter Bäumen am Hang." },
+  { name: "Wasserturm Letná", m: 474, hint: "Der Turm aus rotem Backstein ist über die Dächer hinweg zu sehen. Das Tor zum Hof steht offen." },
+  { name: "Aussicht Letná, ehemalige Bergstation", m: 617, hint: "Oben an der großen Treppe, die vom Park zur Čech-Brücke hinunterführt." },
+  { name: "Metronom", m: 681, hint: "Das rote Pendel über der Stadt. Geht bis an die Brüstung." }
+];
+const ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#%&$@§?!/<>*+=";
+let E = ETAPPEN[2], offen = 0, zellen = [], reihenfolge = [], spiel = null;
+
+// Reihenfolge, in der die Buchstaben einrasten: zufällig, aber je Name immer gleich
+function mischen(name) {
+  let s = 0; for (const c of name) s = (s * 31 + c.charCodeAt(0)) >>> 0;
+  const z = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const idx = [...name].map((c, i) => i).filter(i => /\S/.test(name[i]));
+  for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(z() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+  return idx;
+}
+function aufbauen() {
+  const n = $("#name"); n.className = "geheim"; n.innerHTML = ""; zellen = [];
+  reihenfolge = mischen(E.name);
+  let wort = document.createElement("span"); wort.className = "wort"; n.appendChild(wort);
+  [...E.name].forEach((c, i) => {
+    if (c === " ") { wort = document.createElement("span"); wort.className = "wort"; n.appendChild(wort); zellen[i] = null; return; }
+    const z = document.createElement("i"); z.textContent = "#"; wort.appendChild(z); zellen[i] = z;
+  });
+  offen = 0; $("#d").max = E.m; $("#d").value = E.m; zeichne();
+}
+function anteil() {
+  const d = +$("#d").value, b = +$("#b").value / 100 * E.m, k = Math.min(+$("#k").value, +$("#b").value - 1) / 100 * E.m;
+  return Math.max(0, Math.min(1, (b - d) / (b - k)));
+}
+function zeichne() {
+  const d = +$("#d").value, n = reihenfolge.length;
+  // Schloss: es zählt der weiteste Stand, der je erreicht wurde
+  const soll = Math.round(anteil() * n);
+  if (soll > offen) {
+    reihenfolge.slice(offen, soll).forEach(i => { const z = zellen[i]; z.textContent = E.name[i]; z.className = "fest neu"; });
+    offen = soll;
+  }
+  const klar = offen >= n;
+  if (klar) { const el = $("#name"); if (!el.classList.contains("klar")) { el.className = "geheim klar"; el.textContent = E.name; } }
+  $("#fort span").style.width = (offen / n * 100) + "%"; $("#fort").hidden = klar;
+  $("#hinweis").textContent = klar ? E.hint : offen ? "Der Name entschlüsselt sich, je näher ihr kommt." : "Folgt dem Pfeil. Der Name der Station ist noch verschlüsselt.";
+  $("#hinweis").className = klar ? "hint" : "small muted";
+  $("#dist").textContent = d + " m"; $("#dAus").textContent = d + " m";
+  $("#da").disabled = d > 50;
+  const b = +$("#b").value, k = Math.min(+$("#k").value, b - 1);
+  $("#bAus").textContent = `${b} %, hier ${Math.round(b / 100 * E.m)} m`; $("#kAus").textContent = `${k} %, hier ${Math.round(k / 100 * E.m)} m`;
+  const s = $("#skala"); s.style.setProperty("--k", k + "%"); s.style.setProperty("--b", b + "%");
+  $("#ich").style.left = (d / E.m * 100) + "%"; $("#sMitte").style.left = ((k + b) / 2) + "%";
+  $("#tab").innerHTML = "<tr><th>Etappe</th><th>Länge</th><th>beginnt</th><th>klar</th></tr>" + ETAPPEN.map(e =>
+    `<tr><td>${e.name.split(",")[0]}</td><td>${e.m} m</td><td>${Math.round(b / 100 * e.m)} m</td><td>${Math.round(k / 100 * e.m)} m</td></tr>`).join("");
+}
+// die noch verschlüsselten Felder wechseln ständig ihr Zeichen
+setInterval(() => {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  reihenfolge.slice(offen).forEach(i => { if (Math.random() < .6) zellen[i].textContent = ZEICHEN[Math.floor(Math.random() * ZEICHEN.length)]; });
+}, 70);
+
+$("#st").innerHTML = ETAPPEN.map((e, i) => `<option value="${i}" ${i === 2 ? "selected" : ""}>${i + 1}. ${e.name} (${e.m} m)</option>`).join("");
+$("#st").onchange = e => { E = ETAPPEN[+e.target.value]; aufbauen(); };
+["d", "b", "k"].forEach(id => $("#" + id).oninput = zeichne);
+$("#neu").onclick = () => { clearInterval(spiel); aufbauen(); };
+$("#lauf").onclick = () => {
+  clearInterval(spiel); aufbauen();
+  spiel = setInterval(() => { const d = $("#d"); d.value = Math.max(0, +d.value - 4); zeichne(); if (+d.value <= 0) clearInterval(spiel); }, 60);
+};
+aufbauen();
+</script>
+</body>
+</html>

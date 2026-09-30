@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Station bearbeiten mit Karte</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* Mockup: Reiter Stationen, eine Station im Bearbeiten. Die Kreise für das Entschlüsseln stellt man auf der Karte ein.
+   Aussehen aus index.html. Leaflet kommt wie im Spiel von unpkg. Nichts wird gespeichert. */
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --flag:#EE5F1B; --flag-ink:#FFFFFF;
+  --ok:#2E7D4F; --ok-bg:#E3F1E7; --info-bg:#E6EEF4; --feld:#7D9189; --water:#2F6E9E;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif; --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38; --flag:#FF7A3A; --flag-ink:#0F1B18;
+  --ok:#6CCB8E; --ok-bg:#16332A; --info-bg:#172A36; --feld:#5E786F; --water:#6FA8D6}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.5 var(--body)}
+main{max-width:900px;margin:0 auto;padding:20px 16px 60px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+h1{font-size:30px;font-weight:700}h3{font-size:19px;font-weight:600}
+p{margin:.4em 0 0}
+.muted{color:var(--muted)}.small{font-size:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
+input{width:100%;font:500 17px var(--body);padding:11px 13px;border-radius:10px;border:1.5px solid var(--feld);background:var(--paper);color:var(--ink)}
+.btn{border:0;border-radius:10px;padding:8px 12px;font:700 15px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);min-height:42px;margin:0 6px 6px 0}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.an{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.raster{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px}
+@media (max-width:620px){.raster{grid-template-columns:1fr}}
+.raster label i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:2.5px solid var(--c)}
+#karte{height:440px;border-radius:12px;border:1px solid var(--line);margin-top:12px;z-index:0}
+.griff{width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--c);box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:grab}
+.marke{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--flag);color:#fff;font:700 15px var(--head);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.marke.vor{background:#5B6F68}
+.marke.team{background:#2F6E9E;font-size:16px;cursor:grab}
+.schild{background:#fff;color:#17302A;border-radius:99px;padding:1px 8px;font:600 12px var(--body);white-space:nowrap;border:1.5px solid var(--c);transform:translate(-50%,-160%);display:inline-block}
+.vorschau{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:12px;padding:12px;border-radius:10px;background:var(--paper);border:1px solid var(--line)}
+.vorschau .wo{font-size:14px;color:var(--muted);white-space:nowrap}
+/* Name wie auf dem Handy. align-items:baseline hält flimmernde und eingerastete Zeichen auf einer Linie. */
+.geheim{font:700 22px/1.25 var(--mono);display:flex;flex-wrap:wrap;gap:0 .55em;align-items:baseline}
+.geheim .wort{display:inline-flex;white-space:nowrap;align-items:baseline}
+.geheim i{font-style:normal;display:inline-block;width:.64em;text-align:center;color:var(--flag);opacity:.85}
+.geheim i.fest{color:var(--ink);opacity:1;font-family:var(--head);font-size:1.12em;width:auto;min-width:.5em}
+</style>
+</head>
+<body>
+<main>
+  <h1>Spielleitung · Stationen</h1>
+  <p class="small muted">Mockup. So sähe „Bearbeiten“ bei einer Station aus; Name, Rätsel und die übrigen Felder bleiben wie heute darüber.</p>
+
+  <div class="panel">
+    <h3>Station 3 · Wasserturm Letná</h3>
+    <p class="small muted" style="margin-top:6px">Drei Kreise um die Station. Zieh an den weißen Punkten oder trag die Meter ein. Der graue Punkt ist die Station davor, die gestrichelte Linie der direkte Weg.</p>
+    <div id="karte"></div>
+    <div class="raster">
+      <div><label for="beginn"><i style="--c:#2F6E9E"></i>Entschlüsseln beginnt bei</label><input id="beginn" inputmode="numeric"></div>
+      <div><label for="klar"><i style="--c:#2E7D4F"></i>Ganz lesbar ab</label><input id="klar" inputmode="numeric"></div>
+      <div><label for="radius"><i style="--c:#EE5F1B"></i>Einchecken ab (Radius)</label><input id="radius" inputmode="numeric"></div>
+    </div>
+    <p class="small muted" id="hinweis"></p>
+    <div style="margin-top:10px">
+      <button class="btn alt" id="aus">Nicht verschlüsseln</button>
+      <button class="btn alt" id="vorschlag">Vorschlag aus der Etappe (60 % und 30 %)</button>
+    </div>
+
+    <div class="vorschau">
+      <div><div class="wo" id="wo"></div><div class="geheim" id="name"></div></div>
+    </div>
+    <p class="small muted">Das blaue 🦊 ist ein Probe-Team. Zieh es über die Karte: darunter steht, was das Handy an dieser Stelle zeigt.</p>
+    <div style="margin-top:12px"><button class="btn">Speichern</button><button class="btn alt">Abbrechen</button></div>
+  </div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const VOR = { name: "Rudolfstollen", lat: 50.104441, lng: 14.419553 };
+const ST = { name: "Wasserturm Letná", lat: 50.100195, lng: 14.420089 };
+const W = { beginn: 285, klar: 140, radius: 50 };   // Meter
+const FARBE = { beginn: "#2F6E9E", klar: "#2E7D4F", radius: "#EE5F1B" };
+const ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#%&$@§?!/<>*+=";
+
+const map = L.map("karte", { zoomControl: true }).setView([ST.lat, ST.lng], 16);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+const hier = L.latLng(ST.lat, ST.lng), etappe = Math.round(hier.distanceTo([VOR.lat, VOR.lng]));
+L.polyline([[VOR.lat, VOR.lng], hier], { color: "#5B6F68", weight: 2, dashArray: "6 7" }).addTo(map);
+L.marker([VOR.lat, VOR.lng], { icon: L.divIcon({ html: '<div class="marke vor">2</div>', className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) }).addTo(map).bindTooltip(VOR.name);
+L.marker(hier, { zIndexOffset: 500, icon: L.divIcon({ html: '<div class="marke">3</div>', className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) }).addTo(map);
+
+// ein Punkt im Abstand m auf dem Kreis: dort sitzt der Griff. Jeder Kreis hat seine eigene Richtung, damit sich die Schilder nicht überdecken.
+const WINKEL = { radius: 90, klar: 40, beginn: 140 };
+const am = (k, m) => { const w = WINKEL[k] * Math.PI / 180; return L.latLng(ST.lat + m * Math.cos(w) / 111320, ST.lng + m * Math.sin(w) / (111320 * Math.cos(ST.lat * Math.PI / 180))); };
+const kreise = {}, griffe = {}, schilder = {};
+const TEXT = { beginn: "beginnt", klar: "klar", radius: "da" };
+for (const k of ["beginn", "klar", "radius"]) {
+  kreise[k] = L.circle(hier, { radius: W[k], color: FARBE[k], weight: k === "radius" ? 1.5 : 2.5, fillOpacity: k === "radius" ? .15 : .04, dashArray: k === "beginn" ? "8 6" : null }).addTo(map);
+  griffe[k] = L.marker(am(k, W[k]), { draggable: true, zIndexOffset: 900,
+    icon: L.divIcon({ html: `<div class="griff" style="--c:${FARBE[k]}"></div>`, className: "", iconSize: [16, 16], iconAnchor: [8, 8] }) }).addTo(map);
+  schilder[k] = L.marker(am(k, W[k]), { interactive: false, icon: L.divIcon({ html: "", className: "", iconSize: [0, 0] }) }).addTo(map);
+  griffe[k].on("drag", e => { setze(k, Math.round(hier.distanceTo(e.target.getLatLng()))); });
+  griffe[k].on("dragend", () => griffe[k].setLatLng(am(k, W[k])));
+  $("#" + k).addEventListener("input", e => { const v = parseInt(e.target.value, 10); if (v > 0) setze(k, v, true); });
+}
+const team = L.marker([50.1017, 14.4198], { draggable: true, zIndexOffset: 1000,
+  icon: L.divIcon({ html: '<div class="marke team">🦊</div>', className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) }).addTo(map);
+team.on("drag", vorschau);
+
+// Reihenfolge: Radius kleiner als "klar" kleiner als "beginnt"
+function setze(k, m, ausFeld) {
+  m = Math.max(10, Math.min(1500, m));
+  if (k === "radius") m = Math.min(m, W.klar - 10);
+  if (k === "klar") m = Math.max(W.radius + 10, Math.min(m, W.beginn - 10));
+  if (k === "beginn") m = Math.max(m, W.klar + 10);
+  W[k] = m; zeichne(ausFeld ? k : null);
+}
+function zeichne(ohneFeld) {
+  for (const k of Object.keys(W)) {
+    kreise[k].setRadius(W[k]);
+    if (!griffe[k].dragging || !griffe[k].dragging._draggable || !griffe[k].dragging._draggable._moving) griffe[k].setLatLng(am(k, W[k]));
+    schilder[k].setLatLng(am(k, W[k]));
+    schilder[k].setIcon(L.divIcon({ html: `<span class="schild" style="--c:${FARBE[k]}">${TEXT[k]} ${W[k]} m</span>`, className: "", iconSize: [0, 0] }));
+    if (k !== ohneFeld) $("#" + k).value = W[k];
+  }
+  $("#hinweis").textContent = `Die Etappe vom ${VOR.name} ist ${etappe} m lang. `
+    + (W.beginn >= etappe ? "Der äußere Kreis reicht bis zur Station davor: der Name beginnt sich schon beim Loslaufen aufzulösen."
+      : `Die ersten ${etappe - W.beginn} m läuft das Team nur nach dem Pfeil, auf den letzten ${W.klar} m steht der Name klar da.`);
+  vorschau();
+}
+// Vorschau: Name an der Stelle des Probe-Teams
+let idx = [], zellen = [], offen = 0;
+function aufbauen() {
+  let s = 0; for (const c of ST.name) s = (s * 31 + c.charCodeAt(0)) >>> 0;
+  const z = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  idx = [...ST.name].map((c, i) => i).filter(i => ST.name[i] !== " ");
+  for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(z() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+  const n = $("#name"); n.innerHTML = ""; zellen = [];
+  let wort = document.createElement("span"); wort.className = "wort"; n.appendChild(wort);
+  [...ST.name].forEach((c, i) => {
+    if (c === " ") { wort = document.createElement("span"); wort.className = "wort"; n.appendChild(wort); return; }
+    const el = document.createElement("i"); wort.appendChild(el); zellen[i] = el;
+  });
+}
+function vorschau() {
+  const d = Math.round(hier.distanceTo(team.getLatLng()));
+  const f = Math.max(0, Math.min(1, (W.beginn - d) / (W.beginn - W.klar)));
+  offen = Math.round(f * idx.length);
+  idx.forEach((i, r) => { const fest = r < offen; zellen[i].className = fest ? "fest" : ""; if (fest) zellen[i].textContent = ST.name[i]; });
+  $("#wo").textContent = `Probe-Team in ${d} m Entfernung: ` + (f >= 1 ? "Name lesbar, Ortshinweis sichtbar" : f > 0 ? `${offen} von ${idx.length} Buchstaben` : "alles verschlüsselt");
+}
+setInterval(() => idx.slice(offen).forEach(i => { if (Math.random() < .6) zellen[i].textContent = ZEICHEN[Math.floor(Math.random() * ZEICHEN.length)]; }), 70);
+$("#vorschlag").onclick = () => { W.beginn = Math.round(etappe * .6); W.klar = Math.max(W.radius + 10, Math.round(etappe * .3)); zeichne(); };
+$("#aus").onclick = e => { const an = e.target.classList.toggle("an"); e.target.textContent = an ? "Verschlüsseln ist aus: Name sofort lesbar" : "Nicht verschlüsseln";
+  ["beginn", "klar"].forEach(k => { kreise[k].setStyle({ opacity: an ? 0 : 1, fillOpacity: an ? 0 : .04 }); griffe[k].setOpacity(an ? 0 : 1); schilder[k].setOpacity(an ? 0 : 1); $("#" + k).disabled = an; });
+  if (an) { offen = idx.length; idx.forEach(i => { zellen[i].className = "fest"; zellen[i].textContent = ST.name[i]; }); $("#wo").textContent = "Name überall lesbar"; } else vorschau(); };
+aufbauen(); zeichne();
+map.fitBounds(L.latLngBounds([[VOR.lat, VOR.lng], hier]).pad(0.35));
+</script>
+</body>
+</html>
