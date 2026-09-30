@@ -75,7 +75,6 @@ def main() -> int:
             page.route("**/rest/v1/rpc/device_test_echo", echo)
             page.add_init_script(SENSOR)
             page.goto(f"http://127.0.0.1:{PORT}/geraete-test.html")
-            page.fill("#name", "Prüfstand")
             page.click("#start")
             page.wait_for_selector("#meldung .msg.ok")
 

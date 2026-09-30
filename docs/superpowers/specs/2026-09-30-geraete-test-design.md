@@ -84,6 +84,8 @@ lesen kann über die Seite niemand. Gespeichert wird nach dem auto-Block und
 nach jedem weiteren Schritt. Scheitert es, liegt der Lauf in `localStorage`
 (`sj.geraetetest`), die Seite zeigt „Erneut senden“.
 
+Das `label` setzt die Seite selbst aus Betriebssystem, Browser und Bildschirmgröße; ein Namensfeld gibt es nicht (Entscheidung 30.09.2026).
+
 Payload: `{ suite, label, begonnen, beendet, ua, bilanz: {ok,warn,err,skip}, tests: { <id>: {art, wert, mess, dauerMs} } }`.
 
 ## Abholen

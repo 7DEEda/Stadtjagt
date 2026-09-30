@@ -190,9 +190,7 @@ li.ok .wert{color:var(--ok)}li.warn .wert{color:var(--warn)}li.err .wert{color:v
   <p>Prüft auf diesem Gerät alles, was das Spiel braucht oder brauchen könnte. Ein Tipp startet den Lauf, das Ergebnis wird gespeichert.</p>
 
   <div class="panel">
-    <label for="name">Welches Gerät ist das?</label>
-    <input id="name" maxlength="80" autocomplete="off" placeholder="z. B. iPhone 13 Friedrich, draußen">
-    <button class="btn" id="start">Alles testen</button>
+    <button class="btn" id="start" style="margin-top:0">Alles testen</button>
     <div class="balken" id="balken" hidden><i></i></div>
     <div class="bilanz" id="bilanz" hidden>
       <div class="ok"><b id="nOk">0</b>geht</div>
@@ -298,7 +296,6 @@ const basis = { rpc, cfg, sensor, bewegung: "noch nicht gefragt", wach: { sperre
 const Z = SUITE.tests.map(t => ({ t, selbst: t.block === "auto" || !!t.selbst, st: "wartet", erg: null, vorl: null }));
 
 $("#unter").textContent = `Stadtjagd · Suite ${SUITE.version} · ${Z.length} Tests`;
-$("#name").value = LS.getItem("sj.gt.label") || "";
 
 for (const z of Z) {
   const li = document.createElement("li");
@@ -371,7 +368,10 @@ function fertig(z, erg) {
 function payload() {
   const tests = {};
   for (const z of Z) if (z.erg) tests[z.t.id] = { art: z.erg.art, wert: z.erg.wert, mess: z.erg.mess || {}, dauerMs: z.erg.dauerMs ?? null };
-  return { suite: SUITE.version, label: $("#name").value.trim().slice(0, 80), begonnen: lauf.begonnen, beendet: new Date().toISOString(),
+  // Der Name des Laufs entsteht aus dem, was das Gerät über sich meldet
+  const u = (tests.umgebung || {}).mess || {};
+  const label = [u["Betriebssystem"], u["Browser"], `${screen.width} x ${screen.height}`].filter(Boolean).join(", ").slice(0, 80);
+  return { suite: SUITE.version, label, begonnen: lauf.begonnen, beendet: new Date().toISOString(),
     ua: navigator.userAgent, seite: location.href.split("?")[0], bilanz: bilanz(), tests };
 }
 let kette = Promise.resolve();
@@ -403,7 +403,6 @@ try {
 
 /* ---------- der eine Knopf ---------- */
 $("#start").onclick = async () => {
-  LS.setItem("sj.gt.label", $("#name").value.trim());
   if (lauf.autoFertig) { location.reload(); return; }   // neuer Lauf, neuer Schlüssel
   $("#start").disabled = true; $("#start").textContent = "Läuft …";
   $("#balken").hidden = false; $("#bilanz").hidden = false; $("#meldung").innerHTML = "";
