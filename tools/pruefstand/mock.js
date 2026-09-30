@@ -129,6 +129,17 @@
     "leitung-denkpause": { welt: "running", view: "team", ls: IM_TEAM,
       fuchs: { solved: 1, checkedIn: true, pauses: 1, lockedUntil: NOW + 97000 } },
     "leitung-tipp": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 1, checkedIn: true, pauses: 1, failedAttempts: 1, tipShown: true } },
+    "selfie-offen": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 3 }, selfie: { offen: true } },
+    "selfie-album": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 3 }, selfie: {},
+      steps: [{ until: ".album button" }, { wait: 500 }] },
+    "selfie-gross": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 3 }, selfie: {},
+      steps: [{ until: ".album button img" }, { click: ".album button" }, { wait: 700 }] },
+    "selfie-mitglied": { welt: "running", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 3 }, selfie: { offen: true } },
+    "selfie-anmeldung": { welt: "registration", view: "public", selfie: {} },
+    "admin-fotos": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 3 }, selfie: {},
+      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { until: ".galerie img" }, { wait: 800 }] },
+    "leitung-standort-grob": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 1 }, gps: Object.assign({}, GPS_UNTERWEGS, { acc: 4650 }),
+      steps: [{ click: "[data-act=t-gps]" }, { wait: 900 }] },
     "leitung-koffer": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 5 } },
     "leitung-platz2": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 5 }, fertig: ["Adler", "Fuchs"] },
     "leitung-platz5": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 5 }, fertig: ["Adler", "Eule", "Tiger", "Panda", "Fuchs"] },
@@ -229,6 +240,39 @@
   const doneCount = () => TEAMS.filter(t => t.place).length;
   const members = t => t.members.slice();
 
+  /* ---------- Gruppenselfie (Nachtrag 25) ---------- */
+  // gemaltes Gruppenfoto als JPEG, damit Album und Galerie ohne Kamera etwas zeigen
+  function beispielFoto(ton, voll) {
+    const c = document.createElement("canvas"); c.width = voll ? 640 : 160; c.height = voll ? 480 : 120;
+    const g = c.getContext("2d"), k = c.width / 640;
+    const v = g.createLinearGradient(0, 0, c.width, c.height); v.addColorStop(0, `hsl(${ton},45%,62%)`); v.addColorStop(1, `hsl(${ton + 40},50%,38%)`);
+    g.fillStyle = v; g.fillRect(0, 0, c.width, c.height);
+    for (let i = 0; i < 6; i++) { const x = (90 + i * 92) * k, y = (250 + (i % 2) * 40) * k;
+      g.fillStyle = `hsl(${30 + i * 8},55%,${70 - i * 3}%)`; g.beginPath(); g.arc(x, y, 46 * k, 0, 7); g.fill();
+      g.fillStyle = `hsl(${ton + i * 50},40%,35%)`; g.fillRect(x - 60 * k, y + 50 * k, 120 * k, 200 * k); }
+    return c.toDataURL("image/jpeg", .8).split(",")[1];
+  }
+  WELT.selfieOn = !!C.selfie; WELT.photosDeleteOn = C.selfie ? "2026-10-31" : null;
+  // C.selfie.offen: die zuletzt gelöste Station des Fuchs-Teams wartet noch auf ihr Foto
+  const SELFIE_DA = {}, FOTOS = {};
+  for (let i = 1; i <= FU.solved; i++) {
+    const offen = C.selfie && C.selfie.offen && i === FU.solved;
+    SELFIE_DA[i] = !offen;
+    if (C.selfie && !offen) FOTOS[i] = { foto: beispielFoto(i * 70, true), thumb: beispielFoto(i * 70, false), at: NOW - (FU.solved - i + 1) * 12 * MIN };
+  }
+  const ANDERE_FOTOS = [];
+  if (C.selfie) TEAMS.forEach(t => { if (t !== FUCHS) for (let i = 1; i <= t.solved; i++) ANDERE_FOTOS.push({ t, position: i, at: NOW - (t.solved - i + 1) * 9 * MIN }); });
+  const fotoListe = () => Object.keys(FOTOS).map(p => ({ teamId: FUCHS.id, teamName: FUCHS.name, position: +p, stationName: STATIONEN[p - 1].name, takenAt: iso(FOTOS[p].at) }))
+    .concat(ANDERE_FOTOS.map(f => ({ teamId: f.t.id, teamName: f.t.name, position: f.position, stationName: STATIONEN[f.position - 1].name, takenAt: iso(f.at) })))
+    .sort((a, b) => a.teamName.localeCompare(b.teamName) || a.position - b.position);
+  function selfieFeld(t, f) {
+    if (t !== FUCHS) return { on: WELT.selfieOn, pending: null, replaceable: null, deleteOn: WELT.photosDeleteOn, photos: [] };
+    let pend = null;
+    if (WELT.selfieOn) for (let i = 1; i <= f.solved; i++) if (!SELFIE_DA[i]) { pend = { position: i, name: STATIONEN[i - 1].name }; break; }
+    return { on: WELT.selfieOn, pending: pend, replaceable: WELT.selfieOn && f.solved && !f.checkedIn ? f.solved : null, deleteOn: WELT.photosDeleteOn,
+      photos: Object.keys(FOTOS).map(p => ({ position: +p, takenAt: iso(FOTOS[p].at) })) };
+  }
+
   /* ---------- Antworten ---------- */
   function teamState(t) {
     const istFuchs = t === FUCHS;
@@ -243,13 +287,14 @@
       background: WELT.background, status: WELT.status, startedAt: iso(WELT.startedAt), durationMin: WELT.durationMin,
       endsAt: WELT.startedAt ? iso(WELT.startedAt + WELT.durationMin * MIN) : null,
       totalStations: 5, solvedCount: f.solved,
-      digits: STATIONEN.map((s, i) => i < f.solved ? s.digit : null),
-      finalDigit: all ? sum % 10 : null,
+      digits: STATIONEN.map((s, i) => i < f.solved && (!WELT.selfieOn || !istFuchs || SELFIE_DA[i + 1]) ? s.digit : null),
+      finalDigit: all && !selfieFeld(t, f).pending ? sum % 10 : null,
+      selfie: selfieFeld(t, f),
       station: cur && running ? { position: cur.position, name: cur.name, locationHint: cur.locationHint, lat: cur.lat, lng: cur.lng,
         radiusM: cur.radiusM, riddle: f.checkedIn ? cur.riddle : null,
         tipAvailable: !!cur.tip && !!f.checkedIn && (WELT.testMode || f.pauses >= 1), tip: f.tipShown ? cur.tip : null } : null,
       checkedIn: !!f.checkedIn && !all, failedAttempts: f.failedAttempts, lockedUntil: iso(f.lockedUntil), pauses: f.pauses,
-      allSolved: all, caseHint: CASE_HINT, place, prizeCount: WELT.prizeCount, prizesLeft: Math.max(WELT.prizeCount - doneCount(), 0),
+      allSolved: all && !selfieFeld(t, f).pending, caseHint: CASE_HINT, place, prizeCount: WELT.prizeCount, prizesLeft: Math.max(WELT.prizeCount - doneCount(), 0),
       winnerTeamId: (TEAMS.find(x => x.place === 1) || {}).id || null, isWinner: !!place && place <= WELT.prizeCount, testMode: WELT.testMode
     };
   }
@@ -263,7 +308,7 @@
     const ranking = teams.map(t => ({ teamId: t.id, teamName: t.name, place: t.place, finishedAt: iso(t.finishedAt), solved: t.solved,
       lastSolvedAt: iso(t.events.reduce((m, e) => Math.max(m, e.solvedAt || 0), 0) || null), isWinner: !!t.place && t.place <= WELT.prizeCount }))
       .sort((a, b) => (a.place || 99) - (b.place || 99) || b.solved - a.solved || String(a.lastSolvedAt).localeCompare(String(b.lastSolvedAt)));
-    return { background: WELT.background, status: WELT.status, startedAt: iso(WELT.startedAt), finishedAt: iso(WELT.finishedAt),
+    return { background: WELT.background, selfieOn: WELT.selfieOn, photosDeleteOn: WELT.photosDeleteOn, status: WELT.status, startedAt: iso(WELT.startedAt), finishedAt: iso(WELT.finishedAt),
       winnerTeamId: (TEAMS.find(x => x.place === 1) || {}).id || null, prizeCount: WELT.prizeCount,
       participantCount: PERSONEN.length, stationCount: 5,
       teams: teams.map(t => ({ id: t.id, name: t.name, leaderName: t.leaderName, members: members(t) })), ranking };
@@ -276,7 +321,7 @@
       participants: PERSONEN.map(p => ({ id: p.id, name: p.name, teamId: mitTeams() ? p.teamId : null, teamName: mitTeams() ? teamOf(p).name : null })),
       stations: STATIONEN.map(s => ({ id: s.id, position: s.position, name: s.name, lat: s.lat, lng: s.lng, radiusM: s.radiusM,
         locationHint: s.locationHint, riddle: s.riddle, answer: s.answer, digit: s.digit, tip: s.tip })),
-      caseCode: CASE_CODE,
+      caseCode: CASE_CODE, selfieOn: WELT.selfieOn, photosDeleteOn: WELT.photosDeleteOn, photoCount: fotoListe().length,
       teams: teams.map(t => ({ id: t.id, name: t.name, code: t.code, readToken: t.readToken, leaderId: t.leaderId, leaderName: t.leaderName,
         memberCount: t.members.length, members: members(t), solved: t.solved,
         currentPosition: t.solved < 5 ? t.solved + 1 : null,
@@ -345,6 +390,15 @@
       return { ok: true, won: t.place <= 3, message: "Koffer offen.", state: teamState(t) }; },
     report_position: () => ({ ok: true }),
     team_set_leader: a => teamState(fuchsByCode(a.p_code)),
+    // Gruppenselfie (Nachtrag 25)
+    team_selfie: a => { const t = fuchsByCode(a.p_code); if (C.fotoFehler) fehler("Das Foto ist zu groß.");
+      FOTOS[a.p_position] = { foto: a.p_photo, thumb: a.p_thumb, at: Date.now() }; SELFIE_DA[a.p_position] = true; return teamState(t); },
+    team_selfie_skip: a => { const t = fuchsByCode(a.p_code); SELFIE_DA[a.p_position] = true; return teamState(t); },
+    team_photo: a => { const f = FOTOS[a.p_position]; return { data: f ? (a.p_full ? f.foto : f.thumb) : null }; },
+    admin_photos: a => { pin(a); return fotoListe(); },
+    admin_photo: a => { pin(a); const t = TEAMS.find(x => x.id === a.p_team); return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full) }; },
+    admin_set_selfie: a => { pin(a); WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
+    admin_delete_photos: a => { pin(a); ANDERE_FOTOS.length = 0; Object.keys(FOTOS).forEach(k => delete FOTOS[k]); return adminState(); },
     admin_state: a => { pin(a); return adminState(); },
     admin_tracks: a => { pin(a); return adminTracks(); },
     admin_delete_test_participants: a => { pin(a); return { deleted: 0, state: adminState() }; },
@@ -364,6 +418,7 @@
     try { args = init && init.body ? JSON.parse(init.body) : {}; } catch { }
     await new Promise(r => setTimeout(r, 40));
     const fn = m[1];
+    if (window.__funkloch === true || (window.__funkloch === "nur-foto" && fn === "team_selfie")) throw new TypeError("Prüfstand: Funkloch");
     LOG.push(fn);
     const antwort = (status, data) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
     try {

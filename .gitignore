@@ -9,3 +9,5 @@ tools/hintergrund/*.json
 # Geholte Läufe des Geräte-Tests: enthalten Koordinaten, das Repo wird komplett veröffentlicht
 testlaeufe/
 __pycache__/
+# Notizen und Fotos aus UI-Durchsichten, das Repo wird komplett veröffentlicht
+.ui-design/

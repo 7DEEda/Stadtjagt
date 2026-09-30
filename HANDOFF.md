@@ -1267,3 +1267,52 @@ Nur Frontend, keine Migration.
   Form, gelbe und rote Zeilen klappen mit dem Grund auf, „Noch mal“ und
   „Abbrechen“ sind sichtbar. Im hellen Schema steht dunkle Schrift auf den
   orangen Knöpfen (Kontrast 5,3 statt 3,3); das Spiel selbst bleibt bei Weiß.
+
+## Gruppenselfie an jeder Station (Nachtrag 25, 30.09.2026)
+
+Spezifikation: `docs/superpowers/specs/2026-09-30-gruppenselfie-design.md`,
+Mockup: `mockups/gruppenselfie.html`. Migration:
+`supabase/migrations/20260930180000_gruppenselfie.sql`.
+
+- **Abschaltbar, Standard aus.** Die Spielleitung schaltet im neuen Reiter
+  „Fotos“ ein und setzt dort das Löschdatum. Solange der Schalter aus ist,
+  verhält sich das Spiel wie vorher. Wird mitten im Spiel eingeschaltet,
+  brauchen schon gelöste Stationen kein Foto mehr.
+- **Ablauf:** Nach der richtigen Antwort zeigt das Handy der Teamleitung statt
+  der nächsten Station den Selfie-Schritt (Frontkamera, Vorschau, „Das nehmen
+  wir“). Erst mit dem Foto erscheint die Ziffer. `submit_answer` ist
+  unverändert: Zeitmessung und Rangliste hängen weiter an `solved_at`. Neu ist
+  `progress.selfie_at`; `team_state` hält die Ziffer zurück, solange es fehlt,
+  und meldet die offene Station als `selfie.pending`.
+- **Die Ziffer hängt nie am Netz:** Scheitert das Hochladen, gibt es „Ohne
+  Hochladen weiter“ (`team_selfie_skip`). Das Foto bleibt im `localStorage`
+  (`sj.foto.<team>.<position>`) und wird beim nächsten Abruf nachgereicht.
+  Streikt die Kamera, erscheint nach dem ersten Versuch „Ohne Foto weiter“.
+- **Wer was sieht:** Teamleitung, Mitglieder und Mitlesende sehen „Euer Album“
+  (Zugang über Team-Code, Geräte-Schlüssel oder Mitlese-Link, `team_photo`).
+  Die Spielleitung sieht alle im Reiter „Fotos“, lädt sie als ZIP herunter
+  (im Browser gebaut, ohne Bibliothek) und kann sie löschen.
+- **Speicher:** `station_photos` (Foto bis 700 KB, Vorschau bis 60 KB, nur
+  JPEG), ohne Rechte für anon. Der Fremdschlüssel auf `progress` sorgt dafür,
+  dass Zurücksetzen, neu Auslosen und Leeren der Anmeldung die Fotos
+  mitnehmen. Das Handy verkleinert vorher auf 1280 px.
+- **Löschen:** Ist `game_state.photos_delete_on` erreicht, entfernen
+  `team_state` und `admin_state` die Fotos beim nächsten Abruf.
+- **Ersetzen:** das Foto der zuletzt gelösten Station, bis an der nächsten
+  eingecheckt ist („Neu aufnehmen“ im großen Foto).
+- **Prüfen:** `python tools/pruefstand/selfie.py` spielt den Ablauf im
+  Prüfstand durch (ohne Datenbank, ohne Kamera). `python
+  tools/pruefstand/selfie_db.py` ist der Probelauf gegen die echte Datenbank:
+  ein einziger DO-Block, der die Migration einspielt, 34 Prüfungen macht und
+  am Ende alles zurücknimmt. Auf echten Handys prüfen: Frontkamera öffnet
+  sich, Foto steht richtig herum, „Foto speichern“ landet in der Galerie.
+
+## Ungefährer Standort (30.09.2026)
+
+Befund aus dem Geräte-Test (iPhone, iOS 18.7): ±4650 m, weil „Genauer Standort“
+für Safari aus war. Das Spiel verwirft Meldungen über ±1000 m (`brauchbar()`)
+und sagte dazu bisher nichts, das Handy hing ohne Erklärung. Jetzt merkt sich
+`startGps()` so eine Meldung in `S.gps.grob`, und `grobHTML()` zeigt, wo man die
+Einstellung auf iPhone und Android ändert. Der Geräte-Test (Suite 5) meldet
+denselben Fall als „nur ungefähr“. Geprüft im Prüfstand (Szenario
+`leitung-standort-grob`), auf einem echten iPhone noch nicht.

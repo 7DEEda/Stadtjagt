@@ -152,6 +152,11 @@
           "Höhe": c.altitude == null ? "keine" : rund(c.altitude) + " m", "Bewegungsrichtung": c.heading == null || Number.isNaN(c.heading) ? "keine" : rund(c.heading) + "°",
           "Brauchbar wäre": "unter ±25 m"
         };
+        // über einem Kilometer ist es kein schlechter Empfang, sondern die Einstellung "nur ungefährer Standort"
+        if (beste > 1000) {
+          mess["Hinweis"] = "Das Handy gibt nur den ungefähren Standort frei. iPhone: Einstellungen, Datenschutz und Sicherheit, Ortungsdienste, Safari-Websites, Genauer Standort einschalten. Android: Einstellungen, Standort, App-Berechtigungen, Browser, Genauen Standort verwenden.";
+          return { art: "err", wert: "nur ungefähr", mess };
+        }
         return { art: beste <= 25 ? "ok" : beste <= 100 ? "warn" : "err", wert: "±" + Math.round(beste) + " m", mess };
       }
     },
@@ -380,5 +385,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 4, tests };
+  window.SJ_TESTS = { version: 5, tests };
 })();

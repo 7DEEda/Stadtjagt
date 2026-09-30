@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Gruppenselfie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Mockup: Gruppenselfie an jeder Station. Aussehen aus index.html, Daten gespielt, nichts wird gesendet. */
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --flag:#EE5F1B; --flag-ink:#FFFFFF;
+  --ok:#2E7D4F; --ok-bg:#E3F1E7; --err:#B3261E; --err-bg:#FBE9E7; --info-bg:#E6EEF4; --feld:#7D9189;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif; --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38; --flag:#FF7A3A; --flag-ink:#0F1B18;
+  --ok:#6CCB8E; --ok-bg:#16332A; --err:#FF8A80; --err-bg:#3A1F1C; --info-bg:#172A36; --feld:#5E786F}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);min-height:100vh;padding-top:44px}
+main{max-width:460px;margin:0 auto;padding:20px 16px 70px}
+main.wide{max-width:900px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+h1{font-size:32px;font-weight:700}h2{font-size:24px;font-weight:700}h3{font-size:19px;font-weight:600}
+p{margin:.4em 0 0}
+.muted{color:var(--muted)}.small{font-size:14px}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:16px}
+.flag{width:32px;height:32px;flex:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 19px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);margin-top:12px;min-height:48px}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.link{background:none;border:0;padding:10px 4px;min-height:42px;font:600 15px var(--body);color:var(--muted);text-decoration:underline;cursor:pointer}
+.msg{border-radius:10px;padding:10px 12px;margin-top:12px;font-size:15px}
+.msg.ok{background:var(--ok-bg);color:var(--ok)}.msg.info{background:var(--info-bg)}.msg.err{background:var(--err-bg);color:var(--err)}
+.chip{display:inline-block;padding:4px 10px;border-radius:99px;font:600 13px var(--body);background:var(--paper);border:1px solid var(--line)}
+.lock{display:flex;gap:6px;margin-top:10px}
+.wheel{width:44px;height:58px;border-radius:8px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font:700 32px var(--head)}
+.wheel.leer{opacity:.45}
+.wheel.neu{background:var(--flag);color:var(--flag-ink)}
+/* neu für das Selfie */
+.foto{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;margin-top:12px;background:var(--line)}
+.album{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.album .bild{aspect-ratio:1;border-radius:8px;border:1px solid var(--line);background:var(--paper);display:grid;place-items:center;font:700 15px var(--head);color:var(--muted);overflow:hidden;padding:0;cursor:pointer}
+.album .bild img{width:100%;height:100%;object-fit:cover;display:block}
+.stand{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--muted);margin-top:8px}
+.stand i{width:9px;height:9px;border-radius:50%;background:var(--ok);flex:none}
+.stand.laedt i{background:var(--flag);animation:puls 1s infinite}
+@keyframes puls{50%{opacity:.3}}
+.galerie{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
+.galerie figure{margin:0}
+.galerie img,.galerie .leer{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;display:block;background:var(--paper);border:1px dashed var(--line)}
+.galerie figcaption{font-size:13px;color:var(--muted);margin-top:3px}
+.gross{position:fixed;inset:0;z-index:20;background:rgba(10,15,13,.92);display:grid;place-items:center;padding:16px}
+.gross img{max-width:100%;max-height:82vh;border-radius:10px}
+.gross .btn{max-width:300px}
+#reiter{position:fixed;top:0;left:0;right:0;z-index:9;background:var(--ink);display:flex;gap:4px;padding:6px 8px;align-items:center;overflow-x:auto}
+#reiter span{color:var(--paper);font-size:12px;opacity:.7;margin-right:4px;white-space:nowrap}
+#reiter button{font:600 13px var(--body);background:transparent;color:var(--paper);border:1px solid currentColor;border-radius:6px;padding:5px 10px;cursor:pointer;white-space:nowrap}
+#reiter button.an{background:var(--flag);border-color:var(--flag);color:var(--flag-ink)}
+</style>
+</head>
+<body>
+<div id="reiter"><span>Mockup</span>
+  <button data-v="leitung" class="an">Teamleitung</button><button data-v="mitlesen">Teammitglied</button>
+  <button data-v="admin">Spielleitung</button><button data-v="anmeldung">Anmeldung</button></div>
+<main id="app"></main>
+<input type="file" accept="image/*" capture="user" id="kamera" hidden>
+
+<script>
+const $ = s => document.querySelector(s);
+const LOGO = `<svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></svg>`;
+const STATIONEN = ["Pulverturm", "Rudolfstollen", "Karlsbrücke", "Kampa-Insel", "Laurenziberg"];
+const ZIFFERN = [3, 8, 1, 5, 6];
+// Beispielbild, falls am Laptop keine Kamera da ist: ein gemaltes Gruppenfoto
+function beispiel(n, ton) {
+  const c = document.createElement("canvas"); c.width = 640; c.height = 480; const g = c.getContext("2d");
+  const v = g.createLinearGradient(0, 0, 640, 480); v.addColorStop(0, `hsl(${ton},45%,62%)`); v.addColorStop(1, `hsl(${ton + 40},50%,38%)`);
+  g.fillStyle = v; g.fillRect(0, 0, 640, 480);
+  for (let i = 0; i < n; i++) { const x = 90 + i * (460 / Math.max(1, n - 1)), y = 250 + (i % 2) * 40;
+    g.fillStyle = `hsl(${30 + i * 8},55%,${70 - i * 3}%)`; g.beginPath(); g.arc(x, y, 46, 0, 7); g.fill();
+    g.fillStyle = `hsl(${ton + i * 50},40%,35%)`; g.fillRect(x - 60, y + 50, 120, 200); }
+  return c.toDataURL("image/jpeg", .8);
+}
+// Zustand des Teams Fuchs: zwei Stationen fertig, an der dritten ist die Antwort gerade richtig
+const S = { view: "leitung", schritt: "richtig", vorschau: null, laedt: false, gross: null,
+  fotos: [beispiel(6, 20), beispiel(5, 140), null, null, null], station: 2 };
+const ANDERE = { Adler: [beispiel(7, 200), beispiel(7, 260), beispiel(6, 320), null, null], Eule: [beispiel(5, 80), null, null, null, null] };
+
+const kopf = (titel, unter) => `<div class="brand">${LOGO}<div><h1>${titel}</h1><div class="muted small">${unter}</div></div></div>`;
+const album = (fotos, titel) => `<div class="panel"><h3>${titel}</h3>
+  <div class="album">${fotos.map((f, i) => `<button class="bild" data-act="gross" data-i="${i}" ${f ? "" : "disabled"}>${f ? `<img src="${f}" alt="Station ${i + 1}">` : i + 1}</button>`).join("")}</div>
+  <p class="small muted">Tippt auf ein Foto, um es groß zu sehen und zu speichern. Das Album bleibt bis zum 31.10. abrufbar, danach löschen wir alle Fotos.</p></div>`;
+const ziffern = () => `<div class="lock">${ZIFFERN.map((z, i) => `<div class="wheel ${i < S.station ? "" : i === S.station && S.schritt === "fertig" ? "neu" : "leer"}">${i < S.station || (i === S.station && S.schritt === "fertig") ? z : "?"}</div>`).join("")}<div class="wheel leer">?</div></div>`;
+
+function render() {
+  document.querySelectorAll("#reiter button").forEach(b => b.classList.toggle("an", b.dataset.v === S.view));
+  const app = $("#app"); app.className = S.view === "admin" ? "wide" : "";
+  let out = "";
+  if (S.view === "leitung") {
+    out = kopf("🦊 Team Fuchs", "Leitung Anna Berger");
+    out += `<div class="panel"><div class="small muted">Station ${S.station + 1} von 5</div><h2>${STATIONEN[S.station]}</h2>`;
+    if (S.schritt === "richtig") out += `<div class="msg ok">Richtig! Die Ziffer gibt es nach dem Gruppenselfie.</div>
+      <p>Alle zusammen ins Bild, mit der ${STATIONEN[S.station]} im Hintergrund.</p>
+      <button class="btn" data-act="kamera">Selfie aufnehmen</button>
+      <p class="small muted">Das Foto sehen nur euer Team und die Spielleitung.</p>`;
+    if (S.schritt === "vorschau") out += `<img class="foto" src="${S.vorschau}" alt="Vorschau eures Fotos">
+      <p>Sind alle drauf?</p>
+      <div class="row2"><button class="btn" data-act="nehmen">Das nehmen wir</button><button class="btn alt" data-act="kamera">Noch mal</button></div>`;
+    if (S.schritt === "fertig") out += `<div class="msg ok">Foto ist drin. Eure Ziffer für diese Station: <b>${ZIFFERN[S.station]}</b></div>
+      <img class="foto" src="${S.fotos[S.station]}" alt="Euer Foto">
+      <div class="stand ${S.laedt ? "laedt" : ""}"><i></i><span>${S.laedt ? "Foto wird hochgeladen …" : "Foto ist gesichert"}</span></div>
+      <button class="btn" data-act="weiter">Weiter zur nächsten Station</button>
+      <button class="link" data-act="kamera">Foto ersetzen</button>`;
+    if (S.schritt === "funkloch") out += `<div class="msg err">Das Foto kam nicht durch, vermutlich ein Funkloch.</div>
+      <img class="foto" src="${S.vorschau}" alt="Euer Foto">
+      <button class="btn" data-act="nehmen">Erneut senden</button>
+      <button class="btn alt" data-act="ohne">Ohne Hochladen weiter</button>
+      <p class="small muted">Das Foto bleibt auf diesem Handy und wird nachgereicht, sobald wieder Netz da ist.</p>`;
+    out += `</div><div class="panel"><h3>Eure Ziffern</h3>${ziffern()}</div>` + album(S.fotos, "Euer Album");
+    out += `<p class="small muted" style="text-align:center;margin-top:16px"><button class="link" data-act="funkloch">Mockup: Funkloch zeigen</button></p>`;
+  }
+  if (S.view === "mitlesen") {
+    out = kopf("🦊 Team Fuchs", "Du liest mit, eingeben kann nur die Teamleitung");
+    out += `<div class="panel"><div class="small muted">Station ${S.station + 1} von 5</div><h2>${STATIONEN[S.station]}</h2>
+      <div class="msg info">${S.schritt === "fertig" ? "Foto ist drin, weiter geht es." : "Richtig gelöst! Jetzt alle zu Anna fürs Gruppenselfie."}</div></div>` + album(S.fotos, "Euer Album");
+  }
+  if (S.view === "admin") {
+    const teams = { Fuchs: S.fotos, ...ANDERE }, n = Object.values(teams).flat().filter(Boolean).length;
+    out = kopf("Spielleitung", `<span class="chip">Fotos</span> ${n} von ${Object.keys(teams).length * 5} da`);
+    out += `<div class="panel"><div class="row2"><button class="btn" data-act="zip">Alle herunterladen</button><button class="btn alt" data-act="loeschen">Fotos löschen</button></div>
+      <p class="small muted">Die Fotos werden am 31.10.2026 von selbst gelöscht. Vorher herunterladen, wenn ihr sie behalten wollt.</p></div>`;
+    for (const [name, fotos] of Object.entries(teams)) out += `<div class="panel"><h3>Team ${name}</h3><div class="galerie">${fotos.map((f, i) =>
+      `<figure>${f ? `<img src="${f}" alt="" data-act="grossA" data-src="${f}">` : `<div class="leer"></div>`}<figcaption>${i + 1}. ${STATIONEN[i]}${f ? "" : ", noch offen"}</figcaption></figure>`).join("")}</div></div>`;
+  }
+  if (S.view === "anmeldung") {
+    out = kopf("Stadtjagd", "Anmeldung");
+    out += `<div class="panel"><h2>Bist du dabei?</h2><p>Trag deinen Namen ein, die Teams werden ausgelost.</p>
+      <button class="btn">Anmelden</button>
+      <div class="msg info"><b>Neu:</b> An jeder Station macht ihr ein Gruppenfoto. Sehen können es nur euer Team und die Spielleitung. Am 31.10.2026 löschen wir alle Fotos.</div></div>`;
+  }
+  if (S.gross) out += `<div class="gross" data-act="zu"><div style="text-align:center"><img src="${S.gross}" alt="">
+    <a class="btn" href="${S.gross}" download="stadtjagd-foto.jpg">Foto speichern</a><button class="btn alt" style="color:#fff" data-act="zu">Schließen</button></div></div>`;
+  app.innerHTML = out;
+}
+
+document.addEventListener("click", e => {
+  const v = e.target.closest("#reiter button"); if (v) { S.view = v.dataset.v; S.gross = null; return render(); }
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const a = el.dataset.act;
+  // Am Handy öffnet sich die echte Frontkamera, am Laptop kommt ein gemaltes Beispielbild
+  if (a === "kamera") {
+    if ("ontouchstart" in window) { $("#kamera").value = ""; $("#kamera").click(); }
+    else { S.vorschau = beispiel(6, Math.random() * 360); S.schritt = "vorschau"; render(); }
+  }
+  if (a === "nehmen") { S.fotos[S.station] = S.vorschau; S.schritt = "fertig"; S.laedt = true; render(); setTimeout(() => { S.laedt = false; render(); }, 1600); }
+  if (a === "funkloch") { S.vorschau = S.vorschau || beispiel(6, 300); S.schritt = "funkloch"; render(); }
+  if (a === "ohne") { S.fotos[S.station] = S.vorschau; S.schritt = "fertig"; S.laedt = true; render(); }
+  if (a === "weiter") { if (S.station < 4) { S.station++; S.schritt = "richtig"; S.vorschau = null; } render(); scrollTo(0, 0); }
+  if (a === "gross") { S.gross = S.fotos[+el.dataset.i]; render(); }
+  if (a === "grossA") { S.gross = el.dataset.src; render(); }
+  if (a === "zu" && (e.target === el || e.target.tagName === "BUTTON")) { S.gross = null; render(); }
+  if (a === "zip") el.textContent = "Paket wird gebaut …";
+  if (a === "loeschen") confirm("Alle Fotos aller Teams löschen? Das lässt sich nicht rückgängig machen.");
+});
+// Echte Kamera oder Dateiauswahl: das gewählte Bild ersetzt das Beispielbild
+$("#kamera").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  S.neu = true; S.vorschau = URL.createObjectURL(f); S.schritt = "vorschau"; render();
+};
+render();
+</script>
+</body>
+</html>

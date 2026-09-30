@@ -285,6 +285,23 @@ a.btn{text-decoration:none;text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 /* Tablet hochkant: die Karte lässt Platz zum Wischen, sonst fängt sie jedes Scrollen ab */
 @media (orientation:portrait){#map{height:min(62vh,560px)}}
+/* Gruppenselfie (Nachtrag 25) */
+.foto{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;margin-top:12px;background:var(--line)}
+.album{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.album .bild{aspect-ratio:1;border-radius:8px;border:1px solid var(--line);background:var(--paper);display:grid;place-items:center;font:700 15px var(--head);color:var(--muted);overflow:hidden;padding:0}
+button.bild{cursor:pointer}
+.album .bild img{width:100%;height:100%;object-fit:cover;display:block}
+.galerie{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px}
+.galerie figure{margin:0}
+.galerie .bild{display:block;width:100%;aspect-ratio:4/3;border-radius:8px;border:1px dashed var(--line);background:var(--paper);overflow:hidden;padding:0;color:var(--muted);font:600 14px var(--body)}
+.galerie button.bild{border-style:solid}
+.galerie .bild img{width:100%;height:100%;object-fit:cover;display:block}
+.galerie figcaption{font-size:13px;color:var(--muted);margin-top:3px}
+.fotogross{position:fixed;inset:0;z-index:1100;background:rgba(10,15,13,.92);display:grid;place-items:center;padding:16px;overflow:auto}
+.fotogross > div{width:100%;max-width:520px;text-align:center}
+.fotogross img{max-width:100%;max-height:68vh;border-radius:10px;background:#223}
+.fotogross .btn.alt{color:#fff;border-color:rgba(255,255,255,.5)}
+.fotogross p{color:#fff}
 </style>
 </head>
 <body>
@@ -544,6 +561,18 @@ const DANGER = {
       return `${r.deleted} Testnamen entfernt.`;
     }
   },
+  fotos: {
+    when: st => (st.photoCount || 0) > 0,
+    title: "Alle Fotos löschen",
+    lead: st => `Alle ${st.photoCount} Gruppenfotos aller Teams werden gelöscht, auch aus den Alben der Teams.`,
+    keeps: "Fortschritt, Ziffern und Plätze bleiben. Lade die Fotos vorher im Reiter Fotos herunter, wenn ihr sie behalten wollt.",
+    btn: "Alle Fotos löschen",
+    async run() {
+      S.admin.state = await rpc("admin_delete_photos", { p_pin: S.admin.pin });
+      S.admin.fotos = []; S.gross = null;
+      return "Alle Fotos gelöscht.";
+    }
+  },
   // Rätsel für ein Team werten: kein Löschen, aber ein Eingriff ins Spiel, darum die Rückfrage
   solve: {
     when: () => false,   // kommt über den Knopf im Reiter Teams
@@ -652,15 +681,16 @@ function viewPublic() {
   if (!mitDa) out += msgBox();
 
   if (p.status === "registration") {
+    const fotoHinweis = p.selfieOn ? `<p class="small muted" style="margin-top:10px">An jeder Station macht ihr ein Gruppenfoto. Sehen können es nur euer Team und die Spielleitung.${p.photosDeleteOn ? ` Am ${fotoDatum(p.photosDeleteOn)} löschen wir alle Fotos.` : ""}</p>` : "";
     out += S.myName
       ? `<div class="panel"><h2>Du bist dabei, ${esc(vorname(S.myName))}.</h2>
          <p>Sobald die Spielleitung auslost, siehst du hier dein Team.</p>
          <p class="small muted" style="margin-top:8px">Öffne diese Seite später im selben Browser, am besten über ein Lesezeichen.
-           Dann erkennt sie dich wieder und zeigt dein Team von selbst.</p></div>
+           Dann erkennt sie dich wieder und zeigt dein Team von selbst.</p>${fotoHinweis}</div>
          <p class="small muted" style="margin-top:10px;text-align:center">Jede Person meldet sich auf dem eigenen Handy an. Dieses Handy gehört jetzt zu dir.</p>`
       : `<div class="panel"><h2>Mitmachen</h2><p class="muted">Trag deinen Namen ein. Die Teams werden später zufällig ausgelost.</p>
          <div style="margin-top:12px"><label for="pname">Vor- und Nachname</label><input id="pname" autocomplete="name" autocapitalize="words" enterkeyhint="send"></div>
-         <button class="btn" data-act="pub-reg" ${S.busy ? "disabled" : ""}>Anmelden</button>${msgBox("anm")}</div>`;
+         <button class="btn" data-act="pub-reg" ${S.busy ? "disabled" : ""}>Anmelden</button>${msgBox("anm")}${fotoHinweis}</div>`;
     out += `<div class="panel"><div class="count">${p.participantCount}</div><div class="muted small">Personen angemeldet</div></div>`;
     out += helpBtn("Stadtjagd: Ich komme bei der Anmeldung nicht weiter.");
     return out + nav();
@@ -816,6 +846,15 @@ function kalOkHTML() {
     Bis dahin folgt der Pfeil eurer Laufrichtung.</div>`;
   return `<div class="msg ok">Kompass ist eingemessen${ok.acc != null ? ", " + accText(ok.acc) : ""}. Der Pfeil zeigt zur Station.</div>`;
 }
+// Das Handy gibt nur den ungefähren Standort frei: sagen, wo man das umstellt
+function grobHTML() {
+  const a = S.gps.grob;
+  if (!a || S.gps.pos) return "";
+  return `<div class="msg err"><b>Dein Handy gibt nur den ungefähren Standort frei</b> (auf ${fmtDist(a)} genau). Damit klappt das Einchecken nicht.
+    <br><b>iPhone:</b> Einstellungen, Datenschutz und Sicherheit, Ortungsdienste, Safari-Websites (oder euer Browser), „Genauer Standort“ einschalten.
+    <br><b>Android:</b> Einstellungen, Standort, App-Berechtigungen, euren Browser wählen, „Genauen Standort verwenden“ einschalten.
+    <br>Danach diese Seite neu laden.</div>`;
+}
 function gpsNote() {
   const g = S.gps;
   if (!g.on) return "";
@@ -855,7 +894,7 @@ function teamAnsicht(st, lesen) {
   // Liest die Teamleitung selbst mit, spricht die Seite sie nicht in der dritten Person an
   const ichSelbst = lesen && st.name && st.name === st.team.leaderName;
   const kennung = lesen ? `Team ${st.team.name}` : `Team ${st.team.name} (${st.team.code})`;
-  const ende = lesen ? "" : (st.status === "finished" ? "" : leitungHTML(st)) + abmeldenHTML() + nav();
+  const ende = albumHTML(st) + (lesen ? "" : (st.status === "finished" ? "" : leitungHTML(st)) + abmeldenHTML() + nav());
   let out = `<div class="bar"><div>${logo()}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
     <div class="muted small">${lesen ? `Teamleitung: ${esc(st.team.leaderName || "offen")}`
       : st.team.leaderName === S.myName ? "Du leitest das Team" : `Leitung ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div></div>`;
@@ -898,6 +937,13 @@ function teamAnsicht(st, lesen) {
     <p>Die Spielleitung hat das Spiel beendet. ${lesen ? "Die Rangliste steht unten." : "Danke fürs Mitspielen."}</p>${msgBox()}</div>`
     + (lesen ? "" : (S.pub ? ranglisteHTML(S.pub, st.team.name) : `<div class="panel"><p class="muted">Rangliste wird geladen …</p></div>`)) + ende;
 
+  // Gruppenselfie: die gelöste Station wartet auf ihr Foto, oder die Teamleitung ersetzt gerade eines
+  if ((st.selfie && st.selfie.on && st.selfie.pending) || (!lesen && S.selfie)) {
+    return out + selfieHTML(st, lesen, leitung, ichSelbst)
+      + (unterwegs ? `<div class="panel ziffern"><div class="bar"><h3>Eure Ziffern</h3>
+        <span class="small muted">${(st.digits || []).filter(d => d != null).length} von ${st.totalStations}</span></div>${lockHTML(st, true)}${routeHTML(st)}</div>` : "")
+      + helpBtn(`Stadtjagd: Hier ist ${kennung}. Wir brauchen Hilfe beim Gruppenfoto.`) + ende;
+  }
   if (st.allSolved) {
     const left = st.prizesLeft ?? 0;
     out += `<div class="panel"><h2>Die Koffer</h2><p class="hint">${esc(st.caseHint || "")}</p>
@@ -939,7 +985,7 @@ function teamAnsicht(st, lesen) {
         : g.on || st.testMode ? `<button class="btn" data-act="t-check" data-wait="Standort wird bestimmt …" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>Wir sind da</button>
       ${!st.testMode && hasTarget && g.on && !g.pos ? `<p class="small muted" style="text-align:center;margin-top:6px">Sobald der Standort da ist, könnt ihr einchecken.</p>` : ""}` : ""}
       ${okOben ? "" : msgBox()}
-      ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
+      ${grobHTML()}${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
       ${g.kal && hasTarget ? kalHTML() : ""}
       ${kalOk}
       ${g.on && g.kompass === "tippen" ? `<div class="msg info">Der Kompass ist nach dem Neuladen aus. Einmal tippen, dann zeigt der Pfeil wieder zur Station.
@@ -1025,7 +1071,162 @@ function vorbereitenHTML() {
       ${kalOkHTML()}
       ${g.kompass === "tippen" ? `<button class="btn alt" data-act="t-gps">Kompass wieder einschalten</button>` : ""}
       ${kompassDa() ? `<button class="btn alt" data-act="t-kal">Kompass einmessen</button>` : ""}`}
-    ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}</div>`;
+    ${grobHTML()}${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}</div>`;
+}
+
+/* ---------- Gruppenselfie (Nachtrag 25) ---------- */
+// Nach der richtigen Antwort kommt erst das Foto, dann die Ziffer (team_state hält sie zurück, solange
+// selfie.pending gesetzt ist). S.selfie hält Aufnahme und Vorschau auf dem Handy der Teamleitung:
+// { pos, url (Vorschau), foto, thumb (Base64 ohne Kopf), status: "vorschau" | "fehler", fehler }
+async function fotoAusDatei(datei) {
+  const url = URL.createObjectURL(datei);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const klein = (kante, q) => {
+      const f = Math.min(1, kante / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * f); c.height = Math.round(img.naturalHeight * f);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      return c.toDataURL("image/jpeg", q);
+    };
+    // iPhones liefern bei gleicher Größe deutlich dickere JPEGs als Android (Geräte-Test: 460 gegen 150 KB)
+    let foto = klein(1280, 0.72);
+    if (foto.length > 400000) foto = klein(1280, 0.5);
+    if (foto.length > 900000) foto = klein(960, 0.5);
+    return { url: foto, foto: foto.split(",")[1], thumb: klein(320, 0.6).split(",")[1] };
+  } finally { URL.revokeObjectURL(url); }
+}
+// Die Kamera muss noch im Fingertipp aufgehen: kein await zwischen Tipp und input.click()
+function selfieKamera(pos) {
+  if (pos == null) return;
+  const input = document.createElement("input");
+  input.type = "file"; input.accept = "image/*"; input.capture = "user"; input.hidden = true;
+  document.body.appendChild(input);   // iOS öffnet die Kamera nur für ein Feld, das im Dokument hängt
+  input.onchange = async () => {
+    const f = input.files[0]; input.remove();
+    if (!f) return;
+    try { S.selfie = { pos, ...(await fotoAusDatei(f)), status: "vorschau" }; S.msg = null; }
+    catch { S.msg = { type: "err", ort: "selfie", text: "Dieses Foto lässt sich nicht lesen. Bitte noch einmal aufnehmen." }; }
+    render();
+  };
+  S.selfieVersucht = true;
+  input.click();
+}
+// Kam das Foto im Funkloch nicht durch, bleibt es auf dem Handy und wird beim nächsten Abruf nachgereicht
+const fotoSchluessel = (st, pos) => `sj.foto.${st.team.id}.${pos}`;
+function fotoMerken(st, sf) { try { LS.setItem(fotoSchluessel(st, sf.pos), JSON.stringify({ foto: sf.foto, thumb: sf.thumb })); } catch { /* Speicher voll: dann eben nicht */ } }
+let fotoNachreichZeit = 0;
+async function fotoNachreichen(s) {
+  if (!s || !s.team || !s.selfie || !s.selfie.on || !S.team.code || Date.now() - fotoNachreichZeit < 30000) return;
+  for (let pos = 1; pos <= (s.totalStations || 5); pos++) {
+    const k = fotoSchluessel(s, pos), roh = LS.getItem(k);
+    if (!roh) continue;
+    if ((s.selfie.photos || []).some(f => f.position === pos)) { LS.removeItem(k); continue; }
+    if (S.selfie && S.selfie.pos === pos) continue;   // wird gerade von Hand gesendet
+    fotoNachreichZeit = Date.now();
+    try {
+      const b = JSON.parse(roh);
+      S.team.state = await rpc("team_selfie", { p_code: S.team.code, p_position: pos, p_photo: b.foto, p_thumb: b.thumb });
+      LS.removeItem(k); render();
+    } catch { /* beim nächsten Abruf wieder */ }
+    return;
+  }
+}
+// Fotos holen: wer = "team" (eigenes Album, Zugang wie beim Mitlesen) oder eine Team-Kennung (Spielleitung).
+// Gibt die data-URL zurück oder null, solange geladen wird; ist das Foto da, zeichnet die Seite neu.
+const fotoCache = {};
+function fotoUrl(wer, pos, stempel, voll) {
+  const k = [wer, pos, stempel, voll ? 1 : 0].join("|");
+  if (fotoCache[k] && fotoCache[k] !== "laedt") return fotoCache[k];
+  if (!fotoCache[k]) {
+    fotoCache[k] = "laedt";
+    const ruf = wer === "team"
+      ? rpc("team_photo", { p_code: S.view === "team" ? S.team.code : null, p_token: S.view === "team" ? null : LS.getItem("sj.token"),
+          p_read_token: S.view === "team" ? null : LS.getItem("sj.mit"), p_position: pos, p_full: !!voll })
+      : rpc("admin_photo", { p_pin: S.admin.pin, p_team: wer, p_position: pos, p_full: !!voll });
+    ruf.then(r => { const b = r && r.data; if (b) fotoCache[k] = "data:image/jpeg;base64," + String(b).replace(/\s/g, ""); else delete fotoCache[k]; if (b) render(); })
+      .catch(() => { delete fotoCache[k]; });
+  }
+  return null;
+}
+const fotoDatum = tag => tag ? new Date(tag + "T12:00:00").toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" }) : "";
+function selfieHTML(st, lesen, leitung, ichSelbst) {
+  const p = st.selfie && st.selfie.pending, sf = lesen ? null : S.selfie;
+  const pos = sf ? sf.pos : p.position, ersetzen = !p || p.position !== pos;
+  let h = `<div class="panel"><p class="muted small">Station ${pos} von ${st.totalStations}</p><h2>${ersetzen ? "Foto ersetzen" : esc(p.name)}</h2>`;
+  if (lesen) return h + `<div class="msg ok">Richtig gelöst! ${ichSelbst ? "Das Gruppenselfie nimmst du unter Teamleitung auf." : `Jetzt alle zu ${esc(leitung)} fürs Gruppenselfie.`}</div>
+    <p class="small muted">Danach erscheint hier die Ziffer.</p></div>`;
+  if (!sf) return h + `<div class="msg ok">Richtig! Die Ziffer gibt es nach dem Gruppenselfie.</div>
+    <p>Alle zusammen ins Bild, am besten mit der Station im Hintergrund.</p>
+    <button class="btn" data-act="t-selfie">Selfie aufnehmen</button>${msgBox("selfie")}
+    <p class="small muted">Das Foto sehen nur euer Team und die Spielleitung.</p>
+    ${S.selfieVersucht ? `<button class="link" data-act="t-selfie-skip" data-ort="selfie">Kamera geht nicht? Ohne Foto weiter</button>` : ""}</div>`;
+  if (sf.status === "fehler") return h + `<div class="msg err">Das Foto kam nicht durch: ${esc(sf.fehler || "keine Verbindung")}</div>
+    <img class="foto" src="${sf.url}" alt="Euer Foto">
+    <button class="btn" data-act="t-selfie-ok" data-wait="Wird hochgeladen …">Erneut senden</button>
+    ${ersetzen ? `<button class="btn alt" data-act="t-selfie-ab">Abbrechen</button>`
+      : `<button class="btn alt" data-act="t-selfie-skip" data-ort="selfie">Ohne Hochladen weiter</button>${msgBox("selfie")}
+        <p class="small muted">Das Foto bleibt auf diesem Handy und wird nachgereicht, sobald wieder Netz da ist.</p>`}</div>`;
+  return h + `<img class="foto" src="${sf.url}" alt="Vorschau eures Fotos"><p>Sind alle drauf?</p>
+    <div class="row2"><button class="btn" data-act="t-selfie-ok" data-wait="Wird hochgeladen …">Das nehmen wir</button>
+    <button class="btn alt" data-act="t-selfie">Noch mal</button></div>${msgBox("selfie")}
+    ${ersetzen ? `<button class="link" data-act="t-selfie-ab">Abbrechen, altes Foto behalten</button>` : ""}</div>`;
+}
+function albumHTML(st) {
+  const sf = st.selfie;
+  if (!sf || (!sf.on && !(sf.photos || []).length)) return "";
+  let k = "";
+  for (let pos = 1; pos <= (st.totalStations || 5); pos++) {
+    const f = (sf.photos || []).find(x => x.position === pos);
+    if (!f) { k += `<div class="bild">${pos}</div>`; continue; }
+    const u = fotoUrl("team", pos, f.takenAt, false);
+    k += `<button class="bild" data-act="foto-gross" data-pos="${pos}" aria-label="Foto von Station ${pos} groß zeigen">${u ? `<img src="${u}" alt="">` : "…"}</button>`;
+  }
+  return `<div class="panel"><h3>Euer Album</h3><div class="album">${k}</div>
+    <p class="small muted">${(sf.photos || []).length ? "Tippt auf ein Foto, um es groß zu sehen und zu speichern." : "Hier sammeln sich eure Gruppenfotos, eines je Station."}
+    ${sf.deleteOn ? ` Am ${fotoDatum(sf.deleteOn)} löschen wir alle Fotos.` : ""}</p></div>`;
+}
+// Ein Foto groß, über der Seite. S.gross = { pos, team } (team nur bei der Spielleitung)
+function fotoGrossHTML() {
+  const G = S.gross; if (!G) return "";
+  const st = G.team ? null : aktiverStand();
+  const liste = G.team ? (S.admin.fotos || []).filter(f => f.teamId === G.team) : ((st && st.selfie && st.selfie.photos) || []);
+  const f = liste.find(x => x.position === G.pos);
+  if (!f) return "";
+  const wer = G.team || "team", voll = fotoUrl(wer, G.pos, f.takenAt, true), klein = fotoUrl(wer, G.pos, f.takenAt, false);
+  const ersetzen = !G.team && S.view === "team" && st.selfie.on && st.selfie.replaceable === G.pos;
+  const name = `stadtjagd-${G.team ? String(f.teamName).toLowerCase() + "-" : ""}station-${G.pos}.jpg`;
+  return `<div class="fotogross" data-act="foto-zu" role="dialog" aria-modal="true" aria-label="Foto von Station ${G.pos}"><div>
+    ${voll || klein ? `<img src="${voll || klein}" alt="Foto von Station ${G.pos}">` : ""}
+    ${voll ? `<a class="btn" href="${voll}" download="${esc(name)}">Foto speichern</a>` : `<p class="small">Foto wird geladen …</p>`}
+    ${ersetzen ? `<button class="btn alt" data-act="t-foto-ersetzen" data-pos="${G.pos}">Neu aufnehmen</button>` : ""}
+    <button class="btn alt" data-act="foto-zu">Schließen</button></div></div>`;
+}
+async function fotosLaden() {
+  try { S.admin.fotos = await rpc("admin_photos", { p_pin: S.admin.pin }); if (S.admin.tab === "fotos") render(); } catch { /* beim nächsten Takt */ }
+}
+// ZIP ohne Bibliothek: JPEGs lassen sich ohnehin nicht weiter packen, also nur ablegen (Methode 0)
+function zipBauen(dateien) {
+  const T = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  const d = new Date(), zeit = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), tag = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const teile = [], mitte = []; let ort = 0;
+  const kopf = (sig, extra, n, c, len) => {
+    const v = new DataView(new ArrayBuffer(extra ? 46 : 30)); let o = 0;
+    const u32 = x => { v.setUint32(o, x, true); o += 4; }, u16 = x => { v.setUint16(o, x, true); o += 2; };
+    u32(sig); if (extra) u16(20); u16(20); u16(0x0800); u16(0); u16(zeit); u16(tag); u32(c); u32(len); u32(len); u16(n.length); u16(0);
+    if (extra) { u16(0); u16(0); u16(0); u32(0); u32(extra.ort); }
+    return new Uint8Array(v.buffer);
+  };
+  for (const f of dateien) {
+    const n = new TextEncoder().encode(f.name), c = crc(f.bytes);
+    teile.push(kopf(0x04034b50, null, n, c, f.bytes.length), n, f.bytes);
+    mitte.push(kopf(0x02014b50, { ort }, n, c, f.bytes.length), n);
+    ort += 30 + n.length + f.bytes.length;
+  }
+  const mLen = mitte.reduce((s, x) => s + x.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, dateien.length, true); e.setUint16(10, dateien.length, true);
+  e.setUint32(12, mLen, true); e.setUint32(16, ort, true);
+  return new Blob([...teile, ...mitte, new Uint8Array(e.buffer)], { type: "application/zip" });
 }
 
 /* ---------- Spielleitung ---------- */
@@ -1051,7 +1252,7 @@ function viewAdmin() {
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
   if (missing.length) out += `<div class="msg err">Ohne Koordinaten kann dort niemand einchecken. Betroffen: Station ${missing.map(s => s.position).join(", ")}.</div>`;
 
-  const tabs = [["map", "Karte"], ["teams", "Teams"], ["people", "Teilnehmende"], ["stations", "Stationen"], ["danger", "Daten löschen"]];
+  const tabs = [["map", "Karte"], ["teams", "Teams"], ["people", "Teilnehmende"], ["stations", "Stationen"], ["fotos", "Fotos"], ["danger", "Daten löschen"]];
   out += `<div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${A.tab === k}" data-act="a-tab" data-tab="${k}">${l}</button>`).join("")}</div>`;
 
   if (A.tab === "map") {
@@ -1196,6 +1397,28 @@ function viewAdmin() {
         </div>`).join("")}
       <p class="small" style="border-top:1px solid var(--line);padding-top:12px">Koffer-Code: <b style="white-space:nowrap">${esc(st.caseCode || "")}</b>, gilt für alle ${st.prizeCount ?? 3} Koffer.
         Die Reihenfolge der Koffer ergibt sich aus dem Platz in der App.</p></div>`;
+  }
+  if (A.tab === "fotos") {
+    const fotos = A.fotos || [];
+    out += `<div class="panel"><div class="bar"><h3>Gruppenselfie an jeder Station</h3><span class="chip ${st.selfieOn ? "live" : ""}">${st.selfieOn ? "an" : "aus"}</span></div>
+      <p class="small muted" style="margin-top:6px">Eingeschaltet macht jedes Team nach der richtigen Antwort ein Gruppenfoto, erst danach erscheint die Ziffer.
+        Die Fotos sehen nur das eigene Team und die Spielleitung. Stationen, die beim Einschalten schon gelöst sind, brauchen kein Foto mehr.</p>
+      <div style="margin-top:12px"><label for="afdatum">Alle Fotos löschen am</label><input id="afdatum" type="date" value="${esc(st.photosDeleteOn || "")}" data-enter="none"></div>
+      <p class="small muted">An diesem Tag verschwinden die Fotos von selbst, auch aus den Alben der Teams. Ohne Datum bleiben sie liegen, bis du sie löschst.</p>
+      <div class="row2"><button class="btn ${st.selfieOn ? "alt" : ""}" data-act="a-selfie" data-on="${st.selfieOn ? "0" : "1"}" data-ort="fotos">${st.selfieOn ? "Ausschalten" : "Einschalten"}</button>
+        <button class="btn alt" data-act="a-selfie" data-on="${st.selfieOn ? "1" : "0"}" data-ort="fotos">Datum speichern</button></div>${msgBox("fotos")}</div>`;
+    out += `<div class="panel"><div class="bar"><h3>${st.photoCount || 0} ${st.photoCount === 1 ? "Foto" : "Fotos"}</h3>
+      <span><button class="btn sm alt" data-act="a-fotos-zip" data-wait="Paket wird gebaut …" data-ort="zip" ${fotos.length ? "" : "disabled"}>Alle herunterladen</button>
+      <button class="btn sm warn" data-act="a-danger" data-key="fotos" ${st.photoCount ? "" : "disabled"}>Fotos löschen</button></span></div>${msgBox("zip")}
+      ${fotos.length ? "" : `<p class="small muted">${st.photoCount ? "Fotos werden geladen …" : "Noch kein Foto da."}</p>`}</div>`;
+    for (const t of (st.teams || [])) {
+      const eigene = fotos.filter(f => f.teamId === t.id);
+      if (!eigene.length) continue;
+      out += `<div class="panel"><h3>${teamEmoji(t.name)} Team ${esc(t.name)}</h3><div class="galerie">${(st.stations || []).map(s => {
+        const f = eigene.find(x => x.position === s.position), u = f && fotoUrl(t.id, s.position, f.takenAt, false);
+        return `<figure>${f ? `<button class="bild" data-act="foto-gross" data-pos="${s.position}" data-team="${t.id}" aria-label="Foto groß zeigen">${u ? `<img src="${u}" alt="">` : "…"}</button>` : `<div class="bild"></div>`}
+          <figcaption>${s.position}. ${esc(s.name)}${f ? ", " + uhrzeit(f.takenAt) : ", offen"}</figcaption></figure>`; }).join("")}</div></div>`;
+    }
   }
   if (A.tab === "danger") {
     const teams = st.teams || [], people = st.participants || [];
@@ -1630,7 +1853,8 @@ const ACT = {
     S.team.state = r.state;
     // Richtig: den Moment benennen, mit der Ziffer, und das neue Rad im Schloss kurz markieren
     const ziffer = r.ok && pos && r.state && r.state.digits ? r.state.digits[pos - 1] : null;
-    if (r.ok && ziffer != null) { S.neueZiffer = { i: pos - 1, bis: Date.now() + 8000 }; S.msg = { type: "ok", text: `Richtig. Station ${pos} gelöst, eure Ziffer: ${ziffer}.` }; }
+    if (r.ok && r.state && r.state.selfie && r.state.selfie.pending) S.msg = null;
+    else if (r.ok && ziffer != null) { S.neueZiffer = { i: pos - 1, bis: Date.now() + 8000 }; S.msg = { type: "ok", text: `Richtig. Station ${pos} gelöst, eure Ziffer: ${ziffer}.` }; }
     else S.msg = { type: r.ok ? "ok" : "err", text: r.message };
   },
   async "t-tip"() {
@@ -1647,6 +1871,58 @@ const ACT = {
         : /bleibt zu/.test(r.message || "") ? "Der Code stimmt nicht. Vergleicht ihn Ziffer für Ziffer mit dem Schloss oben." : r.message;
     S.msg = { type: r.ok ? "ok" : "err", text: text + ungenauHinweis(r, pos) };
   },
+  // Gruppenselfie. Die Kamera geht im Fingertipp auf, darum steht vor selfieKamera() kein await.
+  "t-selfie"() {
+    const st = S.team.state, p = st && st.selfie && st.selfie.pending;
+    selfieKamera(S.selfie ? S.selfie.pos : p ? p.position : null);
+    return false;
+  },
+  "t-foto-ersetzen"(d) { S.gross = null; S.msg = null; selfieKamera(Number(d.pos)); },
+  "t-selfie-ab"() { S.selfie = null; S.msg = null; },
+  async "t-selfie-ok"() {
+    const sf = S.selfie, alt = S.team.state; if (!sf) return;
+    try {
+      const vorher = alt.digits ? alt.digits[sf.pos - 1] : null;
+      const s = await rpc("team_selfie", { p_code: S.team.code, p_position: sf.pos, p_photo: sf.foto, p_thumb: sf.thumb });
+      S.team.state = s; S.selfie = null; LS.removeItem(fotoSchluessel(s, sf.pos));
+      const z = s.digits ? s.digits[sf.pos - 1] : null;
+      if (vorher == null && z != null) { S.neueZiffer = { i: sf.pos - 1, bis: Date.now() + 8000 }; S.msg = { type: "ok", text: `Foto ist drin. Station ${sf.pos} gelöst, eure Ziffer: ${z}.` }; }
+      else S.msg = { type: "ok", text: "Das neue Foto ist gesichert." };
+    } catch (e) {
+      // Funkloch: das Foto bleibt auf dem Handy und wird nachgereicht. Lehnt der Server ab, steht der Grund da.
+      sf.status = "fehler"; sf.fehler = String(e.message || "").replace(/\.$/, "");
+      if (/Keine Verbindung/.test(e.message)) fotoMerken(alt, sf);
+    }
+  },
+  async "t-selfie-skip"() {
+    const st = S.team.state, p = st && st.selfie && st.selfie.pending, hatte = !!S.selfie;
+    if (!p) { S.selfie = null; return; }
+    if (hatte) fotoMerken(st, S.selfie);
+    const s = await rpc("team_selfie_skip", { p_code: S.team.code, p_position: p.position });
+    S.team.state = s; S.selfie = null;
+    const z = s.digits ? s.digits[p.position - 1] : null;
+    if (z != null) S.neueZiffer = { i: p.position - 1, bis: Date.now() + 8000 };
+    S.msg = { type: "ok", text: `Station ${p.position} gelöst${z != null ? ", eure Ziffer: " + z : ""}.` + (hatte ? " Das Foto reichen wir nach, sobald das Netz reicht." : "") };
+  },
+  "foto-gross"(d) { S.gross = { pos: Number(d.pos), team: d.team || null }; },
+  "foto-zu"() { S.gross = null; },
+  async "a-selfie"(d) {
+    const an = d.on === "1", war = !!S.admin.state.selfieOn;
+    S.admin.state = await rpc("admin_set_selfie", { p_pin: S.admin.pin, p_on: an, p_delete_on: val("afdatum") || null });
+    S.msg = { type: "ok", ort: "fotos", text: an !== war ? (an ? "Gruppenselfie ist an." : "Gruppenselfie ist aus. Die Ziffern kommen wieder gleich nach der Antwort.") : "Löschdatum gespeichert." };
+  },
+  async "a-fotos-zip"() {
+    const fotos = S.admin.fotos || [], dateien = [];
+    const sauber = s => String(s).replace(/[^A-Za-z0-9ÄÖÜäöüß-]+/g, "-").replace(/^-|-$/g, "");
+    for (const f of fotos) {
+      const b = atob(String((await rpc("admin_photo", { p_pin: S.admin.pin, p_team: f.teamId, p_position: f.position, p_full: true })).data).replace(/\s/g, ""));
+      dateien.push({ name: `Team-${sauber(f.teamName)}/Station-${f.position}-${sauber(f.stationName)}.jpg`, bytes: Uint8Array.from(b, c => c.charCodeAt(0)) });
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(zipBauen(dateien)); a.download = "stadtjagd-fotos.zip";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    S.msg = { type: "ok", ort: "zip", text: `${dateien.length} Fotos als stadtjagd-fotos.zip heruntergeladen.` };
+  },
   async "a-test"(d) {
     S.admin.state = await rpc("admin_set_test_mode", { p_pin: S.admin.pin, p_on: d.on === "1" });
     S.msg = { type: "ok", text: d.on === "1" ? "Testmodus ist an." : "Testmodus ist aus." };
@@ -1656,7 +1932,7 @@ const ACT = {
     S.admin.state = await rpc("admin_state", { p_pin: pin });
     S.admin.pin = pin; SS.setItem("sj.pin", pin); S.msg = null;
   },
-  "a-tab"(d) { S.admin.tab = d.tab; S.admin.edit = null; S.admin.full = false; S.msg = null; },
+  "a-tab"(d) { S.admin.tab = d.tab; S.admin.edit = null; S.admin.full = false; S.msg = null; if (d.tab === "fotos") fotosLaden(); },
   // Vollbild steht im Zustand und wird mitgezeichnet, sonst geht es beim nächsten Neuzeichnen verloren
   "a-full"() { S.admin.full = !S.admin.full; setTimeout(() => map && map.invalidateSize(), 80); },
   "a-alle"() { if (map && kartenPunkte.length) map.fitBounds(L.latLngBounds(kartenPunkte).pad(0.2)); return false; },
@@ -1970,7 +2246,13 @@ async function startGps(auto) {
   if (watchId != null) navigator.geolocation.clearWatch(watchId);   // kein zweiter Beobachter
   let last = null;
   watchId = navigator.geolocation.watchPosition(p => {
-    if (!brauchbar(p.coords)) return;
+    if (!brauchbar(p.coords)) {
+      // Nur der ungefähre Standort (iPhone: "Genauer Standort" aus, Android: nur ungefähr erlaubt), gemessen
+      // am 30.09.2026 mit ±4650 m. Das Spiel verwarf solche Meldungen stillschweigend und das Handy hing ohne Erklärung.
+      if (p.coords && p.coords.accuracy > 1000 && !S.gps.pos && !S.gps.grob) { S.gps.grob = p.coords.accuracy; if (kompassSichtbar()) render(); }
+      return;
+    }
+    S.gps.grob = null;
     const next = { lat: p.coords.latitude, lng: p.coords.longitude };
     // Laufrichtung auch dann mitrechnen, wenn der Kompass zwar etwas liefert,
     // aber zu ungenau ist. Sonst gibt es keinen Ersatz, wenn er ausfällt.
@@ -2162,10 +2444,12 @@ async function nameNochDa() {
 // Eine Meldung gehört zu ihrer Phase (Station, Rätsel, Koffer). Springt der Stand weiter, etwa weil
 // die Spielleitung freigeschaltet hat, darf "Leider falsch" nicht auf dem nächsten Bildschirm stehen.
 const phaseKey = st => !st ? "" : st.place ? "platz" : st.allSolved ? "koffer"
+  : st.selfie && st.selfie.on && st.selfie.pending ? "foto" + st.selfie.pending.position
   : st.station ? st.station.position + (st.checkedIn ? "r" : "c") : st.status;
 function teamStandSetzen(s) {
   if (S.team.state && phaseKey(S.team.state) !== phaseKey(s)) S.msg = null;
   S.team.state = s;
+  fotoNachreichen(s);
 }
 // Teamleitung ohne Tippen: der Geräte-Schlüssel aus der Anmeldung sagt, wer das Handy ist; leitet die
 // Person gerade ein Team, gibt die Datenbank den Code heraus. Sonst bleibt das Eingabefeld.
@@ -2290,10 +2574,11 @@ function render() {
   const stand = S.view === "admin" ? S.admin.state : S.view === "team" ? S.team.state : S.pub;
   if (stand && stand.background) hintergrundSetzen(stand.background);
   // Liegt ein Dialog oder die Hochhalten-Ansicht darüber, scrollt die Seite dahinter nicht mit
-  document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full));
+  document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross));
   app.innerHTML = (!cfg.url || !cfg.key) ? viewSetup()
     : S.view === "team" ? viewTeam()
       : S.view === "admin" ? viewAdmin() : viewPublic();
+  app.insertAdjacentHTML("beforeend", fotoGrossHTML());
   S.feldKontext = feldKontext();
   if (S.feldKontext === kontext) {
     Object.keys(getippt).forEach(id => { const el = document.getElementById(id); if (el && !el.disabled && getippt[id] !== "") el.value = getippt[id]; });
@@ -2372,6 +2657,7 @@ document.addEventListener("change", e => {
   if (e.target.id === "tneu") { const b = $("#tabgeben"); if (b) b.disabled = !e.target.value; }
 });
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && S.gross) { S.gross = null; render(); return; }
   if (e.key === "Escape" && S.admin.confirm) { S.admin.confirm = null; render(); return; }
   if (e.key === "Escape" && S.admin.full) { S.admin.full = false; render(); return; }
   if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
@@ -2413,6 +2699,7 @@ setInterval(() => {
   if (S.view === "admin" && S.admin.pin) {
     rpc("admin_state", { p_pin: S.admin.pin }).then(s => {
       S.admin.state = s;
+      if (S.admin.tab === "fotos" && (s.photoCount || 0) !== (S.admin.fotos || []).length) fotosLaden();
       if (S.admin.tab === "map") syncTracks().then(() => { drawMap(false); renderTimeline(); }).catch(() => { });
       else if (!busyTyping && !S.admin.edit && !S.admin.confirm) render();
     }).catch(() => { });
