@@ -76,7 +76,7 @@ def main() -> int:
             page.add_init_script(SENSOR)
             page.goto(f"http://127.0.0.1:{PORT}/geraete-test.html")
             page.click("#start")
-            page.wait_for_selector("#meldung .msg.ok")
+            page.wait_for_selector("#speicher.ok")
 
             if not gespeichert:
                 fehler.append("device_test_save wurde nie aufgerufen")

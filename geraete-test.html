@@ -138,6 +138,12 @@ li.skip .punkt{background:var(--line)}
 li.ok .wert{color:var(--ok)}li.warn .wert{color:var(--warn)}li.err .wert{color:var(--err)}
 .mehr{margin:8px 0 0 24px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--muted);white-space:pre-wrap;word-break:break-word}
 .hand,.feld{margin:6px 0 0 24px;font-size:14px}
+/* Speicherstatus: fest am unteren Rand, damit man ihn bei jedem Schritt sieht */
+#speicher{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px 16px calc(10px + env(safe-area-inset-bottom));font-size:15px;
+  background:var(--ok-bg);color:var(--ok);border-top:1px solid var(--line);text-align:center}
+#speicher.info{background:var(--info-bg);color:var(--ink)}
+#speicher.err{background:var(--err-bg);color:var(--err);font-weight:600}
+#speicher .btn{background:var(--err);color:var(--card);margin-top:8px;padding:10px 16px;min-height:48px}
 .kennung{font:600 15px ui-monospace,Menlo,Consolas,monospace;white-space:nowrap}
 </style>
 </head>
@@ -197,7 +203,6 @@ li.ok .wert{color:var(--ok)}li.warn .wert{color:var(--warn)}li.err .wert{color:v
       <div class="warn"><b id="nWarn">0</b>eingeschränkt</div>
       <div class="err"><b id="nErr">0</b>geht nicht</div>
     </div>
-    <div id="meldung"></div>
   </div>
 
   <h2>Von allein</h2>
@@ -213,6 +218,7 @@ li.ok .wert{color:var(--ok)}li.warn .wert{color:var(--warn)}li.err .wert{color:v
 
   <button class="btn alt" id="kopie">Bericht kopieren</button>
 </main>
+<div id="speicher" role="status" aria-live="polite" hidden></div>
 
 <script src="config.js"></script>
 <script src="geraete-tests.js"></script>
@@ -374,38 +380,66 @@ function payload() {
   return { suite: SUITE.version, label, begonnen: lauf.begonnen, beendet: new Date().toISOString(),
     ua: navigator.userAgent, seite: location.href.split("?")[0], bilanz: bilanz(), tests };
 }
+// Jeder Lauf liegt unter eigenem Namen auf dem Gerät, bis der Server ihn bestätigt hat. So überschreibt
+// ein neuer Lauf keinen alten, der im Funkloch hängen geblieben ist.
+const OFFEN = "sj.gt.offen.";
+function offene() {
+  const aus = [];
+  try {
+    for (const k of Object.keys(localStorage)) {
+      if (!k.startsWith(OFFEN)) continue;
+      try { aus.push({ key: k.slice(OFFEN.length), payload: JSON.parse(localStorage.getItem(k)) }); } catch { localStorage.removeItem(k); }
+    }
+    const alt = JSON.parse(localStorage.getItem("sj.gt.offen") || "null");   // Ablage der ersten Fassung
+    if (alt && alt.key && alt.payload && !aus.some(o => o.key === alt.key)) aus.push(alt);
+  } catch { /* privater Modus: nichts abgelegt */ }
+  return aus;
+}
+function status(art, html) {
+  const s = $("#speicher");
+  s.hidden = false; s.className = art; s.innerHTML = html;
+  document.body.style.paddingBottom = s.offsetHeight + "px";
+}
+const uhr = () => new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 let kette = Promise.resolve();
 function speichern() {
-  const p = payload();
-  LS.setItem("sj.gt.offen", JSON.stringify({ key: lauf.key, payload: p }));
-  kette = kette.then(() => senden(lauf.key, p));
+  LS.setItem(OFFEN + lauf.key, JSON.stringify(payload()));
+  kette = kette.then(allesSenden);
   return kette;
 }
-async function senden(key, p) {
-  const m = $("#meldung");
-  try {
-    await rpc("device_test_save", { p_key: key, p_payload: p });
-    LS.removeItem("sj.gt.offen");
-    m.innerHTML = `<div class="msg ok">Gespeichert als Lauf <span class="kennung">${key.slice(0, 4)}</span>. Spätere Schritte ergänzen denselben Lauf.</div>`;
-  } catch (e) {
-    m.innerHTML = `<div class="msg err">Nicht gespeichert: ${esc(e.message)}. Der Lauf liegt auf diesem Gerät. <button class="btn sm alt" id="nochmal">Erneut senden</button></div>`;
-    $("#nochmal").onclick = () => { m.innerHTML = `<div class="msg info">Sende …</div>`; senden(key, p); };
+// Schickt alles, was auf dem Gerät liegt: den laufenden Lauf und frühere, die hängen geblieben sind
+async function allesSenden() {
+  const liste = offene();
+  if (!liste.length) return;
+  status("info", "Sende …");
+  let fehler = null, gesendet = 0;
+  for (const o of liste) {
+    try {
+      await rpc("device_test_save", { p_key: o.key, p_payload: o.payload });
+      LS.removeItem(OFFEN + o.key);
+      if (o.key !== lauf.key) LS.removeItem("sj.gt.offen");
+      gesendet++;
+    } catch (e) { fehler = e; }
+  }
+  if (!fehler) {
+    const frueher = liste.filter(o => o.key !== lauf.key).length;
+    const dieser = liste.some(o => o.key === lauf.key);
+    status("ok", (dieser ? `Gespeichert um ${uhr()} als Lauf <span class="kennung">${lauf.key.slice(0, 4)}</span>` : "Gespeichert")
+      + (frueher ? `, dazu ${frueher === 1 ? "ein früherer Lauf" : frueher + " frühere Läufe"}` : ""));
+  } else {
+    const n = liste.length - gesendet;
+    status("err", `Nicht gespeichert: ${esc(fehler.message)}. ${n === 1 ? "Der Lauf liegt" : n + " Läufe liegen"} auf diesem Gerät.<button class="btn" id="nochmal">Erneut senden</button>`);
+    $("#nochmal").onclick = () => { kette = kette.then(allesSenden); };
   }
 }
-// Liegt ein ungesendeter Lauf von vorhin auf dem Gerät, bieten wir ihn an
-try {
-  const offen = JSON.parse(LS.getItem("sj.gt.offen") || "null");
-  if (offen && offen.key && offen.payload) {
-    $("#meldung").innerHTML = `<div class="msg info">Ein früherer Lauf wurde nicht gespeichert. <button class="btn sm alt" id="nochmal">Jetzt senden</button></div>`;
-    $("#nochmal").onclick = () => senden(offen.key, offen.payload);
-  }
-} catch { /* kaputter Eintrag, egal */ }
+// Hängt von früher noch etwas auf dem Gerät, gleich nachsenden
+if (offene().length) kette = kette.then(allesSenden);
 
 /* ---------- der eine Knopf ---------- */
 $("#start").onclick = async () => {
   if (lauf.autoFertig) { location.reload(); return; }   // neuer Lauf, neuer Schlüssel
   $("#start").disabled = true; $("#start").textContent = "Läuft …";
-  $("#balken").hidden = false; $("#bilanz").hidden = false; $("#meldung").innerHTML = "";
+  $("#balken").hidden = false; $("#bilanz").hidden = false;
   // Die iOS-Nachfrage nach Bewegung muss als Erstes im Fingertipp stehen
   if (brauchtNachfrage) {
     try { basis.bewegung = await DeviceOrientationEvent.requestPermission(); } catch (e) { basis.bewegung = "Fehler: " + e.message; }
