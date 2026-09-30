@@ -65,10 +65,19 @@
           : /SamsungBrowser/.test(ua) ? "Samsung Internet" : /Firefox/.test(ua) ? "Firefox" : /OPR\//.test(ua) ? "Opera"
           : /Chrome\//.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : "unbekannt";
         const inApp = (ua.match(/FBAN|FBAV|Instagram|WhatsApp|Line\/|MicroMessenger|Teams|LinkedInApp|GSA\/|; wv\)/) || [null])[0];
+        // Chrome auf Android friert die Kennung auf "Android 10; K" ein. Version und Modell gibt es nur auf Nachfrage.
+        let modell = null;
+        try {
+          if (navigator.userAgentData?.getHighEntropyValues) {
+            const h = await navigator.userAgentData.getHighEntropyValues(["model", "platformVersion"]);
+            if (h.model) modell = h.model;
+            if (h.platform === "Android" && h.platformVersion) os = "Android " + h.platformVersion.split(".")[0];
+          }
+        } catch { /* dann bleibt es bei der Kennung */ }
         let akku = null;
         try { if (navigator.getBattery) { const b = await navigator.getBattery(); akku = Math.round(b.level * 100) + " %" + (b.charging ? ", lädt" : ""); } } catch { /* egal */ }
         const mess = {
-          "Betriebssystem": os, "Browser": browser, "In-App-Browser": inApp || "nein",
+          "Modell": modell || "keine Angabe", "Betriebssystem": os, "Browser": browser, "In-App-Browser": inApp || "nein",
           "HTTPS": janein(window.isSecureContext), "Bildschirm": `${screen.width} x ${screen.height}, Faktor ${rund(devicePixelRatio, 2)}`,
           "Fenster": `${innerWidth} x ${innerHeight}`, "Als App installiert": janein(matchMedia("(display-mode: standalone)").matches || navigator.standalone === true),
           "Sprache": navigator.language, "Netz laut Browser": navigator.connection ? `${navigator.connection.effectiveType || "?"}, ${navigator.connection.downlink ?? "?"} Mbit/s` : "keine Angabe",
@@ -76,7 +85,7 @@
         };
         if (!window.isSecureContext) return { art: "err", wert: "kein HTTPS", mess };
         if (inApp) return { art: "warn", wert: "In-App-Browser", mess };
-        return { art: "ok", wert: `${os}, ${browser}`, mess };
+        return { art: "ok", wert: `${modell ? modell + ", " : ""}${os}, ${browser}`, mess };
       }
     },
     {
@@ -321,7 +330,7 @@
         const mess = { "BarcodeDetector": janein("BarcodeDetector" in window) };
         if (!navigator.mediaDevices?.getUserMedia) return { art: "err", wert: "keine Kamera", mess: { ...mess, "getUserMedia": "nicht vorhanden" } };
         let strom;
-        try { strom = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false }); }
+        try { strom = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }); }
         catch (e) { return { art: "err", wert: e.name === "NotAllowedError" ? "abgelehnt" : "keine Kamera", mess: { ...mess, "Fehler": e.name + ": " + e.message } }; }
         const video = document.createElement("video");
         video.setAttribute("playsinline", ""); video.muted = true; video.srcObject = strom;
@@ -340,7 +349,7 @@
           while (jetzt() - t0 < 30000 && !(erster != null && jetzt() - erster > 2500) && !((tNativ != null || !nativ) && (tLib != null || !window.jsQR))) {
             if (nativ && tNativ == null) { try { const r = await nativ.detect(video); if (r.length) { tNativ = jetzt() - t0; inhalt = r[0].rawValue; } } catch { /* nächstes Bild */ } }
             if (window.jsQR && tLib == null && video.videoWidth) {
-              const f = Math.min(1, 640 / video.videoWidth); c.width = Math.round(video.videoWidth * f); c.height = Math.round(video.videoHeight * f);
+              const f = Math.min(1, 1000 / Math.max(video.videoWidth, video.videoHeight)); c.width = Math.round(video.videoWidth * f); c.height = Math.round(video.videoHeight * f);
               g.drawImage(video, 0, 0, c.width, c.height);
               const d = g.getImageData(0, 0, c.width, c.height), r = window.jsQR(d.data, c.width, c.height);
               if (r && r.data) { tLib = jetzt() - t0; inhalt = inhalt || r.data; }
@@ -353,6 +362,7 @@
           if (inhalt) mess["Inhalt"] = inhalt.slice(0, 80);
           if (tNativ != null) return { art: "ok", wert: "eingebaut", mess };
           if (tLib != null) return { art: "warn", wert: "nur Bibliothek", mess };
+          mess["Hinweis"] = "War ein Code im Bild? Dann näher heran oder weiter weg, bis er scharf ist.";
           return { art: "err", wert: "kein Code erkannt", mess };
         } finally { strom.getTracks().forEach(t => t.stop()); if (ctx.feld) ctx.feld.innerHTML = ""; }
       }
@@ -381,7 +391,7 @@
         if (typeof navigator.vibrate !== "function") return { art: "err", wert: "fehlt", mess: { "navigator.vibrate": "nicht vorhanden, auf iPhones immer" } };
         const r = navigator.vibrate([200, 120, 200]);
         await ctx.warte(700);
-        return r ? { art: "ok", wert: "gespürt", mess: { "navigator.vibrate": "ja" } } : { art: "err", wert: "verweigert", mess: { "navigator.vibrate": "gibt false zurück" } };
+        return r ? { art: "ok", wert: "gespürt", mess: { "navigator.vibrate": "ja", "Hinweis": "Android vibriert nicht im Stromsparmodus, bei Nicht stören oder wenn die Vibration in den Einstellungen aus ist." } } : { art: "err", wert: "verweigert", mess: { "navigator.vibrate": "gibt false zurück" } };
       }
     },
     {
@@ -433,5 +443,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 1, tests };
+  window.SJ_TESTS = { version: 2, tests };
 })();

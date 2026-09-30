@@ -370,7 +370,7 @@ function payload() {
   for (const z of Z) if (z.erg) tests[z.t.id] = { art: z.erg.art, wert: z.erg.wert, mess: z.erg.mess || {}, dauerMs: z.erg.dauerMs ?? null };
   // Der Name des Laufs entsteht aus dem, was das Gerät über sich meldet
   const u = (tests.umgebung || {}).mess || {};
-  const label = [u["Betriebssystem"], u["Browser"], `${screen.width} x ${screen.height}`].filter(Boolean).join(", ").slice(0, 80);
+  const label = [u["Modell"] === "keine Angabe" ? null : u["Modell"], u["Betriebssystem"], u["Browser"], `${screen.width} x ${screen.height}`].filter(Boolean).join(", ").slice(0, 80);
   return { suite: SUITE.version, label, begonnen: lauf.begonnen, beendet: new Date().toISOString(),
     ua: navigator.userAgent, seite: location.href.split("?")[0], bilanz: bilanz(), tests };
 }
