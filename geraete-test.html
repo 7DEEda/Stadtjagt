@@ -312,7 +312,7 @@ for (const z of Z) {
   li.querySelector(".zeile").onclick = () => { if (z.st === "fertig") li.querySelector(".mehr").hidden ^= 1; };
   li.querySelector(".hand").onclick = e => {
     const was = e.target.dataset?.was;
-    if (was === "los") fuehre(z);          // ohne await davor: Kamera, Ton und Mitteilungen brauchen den Fingertipp
+    if (was === "los") fuehre(z);          // ohne await davor: Kamera und Mitteilungen brauchen den Fingertipp
     else if (was === "weg") fertig(z, { art: "skip", wert: "übersprungen", mess: {} });
     else if (was === "ja") fertig(z, z.vorl);
     else if (was === "nein") fertig(z, { ...z.vorl, art: "err", wert: "nicht wahrgenommen" });

@@ -115,7 +115,7 @@ def main() -> int:
                     fehler.append("kompass-drehen ist mit gespieltem Sensor nicht ok")
                 if gespeichert[-1]["p_key"] != gespeichert[0]["p_key"]:
                     fehler.append("Der Hand-Schritt hat einen anderen Schlüssel benutzt")
-            page.click("#neu li:nth-child(4) [data-was=weg]")   # Vibration überspringen
+            page.click("#neu li:nth-child(2) [data-was=weg]")   # Vibration überspringen
 
             shots = pathlib.Path(__file__).resolve().parent / "shots"
             shots.mkdir(exist_ok=True)

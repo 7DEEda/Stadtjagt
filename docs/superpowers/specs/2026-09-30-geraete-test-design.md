@@ -112,3 +112,9 @@ Vordergrund mit Timeout. Echte Geräte: erster Lauf durch Friedrich.
 
 Anzeige der Läufe im Admin-Bereich, Bezug zur Anmeldung, Foto-Speicher,
 registrierter Service Worker.
+
+## Nachtrag 30.09.2026, Suite 4
+
+QR-Code und Ton sind entfallen (Entscheidung Friedrich), damit auch
+`geraete-test-qr.html`, `geraete-test-qr.svg` und `vendor/jsQR.js`. Die Suite hat
+19 Bausteine. Seit Suite 3 nennt der Umgebungs-Test die Geräteart.

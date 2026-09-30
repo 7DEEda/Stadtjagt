@@ -41,14 +41,6 @@
       { enableHighAccuracy: true, timeout, maximumAge: 0 }));
   }
 
-  function skriptLaden(src) {
-    return new Promise((res, rej) => {
-      const s = document.createElement("script");
-      s.src = src; s.onload = res; s.onerror = () => rej(new Error(src + " lädt nicht"));
-      document.head.appendChild(s);
-    });
-  }
-
   const tests = [
     /* ================= von allein ================= */
     {
@@ -330,67 +322,6 @@
       }
     },
     {
-      id: "qr", titel: "QR-Code", bezug: "Code an der Station statt GPS", block: "neu",
-      hand: "Tipp auf Los und halt die Kamera auf einen QR-Code. Einen zeigt geraete-test-qr.html am Laptop, jeder andere geht auch.", grenze: 60,
-      async lauf(ctx) {
-        const mess = { "BarcodeDetector": janein("BarcodeDetector" in window) };
-        if (!navigator.mediaDevices?.getUserMedia) return { art: "err", wert: "keine Kamera", mess: { ...mess, "getUserMedia": "nicht vorhanden" } };
-        let strom;
-        try { strom = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }); }
-        catch (e) { return { art: "err", wert: e.name === "NotAllowedError" ? "abgelehnt" : "keine Kamera", mess: { ...mess, "Fehler": e.name + ": " + e.message } }; }
-        const video = document.createElement("video");
-        video.setAttribute("playsinline", ""); video.muted = true; video.srcObject = strom;
-        video.style.cssText = "width:160px;border-radius:8px;margin-top:8px;display:block";
-        if (ctx.feld) { ctx.feld.innerHTML = ""; ctx.feld.appendChild(video); }
-        try {
-          await video.play();
-          const spur = strom.getVideoTracks()[0].getSettings();
-          mess["Kamerabild"] = `${spur.width} x ${spur.height}`;
-          try { await skriptLaden("vendor/jsQR.js"); } catch (e) { mess["jsQR"] = e.message; }
-          let nativ = null;
-          if ("BarcodeDetector" in window) { try { nativ = new BarcodeDetector({ formats: ["qr_code"] }); } catch (e) { mess["BarcodeDetector"] = "vorhanden, aber ohne QR: " + e.message; } }
-          const c = document.createElement("canvas"), g = c.getContext("2d", { willReadFrequently: true });
-          const t0 = jetzt(); let tNativ = null, tLib = null, inhalt = null, erster = null;
-          ctx.status("sucht Code");
-          while (jetzt() - t0 < 30000 && !(erster != null && jetzt() - erster > 2500) && !((tNativ != null || !nativ) && (tLib != null || !window.jsQR))) {
-            if (nativ && tNativ == null) { try { const r = await nativ.detect(video); if (r.length) { tNativ = jetzt() - t0; inhalt = r[0].rawValue; } } catch { /* nächstes Bild */ } }
-            if (window.jsQR && tLib == null && video.videoWidth) {
-              const f = Math.min(1, 1000 / Math.max(video.videoWidth, video.videoHeight)); c.width = Math.round(video.videoWidth * f); c.height = Math.round(video.videoHeight * f);
-              g.drawImage(video, 0, 0, c.width, c.height);
-              const d = g.getImageData(0, 0, c.width, c.height), r = window.jsQR(d.data, c.width, c.height);
-              if (r && r.data) { tLib = jetzt() - t0; inhalt = inhalt || r.data; }
-            }
-            if (erster == null && (tNativ != null || tLib != null)) erster = jetzt();
-            await ctx.warte(80);
-          }
-          mess["Eingebaut erkannt nach s"] = tNativ == null ? "nicht erkannt" : rund(tNativ / 1000, 1);
-          mess["Mit jsQR erkannt nach s"] = tLib == null ? "nicht erkannt" : rund(tLib / 1000, 1);
-          if (inhalt) mess["Inhalt"] = inhalt.slice(0, 80);
-          if (tNativ != null) return { art: "ok", wert: "eingebaut", mess };
-          if (tLib != null) return { art: "warn", wert: "nur Bibliothek", mess };
-          mess["Hinweis"] = "War ein Code im Bild? Dann näher heran oder weiter weg, bis er scharf ist.";
-          return { art: "err", wert: "kein Code erkannt", mess };
-        } finally { strom.getTracks().forEach(t => t.stop()); if (ctx.feld) ctx.feld.innerHTML = ""; }
-      }
-    },
-    {
-      id: "ton", titel: "Ton", bezug: "Audio-Rätsel, Signal", block: "neu",
-      hand: "Tipp auf Los, es kommt ein kurzer Ton. Stummschalter und Lautstärke vorher prüfen.", frage: "Hast du den Ton gehört?",
-      async lauf(ctx) {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return { art: "err", wert: "fehlt", mess: { "Web Audio": "nicht vorhanden" } };
-        const ac = new AC();
-        try { await ac.resume(); } catch { /* Zustand steht gleich im Ergebnis */ }
-        const o = ac.createOscillator(), g = ac.createGain();
-        o.frequency.value = 880; g.gain.value = 0.25; o.connect(g).connect(ac.destination);
-        o.start(); o.stop(ac.currentTime + 0.7);
-        await ctx.warte(900);
-        const mess = { "Zustand": ac.state, "Abtastrate": ac.sampleRate, "Hinweis": "Auf iPhones schweigt die Seite, wenn der Stummschalter an ist." };
-        ac.close();
-        return mess["Zustand"] === "running" ? { art: "ok", wert: "gehört", mess } : { art: "err", wert: "gesperrt", mess };
-      }
-    },
-    {
       id: "vibration", titel: "Vibration", bezug: "Rückmeldung bei richtiger Antwort", block: "neu",
       hand: "Tipp auf Los, das Handy vibriert zweimal kurz.", frage: "Hast du die Vibration gespürt?",
       async lauf(ctx) {
@@ -449,5 +380,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 3, tests };
+  window.SJ_TESTS = { version: 4, tests };
 })();

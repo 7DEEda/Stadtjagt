@@ -169,7 +169,7 @@ li.dran,li.laeuft.hand,li.frage{background:var(--dran-bg);margin:0 -16px;padding
 <main>
   <div class="brand">
     <svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="1" width="22" height="22" fill="#fff" stroke="currentColor" stroke-width="1.2"/><polygon points="1,1 23,1 23,23" fill="var(--flag)"/></svg>
-    <div><h1>Geräte-Test</h1><div class="small muted">Stadtjagd · Suite 3 · 21 Schritte</div></div>
+    <div><h1>Geräte-Test</h1><div class="small muted">Stadtjagd · Suite 4 · 19 Schritte</div></div>
   </div>
   <p>Prüft, was das Spiel von diesem Gerät braucht oder brauchen könnte. Erlaube Standort und Bewegung, wenn das Handy fragt.</p>
 
@@ -180,13 +180,13 @@ li.dran,li.laeuft.hand,li.frage{background:var(--dran-bg);margin:0 -16px;padding
       <div class="ok"><b id="nOk">0</b>geht</div>
       <div class="warn"><b id="nWarn">0</b>einge&shy;schränkt</div>
       <div class="err"><b id="nErr">0</b>geht nicht</div>
-      <div class="offen"><b id="nOffen">21</b>offen</div>
+      <div class="offen"><b id="nOffen">19</b>offen</div>
     </div>
   </div>
 
   <div class="panel"><div class="kopf"><h2>Von allein</h2><span id="k-auto">13 Schritte</span></div><ul class="liste" id="auto" hidden></ul></div>
   <div class="panel"><div class="kopf"><h2>Mit deiner Hand</h2><span id="k-hand">3 Schritte, danach</span></div><ul class="liste" id="hand" hidden></ul></div>
-  <div class="panel"><div class="kopf"><h2>Neue Funktionen</h2><span id="k-neu">5 Schritte, danach</span></div>
+  <div class="panel"><div class="kopf"><h2>Neue Funktionen</h2><span id="k-neu">3 Schritte, danach</span></div>
     <p class="small muted" id="neu-hinweis" hidden>Noch nicht im Spiel. Hier klären wir, ob sie auf diesem Gerät gehen würden.</p><ul class="liste" id="neu" hidden></ul></div>
 
   <div class="unten" id="unten" hidden>
@@ -218,8 +218,6 @@ const T = [
   ["hand", "Bildschirm aus und an", "kommt der Standort wieder?", "ok", "nach 1,2 s", "", { "Bildschirm aus": "5,9 s", "Wake Lock neu": "ja" }, "Sperr das Handy, zähl bis zehn und entsperr es wieder.", "", ["Jetzt sperren", "Warte auf Standort"]],
   ["hand", "App wechseln", "übersteht die Seite WhatsApp?", "ok", "bleibt", "", { "Weg": "4,6 s" }, "Wechsel kurz in eine andere App und komm zurück.", "", ["Jetzt wechseln"]],
   ["neu", "Kamera und Foto", "für Foto-Rätsel und Beweisfoto", "ok", "0,7 s Upload", "", { "Aufnahme": "2,3 MB", "Verkleinert": "92 KB" }, "Mach ein Foto von irgendetwas.", "", ["Wartet auf Foto", "Lädt hoch"]],
-  ["neu", "QR-Code", "Code an der Station statt GPS", "err", "kein Code erkannt", "War ein Code im Bild? Näher heran oder weiter weg, bis er scharf ist.", { "Eingebaut": "nicht erkannt", "Mit jsQR": "nicht erkannt", "Kamerabild": "1080 x 1920" }, "Halt die Kamera auf einen QR-Code. Einen zeigt geraete-test-qr.html am Laptop.", "", ["Sucht Code"]],
-  ["neu", "Ton", "für Audio-Rätsel und Signale", "ok", "gehört", "", { "Abtastrate": "48000" }, "Es kommt ein kurzer Ton. Prüf vorher Stummschalter und Lautstärke.", "Hast du den Ton gehört?", ["Ton läuft"]],
   ["neu", "Vibration", "Rückmeldung bei richtiger Antwort", "ok", "gespürt", "", {}, "Das Handy vibriert zweimal kurz.", "Hast du die Vibration gespürt?", ["Vibriert"]],
   ["neu", "Benachrichtigung", "Hinweis bei gesperrtem Handy", "warn", "nur mit Service Worker", "Erlaubt, aber Chrome zeigt Mitteilungen nur über einen Service Worker.", { "Erlaubnis": "granted" }, "Erlaube Mitteilungen, wenn das Handy fragt.", "", ["Wartet auf deine Antwort"]]
 ];

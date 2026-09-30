@@ -1216,7 +1216,7 @@ Teilnehmende, kein Bezug zur Anmeldung.
 - **Seite:** https://7deeda.github.io/Stadtjagt/geraete-test.html. Ein Tipp
   holt die iOS-Erlaubnis für Bewegung und lässt dann alle selbstlaufenden Tests
   durch. Danach kommen die Schritte mit der Hand (Kompass drehen, Bildschirm
-  sperren, App wechseln) und die neuen Funktionen (Kamera, QR, Ton, Vibration,
+  sperren, App wechseln) und die neuen Funktionen (Kamera, Vibration,
   Mitteilungen, Live-Verbindung, Offline). Aussehen und Hintergrund wie das
   Spiel, der Hintergrund folgt der Wahl der Spielleitung.
 - **Suite erweitern:** einen Baustein in `geraete-tests.js` anhängen und
@@ -1232,8 +1232,8 @@ Teilnehmende, kein Bezug zur Anmeldung.
   nach `testlaeufe/` und baut `testlaeufe/UEBERSICHT.md` (Matrix Test gegen
   Lauf). Der Ordner steht in `.gitignore`: das Repo wird komplett
   veröffentlicht, die Läufe enthalten Koordinaten.
-- **QR-Test:** `geraete-test-qr.html` am Laptop zeigt den Code. iPhones haben
-  keinen eingebauten Scanner, darum prüft der Test zusätzlich `vendor/jsQR.js`.
+- QR-Code und Ton waren bis Suite 3 dabei und sind am 30.09.2026 entfallen
+  (Entscheidung Friedrich); `vendor/jsQR.js` und `geraete-test-qr.html` sind gelöscht.
 - **Prüfstand:** `python tools/pruefstand/geraetetest.py` lässt die Seite mit
   gespieltem Standort und Kompass durchlaufen, ohne in die Datenbank zu
   schreiben. Braucht `pip install playwright`. „Wach halten“ meldet dort
