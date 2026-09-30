@@ -113,6 +113,8 @@ p{margin:.4em 0 0}
 .muted{color:var(--muted)}.small{font-size:14px}
 .brand{display:flex;gap:12px;align-items:center;margin-bottom:16px}
 .flag{width:32px;height:32px;flex:none}
+.flag .nadel{transform-origin:12px 12px;transition:transform .16s linear}
+@media (prefers-reduced-motion:reduce){.flag .nadel{transition:none}}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
 label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
 input,textarea,select{width:100%;font:500 17px var(--body);padding:11px 13px;border-radius:10px;border:1.5px solid var(--feld);background:var(--paper);color:var(--ink)}
@@ -589,7 +591,10 @@ function fmtDur(ms) {
   const m = Math.round(ms / 60000);
   return m < 60 ? m + " min" : Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0") + " h";
 }
-const FLAG = '<svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="1" width="22" height="22" fill="#fff" stroke="currentColor" stroke-width="1.2"/><polygon points="1,1 23,1 23,23" fill="var(--flag)"/></svg>';
+// Das Zeichen im Kopf ist ein Kompass. Kennt die App die Blickrichtung, zeigt die orange Spitze nach Norden
+// (logoNadel() im Abschnitt GPS und Kompass). logoDreh steht im Markup, damit die Nadel ein render() übersteht.
+let logoDreh = 0;
+const logo = () => `<svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><g class="nadel" style="transform:rotate(${logoDreh.toFixed(1)}deg)"><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></g></svg>`;
 // Hilfe per WhatsApp. Ohne Nummer in config.js erscheint kein Knopf.
 function helpHref(text) {
   const s = (window.SJ_CONFIG || {}).support;
@@ -611,7 +616,7 @@ function helpBtn(text, klasse) {
     <div class="row2"><a class="btn ${klasse || "alt"} help" href="${href}" target="_blank" rel="noopener">${WA_ICON}WhatsApp</a>
     <a class="btn ${klasse || "alt"} help" href="${tel}">${TEL_ICON}Anrufen</a></div></div>`;
 }
-const brand = sub => `<div class="brand">${FLAG}<div><h1>Stadtjagd</h1><div class="muted small">${esc(sub)}</div></div></div>`;
+const brand = sub => `<div class="brand">${logo()}<div><h1>Stadtjagd</h1><div class="muted small">${esc(sub)}</div></div></div>`;
 // Jede Meldung steht genau an einer Stelle: msgBox(ort) zeigt nur Meldungen mit demselben ort,
 // msgBox() nur die ohne ort. Jede Ansicht ruft msgBox() für allgemeine Meldungen genau einmal auf.
 const msgBox = ort => {
@@ -851,7 +856,7 @@ function teamAnsicht(st, lesen) {
   const ichSelbst = lesen && st.name && st.name === st.team.leaderName;
   const kennung = lesen ? `Team ${st.team.name}` : `Team ${st.team.name} (${st.team.code})`;
   const ende = lesen ? "" : (st.status === "finished" ? "" : leitungHTML(st)) + abmeldenHTML() + nav();
-  let out = `<div class="bar"><div>${FLAG}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
+  let out = `<div class="bar"><div>${logo()}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
     <div class="muted small">${lesen ? `Teamleitung: ${esc(st.team.leaderName || "offen")}`
       : st.team.leaderName === S.myName ? "Du leitest das Team" : `Leitung ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div></div>`;
 
@@ -1042,7 +1047,7 @@ function viewAdmin() {
   if (st.status === "running") actions += `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
   if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-resume">Spiel fortsetzen</button>`;
 
-  let out = `<div class="bar"><div class="brand" style="margin:0">${FLAG}<div><h1>Spielleitung</h1><div>${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}</div></div></div><div>${actions}</div></div>${msgBox()}`;
+  let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div>${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}</div></div></div><div>${actions}</div></div>${msgBox()}`;
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
   if (missing.length) out += `<div class="msg err">Ohne Koordinaten kann dort niemand einchecken. Betroffen: Station ${missing.map(s => s.position).join(", ")}.</div>`;
 
@@ -1783,7 +1788,7 @@ const ACT = {
 };
 
 /* ---------- GPS und Kompass ---------- */
-let watchId = null, orientOn = false, raf = 0, kompassNeu = false;
+let watchId = null, orientOn = false, orientH = null, raf = 0, kompassNeu = false;
 const richtungBekannt = () => S.gps.heading != null || S.gps.gpsHeading != null;
 const kompassDa = () => S.gps.kompass === "an" || S.gps.kompass === "kalibrieren";
 // nur neu zeichnen, solange Kompass oder Einmessen zu sehen sind, sonst ginge
@@ -1873,8 +1878,19 @@ function liveUpdate() {
   const d = $("#dist"); if (d) d.textContent = fmtDist(haversine(g.pos, t));
   setNeedle(bearingTo(g.pos, t) - richtung());
 }
-function addOrient() {
-  if (orientOn) return; orientOn = true;
+// Nadel im Zeichen oben nachführen, auf dem kürzesten Weg (von 359° auf 1° sind es 2°, nicht 358°)
+function logoNadel() {
+  const g = S.gps;
+  if (g.heading == null || g.kompass !== "an") return;
+  logoDreh += ((-g.heading - logoDreh) % 360 + 540) % 360 - 180;
+  const n = $(".flag .nadel"); if (n) n.style.transform = `rotate(${logoDreh.toFixed(1)}deg)`;
+}
+// neu = true hängt den Zuhörer frisch ein: nach der iOS-Freigabe, falls Safari einen Zuhörer von vor der
+// Freigabe nicht bedient
+function addOrient(neu) {
+  if (orientOn && !neu) return;
+  if (orientH) { window.removeEventListener("deviceorientationabsolute", orientH); window.removeEventListener("deviceorientation", orientH); }
+  orientOn = true;
   const h = e => {
     const g = S.gps;
     const vorher = g.kompass + (g.heading == null);
@@ -1915,8 +1931,10 @@ function addOrient() {
     if (!raf) raf = requestAnimationFrame(() => {
       raf = 0;
       if (kompassNeu && kompassSichtbar()) { kompassNeu = false; render(); } else liveUpdate();
+      logoNadel();
     });
   };
+  orientH = h;
   if ("ondeviceorientationabsolute" in window) window.addEventListener("deviceorientationabsolute", h);
   else window.addEventListener("deviceorientation", h);
 }
@@ -1924,14 +1942,19 @@ async function startGps(auto) {
   const g = S.gps;
   if (!navigator.geolocation) { g.err = "Dieses Gerät liefert keinen Standort."; render(); return; }
   if (!auto) LS.setItem("sj.gps", "1");
+  let tippNoetig = false;
   try {
     const DOE = window.DeviceOrientationEvent;
     if (!DOE) g.kompass = "fehlt";
-    else if (typeof DOE.requestPermission === "function" && auto) g.kompass = "tippen";
-    else if (typeof DOE.requestPermission === "function") {
+    else if (typeof DOE.requestPermission === "function" && auto) {
+      // Nach dem Neuladen, ohne Fingertipp. iOS liefert erst nach neuer Freigabe. Chrome kennt requestPermission
+      // inzwischen auch, liefert aber ohne Nachfrage (gemessen 30.09.2026, Chrome 155 auf Android). Am Vorhandensein
+      // lässt sich iOS also nicht erkennen: zuhören, und nur wenn nichts kommt, um den Tipp bitten.
+      g.kompass = "wartet"; tippNoetig = true; addOrient();
+    } else if (typeof DOE.requestPermission === "function") {
       // iOS: muss aus einem Fingertipp kommen, sonst wird abgelehnt
       const r = await DOE.requestPermission();
-      if (r === "granted") { g.kompass = "wartet"; addOrient(); neigungStart(); }
+      if (r === "granted") { g.kompass = "wartet"; addOrient(true); neigungStart(); }
       else g.kompass = "abgelehnt";
     } else { g.kompass = "wartet"; addOrient(); }
   } catch { g.kompass = "abgelehnt"; }
@@ -1940,7 +1963,7 @@ async function startGps(auto) {
   // später doch noch, setzt der Handler ihn wieder auf "an".
   if (g.kompass === "wartet") setTimeout(() => {
     if (g.kompass !== "wartet") return;
-    g.kompass = "fehlt";
+    g.kompass = tippNoetig ? "tippen" : "fehlt";
     if (kompassSichtbar()) render();
   }, 3000);
   g.on = true; g.err = null;

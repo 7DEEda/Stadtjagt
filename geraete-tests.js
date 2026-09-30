@@ -44,7 +44,7 @@
   const tests = [
     /* ================= von allein ================= */
     {
-      id: "umgebung", titel: "Umgebung", bezug: "Zuordnung der Läufe", block: "auto",
+      id: "umgebung", titel: "Umgebung", bezug: "ordnet den Lauf dem Gerät zu", block: "auto",
       async lauf() {
         const ua = navigator.userAgent;
         let os = "unbekannt", m;
@@ -87,7 +87,7 @@
       }
     },
     {
-      id: "speicher", titel: "Speicher", bezug: "Geräte-Schlüssel der Anmeldung", block: "auto",
+      id: "speicher", titel: "Speicher", bezug: "für den Geräte-Schlüssel der Anmeldung", block: "auto",
       async lauf() {
         const probe = name => { try { const s = window[name]; s.setItem("sj._t", "1"); const ok = s.getItem("sj._t") === "1"; s.removeItem("sj._t"); return ok; } catch { return false; } };
         const ls = probe("localStorage"), ss = probe("sessionStorage");
@@ -100,7 +100,7 @@
       }
     },
     {
-      id: "server", titel: "Server", bezug: "alles im Spiel", block: "auto",
+      id: "server", titel: "Server", bezug: "für alles im Spiel", block: "auto",
       async lauf(ctx) {
         const zeiten = [];
         for (let i = 0; i < 5; i++) { const t = jetzt(); await ctx.rpc("public_state"); zeiten.push(Math.round(jetzt() - t)); }
@@ -110,7 +110,7 @@
       }
     },
     {
-      id: "uhr", titel: "Uhr", bezug: "Zeitachse, Spieldauer", block: "auto",
+      id: "uhr", titel: "Uhr", bezug: "für Zeitachse und Spieldauer", block: "auto",
       async lauf(ctx) {
         let beste = null;
         for (let i = 0; i < 3; i++) {
@@ -120,11 +120,11 @@
         }
         const s = beste.ab / 1000, b = Math.abs(s);
         const mess = { "Abweichung in s": rund(s, 2), "Laufzeit der Messung in ms": beste.lauf, "Zeitzone": Intl.DateTimeFormat().resolvedOptions().timeZone };
-        return { art: b <= 5 ? "ok" : b <= 60 ? "warn" : "err", wert: (s >= 0 ? "+" : "-") + komma(b) + " s", mess };
+        return { art: b <= 5 ? "ok" : b <= 60 ? "warn" : "err", wert: b < 0.05 ? "genau" : (s >= 0 ? "+" : "-") + komma(b) + " s", mess };
       }
     },
     {
-      id: "standort", titel: "Standort", bezug: "Einchecken an der Station", block: "auto", grenze: 45,
+      id: "standort", titel: "Standort", bezug: "für das Einchecken an der Station", block: "auto", grenze: 45,
       async lauf(ctx) {
         if (!navigator.geolocation) return { art: "err", wert: "fehlt", mess: { "Geolocation": "nicht vorhanden" } };
         let vorher = "keine Angabe";
@@ -156,7 +156,7 @@
       }
     },
     {
-      id: "kompass", titel: "Kompass", bezug: "Richtungspfeil", block: "auto",
+      id: "kompass", titel: "Kompass", bezug: "für den Richtungspfeil", block: "auto",
       async lauf(ctx) {
         const s = ctx.sensor;
         if (!window.DeviceOrientationEvent) return { art: "err", wert: "fehlt", mess: { "DeviceOrientationEvent": "nicht vorhanden" } };
@@ -176,7 +176,7 @@
       }
     },
     {
-      id: "neigung", titel: "Neigung", bezug: "Hintergrund bewegt sich mit", block: "auto",
+      id: "neigung", titel: "Neigung", bezug: "bewegt den Hintergrund mit", block: "auto",
       async lauf(ctx) {
         const s = ctx.sensor, ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
         const mess = { "beta / gamma": s.beta == null ? "keine" : `${rund(s.beta, 1)} / ${rund(s.gamma, 1)}`, "Reduzierte Bewegung": janein(ruhig),
@@ -187,7 +187,7 @@
       }
     },
     {
-      id: "wachhalten", titel: "Wach halten", bezug: "Handy sperrt unterwegs nicht", block: "auto",
+      id: "wachhalten", titel: "Wach halten", bezug: "damit das Handy unterwegs nicht sperrt", block: "auto",
       async lauf(ctx) {
         if (!navigator.wakeLock) return { art: "err", wert: "fehlt", mess: { "navigator.wakeLock": "nicht vorhanden" } };
         try { ctx.wach.sperre = await navigator.wakeLock.request("screen"); return { art: "ok", wert: "erteilt", mess: { "navigator.wakeLock": "ja" } }; }
@@ -195,7 +195,7 @@
       }
     },
     {
-      id: "karte", titel: "Karte", bezug: "Karte der Spielleitung", block: "auto",
+      id: "karte", titel: "Karte", bezug: "für die Karte der Spielleitung", block: "auto",
       async lauf() {
         const mess = {}; let ok = true;
         let t = jetzt();
@@ -212,7 +212,7 @@
       }
     },
     {
-      id: "schrift", titel: "Schrift", bezug: "Aussehen", block: "auto",
+      id: "schrift", titel: "Schrift", bezug: "für das Aussehen", block: "auto",
       async lauf() {
         const kopf = '700 19px "Barlow Semi Condensed"', text = "400 17px Barlow";
         try { await Promise.all([document.fonts.load(kopf), document.fonts.load(text)]); } catch { /* prüfen wir gleich */ }
@@ -222,7 +222,7 @@
       }
     },
     {
-      id: "teilen", titel: "Teilen", bezug: "Mitlese-Link", block: "auto",
+      id: "teilen", titel: "Teilen", bezug: "für den Mitlese-Link", block: "auto",
       async lauf() {
         const a = typeof navigator.share === "function", b = !!navigator.clipboard?.writeText;
         const mess = { "Teilen-Dialog": janein(a), "Zwischenablage": janein(b) };
@@ -232,8 +232,8 @@
 
     /* ================= mit der Hand ================= */
     {
-      id: "kompass-drehen", titel: "Kompass drehen", bezug: "Läuft die Richtung mit?", block: "hand",
-      hand: "Tipp auf Los und dreh dich einmal langsam im Kreis.", grenze: 60,
+      id: "kompass-drehen", titel: "Kompass drehen", bezug: "läuft die Richtung mit?", block: "hand",
+      hand: "Dreh dich einmal langsam im Kreis.", grenze: 60,
       async lauf(ctx) {
         const s = ctx.sensor; s.faecher.clear();
         const t0 = jetzt();
@@ -244,10 +244,10 @@
       }
     },
     {
-      id: "bildschirm", titel: "Bildschirm aus und an", bezug: "Kommt der Standort wieder?", block: "hand",
-      hand: "Tipp auf Los, sperr das Handy, zähl bis zehn und entsperr es wieder.", grenze: 180,
+      id: "bildschirm", titel: "Bildschirm aus und an", bezug: "kommt der Standort wieder?", block: "hand",
+      hand: "Sperr das Handy, zähl bis zehn und entsperr es wieder.", grenze: 180,
       async lauf(ctx) {
-        ctx.status("jetzt sperren");
+        ctx.status("Jetzt sperren");
         const weg = await bisSichtbarWechsel(ctx, 120000);
         const mess = { "Bildschirm aus für s": rund(weg / 1000, 1) };
         const alt = ctx.wach.sperre;
@@ -255,7 +255,7 @@
         let neu = false;
         if (navigator.wakeLock) { try { ctx.wach.sperre = await navigator.wakeLock.request("screen"); neu = true; } catch (e) { mess["Wake Lock neu"] = e.name; } }
         mess["Wake Lock neu geholt"] = janein(neu);
-        ctx.status("warte auf Standort");
+        ctx.status("Warte auf Standort");
         const t = jetzt();
         try {
           const p = await standortEinmal(20000);
@@ -266,10 +266,10 @@
       }
     },
     {
-      id: "app-wechsel", titel: "App wechseln", bezug: "Übersteht die Seite WhatsApp?", block: "hand",
-      hand: "Tipp auf Los, wechsel kurz in eine andere App und komm zurück.", grenze: 180,
+      id: "app-wechsel", titel: "App wechseln", bezug: "übersteht die Seite WhatsApp?", block: "hand",
+      hand: "Wechsel kurz in eine andere App und komm zurück.", grenze: 180,
       async lauf(ctx) {
-        ctx.status("jetzt wechseln");
+        ctx.status("Jetzt wechseln");
         const weg = await bisSichtbarWechsel(ctx, 120000);
         const t = jetzt(); let netz = true;
         try { await ctx.rpc("public_state"); } catch { netz = false; }
@@ -281,8 +281,8 @@
 
     /* ================= neue Funktionen ================= */
     {
-      id: "kamera", titel: "Kamera und Foto", bezug: "Foto-Rätsel, Beweisfoto", block: "neu",
-      hand: "Tipp auf Los und mach ein Foto von irgendetwas.", grenze: 180,
+      id: "kamera", titel: "Kamera und Foto", bezug: "für Foto-Rätsel und Beweisfoto", block: "neu",
+      hand: "Mach ein Foto von irgendetwas.", grenze: 180,
       lauf(ctx) {
         // Der Klick auf das Feld muss noch im Fingertipp passieren, darum kein async vor input.click()
         const input = document.createElement("input");
@@ -293,7 +293,7 @@
           input.oncancel = () => rej(new Error("abgebrochen"));
         });
         input.click();
-        ctx.status("wartet auf Foto");
+        ctx.status("Wartet auf Foto");
         return (async () => {
           let datei;
           try { datei = await gewaehlt; } catch (e) { return { art: "err", wert: e.message, mess: {} }; }
@@ -311,7 +311,7 @@
           if (url.length > 900000) url = c.toDataURL("image/jpeg", 0.5);
           mess["Verkleinert"] = `${c.width} x ${c.height}, ${Math.round(url.length * 0.75 / 1024)} KB`;
           if (ctx.feld) ctx.feld.innerHTML = `<img src="${url}" alt="" style="max-width:120px;border-radius:8px;margin-top:8px">`;
-          ctx.status("lädt hoch");
+          ctx.status("Lädt hoch");
           const t = jetzt();
           try {
             await ctx.rpc("device_test_echo", { p_data: url.slice(0, 1000000) });
@@ -323,7 +323,7 @@
     },
     {
       id: "vibration", titel: "Vibration", bezug: "Rückmeldung bei richtiger Antwort", block: "neu",
-      hand: "Tipp auf Los, das Handy vibriert zweimal kurz.", frage: "Hast du die Vibration gespürt?",
+      hand: "Das Handy vibriert zweimal kurz.", frage: "Hast du die Vibration gespürt?",
       async lauf(ctx) {
         if (typeof navigator.vibrate !== "function") return { art: "err", wert: "fehlt", mess: { "navigator.vibrate": "nicht vorhanden, auf iPhones immer" } };
         const r = navigator.vibrate([200, 120, 200]);
@@ -333,7 +333,7 @@
     },
     {
       id: "benachrichtigung", titel: "Benachrichtigung", bezug: "Hinweis bei gesperrtem Handy", block: "neu",
-      hand: "Tipp auf Los und erlaube Mitteilungen, wenn das Handy fragt.",
+      hand: "Erlaube Mitteilungen, wenn das Handy fragt.",
       async lauf() {
         const mess = { "Notification": janein("Notification" in window), "Push": janein("PushManager" in window), "Service Worker": janein("serviceWorker" in navigator) };
         if (!("Notification" in window)) { mess["Hinweis"] = "Auf iPhones nur, wenn die Seite zum Home-Bildschirm hinzugefügt ist."; return { art: "err", wert: "fehlt", mess }; }

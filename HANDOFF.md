@@ -1239,3 +1239,31 @@ Teilnehmende, kein Bezug zur Anmeldung.
   schreiben. Braucht `pip install playwright`. „Wach halten“ meldet dort
   „verweigert“, das liegt am unsichtbaren Browser.
 - Spezifikation und Plan: `docs/superpowers/`. Mockup: `mockups/geraete-test.html`.
+
+## Kompass als Zeichen, Kompass nach dem Neuladen (Nachtrag 24, 30.09.2026)
+
+Nur Frontend, keine Migration.
+
+- **Zeichen im Kopf:** Die weiß-orange Postenflagge ist durch einen Kompass
+  ersetzt (`logo()` in `index.html`, vorher die Konstante `FLAG`; Varianten in
+  `mockups/icon-varianten.html`). Kennt die App die Blickrichtung, zeigt die
+  orange Spitze nach Norden (`logoNadel()`); sonst steht sie nach oben. Der
+  Geräte-Test nutzt dasselbe Zeichen.
+- **Kompass nach dem Neuladen:** `startGps(true)` setzte den Kompass auf
+  „tippen“, sobald der Browser `DeviceOrientationEvent.requestPermission`
+  kennt. Das war als Erkennung für iOS gedacht, Chrome kennt die Funktion
+  inzwischen aber auch (gemessen: Chrome 155 auf Android und am Laptop). Android
+  verlangte dadurch nach jedem Neuladen einen Tipp. Jetzt hört die App nach dem
+  Neuladen einfach zu: kommen Ereignisse, läuft der Kompass; kommt drei
+  Sekunden nichts, bittet sie um den Tipp. Nach der Freigabe hängt
+  `addOrient(true)` den Zuhörer frisch ein.
+  Geprüft im Prüfstand in beiden Fällen (Ereignisse kommen, Ereignisse kommen
+  nicht, danach Tipp). Auf echten Geräten noch nicht gesehen: vor allem auf
+  einem iPhone nach dem Neuladen einmal prüfen, dass der Hinweis „Kompass ist
+  nach dem Neuladen aus“ nach etwa drei Sekunden erscheint und der Tipp wirkt.
+- **Geräte-Test, geführter Ablauf:** Umsetzung der UI-Kritik
+  (`mockups/geraete-test-v2.html`). Nach dem automatischen Teil ist immer nur
+  ein Schritt offen, der große Knopf führt dorthin. Statuszeichen mit eigener
+  Form, gelbe und rote Zeilen klappen mit dem Grund auf, „Noch mal“ und
+  „Abbrechen“ sind sichtbar. Im hellen Schema steht dunkle Schrift auf den
+  orangen Knöpfen (Kontrast 5,3 statt 3,3); das Spiel selbst bleibt bei Weiß.

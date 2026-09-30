@@ -417,6 +417,8 @@
     ungenau: () => ({ alpha: 63, beta: 35, gamma: 0, absolute: false, webkitCompassHeading: 297, webkitCompassAccuracy: 42 })
   };
 
+  window.__orient = name => zustellen(ORIENT[name]());   // für Prüfungen von außen (Playwright)
+
   /* ---------- Schritte nach dem Laden ---------- */
   const warte = ms => new Promise(r => setTimeout(r, ms));
   async function bis(pruef, max = 8000) { const t0 = Date.now(); while (!pruef()) { if (Date.now() - t0 > max) return false; await warte(50); } return true; }

@@ -10,9 +10,9 @@
 <style>
 /* Farben, Schrift, Karten und Hintergrund wie index.html, damit der Test das Spiel so zeigt, wie es das Gerät zeigen würde. */
 :root{
-  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF;
-  --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#FFFFFF; --water:#2F6E9E;
-  --ok:#2E7D4F; --err:#B3261E; --warn:#8A5A00; --ok-bg:#E3F1E7; --err-bg:#FBE9E7; --warn-bg:#FBF0D9; --info-bg:#E6EEF4;
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#445650; --line:#D3DECF;
+  --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#0F1B18; --water:#2F6E9E;
+  --ok:#276B44; --err:#B3261E; --warn:#8A5A00; --ok-bg:#E3F1E7; --err-bg:#FBE9E7; --warn-bg:#FBF0D9; --info-bg:#E6EEF4; --dran-bg:#FDEEE4;
   --feld:#7D9189;
   --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -23,7 +23,7 @@
 @media (prefers-color-scheme:dark){:root{
   --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38;
   --contour:#1C312B; --flag:#FF7A3A; --flag-ink:#0F1B18; --feld:#5E786F; --water:#6FA8D6;
-  --ok:#6CCB8E; --err:#FF8A80; --warn:#E8B75A; --ok-bg:#16332A; --err-bg:#3A1F1C; --warn-bg:#33290F; --info-bg:#172A36;
+  --ok:#6CCB8E; --err:#FF8A80; --warn:#E8B75A; --ok-bg:#16332A; --err-bg:#3A1F1C; --warn-bg:#33290F; --info-bg:#172A36; --dran-bg:#2E2119;
   --park:#142A20; --baum:#1D3A2B; --strasse:#1F352E; --strasse-haupt:#29443A;
   --ol-braun:#332A21; --ol-gelb:#1E2419; --ol-gruen:#142A1E; --ol-dicht:#1A3524; --ol-schwarz:#3B4C45}}
 *{box-sizing:border-box}
@@ -91,11 +91,10 @@ body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);min-heig
 .topo .ol-nord{stroke:var(--water);stroke-width:.6;opacity:.3}
 .topo .bahn{fill:none;stroke:var(--flag);stroke-width:1.6;opacity:.6}
 .topo .bahn-n{font:700 12px var(--head);fill:var(--flag);opacity:.75}
-main > :not(.panel):not(.msg){text-shadow:0 0 3px var(--paper),0 0 6px var(--paper),0 0 12px var(--paper),0 0 18px var(--paper)}
-.btn,input,.panel,.msg{text-shadow:none}
-main{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:20px 16px 70px}
-h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
-h1{font-size:32px;font-weight:700}h2{font-size:24px;font-weight:700;margin-top:26px}
+main > :not(.panel){text-shadow:0 0 3px var(--paper),0 0 6px var(--paper),0 0 12px var(--paper),0 0 18px var(--paper)}
+main{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:20px 16px 30px}
+h1,h2{font-family:var(--head);margin:0;line-height:1.1}
+h1{font-size:32px;font-weight:700}h2{font-size:22px;font-weight:700}
 p{margin:.4em 0 0}
 .muted{color:var(--muted)}.small{font-size:14px}
 .brand{display:flex;gap:12px;align-items:center;margin-bottom:16px}
@@ -104,49 +103,72 @@ p{margin:.4em 0 0}
 #nadel{transform-origin:12px 12px;transition:transform .16s linear}
 @media (prefers-reduced-motion:reduce){#nadel{transition:none}}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
-label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
-input{width:100%;font:500 17px var(--body);padding:11px 13px;border-radius:10px;border:1.5px solid var(--feld);background:var(--paper);color:var(--ink)}
-input:focus{border-color:var(--flag);outline:2px solid transparent}
-.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 19px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);margin-top:12px}
-.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
-.btn.sm{display:inline-block;width:auto;padding:8px 12px;font-size:15px;margin:8px 6px 0 0;min-height:42px}
-.btn:disabled{background:var(--line);color:var(--muted);cursor:not-allowed}
-.msg{border-radius:10px;padding:10px 12px;margin-top:12px;font-size:15px}
-.msg.ok{background:var(--ok-bg);color:var(--ok)}.msg.err{background:var(--err-bg);color:var(--err)}.msg.info{background:var(--info-bg);color:var(--ink)}
+.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 19px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);min-height:48px;text-shadow:none}
+.btn.alt{background:var(--card);color:var(--ink);border:1.5px solid var(--feld)}
+.btn:disabled{background:var(--line);color:var(--muted);cursor:default}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.link{background:none;border:0;padding:12px 8px;min-height:48px;font:600 15px var(--body);color:var(--muted);text-decoration:underline;cursor:pointer}
 
-.bilanz{display:flex;gap:8px;margin-top:12px}
-.bilanz div{flex:1;border-radius:10px;padding:8px 10px;text-align:center;font-size:13px}
-.bilanz b{display:block;font:700 28px var(--head);line-height:1}
+.balken{height:6px;border-radius:3px;background:var(--line);margin-top:12px;overflow:hidden}
+.balken i{display:block;height:100%;width:0;background:var(--flag);transition:width .3s}
+.bilanz{display:flex;gap:6px;margin-top:12px}
+.bilanz div{flex:1;border-radius:10px;padding:8px 4px;text-align:center;font-size:13px;line-height:1.2}
+.bilanz b{display:block;font:700 26px var(--head);line-height:1.1}
 .bilanz .ok{background:var(--ok-bg);color:var(--ok)}
 .bilanz .warn{background:var(--warn-bg);color:var(--warn)}
 .bilanz .err{background:var(--err-bg);color:var(--err)}
-.balken{height:6px;border-radius:3px;background:var(--line);margin-top:12px;overflow:hidden}
-.balken i{display:block;height:100%;width:0;background:var(--flag);transition:width .3s}
-.liste{list-style:none;margin:0;padding:0}
+.bilanz .offen{background:var(--paper);color:var(--muted);border:1px solid var(--line)}
+
+.kopf{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.kopf span{font-size:14px;color:var(--muted)}
+.liste{list-style:none;margin:10px 0 0;padding:0}
 .liste li{border-top:1px solid var(--line);padding:10px 0}
-.liste li:first-child{border-top:0;padding-top:0}
 .liste li:last-child{padding-bottom:0}
-.zeile{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
-.punkt{width:14px;height:14px;border-radius:50%;flex:none;margin-top:6px;border:2px solid var(--line)}
-li.laeuft .punkt{border-color:var(--flag);border-top-color:transparent;animation:dreh .7s linear infinite}
-li.ok .punkt{background:var(--ok);border-color:var(--ok)}
-li.warn .punkt{background:var(--warn);border-color:var(--warn)}
-li.err .punkt{background:var(--err);border-color:var(--err)}
-li.skip .punkt{background:var(--line)}
+.zeile{display:flex;gap:10px;align-items:flex-start;width:100%;background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;min-height:44px}
+button.zeile{cursor:pointer}
+.t{flex:1;min-width:0}
+.t b{font-weight:600;display:block}
+.t span{display:block;font-size:14px;color:var(--muted)}
+.wert{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right;max-width:52%;overflow-wrap:anywhere;padding-top:1px}
+li.ok .wert{color:var(--ok)}li.warn .wert{color:var(--warn)}li.err .wert{color:var(--err)}li.skip .wert,li.wartet .wert{color:var(--muted);font-weight:500}
+/* lange Werte wie die Gerätebezeichnung stehen in eigener Zeile unter dem Titel */
+.t .wert.lang{display:block;max-width:none;text-align:left;margin-top:2px;font-size:15px}
+li.ok .t .wert.lang{color:var(--ok)}li.warn .t .wert.lang{color:var(--warn)}li.err .t .wert.lang{color:var(--err)}
+.pfeil{flex:none;width:10px;height:10px;margin:8px 2px 0 0;border-right:2px solid var(--feld);border-bottom:2px solid var(--feld);transform:rotate(45deg);transition:transform .16s}
+[aria-expanded="true"] .pfeil{transform:rotate(225deg);margin-top:12px}
+
+/* Status mit eigener Form, nicht nur Farbe: Haken, Ausrufezeichen im Quadrat, Kreuz, Strich */
+.z{flex:none;width:20px;height:20px;margin-top:3px;border-radius:50%;display:grid;place-items:center;font:700 13px/1 var(--body);color:var(--card);border:2px solid var(--feld)}
+li.ok .z{background:var(--ok);border-color:var(--ok)} li.ok .z::before{content:"\2713"}
+li.warn .z{background:var(--warn);border-color:var(--warn);border-radius:4px} li.warn .z::before{content:"!"}
+li.err .z{background:var(--err);border-color:var(--err)} li.err .z::before{content:"\2715"}
+li.skip .z::before{content:"";width:8px;height:2px;background:var(--feld)}
+li.dran .z,li.frage .z{background:var(--flag);border-color:var(--flag)}
+li.laeuft .z{border-color:var(--flag);border-top-color:transparent;animation:dreh .7s linear infinite}
 @keyframes dreh{to{transform:rotate(360deg)}}
-.zeile .t{flex:1;min-width:0}
-.zeile .t b{font-weight:600}
-.zeile .t span{display:block;font-size:13px;color:var(--muted)}
-.wert{font-size:14px;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;padding-top:2px;max-width:46%;overflow:hidden;text-overflow:ellipsis}
-li.ok .wert{color:var(--ok)}li.warn .wert{color:var(--warn)}li.err .wert{color:var(--err)}
-.mehr{margin:8px 0 0 24px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--muted);white-space:pre-wrap;word-break:break-word}
-.hand,.feld{margin:6px 0 0 24px;font-size:14px}
+@media (prefers-reduced-motion:reduce){li.laeuft .z{animation:none;background:var(--flag)}.balken i,.pfeil{transition:none}}
+
+.mehr{margin:8px 0 0 30px;font-size:14px;display:grid;grid-template-columns:auto 1fr;gap:2px 12px}
+.mehr .grund{grid-column:1/-1;color:var(--ink);margin-bottom:4px}
+.mehr dt{color:var(--muted)}.mehr dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.nochmal{margin:8px 0 0 30px}
+.nochmal .btn{display:inline-block;width:auto;font-size:15px;padding:8px 14px}
+.feld{margin-left:30px}
+
+/* der eine offene Schritt */
+li.dran,li.laeuft.hand,li.frage{background:var(--dran-bg);margin:0 -16px;padding:12px 16px;border-top-color:transparent}
+.schritt{margin:8px 0 0 30px}
+.schritt p{margin:0 0 10px;font-size:16px}
+.schritt .live{font:700 26px var(--head);line-height:1.1;margin:0 0 10px;min-height:29px}
+.reihe{display:flex;gap:10px;align-items:center}
+.reihe .btn{flex:1}
+.unten{display:flex;gap:10px;margin-top:14px}
 /* Speicherstatus: fest am unteren Rand, damit man ihn bei jedem Schritt sieht */
 #speicher{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px 16px calc(10px + env(safe-area-inset-bottom));font-size:15px;
   background:var(--ok-bg);color:var(--ok);border-top:1px solid var(--line);text-align:center}
 #speicher.info{background:var(--info-bg);color:var(--ink)}
 #speicher.err{background:var(--err-bg);color:var(--err);font-weight:600}
-#speicher .btn{background:var(--err);color:var(--card);margin-top:8px;padding:10px 16px;min-height:48px}
+#speicher .btn{background:var(--err);color:var(--card);margin-top:8px;padding:10px 16px}
 .kennung{font:600 15px ui-monospace,Menlo,Consolas,monospace;white-space:nowrap}
 </style>
 </head>
@@ -196,30 +218,28 @@ li.ok .wert{color:var(--ok)}li.warn .wert{color:var(--warn)}li.err .wert{color:v
     <svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><g id="nadel"><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></g></svg>
     <div><h1>Geräte-Test</h1><div class="small muted" id="unter">Stadtjagd</div></div>
   </div>
-  <p>Prüft auf diesem Gerät alles, was das Spiel braucht oder brauchen könnte. Ein Tipp startet den Lauf, das Ergebnis wird gespeichert.</p>
+  <p>Prüft, was das Spiel von diesem Gerät braucht oder brauchen könnte. Erlaube Standort und Bewegung, wenn das Handy fragt.</p>
 
   <div class="panel">
-    <button class="btn" id="start" style="margin-top:0">Alles testen</button>
+    <button class="btn" id="start">Alles testen</button>
     <div class="balken" id="balken" hidden><i></i></div>
     <div class="bilanz" id="bilanz" hidden>
       <div class="ok"><b id="nOk">0</b>geht</div>
-      <div class="warn"><b id="nWarn">0</b>eingeschränkt</div>
+      <div class="warn"><b id="nWarn">0</b>einge&shy;schränkt</div>
       <div class="err"><b id="nErr">0</b>geht nicht</div>
+      <div class="offen"><b id="nOffen">0</b>offen</div>
     </div>
   </div>
 
-  <h2>Von allein</h2>
-  <div class="panel"><ul class="liste" id="auto"></ul></div>
+  <div class="panel"><div class="kopf"><h2>Von allein</h2><span id="k-auto"></span></div><ul class="liste" id="auto" hidden></ul></div>
+  <div class="panel"><div class="kopf"><h2>Mit deiner Hand</h2><span id="k-hand"></span></div><ul class="liste" id="hand" hidden></ul></div>
+  <div class="panel"><div class="kopf"><h2>Neue Funktionen</h2><span id="k-neu"></span></div>
+    <p class="small muted" id="neu-hinweis" hidden>Noch nicht im Spiel. Hier klären wir, ob sie auf diesem Gerät gehen würden.</p><ul class="liste" id="neu" hidden></ul></div>
 
-  <h2>Mit deiner Hand</h2>
-  <p class="small muted">Geht nach dem ersten Durchlauf. Jeder Schritt lässt sich überspringen.</p>
-  <div class="panel"><ul class="liste" id="hand"></ul></div>
-
-  <h2>Neue Funktionen</h2>
-  <p class="small muted">Noch nicht im Spiel. Hier klären wir, ob sie auf diesem Gerät gingen.</p>
-  <div class="panel"><ul class="liste" id="neu"></ul></div>
-
-  <button class="btn alt" id="kopie">Bericht kopieren</button>
+  <div class="unten" id="unten" hidden>
+    <button class="btn alt" id="kopie">Bericht kopieren</button>
+    <button class="btn alt" id="neuLauf">Noch ein Lauf</button>
+  </div>
 </main>
 <div id="speicher" role="status" aria-live="polite" hidden></div>
 
@@ -311,66 +331,101 @@ rpc("public_state").then(s => {
 const zufall = n => { const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", z = crypto.getRandomValues(new Uint8Array(n)); return [...z].map(b => a[b % a.length]).join(""); };
 const lauf = { key: zufall(12), begonnen: null, autoFertig: false };
 const basis = { rpc, cfg, sensor, bewegung: "noch nicht gefragt", wach: { sperre: null }, warte: ms => new Promise(r => setTimeout(r, ms)) };
-const Z = SUITE.tests.map(t => ({ t, selbst: t.block === "auto" || !!t.selbst, st: "wartet", erg: null, vorl: null }));
+const Z = SUITE.tests.map(t => ({ t, selbst: t.block === "auto" || !!t.selbst, st: "wartet", erg: null, vorl: null, auf: false, status: "", nr: 0 }));
+const HAND = Z.filter(z => !z.selbst);
+let aktiv = null;   // der Hand-Schritt, der gerade läuft oder auf Ja/Nein wartet; solange ist kein anderer startbar
 
-$("#unter").textContent = `Stadtjagd · Suite ${SUITE.version} · ${Z.length} Tests`;
+$("#unter").textContent = `Stadtjagd · Suite ${SUITE.version} · ${Z.length} Schritte`;
 
-for (const z of Z) {
+// In jedem Block stehen die selbstlaufenden Schritte oben, die mit der Hand darunter
+for (const z of [...Z].sort((a, b) => b.selbst - a.selbst)) {
   const li = document.createElement("li");
-  li.innerHTML = `<div class="zeile"><i class="punkt"></i><div class="t"><b>${esc(z.t.titel)}</b><span>${esc(z.t.bezug)}</span></div><div class="wert"></div></div>
-    <div class="hand" hidden></div><div class="feld"></div><div class="mehr" hidden></div>`;
+  li.innerHTML = `<div class="oben"></div><div class="schritt" hidden></div><div class="feld"></div><div class="unter"></div>`;
   $("#" + z.t.block).appendChild(li);
-  z.li = li;
-  li.querySelector(".zeile").onclick = () => { if (z.st === "fertig") li.querySelector(".mehr").hidden ^= 1; };
-  li.querySelector(".hand").onclick = e => {
-    const was = e.target.dataset?.was;
-    if (was === "los") fuehre(z);          // ohne await davor: Kamera und Mitteilungen brauchen den Fingertipp
-    else if (was === "weg") fertig(z, { art: "skip", wert: "übersprungen", mess: {} });
-    else if (was === "ja") fertig(z, z.vorl);
-    else if (was === "nein") fertig(z, { ...z.vorl, art: "err", wert: "nicht wahrgenommen" });
-  };
+  z.li = li; z.feld = li.querySelector(".feld");
+  li.onclick = e => klick(z, e.target.closest("[data-was]")?.dataset.was);
   mal(z);
 }
+bilanz();
+
+function naechster() { return HAND.find(z => z.st === "wartet"); }
+const kommaZahl = v => typeof v === "number" ? String(v).replace(".", ",") : String(v);
+// Der Grund für Gelb oder Rot steht in den Messwerten unter einem dieser Namen; er kommt als Klartext nach oben
+const GRUND = ["Hinweis", "Häufiger Grund", "Brauchbar wäre", "Fehler", "Fehler im Test", "Zeitgrenze"];
 
 function mal(z) {
-  const li = z.li, hand = li.querySelector(".hand"), wert = li.querySelector(".wert");
-  li.className = z.st === "laeuft" || z.st === "frage" ? "laeuft" : z.st === "fertig" ? z.erg.art : "";
-  const dran = !z.selbst && z.st === "wartet" && lauf.autoFertig;
-  wert.textContent = z.st === "fertig" ? z.erg.wert : z.st === "laeuft" ? "prüft" : z.st === "frage" ? "deine Antwort" : dran ? "du bist dran" : "wartet";
-  hand.hidden = !(dran || z.st === "frage");
-  if (dran) hand.innerHTML = `${esc(z.t.hand)}<br><button class="btn sm" data-was="los">Los</button><button class="btn sm alt" data-was="weg">Überspringen</button>`;
-  else if (z.st === "frage") hand.innerHTML = `${esc(z.t.frage)}<br><button class="btn sm" data-was="ja">Ja</button><button class="btn sm alt" data-was="nein">Nein</button>`;
-  const mehr = li.querySelector(".mehr");
-  if (z.st === "fertig") {
-    const m = z.erg.mess || {}, zeilen = Object.keys(m).map(k => `${k}: ${m[k]}`);
-    mehr.textContent = (zeilen.length ? zeilen.join("\n") : "keine weiteren Werte") + (z.erg.dauerMs != null ? `\nDauer: ${(z.erg.dauerMs / 1000).toFixed(1)} s` : "");
-    if (!z.selbst && !mehr.querySelector("button")) {
-      const b = document.createElement("button");
-      b.className = "btn sm alt"; b.textContent = "Noch mal"; b.style.display = "block";
-      b.onclick = () => { z.st = "wartet"; z.erg = null; mehr.hidden = true; mal(z); bilanz(); };
-      mehr.appendChild(b);
-    }
+  const li = z.li, fertigZ = z.st === "fertig";
+  const dran = lauf.autoFertig && !z.selbst && z.st === "wartet" && !aktiv && z === naechster();
+  li.className = fertigZ ? z.erg.art : z.st === "laeuft" ? "laeuft" + (z.selbst ? "" : " hand") : z.st === "frage" ? "frage" : dran ? "dran" : "wartet";
+  const wert = fertigZ ? z.erg.wert : z.st === "laeuft" && z.selbst ? (z.status || "prüft") : !z.selbst && lauf.autoFertig && z.st === "wartet" && !dran ? "offen" : "";
+  const lang = wert.length > 18, tag = fertigZ ? "button" : "div";
+  li.querySelector(".oben").innerHTML = `<${tag} class="zeile" ${fertigZ ? `aria-expanded="${z.auf}" data-was="auf"` : ""}><i class="z" aria-hidden="true"></i>
+    <span class="t"><b>${esc(z.t.titel)}</b><span>${esc(z.t.bezug)}</span>${lang ? `<span class="wert lang">${esc(wert)}</span>` : ""}</span>${lang ? "" : `<span class="wert">${esc(wert)}</span>`}${fertigZ ? '<i class="pfeil" aria-hidden="true"></i>' : ""}</${tag}>`;
+  const s = li.querySelector(".schritt");
+  s.hidden = !(dran || (z.st === "laeuft" && !z.selbst) || z.st === "frage");
+  if (s.hidden) s.innerHTML = '';
+  else if (dran) s.innerHTML = `<p>${esc(z.t.hand)}</p><div class="reihe"><button class="btn" data-was="los">Los</button><button class="link" data-was="weg">Überspringen</button></div>`;
+  else if (z.st === "laeuft" && !z.selbst) s.innerHTML = `<p>${esc(z.t.hand)}</p><div class="live" aria-live="polite">${esc(z.status)}</div><div class="reihe"><button class="btn alt" data-was="ab">Abbrechen</button></div>`;
+  else if (z.st === "frage") s.innerHTML = `<p>${esc(z.t.frage)}</p><div class="reihe"><button class="btn" data-was="ja">Ja</button><button class="btn alt" data-was="nein">Nein</button></div>`;
+  let u = "";
+  if (fertigZ && z.auf) {
+    const m = z.erg.mess || {}, g = GRUND.find(k => k in m);
+    u += `<dl class="mehr">${g ? `<div class="grund">${g === "Hinweis" ? "" : esc(g) + ": "}${esc(m[g])}</div>` : ""}`
+      + Object.keys(m).filter(k => k !== g).map(k => `<dt>${esc(k)}</dt><dd>${esc(kommaZahl(m[k]))}</dd>`).join("")
+      + (z.erg.dauerMs != null ? `<dt>Dauer</dt><dd>${(z.erg.dauerMs / 1000).toFixed(1).replace(".", ",")} s</dd>` : "") + `</dl>`;
   }
+  if (fertigZ && !z.selbst && (z.auf || z.erg.art === "err" || z.erg.art === "skip")) u += `<div class="nochmal"><button class="btn alt" data-was="nochmal">Noch mal</button></div>`;
+  li.querySelector(".unter").innerHTML = u;
 }
+function alle() { Z.forEach(mal); bilanz(); knopf(); }
 
 function bilanz() {
   const n = a => Z.filter(z => z.erg && z.erg.art === a).length;
   $("#nOk").textContent = n("ok"); $("#nWarn").textContent = n("warn"); $("#nErr").textContent = n("err");
-  $("#balken i").style.width = (Z.filter(z => z.erg).length / Z.length * 100) + "%";
+  $("#nOffen").textContent = Z.filter(z => !z.erg || z.erg.art === "skip").length;
+  const zahl = k => k === 1 ? "ein Schritt" : k + " Schritte";
+  for (const b of ["auto", "hand", "neu"]) {
+    const im = Z.filter(z => z.t.block === b), offen = im.filter(z => z.st !== "fertig").length;
+    $("#k-" + b).textContent = !lauf.begonnen ? zahl(im.length) + (b === "auto" ? "" : ", danach") : offen ? offen + " offen" : "fertig";
+  }
   return { ok: n("ok"), warn: n("warn"), err: n("err"), skip: n("skip") };
 }
 
+// Nach dem automatischen Teil führt der große Knopf zum nächsten offenen Schritt
+function knopf() {
+  if (!lauf.autoFertig) return;
+  const offen = HAND.filter(z => z.st !== "fertig").length, b = $("#start");
+  b.disabled = false;
+  b.textContent = offen ? `Weiter: ${offen === 1 ? "ein Schritt" : offen + " Schritte"} von Hand` : "Alles erledigt, Bericht kopieren";
+}
+
+function klick(z, was) {
+  if (was === "auf") { z.auf = !z.auf; mal(z); }
+  else if (was === "los") fuehre(z);          // ohne await davor: Kamera und Mitteilungen brauchen den Fingertipp
+  else if (was === "weg") fertig(z, { art: "skip", wert: "übersprungen", mess: {} });
+  else if (was === "ab") { z.nr++; fertig(z, { art: "skip", wert: "abgebrochen", mess: {} }); }
+  else if (was === "ja") fertig(z, z.vorl);
+  else if (was === "nein") fertig(z, { ...z.vorl, art: "err", wert: "nicht wahrgenommen" });
+  else if (was === "nochmal" && !aktiv) { z.st = "wartet"; z.erg = null; z.auf = false; HAND.splice(HAND.indexOf(z), 1); HAND.unshift(z); alle(); }
+}
+
 function fuehre(z) {
-  z.st = "laeuft"; mal(z);
+  z.st = "laeuft"; z.status = ""; z.feld.innerHTML = "";
+  const nr = ++z.nr;   // ein abgebrochener Lauf darf später kein Ergebnis mehr abliefern
+  if (!z.selbst) { aktiv = z; alle(); } else mal(z);
   const t0 = performance.now(), grenze = (z.t.grenze || (z.t.hand ? 100 : 30)) * 1000;
-  const ctx = { ...basis, feld: z.li.querySelector(".feld"), status: s => { if (z.st === "laeuft") z.li.querySelector(".wert").textContent = s; } };
+  const ctx = { ...basis, feld: z.feld, status: s => {
+    if (z.st !== "laeuft" || z.nr !== nr) return;
+    z.status = s;
+    const ziel = z.li.querySelector(z.selbst ? ".wert" : ".live"); if (ziel) ziel.textContent = s;
+  } };
   let versprechen;
   try { versprechen = Promise.resolve(z.t.lauf(ctx)); } catch (e) { versprechen = Promise.reject(e); }
   return Promise.race([versprechen,
     new Promise(r => setTimeout(() => r({ art: "err", wert: "keine Antwort", mess: { "Zeitgrenze": grenze / 1000 + " s" } }), grenze))])
     .catch(e => ({ art: "err", wert: "Fehler", mess: { "Fehler im Test": (e && e.message) || String(e) } }))
     .then(erg => {
-      if (z.st !== "laeuft") return;
+      if (z.st !== "laeuft" || z.nr !== nr) return;
       erg.dauerMs = Math.round(performance.now() - t0);
       if (z.t.frage && erg.art === "ok") { z.vorl = erg; z.st = "frage"; mal(z); }
       else fertig(z, erg);
@@ -378,8 +433,12 @@ function fuehre(z) {
 }
 
 function fertig(z, erg) {
-  z.erg = erg; z.st = "fertig"; mal(z); bilanz();
-  if (lauf.autoFertig) speichern();
+  z.erg = erg; z.st = "fertig"; z.auf = erg.art === "warn" || erg.art === "err";
+  if (aktiv === z) aktiv = null;
+  if (z.selbst && !lauf.autoFertig) { mal(z); bilanz(); return; }
+  alle(); speichern();
+  const n = naechster();
+  if (!z.selbst && n) n.li.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
 }
 
 /* ---------- Speichern ---------- */
@@ -449,20 +508,35 @@ if (offene().length) kette = kette.then(allesSenden);
 
 /* ---------- der eine Knopf ---------- */
 $("#start").onclick = async () => {
-  if (lauf.autoFertig) { location.reload(); return; }   // neuer Lauf, neuer Schlüssel
-  $("#start").disabled = true; $("#start").textContent = "Läuft …";
-  $("#balken").hidden = false; $("#bilanz").hidden = false;
+  const b = $("#start");
+  if (lauf.autoFertig) {   // führt zum nächsten offenen Schritt; ist keiner mehr offen, kopiert er den Bericht
+    const n = naechster();
+    if (n) n.li.scrollIntoView({ block: "center", behavior: "smooth" }); else if (!aktiv) kopieren(b, "Alles erledigt, Bericht kopieren");
+    return;
+  }
+  b.disabled = true; b.textContent = "Frage nach Bewegung …";
+  $("#balken").hidden = false; $("#bilanz").hidden = false; $("#auto").hidden = false;
   // Die iOS-Nachfrage nach Bewegung muss als Erstes im Fingertipp stehen
   if (brauchtNachfrage) {
     try { basis.bewegung = await DeviceOrientationEvent.requestPermission(); } catch (e) { basis.bewegung = "Fehler: " + e.message; }
   } else basis.bewegung = window.DeviceOrientationEvent ? "nicht nötig" : "nicht vorhanden";
   sensor.start(true);
   lauf.begonnen = new Date().toISOString();
-  for (const z of Z.filter(z => z.selbst)) await fuehre(z);
+  const selbst = Z.filter(z => z.selbst);
+  for (const [i, z] of selbst.entries()) {
+    b.textContent = `${z.t.titel}, ${i + 1} von ${selbst.length}`;
+    if (z.t.block === "neu") { $("#neu").hidden = false; $("#neu-hinweis").hidden = false; }
+    await fuehre(z);
+    $("#balken i").style.width = ((i + 1) / selbst.length * 100) + "%";
+  }
   lauf.autoFertig = true;
-  Z.forEach(mal);
+  $("#hand").hidden = false; $("#neu").hidden = false; $("#neu-hinweis").hidden = false; $("#unten").hidden = false; $("#balken").hidden = true;
+  alle();
   await speichern();
-  $("#start").disabled = false; $("#start").textContent = "Noch ein Lauf";
+};
+$("#neuLauf").onclick = () => {   // neuer Lauf, neuer Schlüssel
+  const offen = HAND.filter(z => z.st !== "fertig").length;
+  if (!offen || confirm(`Noch ${offen === 1 ? "ein Schritt" : offen + " Schritte"} offen. Trotzdem neu beginnen?`)) location.reload();
 };
 
 // Wake Lock gibt der Browser beim Wechsel in eine andere App frei; beim Zurückkommen neu holen wie das Spiel
@@ -471,15 +545,18 @@ document.addEventListener("visibilitychange", () => {
     navigator.wakeLock.request("screen").then(l => { basis.wach.sperre = l; }).catch(() => {});
 });
 
-$("#kopie").onclick = () => {
+function kopieren(k, zurueck) {
   const p = payload();
   const text = `Stadtjagd Geräte-Test, Suite ${p.suite}, Lauf ${lauf.key.slice(0, 4)}\n${p.label}\n${p.ua}\n\n`
     + Z.map(z => `${z.t.titel}: ${z.erg ? z.erg.wert + " (" + z.erg.art + ")" : "nicht gelaufen"}`
       + (z.erg ? Object.keys(z.erg.mess || {}).map(k => `\n    ${k}: ${z.erg.mess[k]}`).join("") : "")).join("\n");
-  const k = $("#kopie");
+  const meld = s => { k.textContent = s; setTimeout(() => { k.textContent = zurueck; }, 2000); };
   (navigator.clipboard?.writeText ? navigator.clipboard.writeText(text) : Promise.reject()).then(
-    () => { k.textContent = "Bericht kopiert"; }, () => { k.textContent = "Kopieren ging nicht"; });
-};
+    () => meld("Kopiert"),
+    // ohne Zwischenablage (In-App-Browser) bleibt der Teilen-Dialog als Ausweg
+    () => navigator.share ? navigator.share({ text }).catch(() => {}) : meld("Kopieren ging nicht"));
+}
+$("#kopie").onclick = () => kopieren($("#kopie"), "Bericht kopieren");
 </script>
 </body>
 </html>

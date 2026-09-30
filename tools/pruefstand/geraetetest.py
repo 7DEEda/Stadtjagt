@@ -103,8 +103,8 @@ def main() -> int:
 
             # Ein Hand-Schritt: Kompass drehen, der gespielte Sensor dreht ohnehin
             vorher = len(gespeichert)
-            page.click("#hand li:nth-child(1) [data-was=los]")
-            page.wait_for_function("document.querySelector('#hand li').className !== 'laeuft'")
+            page.click("[data-was=los]")   # es ist immer nur ein Schritt offen
+            page.wait_for_function("['ok', 'warn', 'err'].includes(document.querySelector('#hand li').className)")
             page.wait_for_timeout(500)
             if len(gespeichert) <= vorher:
                 fehler.append("Nach dem Hand-Schritt wurde nicht erneut gespeichert")
@@ -115,7 +115,12 @@ def main() -> int:
                     fehler.append("kompass-drehen ist mit gespieltem Sensor nicht ok")
                 if gespeichert[-1]["p_key"] != gespeichert[0]["p_key"]:
                     fehler.append("Der Hand-Schritt hat einen anderen Schlüssel benutzt")
-            page.click("#neu li:nth-child(2) [data-was=weg]")   # Vibration überspringen
+            if page.locator("[data-was=los]").count() != 1:
+                fehler.append("Es ist nicht genau ein Schritt offen")
+            page.click("[data-was=weg]")   # der nächste offene Schritt: Bildschirm aus und an
+            page.wait_for_timeout(500)
+            if gespeichert[-1]["p_payload"]["tests"].get("bildschirm", {}).get("art") != "skip":
+                fehler.append("Überspringen wurde nicht gespeichert")
 
             shots = pathlib.Path(__file__).resolve().parent / "shots"
             shots.mkdir(exist_ok=True)
