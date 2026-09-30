@@ -78,12 +78,28 @@ geraete-test.html              Geräte-Test: prüft auf einem Handy alles, was d
 geraete-tests.js               die Suite dazu, ein Baustein je Test
 kompass-test.html              leitet auf geraete-test.html weiter
 tools/testlaeufe.py            Läufe des Geräte-Tests nach testlaeufe/ holen
+vendor/qrcode.js               QR-Generator für den Mitlese-Link, lokal
 tools/sql.py                   SQL an die Datenbank schicken, ohne den SQL-Editor
 tools/pruefstand/              UI-Prüfstand: App ohne Datenbank in jedem Zustand fotografieren
 supabase/migrations/*.sql      Schema, Rechte und die gesamte Spiellogik
 supabase/seed-*.sql            Prager Stationen und Testpersonen
 .github/workflows/pages.yml    Deployment auf GitHub Pages
 ```
+
+## Seit dem 30.09.2026 dabei
+
+- **Gruppenselfie** an jeder Station, abschaltbar im Reiter „Fotos“: erst das
+  Foto, dann die Ziffer. Album fürs Team, Galerie und ZIP für die Spielleitung.
+- **Verschlüsselter Stationsname:** löst sich auf, je näher das Team kommt.
+  Die Kreise dafür stellt man beim Bearbeiten der Station auf einer Karte ein.
+- **Mitlese-Link als QR-Code**, Hinweis bei ungefährem Standort, Kompass als
+  Zeichen mit mitdrehender Nadel, Einmessen als Fenster.
+- **Geräte-Test** (`geraete-test.html`): prüft auf einem Handy, was das Spiel
+  braucht, und speichert den Lauf.
+
+Prüfen ohne Datenbank: `python tools/pruefstand/selfie.py`, `name.py`,
+`geraetetest.py`. Einzelheiten in `HANDOFF.md`, geordnet in `SPIEL.md`
+Abschnitt 11.
 
 ## SQL ausführen
 

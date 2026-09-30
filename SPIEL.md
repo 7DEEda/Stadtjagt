@@ -5,7 +5,8 @@ welche Zustände und Abläufe es gibt und wo das im Code steht. Den Verlauf der
 Entscheidungen und die Betriebsnotizen (Zugänge, Umgebung, Historie) enthält
 `HANDOFF.md`.
 
-Stand: 19.09.2026, Nachträge 1 bis 19.
+Stand: 30.09.2026, Nachträge 1 bis 26. Die Abschnitte 1 bis 10 beschreiben den Stand bis Nachtrag 22;
+was seitdem dazukam, steht geschlossen in Abschnitt 11.
 
 ---
 
@@ -485,3 +486,104 @@ node -e 'const h=require("fs").readFileSync("index.html","utf8");[...h.matchAll(
   Entfernung, Hinweise plus Schlussrätsel statt sichtbarer Ziffern, versetzte
   Stationsreihenfolge je Team, Kompass entschärfen): siehe HANDOFF.md
   „Ideen für ein kniffligeres Spiel“. Entscheidung offen.
+
+---
+
+## 11. Nachträge 23 bis 26 (30.09.2026)
+
+Einzelheiten und Entscheidungen je Nachtrag stehen in `HANDOFF.md`, die
+Spezifikationen in `docs/superpowers/specs/`.
+
+### Gruppenselfie (Nachtrag 25, abschaltbar)
+
+`game_state.selfie_on`, Standard aus, geschaltet im Reiter „Fotos“.
+
+- `submit_answer` ist unverändert und setzt `progress.solved_at`. Daran hängen
+  Zeitmessung und Rangliste.
+- Neu ist `progress.selfie_at`. Bei eingeschaltetem Selfie liefert
+  `team_state` die Ziffer einer Station erst, wenn `selfie_at` gesetzt ist, und
+  meldet die niedrigste gelöste Station ohne Foto als `selfie.pending`. Die
+  sechste Ziffer und `allSolved` warten ebenfalls.
+- Solange `selfie.pending` gesetzt ist, zeigt das Handy der Teamleitung den
+  Selfie-Schritt statt der nächsten Station (`selfieHTML()`), Mitglieder sehen
+  einen Hinweis.
+- `team_selfie` speichert das Foto (JPEG, bis 700 KB, Vorschau bis 60 KB) und
+  setzt `selfie_at`. `team_selfie_skip` setzt nur `selfie_at`: die Ziffer hängt
+  nie am Netz. Ein nicht gesendetes Foto bleibt im `localStorage` und wird
+  nachgereicht (`fotoNachreichen()`).
+- Ersetzen geht für die zuletzt gelöste Station, bis an einer späteren
+  eingecheckt ist.
+- Album: `team_photo` mit Team-Code, Geräte-Schlüssel oder Mitlese-Link.
+  Spielleitung: `admin_photos`, `admin_photo`, `admin_set_selfie`,
+  `admin_delete_photos`; das ZIP entsteht im Browser (`zipBauen()`).
+- Fotos liegen in `station_photos`, mit Fremdschlüssel auf `progress`:
+  Zurücksetzen, neu Auslosen und Leeren der Anmeldung nehmen sie mit. Ist
+  `photos_delete_on` erreicht, löschen `team_state` und `admin_state` sie beim
+  nächsten Abruf.
+- Wird mitten im Spiel eingeschaltet, brauchen schon gelöste Stationen kein
+  Foto mehr (`admin_set_selfie` setzt für sie `selfie_at`).
+
+### Stationsname verschlüsselt (Nachtrag 26, je Station)
+
+`stations.reveal_start_m` und `reveal_clear_m`; beide leer heißt unverschlüsselt.
+
+- Nur die Anzeige: Der Name kommt im Klartext in `team_state`, das Handy
+  verschleiert ihn nach dem eigenen Standort (`geheimStand()`).
+- Zwischen den beiden Entfernungen rasten die Buchstaben ein, in zufälliger,
+  je Name fester Reihenfolge (`geheimFolge()`). Der Ortshinweis erscheint erst
+  mit dem lesbaren Namen (`stationsNameHTML()`).
+- Schloss: der weiteste Stand je Station steht im `localStorage`
+  (`sj.geheim.<team>.<position>`).
+- Ohne freigegebenen Standort bleibt der Name verschlüsselt. Nach dem Check-in
+  steht er im Rätsel-Kasten immer im Klartext.
+- Testmodus: die Annäherung wird vorgespielt (3 s verschlüsselt, 7 s Auflösen).
+- Spielleitung: „Bearbeiten“ einer Station zeigt eine Karte mit drei Kreisen
+  (`stationsKarte()`, `ekZeichnen()`); `admin_save_station` hat dafür zwei
+  Parameter mehr.
+
+### Standort und Kompass
+
+- **Ungefährer Standort:** Meldungen über ±1000 m verwirft das Spiel
+  (`brauchbar()`). Kommt nichts Brauchbares, zeigt `grobHTML()`, wo man „Genauer
+  Standort“ einschaltet.
+- **Nach dem Neuladen:** `startGps(true)` hört auf Kompass-Ereignisse und bittet
+  nur um den Tipp, wenn drei Sekunden nichts kommt. Am Vorhandensein von
+  `requestPermission` lässt sich iOS nicht mehr erkennen, Chrome hat es auch.
+- **Nach einer Pause** (Seite mindestens 3 s im Hintergrund, nur Android):
+  Kompass gilt als unsicher, das Einmessen wird angeboten
+  (`kompassNachPause()`).
+- **Einmessen** ist ein Fenster über der Seite (`kalFensterHTML()`).
+- **Zeichen im Kopf:** Kompass mit eigener Nadel, die überall mitdreht
+  (`logoStart()`).
+- **Bildschirm wach halten:** wird bei jedem Tipp erneut versucht.
+
+### Spielleitung
+
+- Reiter „Fotos“: Schalter, Löschdatum, Galerie, ZIP, Löschen.
+- Karte: Strecken ohne GPS-Signal gestrichelt, ab zwei Minuten mit Dauer
+  (`LUECKE_M`, `LUECKE_MS`). Im Testmodus werden auch Teams weit weg von der
+  Route gezeichnet.
+- „Freischalten“ fragt nach. Solange ein Finger aufliegt, wird nicht neu
+  gezeichnet (`fingerSeit`).
+- „Link teilen“ zeigt den Mitlese-Link auch als QR-Code (`qrSvg()`,
+  `vendor/qrcode.js`).
+
+### Neue Dateien
+
+```
+geraete-test.html, geraete-tests.js   Geräte-Test und seine Suite (gehört nicht zum Spiel)
+vendor/qrcode.js                      QR-Generator für den Mitlese-Link (MIT)
+tools/testlaeufe.py                   Läufe des Geräte-Tests nach testlaeufe/ holen
+tools/pruefstand/geraetetest.py       Geräte-Test mit gespielten Sensoren
+tools/pruefstand/selfie.py, name.py   Selfie und verschlüsselter Name im Prüfstand
+tools/pruefstand/selfie_db.py, name_db.py   Probelauf der Migration, nimmt alles zurück
+supabase/migrations/20260930120000_geraetetest.sql          Nachtrag 23
+supabase/migrations/20260930180000_gruppenselfie.sql        Nachtrag 25
+supabase/migrations/20260930200000_name_verschluesselt.sql  Nachtrag 26
+```
+
+### Offene Punkte (Stand 30.09.2026)
+
+Siehe den Kopf von `HANDOFF.md`: die Liste dessen, was nur am echten Gerät zu
+klären ist, und was vor dem Event zurückgestellt werden muss (Testmodus aus,
+Probedaten weg, Löschdatum für Fotos).

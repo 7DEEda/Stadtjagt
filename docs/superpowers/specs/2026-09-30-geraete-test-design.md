@@ -118,3 +118,10 @@ registrierter Service Worker.
 QR-Code und Ton sind entfallen (Entscheidung Friedrich), damit auch
 `geraete-test-qr.html`, `geraete-test-qr.svg` und `vendor/jsQR.js`. Die Suite hat
 19 Bausteine. Seit Suite 3 nennt der Umgebungs-Test die Geräteart.
+
+## Nachtrag 30.09.2026, Suite 5 bis 7
+
+Suite 5: ungefährer Standort (über 1000 m) wird als „nur ungefähr“ gemeldet, mit Anleitung.
+Suite 6: Schritt „Wach halten, mit Tipp“ (braucht die Bildschirmsperre einen Fingertipp?).
+Suite 7: Schritt „Kompass nach Pause“ (wandert die Richtung nach einem App-Wechsel bei ruhigem Handy nach?).
+Die Seite hat seit der UI-Durchsicht einen geführten Ablauf: immer nur ein Schritt offen. Damit 21 Bausteine.

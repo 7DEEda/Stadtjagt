@@ -99,3 +99,7 @@ und `admin_state` beim Abruf: ist `photos_delete_on` erreicht, sind sie weg.
 
 Prüfung, ob wirklich alle auf dem Foto sind; Fotos teamübergreifend zeigen;
 Änderung an Zeitmessung oder Rangliste.
+
+## Stand 30.09.2026
+
+Umgesetzt und live (Migration `20260930180000_gruppenselfie.sql`, Probelauf mit 34 Prüfungen). Zusätzlich zum Entwurf: Streikt die Kamera, erscheint nach dem ersten Versuch „Ohne Foto weiter“. Auf echten Handys noch nicht gesehen.

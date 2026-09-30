@@ -8,7 +8,78 @@ Summe der fünf. Am Ziel stehen drei Koffer mit absteigendem Preisgeld: die
 ersten drei Teams, die den vollständigen Code eingeben, bekommen Platz 1 bis 3
 und je einen Koffer. Alle anderen laufen weiter und kommen mit Platz ins Ziel.
 
-**Stand 19.09.2026, abends:** Live auf GitHub Pages, Datenbank eingerichtet,
+**Stand 30.09.2026, abends:** Live auf GitHub Pages, Nachträge 1 bis 26 in der
+Datenbank. Seit dem 19.09. dazugekommen, jeweils mit eigenem Abschnitt am Ende
+dieser Datei:
+
+- Nachtrag 23: Geräte-Test (`geraete-test.html`, Suite 7) mit Läufen in der Datenbank
+- Nachtrag 24: Kompass als Zeichen, Kompass nach dem Neuladen
+- Nachtrag 25: Gruppenselfie an jeder Station (abschaltbar, Reiter „Fotos“)
+- Nachtrag 26: Stationsname entschlüsselt sich mit der Annäherung, Station
+  bearbeiten mit Karte, Einmessen als Fenster
+- ohne Migration: Hinweis bei ungefährem Standort, Mitlese-Link als QR-Code,
+  Kompass nach einer Pause, Lücken in der Route gestrichelt, Bedienung mit dem
+  Finger am Tablet, Testmodus spielt das Entschlüsseln vor
+
+**Die Datenbank ist gerade im Probebetrieb, nicht leer:** Status „running“,
+Testmodus an, zwei Teams (Fuchs, Wolf) aus Friedrichs Durchgang am 30.09.,
+Gruppenselfie eingeschaltet, alle fünf Stationen mit Kreisen fürs Entschlüsseln
+(Vorschlag 60 % und 30 % der Etappe, von Claude am 30.09. eingetragen). Vor dem
+Event: Fortschritt zurücksetzen, Testdaten entfernen, **Testmodus aus**,
+Löschdatum für die Fotos setzen. In `device_test_runs` liegt außerdem der
+Kontroll-Lauf ABK2 vom Laptop.
+
+**Offen, weil nur am echten Gerät zu klären** (alles andere ist im Prüfstand
+geprüft):
+
+- Gruppenselfie: Frontkamera geht auf, Foto steht richtig herum, „Foto
+  speichern“ landet in der Galerie (Android und iPhone)
+- iPhone: „Wach halten“ wurde verweigert, ohne Stromsparmodus. Der Schritt
+  „Wach halten, mit Tipp“ im Geräte-Test klärt, ob die Sperre einen Fingertipp
+  braucht; das Spiel versucht sie vorsorglich bei jedem Tipp
+- iPhone nach dem Neuladen: Hinweis „Kompass ist nach dem Neuladen aus“ nach
+  etwa drei Sekunden, Tipp wirkt
+- iPhone mit ungefährem Standort: Hinweis erscheint, nach dem Umstellen klappt es
+- Android: Kompass nach einer Pause. Der Schritt „Kompass nach Pause“ misst,
+  ob die Richtung bei ruhigem Handy nachwandert; davon hängt ab, ob fünf
+  Sekunden Einmessen reichen
+- Verschlüsselter Name draußen: löst er sich beim Hinlaufen auf, bleibt die
+  Zeile ruhig
+- Tablet: Tastatur verdeckt keine Knöpfe, Griffe auf der Stationskarte lassen
+  sich ziehen, ohne dass die Seite scrollt
+- QR-Code des Mitlese-Links mit einer Handykamera scannen
+
+Befunde aus vier Läufen des Geräte-Tests (`testlaeufe/UEBERSICHT.md`, nicht im
+Repo): Standort, Kompass, Kamera und Wake Lock gehen auf drei Android-Handys
+(Chrome und Edge). Vibration wurde auf keinem gespürt und fehlt auf iPhones
+ganz: nichts darauf bauen. Mitteilungen brauchen auf Android einen Service
+Worker und gibt es auf dem iPhone nur als installierte App. Das eine iPhone
+lieferte nur den ungefähren Standort (Einstellung) und verweigerte Wake Lock.
+
+**Betrieb, am 30.09. gelernt:**
+
+- Commits in diesem OneDrive-Ordner scheitern mit „unable to append to
+  .git/logs“. Abhilfe je Aufruf: `git -c windows.appendAtomically=false commit …`
+  und ebenso `push`. Dauerhaft gesetzt ist es nicht.
+- Der Pages-Lauf kann bei GitHub scheitern („Fetching artifact metadata
+  failed“). Stand der Läufe ohne Anmeldung:
+  `https://api.github.com/repos/7DEEda/Stadtjagt/actions/runs`. Neu anstoßen
+  mit einem leeren Commit.
+- Migrationen erst als Probelauf (`tools/pruefstand/selfie_db.py`,
+  `name_db.py`): ein DO-Block, der die Migration einspielt, prüft und mit einem
+  absichtlichen Fehler alles zurücknimmt. Danach `tools/sql.py <datei>`.
+- Kartenkacheln von OpenStreetMap kommen nur bei Seiten mit Absender an. Ein
+  Mockup direkt von der Platte zeigt „Access blocked“.
+- `dist_m` und andere interne Funktionen sind auch für den Management-Zugang
+  gesperrt; Entfernungen für Auswertungen lokal rechnen.
+- Die App nimmt von `rpc()` nur JSON-Objekte an. Eine Funktion, die nackten
+  Text liefert, gilt als Fehlantwort: immer `json_build_object(...)`.
+- Die vier Dateien mit `-nb-f-reiss` im Namen sind OneDrive-Konfliktkopien vom
+  Notebook und gehören nicht ins Repo. Bisher nicht angefasst.
+- Python-Pakete fürs Prüfen, am 30.09. installiert: `playwright`, `segno`,
+  `zxing-cpp`, `pillow`.
+
+**Stand 19.09.2026, abends (überholt, zur Geschichte):** Live auf GitHub Pages, Datenbank eingerichtet,
 Nachträge 1 bis 22 live (6: drei Koffer, 7: Testmodus, 11: Mitlesen, 12: Anmeldung
 bis zum Auslosen, 13: Randfälle, 14: Teamleitung und Mitlese-Link, 17:
 Spieldauer, Tipp, Koffer-Hinweis, 18: Teamleitung ohne Code, 19: Hintergrund
