@@ -325,6 +325,32 @@ button.bild{cursor:pointer}
 .fotogross img{max-width:100%;max-height:68vh;border-radius:10px;background:#223}
 .fotogross .btn.alt{color:#fff;border-color:rgba(255,255,255,.5)}
 .fotogross p{color:#fff}
+/* ---------- Bedienung mit dem Finger (Durchsicht 30.09.2026) ---------- */
+/* kein Doppeltipp-Zoom auf Knöpfen, dafür eine sichtbare Antwort auf den Druck */
+button,a,select,[role=button],.tl-name{touch-action:manipulation}
+.btn:active,.tchip:active,.tabs button:active{filter:brightness(.93)}
+/* Zeitachse: der Schieber war 16 px hoch */
+.tl-head input[type=range]{height:44px;touch-action:pan-y}
+/* Karten: Zoom-Knöpfe und das Schließkreuz der Sprechblase fingergroß */
+.leaflet-touch .leaflet-bar a{width:44px;height:44px;line-height:44px;font-size:24px}
+.leaflet-container a.leaflet-popup-close-button{width:44px;height:44px;font-size:24px;line-height:44px}
+.leaflet-popup-content{margin-right:36px}
+/* Marker und Ziehgriffe: sichtbar klein, die Trefferfläche 44 px */
+.mhit,.egriff-hit{display:grid;place-items:center}
+.egriff-hit{touch-action:none}
+/* Teilnehmende: das Löschkreuz steht am rechten Rand statt direkt hinter dem Namen */
+ul.names li{display:flex;align-items:center;gap:8px}
+ul.names li .del{margin-left:auto;min-width:44px;min-height:44px}
+/* Dialoge oben statt mittig und scrollbar: die Bildschirmtastatur verdeckt sonst die Knöpfe */
+.overlay{align-items:start;overflow:auto;padding-top:max(16px,6vh);overscroll-behavior:contain}
+.fotogross{cursor:pointer}
+input[type=date]{min-height:50px}
+@media (min-width:700px) and (pointer:coarse){
+  .btn.sm,.link,.nav a,select.sm,.tchip,.tl-name[data-act]{min-height:48px}
+  .btn.sm{margin:0 8px 8px 0}.tabs{gap:8px}.tabs button{padding:13px 14px}
+}
+/* Teamleitung am Tablet: breitere Spalte, Kompass und Entfernung auf Armlänge lesbar */
+@media (min-width:700px){main:not(.wide){max-width:600px}.compass.gross svg{width:180px;height:180px}.dist{font-size:56px}}
 </style>
 </head>
 <body>
@@ -594,6 +620,18 @@ const DANGER = {
       S.admin.state = await rpc("admin_delete_photos", { p_pin: S.admin.pin });
       S.admin.fotos = []; S.gross = null;
       return "Alle Fotos gelöscht.";
+    }
+  },
+  // Station ohne GPS freischalten: die Zeilen im Reiter Teams ordnen sich alle 10 s neu, ein Tipp landet leicht beim falschen Team
+  unlock: {
+    when: () => false, wort: false, neutral: true,
+    title: "Station freischalten",
+    lead: () => "Team $NAME wird an Station " + (S.admin.confirm?.pos || "") + " eingecheckt, ohne dass das Handy am Ort sein muss. Das Rätsel ist dann sofort offen.",
+    keeps: "Nichts wird gelöscht.",
+    btn: "Freischalten",
+    async run(c) {
+      S.admin.state = await rpc("admin_unlock_station", { p_pin: S.admin.pin, p_team: c.id, p_position: Number(c.pos) });
+      return `Team ${c.name} ist an Station ${c.pos} eingecheckt. Das Rätsel ist jetzt offen.`;
     }
   },
   // Rätsel für ein Team werten: kein Löschen, aber ein Eingriff ins Spiel, darum die Rückfrage
@@ -1306,7 +1344,7 @@ function fotoGrossHTML() {
   const ersetzen = !G.team && S.view === "team" && st.selfie.on && st.selfie.replaceable === G.pos;
   const name = `stadtjagd-${G.team ? String(f.teamName).toLowerCase() + "-" : ""}station-${G.pos}.jpg`;
   return `<div class="fotogross" data-act="foto-zu" role="dialog" aria-modal="true" aria-label="Foto von Station ${G.pos}"><div>
-    ${voll || klein ? `<img src="${voll || klein}" alt="Foto von Station ${G.pos}">` : ""}
+    ${voll || klein ? `<img src="${voll || klein}" alt="Foto von Station ${G.pos}" data-act="foto-bild">` : ""}
     ${voll ? `<a class="btn" href="${voll}" download="${esc(name)}">Foto speichern</a>` : `<p class="small">Foto wird geladen …</p>`}
     ${ersetzen ? `<button class="btn alt" data-act="t-foto-ersetzen" data-pos="${G.pos}">Neu aufnehmen</button>` : ""}
     <button class="btn alt" data-act="foto-zu">Schließen</button></div></div>`;
@@ -1343,13 +1381,21 @@ function zipBauen(dateien) {
 // Eincheck-Radius, "ganz lesbar ab" und "Entschlüsseln beginnt bei" als Kreise um die Station. Die Werte stehen in
 // den Feldern e-radius, e-klar, e-beginn; die Karte zeigt sie und schreibt beim Ziehen in die Felder zurück.
 const EK = { radius: { feld: "e-radius", farbe: "#EE5F1B", text: "da", winkel: 90 },
-  klar: { feld: "e-klar", farbe: "#2E7D4F", text: "klar", winkel: 40 },
-  beginn: { feld: "e-beginn", farbe: "#2F6E9E", text: "beginnt", winkel: 140 } };
+  klar: { feld: "e-klar", farbe: "#2E7D4F", text: "klar", winkel: 20 },
+  beginn: { feld: "e-beginn", farbe: "#2F6E9E", text: "beginnt", winkel: 160 } };
 let ekarte = null;
+// Ein eingefügtes Paar im Feld Breite trennen. Vorher wurde auch "50,0875" zerlegt, in Breite 50 und Länge 875.
+function koordPaar(la, lo) {
+  if (lo || !la.includes(",")) return [la, lo];
+  const p = la.split(",").map(x => x.trim());
+  if (p.length === 2 && (p[0].includes(".") || p[1].includes("."))) return p;
+  if (p.length === 4) return [p[0] + "." + p[1], p[2] + "." + p[3]];   // "50,08750, 14,42806"
+  return [la, lo];
+}
 const ekZahl = id => { const v = parseInt(val(id), 10); return v > 0 ? v : null; };
 function ekMitte() {
   let la = val("e-lat"), lo = val("e-lng");
-  if (la.includes(",") && !lo) { const p = la.split(","); la = p[0]; lo = p[1] || ""; }
+  [la, lo] = koordPaar(la, lo);
   const lat = parseFloat(la.replace(",", ".")), lng = parseFloat(lo.replace(",", "."));
   return isNaN(lat) || isNaN(lng) ? null : [lat, lng];
 }
@@ -1366,18 +1412,18 @@ async function stationsKarte() {
   if (!$("#emap") || $("#emap") !== el) return;   // inzwischen neu gezeichnet oder geschlossen
   if (ekarte && el.contains(ekarte.map.getContainer())) { ekZeichnen(); return; }
   const mitte = ekMitte() || [START.lat, START.lng], vor = ekVorgaenger();
-  const map2 = L.map(el, { zoomControl: true }).setView(mitte, 16);
+  const map2 = L.map(el, { zoomControl: true, dragging: !matchMedia("(pointer: coarse)").matches }).setView(mitte, 16);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map2);
   const K = ekarte = { map: map2, kreise: {}, griffe: {}, schilder: {}, zieht: null };
   K.weg = L.polyline([[vor.lat, vor.lng], mitte], { color: "#5B6F68", weight: 2, dashArray: "6 7" }).addTo(map2);
-  L.marker([vor.lat, vor.lng], { icon: L.divIcon({ html: `<div class="mapbadge ${vor.nr ? "" : "start"}" style="${vor.nr ? "background:#5B6F68" : ""}">${vor.nr || HAUS}</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) })
+  L.marker([vor.lat, vor.lng], { icon: L.divIcon({ html: `<div class="mapbadge ${vor.nr ? "" : "start"}" style="${vor.nr ? "background:#5B6F68" : ""}">${vor.nr || HAUS}</div>`, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] }) })
     .addTo(map2).bindTooltip(vor.name);
   const s = (S.admin.state.stations || []).find(x => x.id === S.admin.edit);
-  K.station = L.marker(mitte, { zIndexOffset: 500, icon: L.divIcon({ html: `<div class="mapbadge">${s ? s.position : ""}</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) }).addTo(map2);
+  K.station = L.marker(mitte, { zIndexOffset: 500, icon: L.divIcon({ html: `<div class="mapbadge">${s ? s.position : ""}</div>`, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] }) }).addTo(map2);
   for (const k of Object.keys(EK)) {
     K.kreise[k] = L.circle(mitte, { radius: 1, color: EK[k].farbe, weight: k === "radius" ? 1.5 : 2.5, fillOpacity: k === "radius" ? .15 : .04, dashArray: k === "beginn" ? "8 6" : null }).addTo(map2);
     K.griffe[k] = L.marker(mitte, { draggable: true, zIndexOffset: 900,
-      icon: L.divIcon({ html: `<div class="egriff" style="--c:${EK[k].farbe}"></div>`, className: "", iconSize: [18, 18], iconAnchor: [9, 9] }) }).addTo(map2);
+      icon: L.divIcon({ html: `<div class="egriff" style="--c:${EK[k].farbe}"></div>`, className: "egriff-hit", iconSize: [44, 44], iconAnchor: [22, 22] }) }).addTo(map2);
     K.schilder[k] = L.marker(mitte, { interactive: false, icon: L.divIcon({ html: "", className: "", iconSize: [0, 0] }) }).addTo(map2);
     K.griffe[k].on("dragstart", () => { K.zieht = k; });
     K.griffe[k].on("drag", e => {
@@ -1394,7 +1440,7 @@ async function stationsKarte() {
   }
   // Probe-Team: wohin man es zieht, dafür zeigt die Vorschau darunter den Namen
   const t0 = S.admin.karte.team || [mitte[0] + (vor.lat - mitte[0]) * .45, mitte[1] + (vor.lng - mitte[1]) * .45];
-  K.team = L.marker(t0, { draggable: true, zIndexOffset: 1000, icon: L.divIcon({ html: `<div class="mapbadge team" style="background:#2F6E9E">🐾</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) }).addTo(map2);
+  K.team = L.marker(t0, { draggable: true, zIndexOffset: 1000, icon: L.divIcon({ html: `<div class="mapbadge team" style="background:#2F6E9E">🐾</div>`, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] }) }).addTo(map2);
   K.team.on("drag", () => { const p = K.team.getLatLng(); S.admin.karte.team = [p.lat, p.lng]; ekVorschau(); });
   ekZeichnen();
   map2.fitBounds(L.latLngBounds([[vor.lat, vor.lng], mitte]).pad(0.4));
@@ -1475,7 +1521,7 @@ function viewAdmin() {
   if (A.tab === "map") {
     const withPos = (st.teams || []).filter(t => t.position);
     out += `<div id="map" class="${A.full ? "full" : ""}"></div>
-      ${A.full ? `<button class="btn sm kartezu" data-act="a-full">Vollbild beenden</button>` : ""}
+      <button class="btn sm kartezu" data-act="a-full" ${A.full ? "" : "hidden"}>Vollbild beenden</button>
       <div class="bar" style="margin-top:8px"><span class="small muted">${withPos.length} von ${(st.teams || []).length} Teams melden eine Position. Aktualisierung alle 10 Sekunden. Gestrichelt: Strecke ohne GPS-Signal, mit Dauer.</span>
       <span><button class="btn sm alt" data-act="a-alle">Alle zeigen</button><button class="btn sm alt" data-act="a-full">Vollbild</button></span></div>
       <div class="legend" id="legend">${(st.teams || []).map((t, i) => `<button class="tchip ${A.hidden[t.id] ? "off" : ""}" style="--c:${teamColor(i)}" data-act="a-team" data-id="${t.id}"><i></i>${teamEmoji(t.name)} ${esc(t.name)}</button>`).join("")}</div>`;
@@ -1538,7 +1584,7 @@ function viewAdmin() {
           ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}
           ${msgBox("t:" + t.id)}</td>
         <td>${st.status === "running" && t.currentPosition && !t.place ? `<div style="display:flex;flex-direction:column;gap:6px">
-          ${"checkedInAt" in t && t.checkedInAt ? "" : `<button class="btn sm alt" data-act="a-unlock" data-id="${t.id}" data-pos="${t.currentPosition}" data-ort="t:${t.id}">Freischalten</button>`}
+          ${"checkedInAt" in t && t.checkedInAt ? "" : `<button class="btn sm alt" data-act="a-danger" data-key="unlock" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Freischalten</button>`}
           ${"checkedInAt" in t && !t.checkedInAt ? "" : `<button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Rätsel werten</button>`}</div>` : ""}</td></tr>`).join("")}
       </table><p class="small muted">„Freischalten“ steht da, solange ein Team unterwegs ist, und ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.
         „Rätsel werten“ steht da, sobald es eingecheckt hat, und zählt die Station als gelöst, wenn ein Rätsel klemmt.
@@ -1559,8 +1605,8 @@ function viewAdmin() {
     const liste = `<div class="panel"><div class="bar"><div><span class="count">${(st.participants || []).length}</span> <span class="muted">angemeldet</span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${DANGER.testdaten.when(st) ? `<button class="btn sm alt" data-act="a-danger" data-key="testdaten">Testdaten entfernen</button>` : ""}
       ${(st.participants || []).length ? `<button class="btn sm alt" data-act="a-danger" data-key="people">Alle löschen</button>` : ""}</div></div>
-      <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen" autocapitalize="words" aria-label="Name des Nachzüglers"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
-      <div style="margin-top:8px"><input id="asuche" placeholder="Name oder Team suchen" autocomplete="off" data-enter="none" aria-label="Name oder Team suchen" value="${esc(A.suche || "")}"></div>
+      <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen" autocapitalize="words" autocomplete="off" enterkeyhint="done" aria-label="Name des Nachzüglers"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
+      <div style="margin-top:8px"><input id="asuche" type="search" enterkeyhint="search" placeholder="Name oder Team suchen" autocomplete="off" data-enter="none" aria-label="Name oder Team suchen" value="${esc(A.suche || "")}"></div>
       <ul class="names">${(st.participants || []).map(p => `<li data-such="${esc((p.name + " " + (p.teamName || "")).toLowerCase())}" ${treffer(p) ? "" : "hidden"}>${esc(p.name)}${p.teamName ? ` <span class="small muted">${esc(p.teamName)}</span>` : ""}
         <button class="btn sm alt del" data-act="a-danger" data-key="person" data-id="${p.id}" data-name="${esc(p.name)}" title="Diese Person löschen" aria-label="${esc(p.name)} löschen">×</button></li>`).join("")}</ul></div>`;
     // Nach dem Auslosen trägt man hier vor allem Nachzügler ein: dann steht dieses Feld zuerst
@@ -1639,7 +1685,7 @@ function viewAdmin() {
         <button class="btn alt" data-act="a-selfie" data-on="${st.selfieOn ? "1" : "0"}" data-ort="fotos">Datum speichern</button></div>${msgBox("fotos")}</div>`;
     out += `<div class="panel"><div class="bar"><h3>${st.photoCount || 0} ${st.photoCount === 1 ? "Foto" : "Fotos"}</h3>
       <span><button class="btn sm alt" data-act="a-fotos-zip" data-wait="Paket wird gebaut …" data-ort="zip" ${fotos.length ? "" : "disabled"}>Alle herunterladen</button>
-      <button class="btn sm warn" data-act="a-danger" data-key="fotos" ${st.photoCount ? "" : "disabled"}>Fotos löschen</button></span></div>${msgBox("zip")}
+      <button class="btn sm warn" style="margin-left:12px" data-act="a-danger" data-key="fotos" ${st.photoCount ? "" : "disabled"}>Fotos löschen</button></span></div>${msgBox("zip")}
       ${fotos.length ? "" : `<p class="small muted">${st.photoCount ? "Fotos werden geladen …" : "Noch kein Foto da."}</p>`}</div>`;
     for (const t of (st.teams || [])) {
       const eigene = fotos.filter(f => f.teamId === t.id);
@@ -1682,7 +1728,7 @@ function viewAdmin() {
       <div class="why">${esc(lead)}</div>
       <p class="keeps">${esc(txt(D.keeps))}</p>
       ${brauchtWort(A.confirm.key) ? `<div style="margin-top:16px"><label for="dlgword">Tippe <b>${DANGER_WORD}</b>, um es wirklich zu löschen</label>
-        <input id="dlgword" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>` : ""}
+        <input id="dlgword" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done"></div>` : ""}
       ${msgBox("dlg")}
       <div class="row">
         <button class="btn alt" data-act="a-dlg-cancel">Abbrechen</button>
@@ -1786,12 +1832,12 @@ async function drawMap(first) {
   const pts = [[START.lat, START.lng]];
   // Startpunkt als Haus, unter den Stationen
   const haus = L.marker([START.lat, START.lng], { zIndexOffset: 900,
-    icon: L.divIcon({ html: `<div class="mapbadge start" title="Start">${HAUS}</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) })
+    icon: L.divIcon({ html: `<div class="mapbadge start" title="Start">${HAUS}</div>`, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] }) })
     .bindPopup(`<b>Start</b><br>${esc(START.name)}`);
   haus.addTo(map); layers.stations.push(haus);
   (st.stations || []).forEach(s => {
     if (s.lat == null || s.lng == null) return;
-    const icon = L.divIcon({ html: `<div class="mapbadge">${s.position}</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] });
+    const icon = L.divIcon({ html: `<div class="mapbadge">${s.position}</div>`, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] });
     const m = L.marker([s.lat, s.lng], { icon, zIndexOffset: 1000 }).bindPopup(`<b>Station ${s.position}</b><br>${esc(s.name)}`);
     const c = L.circle([s.lat, s.lng], { radius: s.radiusM, color: "#EE5F1B", weight: 1, fillOpacity: .08 });
     m.addTo(map); c.addTo(map); layers.stations.push(m, c); pts.push([s.lat, s.lng]);
@@ -1820,7 +1866,7 @@ async function drawMap(first) {
           if (m > LUECKE_M || (dt > LUECKE_MS && m > 15)) {
             if (stueck.length > 1) fest.push(stueck);
             stueck = []; offen.push([[q[0], q[1]], [p[0], p[1]]]);
-            if (dt >= 60000) marken.push({ at: [(q[0] + p[0]) / 2, (q[1] + p[1]) / 2], von: q[2], bis: p[2], m });
+            if (dt >= 120000) marken.push({ at: [(q[0] + p[0]) / 2, (q[1] + p[1]) / 2], von: q[2], bis: p[2], m });
           }
         }
         stueck.push([p[0], p[1]]);
@@ -1854,7 +1900,7 @@ async function drawMap(first) {
       : t.solved;
     const popup = `<b>${esc(t.name)}</b><br>${esc(t.code)}<br>${solved} von ${(st.stations || []).length} gelöst<br>`
       + (stale ? "keine aktuelle Position" : "Position " + fmtClock(when) + " Uhr");
-    const icon = L.divIcon({ html, className: "", iconSize: [28, 28], iconAnchor: [14, 14] });
+    const icon = L.divIcon({ html, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] });
     if (layers.teams[t.id]) {
       layers.teams[t.id].setLatLng(at); layers.teams[t.id].setIcon(icon); layers.teams[t.id].setPopupContent(popup);
     } else {
@@ -2160,6 +2206,7 @@ const ACT = {
   },
   "foto-gross"(d) { S.gross = { pos: Number(d.pos), team: d.team || null }; },
   "foto-zu"() { S.gross = null; },
+  "foto-bild"() { return false; },
   async "a-selfie"(d) {
     const an = d.on === "1", war = !!S.admin.state.selfieOn;
     S.admin.state = await rpc("admin_set_selfie", { p_pin: S.admin.pin, p_on: an, p_delete_on: val("afdatum") || null });
@@ -2188,7 +2235,15 @@ const ACT = {
   },
   "a-tab"(d) { S.admin.tab = d.tab; S.admin.edit = null; S.admin.full = false; S.msg = null; if (d.tab === "fotos") fotosLaden(); },
   // Vollbild steht im Zustand und wird mitgezeichnet, sonst geht es beim nächsten Neuzeichnen verloren
-  "a-full"() { S.admin.full = !S.admin.full; setTimeout(() => map && map.invalidateSize(), 80); },
+  "a-full"() {
+    S.admin.full = !S.admin.full;
+    const m = $("#map"), zu = document.querySelector(".kartezu");
+    if (m) m.classList.toggle("full", S.admin.full);
+    if (zu) zu.hidden = !S.admin.full;
+    document.body.classList.toggle("fest", S.admin.full);
+    setTimeout(() => map && map.invalidateSize(), 80);
+    return false;
+  },
   "a-alle"() { if (map && kartenPunkte.length) map.fitBounds(L.latLngBounds(kartenPunkte).pad(0.2)); return false; },
   "a-team"(d) {
     const A = S.admin;
@@ -2237,7 +2292,7 @@ const ACT = {
     S.admin.confirm = null;
     // Aktionen an einem Team melden sich in dessen Tabellenzeile, nicht oben außer Sicht
     S.msg = { type: (r && r.type) || "ok", text: typeof r === "string" ? r : r.text,
-              ort: ["solve", "leader"].includes(c.key) ? "t:" + c.id : undefined };
+              ort: ["solve", "leader", "unlock"].includes(c.key) ? "t:" + c.id : undefined };
   },
   async "a-viele"() { await vieleEintragen(val("aviele")); },
   async "a-testdaten"() {
@@ -2325,7 +2380,7 @@ const ACT = {
   },
   async "a-save"(d) {
     let la = val("e-lat"), lo = val("e-lng");
-    if (la.includes(",") && !lo) { const parts = la.split(","); la = parts[0].trim(); lo = (parts[1] || "").trim(); }
+    [la, lo] = koordPaar(la, lo);
     const lat = parseFloat(la.replace(",", ".")), lng = parseFloat(lo.replace(",", "."));
     // Eine leere Ziffer würde still zur 0: lieber nachfragen
     const ziffer = val("e-digit").trim();
@@ -3010,14 +3065,14 @@ setInterval(() => {
   if (new Date(p.dataset.bis).getTime() <= Date.now()) render(); else p.textContent = pauseText(p.dataset.bis);
 }, 1000);
 setInterval(() => {
-  if (document.hidden) return;
+  if (document.hidden || (fingerSeit && Date.now() - fingerSeit < 3000)) return;
   const busyTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
   if (S.view === "admin" && S.admin.pin) {
     rpc("admin_state", { p_pin: S.admin.pin }).then(s => {
       S.admin.state = s;
       if (S.admin.tab === "fotos" && (s.photoCount || 0) !== (S.admin.fotos || []).length) fotosLaden();
       if (S.admin.tab === "map") syncTracks().then(() => { drawMap(false); renderTimeline(); }).catch(() => { });
-      else if (!busyTyping && !S.admin.edit && !S.admin.confirm) render();
+      else if (!busyTyping && !S.admin.edit && !S.admin.confirm && !S.gross) render();
     }).catch(() => { });
     return;
   }
@@ -3035,6 +3090,10 @@ setInterval(() => {
     if (!S.hoch || neu) render();
   }).catch(() => { });
 }, 10000);
+let fingerSeit = 0;
+addEventListener("pointerdown", () => { fingerSeit = Date.now(); }, true);
+addEventListener("pointerup", () => { fingerSeit = 0; }, true);
+addEventListener("pointercancel", () => { fingerSeit = 0; }, true);
 // Zurück aus einer anderen App oder vom Sperrbildschirm: sofort nachladen, nicht erst im nächsten Takt
 let wegSeit = 0;
 document.addEventListener("visibilitychange", () => {

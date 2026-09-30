@@ -1377,3 +1377,33 @@ Mockups: `mockups/name-verschluesselt.html`, `mockups/station-karte.html`.
   alles zurück). Kartenkacheln lädt OpenStreetMap nur für Seiten mit Absender:
   ein Mockup direkt von der Platte zeigt „Access blocked“, über die
   veröffentlichte Adresse geht es.
+
+## Bedienung mit dem Finger am Tablet (30.09.2026)
+
+Durchsicht von Teamleitung und Spielleitung am Tablet durch einen unabhängigen
+Kritiker, am Code und an Fotos aus dem Prüfstand, nicht an einem Gerät.
+Umgesetzt:
+
+- Ziehgriffe und Marker auf den Karten: sichtbar klein, Trefferfläche 44 px.
+  Zoom-Knöpfe und das Schließkreuz der Sprechblase 44 px.
+- Karte im Formular „Station bearbeiten“: mit dem Finger scrollt ein Wisch die
+  Seite, zwei Finger zoomen die Karte (vorher fing die Karte jeden Wisch ab).
+  Mit der Maus bleibt das Verschieben.
+- „Vollbild“ zeichnet die Karte nicht mehr neu: Zoom und Ausschnitt bleiben.
+- Schieber der Zeitachse 44 px hoch.
+- „Freischalten“ im Reiter Teams fragt nach, wie „Rätsel werten“. Die Zeilen
+  ordnen sich alle 10 s neu, ein Tipp landete leicht beim falschen Team.
+- Solange ein Finger aufliegt, zeichnet die Seite nicht neu (`fingerSeit`).
+- Löschkreuz bei den Teilnehmenden am rechten Rand statt hinter dem Namen.
+- Dialoge stehen oben und scrollen, damit die Bildschirmtastatur die Knöpfe
+  nicht verdeckt.
+- Teamleitung ab 700 px Breite: Spalte 600 px, Kompass 180 px, Entfernung 56 px.
+- Am Tablet mit Finger: kleine Knöpfe, Links und Reiter mindestens 48 px hoch.
+- Koordinaten: „50,0875“ im Feld Breite wurde als Paar zerlegt (Breite 50,
+  Länge 875). Jetzt gilt nur ein Paar mit Dezimalpunkten oder vier Teilen als Paar.
+- Lücken-Schilder auf der Karte erst ab zwei Minuten.
+
+Nicht umgesetzt: Rückfrage beim Wechsel der Teamleitung per Auswahlfeld prüfen,
+Reihenfolge der Teams fest lassen. Offen, weil nur am Gerät zu klären: ob die
+Bildschirmtastatur im Querformat Knöpfe verdeckt, ob das Ziehen der Griffe
+sauber vom Scrollen getrennt ist.
