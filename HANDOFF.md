@@ -45,7 +45,10 @@ RPC-Endpunkte auf.
 ```
 index.html                      die komplette App, kein Build nötig
 config.js                       Supabase-Zugang und WhatsApp-Nummer
-kompass-test.html               Diagnoseseite für Kompassprobleme, gehört nicht zum Spiel
+geraete-test.html               Geräte-Test: prüft auf einem Handy alles, was das Spiel braucht (Nachtrag 23)
+geraete-tests.js                die Suite dazu, ein Baustein je Test
+kompass-test.html               leitet auf geraete-test.html weiter
+tools/testlaeufe.py             Läufe des Geräte-Tests nach testlaeufe/ holen
 tools/sql.py                    SQL an die Datenbank schicken, ohne den SQL-Editor
 supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge einspielen
   20260918120000_init.sql         Tabellen, Rechte, alle Funktionen
@@ -849,7 +852,7 @@ TSE-Regel „lokal vendoren“ wäre für einen späteren Stand einzuhalten.
   Magnete und die iOS-Kompasskalibrierung. Die Werte stehen als `KAL_*` im
   Abschnitt „GPS und Kompass“ in `index.html`. Entwurf:
   `mockups/kompass-einmessen.html`.
-- **Testseite:** `kompass-test.html`, live unter
+- **Testseite (bis 30.09.2026, seitdem Teil des Geräte-Tests, siehe Nachtrag 23):** `kompass-test.html`, live unter
   https://7deeda.github.io/Stadtjagt/kompass-test.html. Zeigt Erlaubnis,
   Ereigniszahl, `webkitCompassHeading`, Genauigkeit und Rohwerte und fällt nach
   fünf Sekunden ein Urteil. Sie zählt, wie viele der 36 Richtungen beim Drehen
@@ -1203,3 +1206,36 @@ Schlüssel am Ort; Frage, die das Herumgehen ums Objekt verlangt).
 - **18.09.2026, Management-API statt SQL-Editor.** Weil auf dem Arbeitsrechner
   kein Node.js liegt, war die Supabase CLI keine Option. `tools/sql.py` spricht
   direkt die HTTP-API an.
+
+## Geräte-Test (Nachtrag 23, 30.09.2026)
+
+Zweck: vor dem Event auf möglichst vielen eigenen Geräten klären, was trägt und
+was von den angedachten Funktionen machbar wäre. Kein Pflicht-Check für
+Teilnehmende, kein Bezug zur Anmeldung.
+
+- **Seite:** https://7deeda.github.io/Stadtjagt/geraete-test.html. Ein Tipp
+  holt die iOS-Erlaubnis für Bewegung und lässt dann alle selbstlaufenden Tests
+  durch. Danach kommen die Schritte mit der Hand (Kompass drehen, Bildschirm
+  sperren, App wechseln) und die neuen Funktionen (Kamera, QR, Ton, Vibration,
+  Mitteilungen, Live-Verbindung, Offline). Aussehen und Hintergrund wie das
+  Spiel, der Hintergrund folgt der Wahl der Spielleitung.
+- **Suite erweitern:** einen Baustein in `geraete-tests.js` anhängen und
+  `version` hochzählen. Der Kopf der Datei beschreibt die Felder. Seite und
+  Datenbank bleiben unverändert. `id` nie umbenennen, sonst passen alte Läufe
+  nicht mehr zur Übersicht.
+- **Speichern:** Tabelle `device_test_runs`, ohne Rechte für anon. Hinein geht
+  es nur über `device_test_save` (Schlüssel vom Handy, höchstens 64 KB,
+  höchstens 2000 Läufe). `device_test_echo` wirft Daten weg und dient der
+  Upload-Messung des Kamera-Tests. Scheitert das Speichern, liegt der Lauf in
+  `localStorage` und die Seite bietet „Erneut senden“ an.
+- **Abholen:** `python tools/testlaeufe.py` schreibt je Lauf eine JSON-Datei
+  nach `testlaeufe/` und baut `testlaeufe/UEBERSICHT.md` (Matrix Test gegen
+  Lauf). Der Ordner steht in `.gitignore`: das Repo wird komplett
+  veröffentlicht, die Läufe enthalten Koordinaten.
+- **QR-Test:** `geraete-test-qr.html` am Laptop zeigt den Code. iPhones haben
+  keinen eingebauten Scanner, darum prüft der Test zusätzlich `vendor/jsQR.js`.
+- **Prüfstand:** `python tools/pruefstand/geraetetest.py` lässt die Seite mit
+  gespieltem Standort und Kompass durchlaufen, ohne in die Datenbank zu
+  schreiben. Braucht `pip install playwright`. „Wach halten“ meldet dort
+  „verweigert“, das liegt am unsichtbaren Browser.
+- Spezifikation und Plan: `docs/superpowers/`. Mockup: `mockups/geraete-test.html`.

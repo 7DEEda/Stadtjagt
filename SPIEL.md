@@ -296,7 +296,8 @@ Bewusst akzeptiert oder offen:
 ```
 index.html                 die ganze App (HTML, CSS, JS), kein Build
 config.js                  Supabase-URL, Publishable key, Hilfe-Nummer (support.phone)
-kompass-test.html          Diagnoseseite für den Kompass einzelner Geräte
+geraete-test.html, geraete-tests.js  Geräte-Test und seine Suite, gehört nicht zum Spiel (HANDOFF, Nachtrag 23)
+kompass-test.html          leitet auf geraete-test.html weiter
 hintergrund/a.svg, b.svg, c.svg  Hintergrund-Varianten, lädt render() nach; klassisch steht im HTML
 supabase/migrations/*.sql  Schema und Spiellogik, in Dateinamen-Reihenfolge
 supabase/seed-*.sql        Stationen der Prager Route, 100 Testpersonen

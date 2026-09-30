@@ -74,7 +74,10 @@ update game_state set admin_pin = 'vier lange Wörter hier' where id = 1;
 ```
 index.html                     komplette App, kein Build nötig
 config.js                      Supabase-Zugang und WhatsApp-Nummer
-kompass-test.html              Diagnoseseite für Kompassprobleme
+geraete-test.html              Geräte-Test: prüft auf einem Handy alles, was das Spiel braucht
+geraete-tests.js               die Suite dazu, ein Baustein je Test
+kompass-test.html              leitet auf geraete-test.html weiter
+tools/testlaeufe.py            Läufe des Geräte-Tests nach testlaeufe/ holen
 tools/sql.py                   SQL an die Datenbank schicken, ohne den SQL-Editor
 tools/pruefstand/              UI-Prüfstand: App ohne Datenbank in jedem Zustand fotografieren
 supabase/migrations/*.sql      Schema, Rechte und die gesamte Spiellogik

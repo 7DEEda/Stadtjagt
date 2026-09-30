@@ -5,3 +5,7 @@ supabase/.branches/
 .env
 .env.*
 tools/hintergrund/*.json
+
+# Geholte Läufe des Geräte-Tests: enthalten Koordinaten, das Repo wird komplett veröffentlicht
+testlaeufe/
+__pycache__/
