@@ -41,11 +41,10 @@ p{margin:.4em 0 0}
 .dist{font:700 40px var(--head);line-height:1}
 
 /* der verschlüsselte Name: jeder Buchstabe ein Feld fester Breite, damit nichts springt */
-.geheim{font:700 22px/1.25 var(--mono);display:flex;flex-wrap:wrap;gap:0 .55em;margin-top:2px;min-height:28px;align-items:baseline}
-/* baseline: flimmernde und eingerastete Zeichen stehen auf einer Linie, obwohl es zwei Schriften sind */
-.geheim .wort{display:inline-flex;white-space:nowrap;align-items:baseline}
-.geheim i{font-style:normal;display:inline-block;width:.64em;text-align:center;color:var(--flag);opacity:.8}
-.geheim i.fest{color:var(--ink);opacity:1;font-family:var(--head);font-size:1.12em;width:auto;min-width:.5em;padding:0 .02em}
+.geheim{font:700 22px/1 var(--mono);display:flex;flex-wrap:wrap;gap:4px .55em;margin-top:2px}
+.geheim .wort{display:inline-flex;white-space:nowrap}
+.geheim i{font-style:normal;display:inline-block;width:.64em;height:1.2em;line-height:1.2em;text-align:center;overflow:hidden;color:var(--flag)}
+.geheim i.fest{color:var(--ink)}
 .geheim i.neu{animation:einrasten .5s ease-out}
 @keyframes einrasten{0%{color:var(--flag);transform:scale(1.5)}100%{transform:scale(1)}}
 .geheim.klar{display:block;font:700 24px/1.1 var(--head)}

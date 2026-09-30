@@ -45,10 +45,10 @@ input{width:100%;font:500 17px var(--body);padding:11px 13px;border-radius:10px;
 .vorschau{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:12px;padding:12px;border-radius:10px;background:var(--paper);border:1px solid var(--line)}
 .vorschau .wo{font-size:14px;color:var(--muted);white-space:nowrap}
 /* Name wie auf dem Handy. align-items:baseline hält flimmernde und eingerastete Zeichen auf einer Linie. */
-.geheim{font:700 22px/1.25 var(--mono);display:flex;flex-wrap:wrap;gap:0 .55em;align-items:baseline}
-.geheim .wort{display:inline-flex;white-space:nowrap;align-items:baseline}
-.geheim i{font-style:normal;display:inline-block;width:.64em;text-align:center;color:var(--flag);opacity:.85}
-.geheim i.fest{color:var(--ink);opacity:1;font-family:var(--head);font-size:1.12em;width:auto;min-width:.5em}
+.geheim{font:700 22px/1 var(--mono);display:flex;flex-wrap:wrap;gap:4px .55em;margin-top:2px}
+.geheim .wort{display:inline-flex;white-space:nowrap}
+.geheim i{font-style:normal;display:inline-block;width:.64em;height:1.2em;line-height:1.2em;text-align:center;overflow:hidden;color:var(--flag)}
+.geheim i.fest{color:var(--ink)}
 </style>
 </head>
 <body>

@@ -62,6 +62,14 @@ for s in NEU:
     AUFTRAG.append((s, "tablet-hoch"))
 for s in ["leitung-ohne-code", "mitglied-auf-teamleitung"]:
     AUFTRAG.append((s, "hell"))
+# Nachträge 25 und 26: Gruppenselfie, verschlüsselter Stationsname, Station bearbeiten mit Karte
+for s in ["selfie-offen", "selfie-album", "selfie-gross", "selfie-mitglied", "name-geheim", "name-geheim-fern"]:
+    AUFTRAG += [(s, "hell"), (s, "dunkel")]
+for s in ["admin-fotos", "admin-station-karte"]:
+    AUFTRAG += [(s, "tablet-hoch"), (s, "tablet-quer")]
+# Teamleitung am Tablet: die Spielleitung gibt dort für ein Team ein, wenn ein Handy ausfällt
+for s in ["leitung-unterwegs-standort", "leitung-kompass-einmessen", "leitung-raetsel", "leitung-koffer", "selfie-offen", "name-geheim"]:
+    AUFTRAG += [(s, "tablet-hoch"), (s, "tablet-quer")]
 
 
 class Leise(http.server.SimpleHTTPRequestHandler):

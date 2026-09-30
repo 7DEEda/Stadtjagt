@@ -1342,3 +1342,38 @@ der Pfeil folgt der Laufrichtung, soweit eine da ist, und das Einmessen
 (liegende Acht) wird von selbst angeboten, mit dem Satz, warum. Nach dem
 Einmessen oder „Überspringen“ gilt der Kompass wieder. Nur Android; iOS meldet
 die Genauigkeit selbst. Geprüft im Prüfstand, auf einem echten Handy noch nicht.
+
+## Stationsname verschlüsselt, Einmessen als Fenster (Nachtrag 26, 30.09.2026)
+
+Migration: `supabase/migrations/20260930200000_name_verschluesselt.sql`.
+Mockups: `mockups/name-verschluesselt.html`, `mockups/station-karte.html`.
+
+- **Auf dem Handy:** Hat eine Station die beiden Entfernungen
+  `reveal_start_m` und `reveal_clear_m`, steht ihr Name zuerst als flimmernde
+  Zeichen da (`stationsNameHTML()`, `geheimStand()`). Zwischen den beiden
+  Entfernungen rasten die Buchstaben ein, in zufälliger, je Name fester
+  Reihenfolge. Der Ortshinweis erscheint erst, wenn der Name ganz lesbar ist.
+- **Schloss:** Es zählt der weiteste Stand je Station, gemerkt im
+  `localStorage` (`sj.geheim.<team>.<position>`). Wer wieder wegläuft,
+  verliert nichts.
+- **Nur die Anzeige** (Entscheidung Friedrich): Der Name kommt im Klartext vom
+  Server. Jedes Handy entschlüsselt nach seinem eigenen Standort; ohne
+  freigegebenen Standort bleibt der Name verschlüsselt.
+- **Ruhige Zeile:** flimmernde und eingerastete Zeichen stehen in derselben
+  Schrift (JetBrains Mono) in Feldern fester Breite und Höhe, damit weder die
+  Zeile noch der Inhalt darunter springt.
+- **Spielleitung:** „Bearbeiten“ einer Station zeigt eine Karte mit drei
+  Kreisen (Einchecken, ganz lesbar, Entschlüsseln beginnt), jeder mit einem
+  Griff zum Ziehen und einem Feld für die Meter; dazu die Station davor mit
+  dem direkten Weg, ein Vorschlag aus der Etappenlänge (60 % und 30 %) und ein
+  Probe-Team, das zeigt, wie der Name an einer Stelle aussähe
+  (`stationsKarte()`, `ekZeichnen()`). „Nicht verschlüsseln“ lässt beide
+  Entfernungen leer. Beide Knöpfe zeichnen die Seite nicht neu, damit
+  ungespeicherte Eingaben stehen bleiben.
+- **Kompass einmessen** liegt jetzt als Fenster über der Seite
+  (`kalFensterHTML()`), statt den Inhalt darunter wegzuschieben.
+- **Prüfen:** `python tools/pruefstand/name.py` (Prüfstand),
+  `python tools/pruefstand/name_db.py` (Probelauf gegen die Datenbank, nimmt
+  alles zurück). Kartenkacheln lädt OpenStreetMap nur für Seiten mit Absender:
+  ein Mockup direkt von der Platte zeigt „Access blocked“, über die
+  veröffentlichte Adresse geht es.

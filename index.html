@@ -6,7 +6,7 @@
 <title>Stadtjagd</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
 :root{
   --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF;
@@ -15,6 +15,7 @@
   --feld:#7D9189;   /* Rand der Eingabefelder, mindestens 3:1 auf der Karte, damit sie in der Sonne nicht verschwinden */
   --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
   /* Farben der Hintergrund-Varianten A bis C (Werte aus tools/hintergrund/vergleich.py) */
   --park:#DFEAD6; --baum:#C3D5B8; --strasse:#CBD7C4; --strasse-haupt:#B5C5AE;
   --ol-braun:#E0CCB3; --ol-gelb:#F3EDD6; --ol-gruen:#DCEAD3; --ol-dicht:#C9DEBD; --ol-schwarz:#A3AFA9;
@@ -290,6 +291,23 @@ a.btn{text-decoration:none;text-align:center}
 /* QR-Code des Mitlese-Links: immer dunkel auf Weiß, sonst liest ihn im dunklen Design keine Kamera */
 .qr{background:#fff;border-radius:10px;padding:14px;margin-top:12px;display:grid;place-items:center}
 .qr svg{width:min(100%,260px);height:auto;display:block}
+/* Stationsname verschlüsselt (Nachtrag 26). Jedes Zeichen ein Feld fester Breite und Höhe, flimmernd wie
+   eingerastet in derselben Schrift: so springt weder die Zeile noch der Inhalt darunter. */
+.geheim{font:700 22px/1 var(--mono);display:flex;flex-wrap:wrap;gap:4px .55em;margin:0}
+.geheim .wort{display:inline-flex;white-space:nowrap}
+.geheim i{font-style:normal;display:inline-block;width:.64em;height:1.2em;line-height:1.2em;text-align:center;overflow:hidden;color:var(--flag)}
+.geheim i.fest{color:var(--ink)}
+.geheim i.neu{animation:einrasten .5s ease-out}
+@keyframes einrasten{0%{color:var(--flag);transform:scale(1.5)}100%{transform:scale(1)}}
+.geheimfort{height:4px;border-radius:2px;background:var(--line);margin-top:10px;overflow:hidden}
+.geheimfort span{display:block;height:100%;background:var(--flag);transition:width .3s}
+@media (prefers-reduced-motion:reduce){.geheim i.neu{animation:none}.geheimfort span{transition:none}}
+/* Station bearbeiten: Karte mit den drei Kreisen */
+#emap{height:400px;border-radius:12px;border:1px solid var(--line);margin-top:10px;z-index:0}
+.egriff{width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--c);box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:grab}
+.eschild{display:inline-block;transform:translate(-50%,-170%);background:#fff;color:#17302A;border-radius:99px;padding:1px 8px;font:600 12px var(--body);white-space:nowrap;border:1.5px solid var(--c)}
+.efarbe{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:2.5px solid var(--c)}
+.evorschau{margin-top:12px;padding:12px;border-radius:10px;background:var(--paper);border:1px solid var(--line)}
 /* Gruppenselfie (Nachtrag 25) */
 .foto{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;margin-top:12px;background:var(--line)}
 .album{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
@@ -762,6 +780,72 @@ function viewPublic() {
   return out + nav();
 }
 
+/* ---------- Stationsname verschlüsselt (Nachtrag 26) ---------- */
+// Hat die Station zwei Entfernungen (revealStartM, revealClearM), steht ihr Name zuerst als flimmernde Zeichen da
+// und löst sich mit der Annäherung auf. Nur die Anzeige: der Name kommt im Klartext vom Server, das Handy
+// verschleiert ihn nach seinem eigenen Standort (Entscheidung 30.09.2026).
+const GEHEIM_ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#%&$@?!/<>*+=";
+const geheimZeichen = () => GEHEIM_ZEICHEN[Math.floor(Math.random() * GEHEIM_ZEICHEN.length)];
+// Reihenfolge, in der die Buchstaben einrasten: zufällig, je Name aber immer dieselbe
+function geheimFolge(zeichen) {
+  let s = 0; for (const c of zeichen) s = (s * 31 + c.codePointAt(0)) >>> 0;
+  const z = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const idx = zeichen.map((c, i) => i).filter(i => zeichen[i] !== " ");
+  for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(z() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+  return idx;
+}
+// Wie viele Buchstaben dieses Handy schon entschlüsselt hat. Schloss: es zählt der weiteste Stand, der an dieser
+// Station je erreicht wurde, auch über ein Neuladen hinweg. Wer wieder wegläuft, verliert nichts.
+function geheimStand(st, s) {
+  if (!s || s.revealStartM == null || s.revealClearM == null) return null;
+  const zeichen = [...String(s.name || "")], folge = geheimFolge(zeichen), n = folge.length;
+  const k = `sj.geheim.${st.team.id}.${s.position}`;
+  let offen = Math.min(n, parseInt(LS.getItem(k), 10) || 0);
+  if (S.gps.pos && s.lat != null && s.lng != null) {
+    const d = haversine(S.gps.pos, { lat: s.lat, lng: s.lng });
+    const jetzt = Math.round(Math.max(0, Math.min(1, (s.revealStartM - d) / (s.revealStartM - s.revealClearM))) * n);
+    if (jetzt > offen) { offen = jetzt; LS.setItem(k, String(offen)); }
+  }
+  return { zeichen, folge, n, offen, klar: offen >= n };
+}
+// Die Felder eines Namens: die ersten "offen" der Reihenfolge stehen fest, der Rest flimmert
+function geheimFelder(zeichen, folge, offen) {
+  const fest = new Set(folge.slice(0, offen));
+  let h = "", wort = "";
+  zeichen.forEach((c, i) => {
+    if (c === " ") { h += `<span class="wort">${wort}</span>`; wort = ""; return; }
+    wort += fest.has(i) ? `<i class="fest">${esc(c)}</i>` : `<i data-i="${i}">${geheimZeichen()}</i>`;
+  });
+  return h + `<span class="wort">${wort}</span>`;
+}
+const geheimText = G => !S.gps.on ? "Gebt den Standort frei. Der Name entschlüsselt sich, je näher ihr kommt."
+  : G.offen ? "Der Name entschlüsselt sich, je näher ihr kommt." : "Folgt dem Pfeil. Der Name der Station ist noch verschlüsselt.";
+// Name und Ortshinweis der nächsten Station. Der Hinweis erscheint erst, wenn der Name ganz lesbar ist.
+function stationsNameHTML(st, s) {
+  const G = geheimStand(st, s);
+  if (!G || G.klar) return `<h2>${esc(s.name)}</h2><p class="hint" style="margin-top:8px">${esc(s.locationHint)}</p>`;
+  return `<h2 class="geheim" id="geheim" aria-label="Name der Station, noch verschlüsselt">${geheimFelder(G.zeichen, G.folge, G.offen)}</h2>
+    <div class="geheimfort"><span id="geheimfort" style="width:${Math.round(G.offen / G.n * 100)}%"></span></div>
+    <p class="small muted" id="geheimtext" style="margin-top:8px">${geheimText(G)}</p>`;
+}
+// Bei jeder neuen Position: neue Buchstaben einrasten lassen, ohne die Seite neu zu zeichnen
+function geheimNachziehen() {
+  const el = $("#geheim"); if (!el) return;
+  const st = aktiverStand(), G = st && geheimStand(st, st.station);
+  if (!G || G.klar) { setTimeout(render, 0); return; }   // ganz lesbar: Name und Ortshinweis zeigen
+  G.folge.slice(0, G.offen).forEach(i => {
+    const z = el.querySelector(`i[data-i="${i}"]`);
+    if (z) { z.textContent = G.zeichen[i]; z.className = "fest neu"; z.removeAttribute("data-i"); }
+  });
+  const f = $("#geheimfort"); if (f) f.style.width = Math.round(G.offen / G.n * 100) + "%";
+  const t = $("#geheimtext"); if (t) t.textContent = geheimText(G);
+}
+// die noch verschlüsselten Felder wechseln ständig ihr Zeichen (auch in der Vorschau der Spielleitung)
+setInterval(() => {
+  if (document.hidden || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  document.querySelectorAll(".geheim i[data-i]").forEach(z => { if (Math.random() < .6) z.textContent = geheimZeichen(); });
+}, 80);
+
 /* ---------- Team-Ansicht ---------- */
 function pauseText(bis) {
   const rest = Math.max(0, Math.ceil((new Date(bis).getTime() - Date.now()) / 1000));
@@ -833,14 +917,19 @@ const ACHT = `<svg class="acht" viewBox="0 0 200 100" aria-hidden="true">
 const kalText = f => f >= 1 ? "Fertig" : f > 0 ? "Bewegung erkannt, weiter so" : "Wartet auf Bewegung";
 function kalHTML() {
   const g = S.gps, f = Math.min(1, g.kal.bewegt / KAL_MS);
-  return `<div id="kal"><h3 style="margin-top:16px">Kompass einmessen</h3>
+  return `<div id="kal"><h2 id="kalt">Kompass einmessen</h2>
     ${g.nachPause ? `<p><b>Ihr wart kurz in einer anderen App.</b> Der Kompass hat in der Zeit nicht mitgezählt und kann jetzt danebenliegen.</p>` : ""}
     <p>Haltet das Handy flach vor euch und schwenkt es ein paar Mal in einer liegenden Acht, so wie hier.
     Dreht dabei das Handgelenk mit.</p>${ACHT}
     <div class="fort"><span id="kalfort" style="width:${Math.round(f * 100)}%"></span></div>
     <div class="werte"><span id="kaltext">${kalText(f)}</span>`
     + (g.kompassAcc != null ? `<span>Genauigkeit <b id="kalacc">${accText(g.kompassAcc)}</b></span>` : "")
-    + `</div><button class="link" data-act="t-kal-skip">Überspringen</button></div>`;
+    + `</div><button class="btn alt" data-act="t-kal-skip">Überspringen</button></div>`;
+}
+// Das Einmessen liegt als Fenster über der Seite, solange es läuft und der Kompass zu sehen ist
+function kalFensterHTML() {
+  if (!S.gps.kal || !($("#needle") || $("#gstat"))) return "";
+  return `<div class="overlay"><div class="dialog neutral" role="dialog" aria-modal="true" aria-labelledby="kalt">${kalHTML()}</div></div>`;
 }
 function kalOkHTML() {
   const ok = S.gps.kalOk;
@@ -976,7 +1065,7 @@ function teamAnsicht(st, lesen) {
     const dist = hasTarget && g.pos ? fmtDist(haversine(g.pos, { lat: s.lat, lng: s.lng })) : "- -";
     const kalOk = kalOkHTML();
     out += `<div class="panel ${neuKlasse}"><p class="muted small">Station ${s.position} von ${st.totalStations}</p>${okOben ? msgBox() : ""}
-      <h2>${esc(s.name)}</h2><p class="hint" style="margin-top:8px">${esc(s.locationHint)}</p>
+      ${stationsNameHTML(st, s)}
       <div class="compass gross ${richtungBekannt() ? "" : "unsicher"}"><div><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
         <polygon class="needle" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/>
         <text class="nq" x="39" y="48" text-anchor="middle">?</text></svg><div class="cap">Richtung</div></div>
@@ -992,7 +1081,6 @@ function teamAnsicht(st, lesen) {
       ${!st.testMode && hasTarget && g.on && !g.pos ? `<p class="small muted" style="text-align:center;margin-top:6px">Sobald der Standort da ist, könnt ihr einchecken.</p>` : ""}` : ""}
       ${okOben ? "" : msgBox()}
       ${grobHTML()}${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
-      ${g.kal && hasTarget ? kalHTML() : ""}
       ${kalOk}
       ${g.on && g.kompass === "tippen" ? `<div class="msg info">Der Kompass ist nach dem Neuladen aus. Einmal tippen, dann zeigt der Pfeil wieder zur Station.
         <button class="btn alt" data-act="t-gps">Kompass wieder einschalten</button></div>` : ""}
@@ -1079,7 +1167,6 @@ function abmeldenHTML() {
 // Vor dem Start: Standort und Kompass schon freigeben, dann geht es beim Signal sofort los
 function vorbereitenHTML() {
   const g = S.gps;
-  if (g.kal) return `<div class="panel">${kalHTML()}</div>`;
   return `<div class="panel"><h3>Schon mal vorbereiten</h3>
     ${!g.on ? `<p class="small muted">Gebt Standort und Kompass jetzt frei, dann geht es beim Start sofort los.
       Zum Ausprobieren zeigt der Pfeil danach auf die ${PROBEZIEL.name}.</p>
@@ -1252,6 +1339,113 @@ function zipBauen(dateien) {
   return new Blob([...teile, ...mitte, new Uint8Array(e.buffer)], { type: "application/zip" });
 }
 
+/* ---------- Station bearbeiten: Karte mit den drei Kreisen (Nachtrag 26) ---------- */
+// Eincheck-Radius, "ganz lesbar ab" und "Entschlüsseln beginnt bei" als Kreise um die Station. Die Werte stehen in
+// den Feldern e-radius, e-klar, e-beginn; die Karte zeigt sie und schreibt beim Ziehen in die Felder zurück.
+const EK = { radius: { feld: "e-radius", farbe: "#EE5F1B", text: "da", winkel: 90 },
+  klar: { feld: "e-klar", farbe: "#2E7D4F", text: "klar", winkel: 40 },
+  beginn: { feld: "e-beginn", farbe: "#2F6E9E", text: "beginnt", winkel: 140 } };
+let ekarte = null;
+const ekZahl = id => { const v = parseInt(val(id), 10); return v > 0 ? v : null; };
+function ekMitte() {
+  let la = val("e-lat"), lo = val("e-lng");
+  if (la.includes(",") && !lo) { const p = la.split(","); la = p[0]; lo = p[1] || ""; }
+  const lat = parseFloat(la.replace(",", ".")), lng = parseFloat(lo.replace(",", "."));
+  return isNaN(lat) || isNaN(lng) ? null : [lat, lng];
+}
+function ekVorgaenger() {
+  const st = S.admin.state, s = (st.stations || []).find(x => x.id === S.admin.edit);
+  const v = s && (st.stations || []).find(x => x.position === s.position - 1 && x.lat != null);
+  return v ? { name: v.name, nr: v.position, lat: v.lat, lng: v.lng } : { name: START.name, nr: null, lat: START.lat, lng: START.lng };
+}
+const ekPunkt = (mitte, k, m) => { const w = EK[k].winkel * Math.PI / 180;
+  return [mitte[0] + m * Math.cos(w) / 111320, mitte[1] + m * Math.sin(w) / (111320 * Math.cos(mitte[0] * Math.PI / 180))]; };
+async function stationsKarte() {
+  const el = $("#emap"); if (!el) { ekarte = null; return; }
+  try { await loadLeaflet(); } catch (e) { el.innerHTML = `<p class="msg err">${esc(e.message)}</p>`; return; }
+  if (!$("#emap") || $("#emap") !== el) return;   // inzwischen neu gezeichnet oder geschlossen
+  if (ekarte && el.contains(ekarte.map.getContainer())) { ekZeichnen(); return; }
+  const mitte = ekMitte() || [START.lat, START.lng], vor = ekVorgaenger();
+  const map2 = L.map(el, { zoomControl: true }).setView(mitte, 16);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map2);
+  const K = ekarte = { map: map2, kreise: {}, griffe: {}, schilder: {}, zieht: null };
+  K.weg = L.polyline([[vor.lat, vor.lng], mitte], { color: "#5B6F68", weight: 2, dashArray: "6 7" }).addTo(map2);
+  L.marker([vor.lat, vor.lng], { icon: L.divIcon({ html: `<div class="mapbadge ${vor.nr ? "" : "start"}" style="${vor.nr ? "background:#5B6F68" : ""}">${vor.nr || HAUS}</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) })
+    .addTo(map2).bindTooltip(vor.name);
+  const s = (S.admin.state.stations || []).find(x => x.id === S.admin.edit);
+  K.station = L.marker(mitte, { zIndexOffset: 500, icon: L.divIcon({ html: `<div class="mapbadge">${s ? s.position : ""}</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) }).addTo(map2);
+  for (const k of Object.keys(EK)) {
+    K.kreise[k] = L.circle(mitte, { radius: 1, color: EK[k].farbe, weight: k === "radius" ? 1.5 : 2.5, fillOpacity: k === "radius" ? .15 : .04, dashArray: k === "beginn" ? "8 6" : null }).addTo(map2);
+    K.griffe[k] = L.marker(mitte, { draggable: true, zIndexOffset: 900,
+      icon: L.divIcon({ html: `<div class="egriff" style="--c:${EK[k].farbe}"></div>`, className: "", iconSize: [18, 18], iconAnchor: [9, 9] }) }).addTo(map2);
+    K.schilder[k] = L.marker(mitte, { interactive: false, icon: L.divIcon({ html: "", className: "", iconSize: [0, 0] }) }).addTo(map2);
+    K.griffe[k].on("dragstart", () => { K.zieht = k; });
+    K.griffe[k].on("drag", e => {
+      const m0 = ekMitte(); if (!m0) return;
+      let m = Math.round(L.latLng(m0).distanceTo(e.target.getLatLng()));
+      const r = ekZahl("e-radius") || 50, kl = ekZahl("e-klar"), be = ekZahl("e-beginn"), an = !S.admin.karte.aus;
+      // Reihenfolge halten: Radius innen, dann "klar", außen "beginnt"
+      if (k === "radius") m = Math.max(5, Math.min(m, an && kl ? kl - 5 : 2000));
+      if (k === "klar") m = Math.max(r + 5, Math.min(m, (be || 5000) - 5));
+      if (k === "beginn") m = Math.max((kl || r) + 5, Math.min(m, 5000));
+      $("#" + EK[k].feld).value = m; ekZeichnen();
+    });
+    K.griffe[k].on("dragend", () => { K.zieht = null; ekZeichnen(); });
+  }
+  // Probe-Team: wohin man es zieht, dafür zeigt die Vorschau darunter den Namen
+  const t0 = S.admin.karte.team || [mitte[0] + (vor.lat - mitte[0]) * .45, mitte[1] + (vor.lng - mitte[1]) * .45];
+  K.team = L.marker(t0, { draggable: true, zIndexOffset: 1000, icon: L.divIcon({ html: `<div class="mapbadge team" style="background:#2F6E9E">🐾</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] }) }).addTo(map2);
+  K.team.on("drag", () => { const p = K.team.getLatLng(); S.admin.karte.team = [p.lat, p.lng]; ekVorschau(); });
+  ekZeichnen();
+  map2.fitBounds(L.latLngBounds([[vor.lat, vor.lng], mitte]).pad(0.4));
+  setTimeout(() => map2.invalidateSize(), 60);
+}
+// Knopf und Felder an den Schalter "Nicht verschlüsseln" anpassen, ohne neu zu zeichnen
+function ekSchalter() {
+  const aus = !!S.admin.karte.aus, b = document.querySelector("[data-act=a-geheim-aus]");
+  ["e-beginn", "e-klar"].forEach(id => { const f = $("#" + id); if (f) f.disabled = aus; });
+  if (b) { b.classList.toggle("alt", !aus); b.setAttribute("aria-pressed", String(aus)); b.textContent = aus ? "Name sofort lesbar. Verschlüsseln einschalten" : "Nicht verschlüsseln"; }
+}
+function ekZeichnen() {
+  const K = ekarte, mitte = ekMitte(); if (!K || !$("#emap")) return;
+  const aus = !!S.admin.karte.aus, vor = ekVorgaenger();
+  const w = { radius: ekZahl("e-radius") || 50, klar: aus ? null : ekZahl("e-klar"), beginn: aus ? null : ekZahl("e-beginn") };
+  const etappe = mitte ? Math.round(L.latLng(mitte).distanceTo([vor.lat, vor.lng])) : null;
+  if (mitte) { K.station.setLatLng(mitte); K.weg.setLatLngs([[vor.lat, vor.lng], mitte]); }
+  for (const k of Object.keys(EK)) {
+    const da = mitte && w[k] != null;
+    K.kreise[k].setStyle({ opacity: da ? 1 : 0, fillOpacity: da ? (k === "radius" ? .15 : .04) : 0 });
+    K.griffe[k].setOpacity(da ? 1 : 0); K.schilder[k].setOpacity(da ? 1 : 0);
+    if (!da) continue;
+    K.kreise[k].setLatLng(mitte); K.kreise[k].setRadius(w[k]);
+    const p = ekPunkt(mitte, k, w[k]);
+    if (K.zieht !== k) K.griffe[k].setLatLng(p);
+    K.schilder[k].setLatLng(p);
+    K.schilder[k].setIcon(L.divIcon({ html: `<span class="eschild" style="--c:${EK[k].farbe}">${EK[k].text} ${w[k]} m</span>`, className: "", iconSize: [0, 0] }));
+  }
+  const e = $("#e-etappe");
+  if (e) e.textContent = etappe == null ? "Trag erst die Koordinaten ein, dann erscheint die Station auf der Karte."
+    : `Die Etappe von „${vor.name}“ ist ${etappe} m lang. ` + (aus ? "Der Name steht sofort lesbar da."
+      : !w.klar || !w.beginn ? "Trag beide Entfernungen ein oder nimm den Vorschlag."
+      : w.beginn <= w.klar ? "Achtung: Das Entschlüsseln muss weiter draußen beginnen, als der Name lesbar wird."
+      : w.beginn >= etappe ? "Der äußere Kreis reicht bis zum Start der Etappe: der Name löst sich schon beim Loslaufen auf."
+      : `Die ersten ${etappe - w.beginn} m läuft das Team nur nach dem Pfeil, auf den letzten ${w.klar} m steht der Name klar da.`);
+  ekVorschau();
+}
+function ekVorschau() {
+  const K = ekarte, el = $("#e-vorschau"), wo = $("#e-wo"), mitte = ekMitte(); if (!K || !el || !wo) return;
+  const zeichen = [...val("e-name")], folge = geheimFolge(zeichen), be = ekZahl("e-beginn"), kl = ekZahl("e-klar");
+  if (!mitte) { wo.textContent = ""; el.innerHTML = ""; return; }
+  const d = Math.round(L.latLng(mitte).distanceTo(K.team.getLatLng()));
+  const f = S.admin.karte.aus || !be || !kl || be <= kl ? 1 : Math.max(0, Math.min(1, (be - d) / (be - kl)));
+  const offen = Math.round(f * folge.length);
+  // nur neu aufbauen, wenn sich der Stand ändert, sonst flimmert die Vorschau beim Ziehen unruhig
+  const stand = zeichen.join("") + "|" + offen;
+  if (el.dataset.stand !== stand) { el.dataset.stand = stand; el.innerHTML = geheimFelder(zeichen, folge, offen); }
+  wo.textContent = `Probe-Team 🐾 in ${d} m Entfernung: ` + (S.admin.karte.aus ? "Name sofort lesbar, Ortshinweis sichtbar"
+    : f >= 1 ? "Name lesbar, Ortshinweis sichtbar" : f > 0 ? `${offen} von ${folge.length} Buchstaben` : "alles verschlüsselt");
+}
+
 /* ---------- Spielleitung ---------- */
 function viewAdmin() {
   const A = S.admin;
@@ -1406,6 +1600,19 @@ function viewAdmin() {
             <div><label for="e-lng">Länge</label><input id="e-lng" inputmode="decimal" value="${s.lng ?? ""}"></div></div>
           <div style="margin-top:10px"><button class="btn sm alt" data-act="a-here">Meinen Standort übernehmen</button>
             <span class="small muted" id="e-here"></span></div>
+          <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+            <h3>Name entschlüsseln</h3>
+            <p class="small muted" style="margin-top:4px">Drei Kreise um die Station: Zieh an den weißen Punkten oder trag die Meter ein.
+              Die gestrichelte Linie ist der direkte Weg von der Station davor. Das blaue 🐾 ist ein Probe-Team zum Verschieben.</p>
+            <div id="emap"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+              <div><label for="e-beginn"><i class="efarbe" style="--c:#2F6E9E"></i>Entschlüsseln beginnt bei (m)</label><input id="e-beginn" inputmode="numeric" value="${s.revealStartM ?? ""}" ${S.admin.karte && S.admin.karte.aus ? "disabled" : ""}></div>
+              <div><label for="e-klar"><i class="efarbe" style="--c:#2E7D4F"></i>Ganz lesbar ab (m)</label><input id="e-klar" inputmode="numeric" value="${s.revealClearM ?? ""}" ${S.admin.karte && S.admin.karte.aus ? "disabled" : ""}></div></div>
+            <p class="small muted" id="e-etappe" style="margin-top:6px"></p>
+            <div style="margin-top:8px"><button class="btn sm ${S.admin.karte && S.admin.karte.aus ? "" : "alt"}" data-act="a-geheim-aus" aria-pressed="${!!(S.admin.karte && S.admin.karte.aus)}">${S.admin.karte && S.admin.karte.aus ? "Name sofort lesbar. Verschlüsseln einschalten" : "Nicht verschlüsseln"}</button>
+              <button class="btn sm alt" data-act="a-geheim-vorschlag">Vorschlag aus der Etappe (60 % und 30 %)</button></div>
+            <div class="evorschau"><div class="small muted" id="e-wo"></div><div class="geheim" id="e-vorschau" style="margin-top:6px"></div></div>
+          </div>
           <div style="margin-top:6px"><button class="btn sm" data-act="a-save" data-id="${s.id}">Speichern</button>
             <button class="btn sm alt" data-act="a-cancel">Abbrechen</button></div>
         </div>` : `
@@ -1414,7 +1621,7 @@ function viewAdmin() {
           <div style="flex:1"><h3>${esc(s.name)}</h3>
             <p class="small">Ortshinweis: ${offen(s.locationHint) ? '<span class="fehlt">fehlt</span>' : esc(s.locationHint)}</p>
             <p class="small">Rätsel: ${offen(s.riddle) ? '<span class="fehlt">fehlt</span>' : esc(s.riddle)}</p>
-            <p class="small muted">Lösung: ${offen(s.answer) ? '<span class="fehlt">fehlt</span>' : esc(s.answer)}, Ziffer ${s.digit}, Radius ${s.radiusM} m${s.tip ? `, Tipp: ${esc(s.tip)}` : ""}<br>
+            <p class="small muted">Lösung: ${offen(s.answer) ? '<span class="fehlt">fehlt</span>' : esc(s.answer)}, Ziffer ${s.digit}, Radius ${s.radiusM} m, ${s.revealStartM != null ? `Name verschlüsselt, löst sich von ${s.revealStartM} m bis ${s.revealClearM} m auf` : "Name sofort lesbar"}${s.tip ? `, Tipp: ${esc(s.tip)}` : ""}<br>
             Koordinaten: ${s.lat != null ? `<span style="white-space:nowrap">${Number(s.lat).toFixed(5)}, ${Number(s.lng).toFixed(5)}</span>` : "fehlen noch"}</p></div>
           <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
         </div>`).join("")}
@@ -2077,13 +2284,36 @@ const ACT = {
     try { await navigator.clipboard.writeText(link); S.msg = { type: "ok", ort: "t:" + d.id, text: `Mitlese-Link kopiert. Wer ihn öffnet, liest bei Team ${d.name} mit.` }; }
     catch { S.msg = { type: "info", ort: "t:" + d.id, text: "Kopieren ging nicht. Hier der Link zum Markieren: " + link }; }
   },
-  "a-edit"(d) { S.admin.edit = d.id; },
-  "a-cancel"() { S.admin.edit = null; },
+  "a-edit"(d) {
+    S.admin.edit = d.id;
+    const s = (S.admin.state.stations || []).find(x => x.id === d.id);
+    S.admin.karte = { aus: !s || s.revealStartM == null, team: null };
+  },
+  "a-cancel"() { S.admin.edit = null; S.admin.karte = null; },
+  // Verschlüsseln für diese Station aus- oder einschalten; beim Einschalten ohne Werte kommt der Vorschlag.
+  // Beide Knöpfe zeichnen die Seite nicht neu (return false): sonst gingen ungespeicherte Eingaben im Formular verloren.
+  "a-geheim-aus"() {
+    S.admin.karte.aus = !S.admin.karte.aus;
+    if (!S.admin.karte.aus && (!ekZahl("e-beginn") || !ekZahl("e-klar"))) return ACT["a-geheim-vorschlag"]();
+    ekSchalter(); ekZeichnen();
+    return false;
+  },
+  "a-geheim-vorschlag"() {
+    const mitte = ekMitte(), vor = ekVorgaenger();
+    if (!mitte) { S.admin.karte.aus = true; ekSchalter(); ekZeichnen(); return false; }   // der Satz unter der Karte sagt, was fehlt
+    const etappe = haversine({ lat: mitte[0], lng: mitte[1] }, vor), r = ekZahl("e-radius") || 50;
+    const klar = Math.max(r + 10, Math.round(etappe * .3 / 5) * 5), beginn = Math.max(klar + 20, Math.round(etappe * .6 / 5) * 5);
+    S.admin.karte.aus = false;
+    $("#e-beginn").value = beginn; $("#e-klar").value = klar;
+    ekSchalter(); ekZeichnen();
+    return false;
+  },
   "a-here"() {
     const info = $("#e-here"); if (info) info.textContent = "Suche Standort …";
     navigator.geolocation.getCurrentPosition(p => {
       $("#e-lat").value = p.coords.latitude.toFixed(6);
       $("#e-lng").value = p.coords.longitude.toFixed(6);
+      if (ekarte && ekMitte()) { ekZeichnen(); ekarte.map.setView(ekMitte()); }
       // Grobe Werte (Tablet ohne GPS, erster Fix) nicht still übernehmen: sonst checkt am Eventtag niemand ein
       const i = $("#e-here"), acc = Math.round(p.coords.accuracy), radius = parseInt(val("e-radius"), 10) || 50;
       if (i) i.innerHTML = acc > Math.max(20, radius / 2)
@@ -2100,13 +2330,17 @@ const ACT = {
     // Eine leere Ziffer würde still zur 0: lieber nachfragen
     const ziffer = val("e-digit").trim();
     if (!/^[0-9]$/.test(ziffer)) { S.msg = { type: "err", text: "Bitte eine Ziffer von 0 bis 9 eintragen." }; return; }
+    // Name entschlüsseln: beide Entfernungen oder keine, außen beginnt es, innen ist er lesbar
+    const geheim = !(S.admin.karte && S.admin.karte.aus), beginn = geheim ? ekZahl("e-beginn") : null, klar = geheim ? ekZahl("e-klar") : null;
+    if (geheim && (!beginn || !klar || beginn <= klar)) { S.msg = { type: "err", text: "Name entschlüsseln: „beginnt bei“ muss größer sein als „ganz lesbar ab“. Oder „Nicht verschlüsseln“ wählen." }; return; }
     S.admin.state = await rpc("admin_save_station", {
       p_pin: S.admin.pin, p_id: d.id, p_name: val("e-name"),
       p_lat: isNaN(lat) ? null : lat, p_lng: isNaN(lng) ? null : lng,
       p_radius: parseInt(val("e-radius"), 10) || 50, p_hint: val("e-hint"),
-      p_riddle: val("e-riddle"), p_answer: val("e-answer"), p_digit: Number(ziffer), p_tip: val("e-tip")
+      p_riddle: val("e-riddle"), p_answer: val("e-answer"), p_digit: Number(ziffer), p_tip: val("e-tip"),
+      p_reveal_start: beginn, p_reveal_clear: klar
     });
-    S.admin.edit = null; S.msg = { type: "ok", text: "Station gespeichert." };
+    S.admin.edit = null; S.admin.karte = null; S.msg = { type: "ok", text: "Station gespeichert." };
   }
 };
 
@@ -2206,6 +2440,7 @@ function liveUpdate() {
   const n = $("#needle"); if (n) n.closest(".compass").classList.toggle("unsicher", !richtungBekannt());
   const gs = $("#gstat"); if (gs) gs.textContent = gpsNote();
   if (!g.pos || !ziel) return;
+  geheimNachziehen();
   const t = { lat: ziel.lat, lng: ziel.lng };
   const d = $("#dist"); if (d) d.textContent = fmtDist(haversine(g.pos, t));
   setNeedle(bearingTo(g.pos, t) - richtung());
@@ -2654,7 +2889,8 @@ function render() {
   app.innerHTML = (!cfg.url || !cfg.key) ? viewSetup()
     : S.view === "team" ? viewTeam()
       : S.view === "admin" ? viewAdmin() : viewPublic();
-  app.insertAdjacentHTML("beforeend", fotoGrossHTML());
+  app.insertAdjacentHTML("beforeend", fotoGrossHTML() + kalFensterHTML());
+  document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross || $("#kal")));
   S.feldKontext = feldKontext();
   if (S.feldKontext === kontext) {
     Object.keys(getippt).forEach(id => { const el = document.getElementById(id); if (el && !el.disabled && getippt[id] !== "") el.value = getippt[id]; });
@@ -2674,6 +2910,7 @@ function render() {
   if (S.view === "team" || (S.view === "public" && S.mit)) liveUpdate();
   if (S.admin.confirm) ($("#dlgword") || $("#dlgok"))?.focus();
   if (S.view === "admin" && S.admin.tab === "teams") drawPreview();
+  if (S.view === "admin" && S.admin.tab === "stations" && S.admin.edit) stationsKarte();
 }
 // Zeitachse: Schieber zieht den Zeitpunkt, ganz rechts heißt "jetzt"
 document.addEventListener("input", e => {
@@ -2683,6 +2920,8 @@ document.addEventListener("input", e => {
     return;
   }
   if (e.target.id === "dval" || e.target.id === "dmode") { drawPreview(); return; }
+  // Station bearbeiten: getippte Meter, Koordinaten und der Name wirken sofort auf Karte und Vorschau
+  if (/^e-(beginn|klar|radius|lat|lng|name)$/.test(e.target.id)) { ekZeichnen(); return; }
   if (e.target.id === "asuche") {
     // filtern ohne neu zu zeichnen, sonst springt der Fokus aus dem Feld
     S.admin.suche = e.target.value.trim();
@@ -2734,6 +2973,7 @@ document.addEventListener("change", e => {
 });
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && S.gross) { S.gross = null; render(); return; }
+  if (e.key === "Escape" && S.gps.kal) { kalEnde(false); render(); return; }
   if (e.key === "Escape" && S.admin.confirm) { S.admin.confirm = null; render(); return; }
   if (e.key === "Escape" && S.admin.full) { S.admin.full = false; render(); return; }
   if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;

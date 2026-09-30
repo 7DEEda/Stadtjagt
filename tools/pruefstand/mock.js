@@ -140,6 +140,12 @@
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { until: ".galerie img" }, { wait: 800 }] },
     "leitung-standort-grob": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 1 }, gps: Object.assign({}, GPS_UNTERWEGS, { acc: 4650 }),
       steps: [{ click: "[data-act=t-gps]" }, { wait: 900 }] },
+    "name-geheim": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 1 }, gps: GPS_UNTERWEGS, geheim: [340, 170], steps: kompassAn },
+    "name-geheim-fern": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 1 }, gps: GPS_UNTERWEGS, geheim: [200, 100], steps: kompassAn },
+    "name-geheim-ohne-gps": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 1 }, geheim: [340, 170] },
+    "name-geheim-mitglied": { welt: "running", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 1 }, geheim: [340, 170] },
+    "admin-station-karte": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, geheim: [340, 170],
+      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=stations]" }, { wait: 300 }, { click: "[data-act=a-edit][data-id=s3]" }, { until: "#emap .leaflet-marker-icon" }, { wait: 1500 }] },
     "leitung-koffer": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 5 } },
     "leitung-platz2": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 5 }, fertig: ["Adler", "Fuchs"] },
     "leitung-platz5": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 5 }, fertig: ["Adler", "Eule", "Tiger", "Panda", "Fuchs"] },
@@ -240,6 +246,9 @@
   const doneCount = () => TEAMS.filter(t => t.place).length;
   const members = t => t.members.slice();
 
+  /* ---------- Stationsname verschlüsselt (Nachtrag 26): C.geheim = [beginnt bei, klar ab] für alle Stationen ---------- */
+  STATIONEN.forEach(s => { s.revealStartM = C.geheim ? C.geheim[0] : null; s.revealClearM = C.geheim ? C.geheim[1] : null; });
+
   /* ---------- Gruppenselfie (Nachtrag 25) ---------- */
   // gemaltes Gruppenfoto als JPEG, damit Album und Galerie ohne Kamera etwas zeigen
   function beispielFoto(ton, voll) {
@@ -291,7 +300,7 @@
       finalDigit: all && !selfieFeld(t, f).pending ? sum % 10 : null,
       selfie: selfieFeld(t, f),
       station: cur && running ? { position: cur.position, name: cur.name, locationHint: cur.locationHint, lat: cur.lat, lng: cur.lng,
-        radiusM: cur.radiusM, riddle: f.checkedIn ? cur.riddle : null,
+        radiusM: cur.radiusM, revealStartM: cur.revealStartM, revealClearM: cur.revealClearM, riddle: f.checkedIn ? cur.riddle : null,
         tipAvailable: !!cur.tip && !!f.checkedIn && (WELT.testMode || f.pauses >= 1), tip: f.tipShown ? cur.tip : null } : null,
       checkedIn: !!f.checkedIn && !all, failedAttempts: f.failedAttempts, lockedUntil: iso(f.lockedUntil), pauses: f.pauses,
       allSolved: all && !selfieFeld(t, f).pending, caseHint: CASE_HINT, place, prizeCount: WELT.prizeCount, prizesLeft: Math.max(WELT.prizeCount - doneCount(), 0),
@@ -320,7 +329,8 @@
       caseHint: CASE_HINT, winnerTeamId: (TEAMS.find(x => x.place === 1) || {}).id || null, prizeCount: WELT.prizeCount, testMode: WELT.testMode,
       participants: PERSONEN.map(p => ({ id: p.id, name: p.name, teamId: mitTeams() ? p.teamId : null, teamName: mitTeams() ? teamOf(p).name : null })),
       stations: STATIONEN.map(s => ({ id: s.id, position: s.position, name: s.name, lat: s.lat, lng: s.lng, radiusM: s.radiusM,
-        locationHint: s.locationHint, riddle: s.riddle, answer: s.answer, digit: s.digit, tip: s.tip })),
+        locationHint: s.locationHint, riddle: s.riddle, answer: s.answer, digit: s.digit, tip: s.tip,
+        revealStartM: s.revealStartM, revealClearM: s.revealClearM })),
       caseCode: CASE_CODE, selfieOn: WELT.selfieOn, photosDeleteOn: WELT.photosDeleteOn, photoCount: fotoListe().length,
       teams: teams.map(t => ({ id: t.id, name: t.name, code: t.code, readToken: t.readToken, leaderId: t.leaderId, leaderName: t.leaderName,
         memberCount: t.members.length, members: members(t), solved: t.solved,
@@ -395,6 +405,8 @@
       FOTOS[a.p_position] = { foto: a.p_photo, thumb: a.p_thumb, at: Date.now() }; SELFIE_DA[a.p_position] = true; return teamState(t); },
     team_selfie_skip: a => { const t = fuchsByCode(a.p_code); SELFIE_DA[a.p_position] = true; return teamState(t); },
     team_photo: a => { const f = FOTOS[a.p_position]; return { data: f ? (a.p_full ? f.foto : f.thumb) : null }; },
+    admin_save_station: a => { pin(a); const s = STATIONEN.find(x => x.id === a.p_id); window.__GESPEICHERT = a;
+      Object.assign(s, { name: a.p_name, lat: a.p_lat, lng: a.p_lng, radiusM: a.p_radius, revealStartM: a.p_reveal_start, revealClearM: a.p_reveal_clear }); return adminState(); },
     admin_photos: a => { pin(a); return fotoListe(); },
     admin_photo: a => { pin(a); const t = TEAMS.find(x => x.id === a.p_team); return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full) }; },
     admin_set_selfie: a => { pin(a); WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
@@ -443,12 +455,14 @@
   history.replaceState(null, "", location.pathname + location.search + "#/" + (C.view || "public"));
 
   /* ---------- Standort ---------- */
-  const GPS = C.gps || null;
+  const GPS = C.gps ? Object.assign({}, C.gps) : null;
+  const geoHoerer = [];
+  window.__gps = (lat, lng, acc) => { Object.assign(GPS, { lat, lng, acc: acc || GPS.acc }); geoHoerer.forEach(ok => ok(posObj())); };
   const posObj = () => ({ coords: { latitude: GPS.lat, longitude: GPS.lng, accuracy: GPS.acc, altitude: null, altitudeAccuracy: null,
     heading: null, speed: null }, timestamp: Date.now() });
   const geo = {
     getCurrentPosition(ok, err) { setTimeout(() => GPS ? ok(posObj()) : err && err({ code: 3, message: "Zeitüberschreitung" }), 250); },
-    watchPosition(ok) { const id = Math.floor(rnd() * 1e6) + 1; if (GPS) setTimeout(() => ok(posObj()), 150); return id; },
+    watchPosition(ok) { const id = Math.floor(rnd() * 1e6) + 1; geoHoerer.push(ok); if (GPS) setTimeout(() => ok(posObj()), 150); return id; },
     clearWatch() { }
   };
   try { Object.defineProperty(navigator, "geolocation", { configurable: true, get: () => geo }); } catch (e) { console.warn(e); }
