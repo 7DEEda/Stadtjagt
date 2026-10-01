@@ -1478,3 +1478,17 @@ Nicht umgesetzt: Rückfrage beim Wechsel der Teamleitung per Auswahlfeld prüfen
 Reihenfolge der Teams fest lassen. Offen, weil nur am Gerät zu klären: ob die
 Bildschirmtastatur im Querformat Knöpfe verdeckt, ob das Ziehen der Griffe
 sauber vom Scrollen getrennt ist.
+
+## Design System, Hell/Dunkel-Schalter, Schriftstufen (01.10.2026)
+
+- `design-system/MASTER.md` ist das Regelwerk (Token, Kontraste, Schriftstufen,
+  Abstände, Bausteine, Sprache, Nicht tun), `design-system/index.html` die
+  Ansicht dazu, online unter `/design-system/`. Hergeleitet mit der Skill
+  ui-ux-pro-max.
+- Schalter hell/dunkel oben rechts in jedem Kopf (`themaBtn()`, Aktion `thema`).
+  Die Wahl steht pro Gerät in `localStorage` `sj.thema`, ein kleines Skript im
+  `<head>` setzt sie vor dem ersten Zeichnen. Ohne Wahl folgt die App dem Gerät.
+  Dunkle Token gelten doppelt: per Media Query und für `[data-theme="dark"]`.
+  Der Prüfstand löscht `sj.thema` beim Laden nicht.
+- Schriftgrößen nur noch als `var(--fs-*)` (9 Stufen, siehe MASTER.md);
+  Ausnahme ist die Beschriftung der Hintergrundkarte `.topo`.
