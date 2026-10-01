@@ -98,19 +98,25 @@ für Lesetext.
 
 | Token | Größe | Einsatz |
 |---|---|---|
-| `--fs-xs` | 13 px | nur Achsen und Zeitachse am Tablet |
-| `--fs-s` | 15 px | Nebentext, Meldungen, kleine Knöpfe |
-| `--fs-m` | 17 px | Fließtext (Grundgröße, nie kleiner als 16 px in Eingabefeldern) |
-| `--fs-l` | 19 px | Ortshinweis, Hauptknopf |
-| `--fs-xl` | 24 px | h2, Stationsname |
+| `--fs-xs` | 13 px | Kartenbeschriftungen (Lücken, Stationsschilder), Zeitachse am Tablet |
+| `--fs-s` | 15 px | Nebentext (`.small`), Meldungen, kleine Knöpfe, Chips, Tabellenköpfe |
+| `--fs-m` | 17 px | Fließtext, Eingabefelder (nie kleiner als 16 px, sonst zoomt iOS) |
+| `--fs-l` | 19 px | Ortshinweis, Rätsel, Hauptknopf, h3 |
+| `--fs-xl` | 24 px | h2, Stationsname, verschlüsselter Name, Zeiten am Tablet |
 | `--fs-xxl` | 32 px | h1, Teamname |
-| `--fs-zahl` | 38 px (Tablet 56 px) | Entfernung |
+| `--fs-zahl` | 38 px, ab 700 px Breite 56 px | Entfernung, Countdown, Teamkarte |
 | `--fs-rad` | 32 px | Ziffernräder |
+| `--fs-schild` | 48 px | Team-Zeichen zum Hochhalten, Platz-Zeichen am Ende |
 
-Heute stehen 21 verschiedene Größen im Code (5 bis 130 px). Neue Stellen nehmen
-nur diese Stufen; beim Aufräumen werden die übrigen auf die nächste Stufe
-gezogen. Zeilenhöhe Fließtext 1,5. Zahlen, die sich ändern, mit
-`font-variant-numeric: tabular-nums`.
+Seit 01.10.2026 stehen im Spiel nur noch diese Stufen (`var(--fs-*)` auf
+`:root` in `index.html`); vorher waren es 21 verschiedene Größen. Einzige
+Ausnahme ist die Beschriftung der Hintergrundkarte (`.topo`, 6 bis 12 px): sie
+skaliert mit dem SVG und ist Dekor, kein Text zum Lesen. Neue Stellen nehmen
+eine Stufe, keine eigene Größe. Zeilenhöhe Fließtext 1,5. Zahlen, die sich
+ändern, mit `font-variant-numeric: tabular-nums`.
+
+Kennungen und Werte mit Einheit („60 m“, „1:47 h“, Codes) brechen nie in sich
+um (`white-space: nowrap`), nur davor.
 
 ---
 

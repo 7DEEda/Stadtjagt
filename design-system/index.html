@@ -76,7 +76,7 @@ p{margin:.4em 0 0}
 .needle{fill:var(--flag);transform-origin:39px 39px;animation:suchen 6s cubic-bezier(.32,.72,.4,1) infinite}
 @keyframes suchen{0%{transform:rotate(20deg)}40%{transform:rotate(48deg)}70%{transform:rotate(32deg)}100%{transform:rotate(20deg)}}
 .dist{font:700 38px var(--head);line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}
-.geheim{font:700 22px/1 var(--mono);display:flex;flex-wrap:wrap;gap:4px .55em}
+.geheim{font:700 24px/1 var(--mono);display:flex;flex-wrap:wrap;gap:4px .55em}
 .geheim .wort{display:inline-flex;white-space:nowrap}
 .geheim i{font-style:normal;display:inline-block;width:.64em;height:1.2em;line-height:1.2em;text-align:center;overflow:hidden;color:var(--flag)}
 .geheim i.fest{color:var(--ink)}
@@ -152,9 +152,10 @@ p{margin:.4em 0 0}
     <div class="stufe"><code>--fs-l 19</code><div style="font:500 19px var(--body)">Geht in den Park hinein Richtung Westen.</div></div>
     <div class="stufe"><code>--fs-m 17</code><div style="font:400 17px var(--body)">Fließtext in Barlow, Zeilenhöhe 1,5. Eingabefelder nie unter 16 px.</div></div>
     <div class="stufe"><code>--fs-s 15</code><div style="font:400 15px var(--body)" class="muted">Nebentext, Meldungen, kleine Knöpfe</div></div>
-    <div class="stufe"><code>--fs-xs 13</code><div style="font:400 13px var(--body)" class="muted">nur Achsen und Zeitachse am Tablet</div></div>
+    <div class="stufe"><code>--fs-xs 13</code><div style="font:400 13px var(--body)" class="muted">Kartenbeschriftung, Zeitachse am Tablet</div></div>
+    <div class="stufe"><code>--fs-schild 48</code><div style="font:700 48px var(--head)">🦊 Fuchs</div></div>
     <div class="stufe"><code>--fs-zahl 38</code><div class="dist">245 m</div></div>
-    <div class="stufe"><code>--mono 22</code><div class="geheim" id="probe"></div></div>
+    <div class="stufe"><code>--fs-xl mono</code><div class="geheim" id="probe"></div></div>
   </div>
   <p class="small muted">Barlow Semi Condensed für Überschriften, Knöpfe und Zahlen, Barlow für Text. Die Skill ui-ux-pro-max empfiehlt genau dieses Paar für Sport und Wettkampf.</p>
 
