@@ -8,7 +8,7 @@ Summe der fünf. Am Ziel stehen drei Koffer mit absteigendem Preisgeld: die
 ersten drei Teams, die den vollständigen Code eingeben, bekommen Platz 1 bis 3
 und je einen Koffer. Alle anderen laufen weiter und kommen mit Platz ins Ziel.
 
-**Stand 30.09.2026, abends:** Live auf GitHub Pages, Nachträge 1 bis 26 in der
+**Stand 01.10.2026, abends:** Live auf GitHub Pages, Nachträge 1 bis 27 in der
 Datenbank. Seit dem 19.09. dazugekommen, jeweils mit eigenem Abschnitt am Ende
 dieser Datei:
 
@@ -20,6 +20,10 @@ dieser Datei:
 - ohne Migration: Hinweis bei ungefährem Standort, Mitlese-Link als QR-Code,
   Kompass nach einer Pause, Lücken in der Route gestrichelt, Bedienung mit dem
   Finger am Tablet, Testmodus spielt das Entschlüsseln vor
+- Nachtrag 27 (01.10.): Befunde der UI-Kritik, Zifferntastatur bei Zahlenlösungen,
+  Hochformat-Hinweis
+- ohne Migration (01.10.): Design System (`design-system/`), Schalter
+  hell/dunkel, Schriftstufen `--fs-*`
 
 **Die Datenbank ist gerade im Probebetrieb, nicht leer:** Status „running“,
 Testmodus an, zwei Teams (Fuchs, Wolf) aus Friedrichs Durchgang am 30.09.,
@@ -48,6 +52,13 @@ geprüft):
 - Tablet: Tastatur verdeckt keine Knöpfe, Griffe auf der Stationskarte lassen
   sich ziehen, ohne dass die Seite scrollt
 - QR-Code des Mitlese-Links mit einer Handykamera scannen
+- Hochformat-Hinweis am Handy: erscheint quer nach einer halben Sekunde, nicht
+  beim Einmessen
+- **Nächster Schritt (01.10.):** ein Kollege mit modernem iPhone macht den
+  Geräte-Test (`https://7deeda.github.io/Stadtjagt/geraete-test.html`, in
+  Safari öffnen, nicht aus der WhatsApp-Vorschau). Danach
+  `python tools/testlaeufe.py` und auswerten: Wake Lock mit Tipp, genauer
+  Standort, Kamera, Kompass nach Pause
 
 Befunde aus vier Läufen des Geräte-Tests (`testlaeufe/UEBERSICHT.md`, nicht im
 Repo): Standort, Kompass, Kamera und Wake Lock gehen auf drei Android-Handys
@@ -1478,6 +1489,29 @@ Nicht umgesetzt: Rückfrage beim Wechsel der Teamleitung per Auswahlfeld prüfen
 Reihenfolge der Teams fest lassen. Offen, weil nur am Gerät zu klären: ob die
 Bildschirmtastatur im Querformat Knöpfe verdeckt, ob das Ziehen der Griffe
 sauber vom Scrollen getrennt ist.
+
+## UI-Kritik und Hochformat (Nachtrag 27, 01.10.2026)
+
+Zwei Kritik-Läufe (design-critique und ui-ux-pro-max mit Kritikern) über
+Teamleitung, Mitlesen, Selfie, verschlüsselten Namen und Spielleitung; Bericht
+in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
+
+- Knopfschrift dunkel auf Orange (`--flag-ink:#0F1B18`, 5,3:1 statt 3,3:1),
+  `--ok` dunkler, Ränder der Bedienelemente in `--feld`, Orange als Schrift nur
+  als `--flag-text`, neue Meldungsart `.msg.warn` (Testmodus-Banner)
+- „Wir sind da“ (`#tcheck`) ist außerhalb des Radius ein Nebenknopf
+  „Noch X m bis zum Einchecken“
+- Zahlenlösungen öffnen die Zifferntastatur: `team_state` liefert
+  `station.numeric` (Migration `20261001120000_zahlenantwort.sql`)
+- sechste Ziffer abgesetzt und erklärt (Schlussziffer), Route zählt gesetzte
+  Ziffern, Knöpfe sagen beim Warten, was passiert (`data-wait`)
+- Testmodus im laufenden Spiel fragt nach
+- Touch-Ziele 44 px am Handy, 48 px am Tablet; Zahlen mit `tabular-nums`
+- **Hochformat-Hinweis** (`#quer`, `querPruefen()`): Handy quer (Höhe unter
+  500 px, Finger als Zeiger) zeigt nach 0,5 s ein Fenster mit drehendem Handy
+  samt Notch und Pfeil im Uhrzeigersinn. Nicht bei der Spielleitung, nicht beim
+  Einmessen, nicht beim Hochhalten und im großen Foto. Sperren kann eine
+  Webseite das Querformat nicht. Test: `python tools/pruefstand/kritik.py`
 
 ## Design System, Hell/Dunkel-Schalter, Schriftstufen (01.10.2026)
 

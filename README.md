@@ -73,6 +73,7 @@ update game_state set admin_pin = 'vier lange Wörter hier' where id = 1;
 
 ```
 index.html                     komplette App, kein Build nötig
+design-system/                 Regeln (MASTER.md) und Ansicht (index.html) des Design Systems
 config.js                      Supabase-Zugang und WhatsApp-Nummer
 geraete-test.html              Geräte-Test: prüft auf einem Handy alles, was das Spiel braucht
 geraete-tests.js               die Suite dazu, ein Baustein je Test
@@ -96,10 +97,14 @@ supabase/seed-*.sql            Prager Stationen und Testpersonen
   Zeichen mit mitdrehender Nadel, Einmessen als Fenster.
 - **Geräte-Test** (`geraete-test.html`): prüft auf einem Handy, was das Spiel
   braucht, und speichert den Lauf.
+- **Seit dem 01.10.2026:** Schalter hell/dunkel oben rechts, Hinweis, wenn das
+  Handy quer liegt, Zifferntastatur bei Zahlenlösungen, „Wir sind da“ zeigt die
+  Entfernung. Das **Design System** liegt in `design-system/` (Regeln in
+  `MASTER.md`, Ansicht in `index.html`, online unter `/design-system/`).
 
 Prüfen ohne Datenbank: `python tools/pruefstand/selfie.py`, `name.py`,
-`geraetetest.py`. Einzelheiten in `HANDOFF.md`, geordnet in `SPIEL.md`
-Abschnitt 11.
+`geraetetest.py`, `kritik.py`. Einzelheiten in `HANDOFF.md`, geordnet in `SPIEL.md`
+Abschnitt 11 und 12.
 
 ## SQL ausführen
 

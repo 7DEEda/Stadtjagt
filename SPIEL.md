@@ -5,8 +5,8 @@ welche Zustände und Abläufe es gibt und wo das im Code steht. Den Verlauf der
 Entscheidungen und die Betriebsnotizen (Zugänge, Umgebung, Historie) enthält
 `HANDOFF.md`.
 
-Stand: 30.09.2026, Nachträge 1 bis 26. Die Abschnitte 1 bis 10 beschreiben den Stand bis Nachtrag 22;
-was seitdem dazukam, steht geschlossen in Abschnitt 11.
+Stand: 01.10.2026, Nachträge 1 bis 27. Die Abschnitte 1 bis 10 beschreiben den Stand bis Nachtrag 22;
+was seitdem dazukam, steht geschlossen in den Abschnitten 11 und 12.
 
 ---
 
@@ -587,3 +587,31 @@ supabase/migrations/20260930200000_name_verschluesselt.sql  Nachtrag 26
 Siehe den Kopf von `HANDOFF.md`: die Liste dessen, was nur am echten Gerät zu
 klären ist, und was vor dem Event zurückgestellt werden muss (Testmodus aus,
 Probedaten weg, Löschdatum für Fotos).
+
+## 12. Nachtrag 27 und Design System (01.10.2026)
+
+- **Design System:** `design-system/MASTER.md` (Regeln) und
+  `design-system/index.html` (Ansicht, hell und dunkel). Neue Oberfläche hält
+  sich daran: ein Orange pro Ansicht, Token statt Farbwerte, Schriftgrößen nur
+  als `var(--fs-*)` (xs 13, s 15, m 17, l 19, xl 24, xxl 32, zahl 38/56,
+  rad 32, schild 48). Ausnahme: Beschriftung der Hintergrundkarte `.topo`.
+- **Hell/dunkel:** `themaBtn()` in jedem Kopf (`brand()`, Team-Kopf in
+  `teamAnsicht`, Spielleitung neben den Aktionen), Aktion `thema` setzt
+  `data-theme` auf `<html>` und merkt `sj.thema`, ohne neu zu zeichnen. Ein
+  Skript im `<head>` setzt die Wahl vor dem ersten Zeichnen. Dunkle Token stehen
+  zweimal: in `@media (prefers-color-scheme:dark)` mit
+  `:root:not([data-theme="light"])` und als `:root[data-theme="dark"]`.
+  Wer einen dunklen Token ändert, ändert beide.
+- **Zahlenantwort:** `team_state` liefert `station.numeric`, dann bekommt
+  `#tans` `inputmode="numeric"`.
+- **„Wir sind da“:** `checkRest/checkWeit/checkText/checkNachziehen` halten den
+  Knopf `#tcheck` mit der Entfernung aktuell, außerhalb des Radius als
+  Nebenknopf `.btn.weit`.
+- **Hochformat-Hinweis:** `#quer` nach `<main>`, `querPruefen()` aus `render()`
+  und bei `resize`/`orientationchange`; ausgenommen Spielleitung,
+  `S.gps.kal`, `S.hoch`, `S.gross`.
+- **Kennungen einzeilig:** Werte mit Einheit („etwa 60 m“) stehen in
+  `white-space:nowrap`.
+- Prüfen: `python tools/pruefstand/kritik.py`; der Prüfstand lässt `sj.thema`
+  beim Laden stehen.
+
