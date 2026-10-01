@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Hochformat-Hinweis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Mockup: Hinweis, wenn ein Handy ins Querformat kippt. Links das Handy quer, rechts die Regeln. Aussehen aus index.html. */
+:root{--paper:#F1F5EE;--card:#FFFFFF;--ink:#17302A;--muted:#5B6F68;--line:#D3DECF;--flag:#EE5F1B;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;--body:"Barlow",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root{--paper:#0F1B18;--card:#16261F;--ink:#E4EEE8;--muted:#9BB1A9;--line:#2A3F38;--flag:#FF7A3A}}
+*{box-sizing:border-box}
+body{margin:0;background:#2b2f2d;color:var(--ink);font:17px/1.5 var(--body);min-height:100vh;display:flex;flex-wrap:wrap;gap:32px;align-items:center;justify-content:center;padding:24px 16px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+/* das gespielte Handy: 844 x 390 auf halbe Größe */
+.handy{width:422px;height:195px;border-radius:24px;border:8px solid #111;background:var(--paper);position:relative;overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,.4);flex:none}
+.handy.hoch{width:195px;height:422px}
+.inhalt{padding:12px;font-size:9px;line-height:1.35;color:var(--ink)}
+.inhalt b{font:700 14px var(--head);display:block}
+.inhalt .knopf{background:var(--flag);color:#fff;border-radius:5px;padding:5px;text-align:center;font:700 10px var(--head);margin-top:6px}
+
+/* ---------- der Hinweis selbst: so käme er ins Spiel ---------- */
+.quer{position:absolute;inset:0;z-index:5;display:grid;place-items:center;text-align:center;padding:12px;
+  background:color-mix(in srgb,var(--paper) 94%,transparent);backdrop-filter:none;animation:ein .16s cubic-bezier(.32,.72,.4,1)}
+@keyframes ein{from{opacity:0}to{opacity:1}}
+.quer svg{width:64px;height:64px;display:block;margin:0 auto 6px}
+.quer h2{font-size:17px}
+.quer p{margin:2px 0 0;font-size:10px;color:var(--muted)}
+.quer .geraet{transform-origin:32px 32px;animation:drehen 2.4s cubic-bezier(.32,.72,.4,1) infinite}
+.quer .pfeil{animation:pfeil 2.4s ease-in-out infinite}
+/* liegt quer, dreht sich hochkant, hält kurz, springt zurück */
+@keyframes drehen{0%,15%{transform:rotate(-90deg)}45%,85%{transform:rotate(0deg)}100%{transform:rotate(-90deg)}}
+@keyframes pfeil{0%,15%{opacity:1}40%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.quer .geraet,.quer .pfeil{animation:none}.quer .pfeil{opacity:0}}
+
+.regeln{background:var(--card);border-radius:14px;padding:18px;max-width:420px;color:var(--ink)}
+.regeln ul{margin:10px 0 0;padding-left:18px;font-size:15px}
+.regeln li{margin-top:6px}
+.regeln button{font:700 16px var(--head);border:0;border-radius:10px;padding:11px 14px;margin:12px 8px 0 0;cursor:pointer;background:var(--flag);color:#fff;min-height:44px}
+.regeln button.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.klein{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="handy" id="handy">
+  <div class="inhalt"><span style="color:var(--muted)">Station 2 von 5</span><b>Rudolfstollen</b>Geht in den Park hinein Richtung Westen …
+    <div style="font:700 22px var(--head);margin-top:6px">245 m</div><div class="knopf">Wir sind da</div></div>
+  <div class="quer" id="quer" role="alertdialog" aria-label="Bitte das Handy hochkant halten">
+    <div>
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <g class="geraet"><rect x="20" y="8" width="24" height="44" rx="5" fill="var(--card)" stroke="var(--ink)" stroke-width="3"/>
+          <rect x="24.5" y="14" width="15" height="30" rx="1.5" fill="var(--flag)" opacity=".85"/>
+          <rect x="28.5" y="10.2" width="7" height="2.2" rx="1.1" fill="var(--ink)"/></g>
+        <path class="pfeil" d="M52 15a20 20 0 0 1 3 17" fill="none" stroke="var(--flag)" stroke-width="3" stroke-linecap="round"/>
+        <path class="pfeil" d="M51 27l4 6 4-6" fill="none" stroke="var(--flag)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h2>Bitte hochkant halten</h2>
+      <p>Die Stadtjagd ist fürs Hochformat gemacht. Dreh das Handy einfach zurück.</p>
+    </div>
+  </div>
+</div>
+
+<div class="regeln">
+  <h3>Wann der Hinweis erscheint</h3>
+  <ul>
+    <li>Nur auf <b>Handys</b> im Querformat (Bildschirmhöhe unter 500 px). Tablets und die Spielleitung dürfen quer.</li>
+    <li>Erst nach <b>einer halben Sekunde</b> quer: kurzes Kippen beim Gehen löst nichts aus.</li>
+    <li><b>Nicht beim Einmessen.</b> Beim Schwenken in der Acht kippt das Handy fast immer kurz quer; dann bleibt das Einmessen-Fenster stehen und zählt weiter.</li>
+    <li>Nicht beim <b>Hochhalten</b> des Team-Zeichens und nicht im großen Foto.</li>
+    <li>Die Seite dahinter bleibt, wie sie ist: nichts geht verloren, kein Neuladen.</li>
+    <li>Wer „Bewegung reduzieren“ eingestellt hat, sieht ein stehendes Handy statt der Drehung.</li>
+  </ul>
+  <button id="dreh">Handy hochkant drehen</button><button class="alt" id="zurueck">Wieder quer</button>
+  <p class="klein">Sperren kann eine Webseite das Querformat nicht; das geht nur im Vollbild oder als installierte App, auf dem iPhone gar nicht.</p>
+</div>
+<script>
+const h = document.getElementById("handy"), q = document.getElementById("quer");
+document.getElementById("dreh").onclick = () => { h.classList.add("hoch"); q.hidden = true; };
+document.getElementById("zurueck").onclick = () => { h.classList.remove("hoch"); q.hidden = false; };
+</script>
+</body>
+</html>

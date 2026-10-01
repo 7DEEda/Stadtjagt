@@ -10,8 +10,8 @@
 <style>
 :root{
   --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF;
-  --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#FFFFFF; --water:#2F6E9E;
-  --ok:#2E7D4F; --err:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7; --err-btn:#B3261E; --info-bg:#E6EEF4;
+  --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#0F1B18; --water:#2F6E9E;   /* Knopfschrift dunkel: 5,3:1, Weiß auf diesem Orange hatte nur 3,3:1 */
+  --ok:#25683F; --err:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7; --err-btn:#B3261E; --info-bg:#E6EEF4;
   --feld:#7D9189;   /* Rand der Eingabefelder, mindestens 3:1 auf der Karte, damit sie in der Sonne nicht verschwinden */
   --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -146,7 +146,7 @@ ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line
 .wheel.empty{color:color-mix(in srgb,var(--paper) 30%,transparent)}
 .route{display:flex;align-items:center;margin:12px 2px 2px}
 .route i{flex:1;height:3px;background:var(--line)}.route i.done{background:var(--flag)}
-.route b{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--line);display:grid;place-items:center;font:700 14px var(--head);background:var(--card);color:var(--muted)}
+.route b{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--feld);display:grid;place-items:center;font:700 14px var(--head);background:var(--card);color:var(--muted)}
 .route b.done{background:var(--flag);border-color:var(--flag);color:var(--flag-ink)}
 .route b.now{border-color:var(--flag);color:var(--ink)}
 .compass{display:flex;gap:16px;align-items:center;margin-top:12px}
@@ -201,7 +201,7 @@ th{font:600 14px var(--body);color:var(--muted)}
 .kartezu{position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;z-index:1001;margin:0!important;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 /* Lücke in der Route: wie lange das Team kein GPS-Signal gemeldet hat */
 .maplueck{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;background:#fff;color:#17302A;border:1.5px solid var(--c,#5B6F68);border-radius:99px;padding:1px 7px;font:600 12px var(--body);box-shadow:0 1px 3px rgba(17,17,17,.25)}
-.mapbadge{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--flag);color:#fff;font:700 15px var(--head);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.mapbadge{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--flag);color:var(--flag-ink);font:700 15px var(--head);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .mapbadge.team{background:var(--water)}
 .mapbadge.start{background:#17302A}
 .mapbadge.start svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
@@ -225,7 +225,7 @@ select.sm{width:auto;max-width:100%;font-size:16px;padding:6px 8px;margin-top:4p
 .tl-bar .seg{position:absolute;top:4px;height:14px;border-radius:3px;background:var(--c)}
 .tl-bar .seg.solve{background:repeating-linear-gradient(135deg,var(--c) 0 3px,transparent 3px 6px);opacity:.55}
 .tl-bar .st{position:absolute;top:2px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--card);border:2px solid var(--c);color:var(--ink);font:700 11px var(--head);display:grid;place-items:center;font-style:normal;z-index:1}
-.tl-bar .win{position:absolute;top:1px;margin-left:12px;font:700 13px var(--head);color:var(--flag);white-space:nowrap}
+.tl-bar .win{position:absolute;top:1px;margin-left:12px;font:700 13px var(--head);color:var(--flag-text,var(--flag));white-space:nowrap}
 .tl-bar .win.links{margin-left:-12px;transform:translateX(-100%)}   /* am rechten Rand nach innen */
 .tl-total{font:700 15px var(--head);text-align:right;white-space:nowrap}
 .tl-total small{display:block;font:500 12px var(--body);color:var(--muted)}
@@ -325,6 +325,34 @@ button.bild{cursor:pointer}
 .fotogross img{max-width:100%;max-height:68vh;border-radius:10px;background:#223}
 .fotogross .btn.alt{color:#fff;border-color:rgba(255,255,255,.5)}
 .fotogross p{color:#fff}
+/* ---------- Kritik vom 01.10.2026 ---------- */
+:root{--flag-text:#C2410C;--warn:#8A5A00;--warn-bg:#FBF0D9}   /* Orange als Schrift auf Weiß: 5,2:1 */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--flag-text:var(--flag);--warn:#E8B75A;--warn-bg:#33290F}}
+.mapbadge.team{color:#fff}
+/* Zahlen, die sich laufend ändern, wackeln sonst in der Breite */
+.dist,.chip.uhr,.tl-time,#pause,.count,.wheel{font-variant-numeric:tabular-nums}
+/* Knopf wartet auf den Server: sichtbar beschäftigt, nicht grau wie gesperrt */
+.btn[aria-busy=true]{background:var(--flag);color:var(--flag-ink);opacity:.75;cursor:progress}
+.btn.alt[aria-busy=true]{background:transparent;color:var(--ink)}
+/* "Wir sind da" außerhalb des Radius: Nebenknopf mit der Restentfernung */
+.btn.weit{background:transparent;color:var(--ink);border:1.5px solid var(--feld)}
+/* Die sechste Ziffer ist die Schlussziffer: abgesetzt und gestrichelt */
+.lock .wheel.schluss{margin-left:10px;outline:2px dashed var(--feld);outline-offset:2px}
+.msg.warn{background:var(--warn-bg);color:var(--warn)}
+.album div.bild{border-style:dashed}
+.share{font-size:15px}.compass .cap{font-size:14px}
+.legend,.wahl,.tabs{gap:8px}
+@media (pointer:coarse){.btn.sm,.link,.nav a,select.sm,.tchip,.tl-name[data-act]{min-height:44px}}
+/* Hochformat: ein Handy im Querformat bekommt einen Hinweis über der Seite (sperren kann eine Webseite das nicht) */
+.quer{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;text-align:center;padding:16px;
+  background:color-mix(in srgb,var(--paper) 94%,transparent);animation:ovin .16s cubic-bezier(.32,.72,.4,1)}
+.quer svg{width:92px;height:92px;display:block;margin:0 auto 8px}
+.quer h2{font-size:26px}.quer p{margin:4px 0 0;color:var(--muted)}
+.quer .geraet{transform-origin:32px 32px;animation:querdrehen 2.4s cubic-bezier(.32,.72,.4,1) infinite}
+.quer .pfeil{animation:querpfeil 2.4s ease-in-out infinite}
+@keyframes querdrehen{0%,15%{transform:rotate(-90deg)}45%,85%{transform:rotate(0deg)}100%{transform:rotate(-90deg)}}
+@keyframes querpfeil{0%,15%{opacity:1}40%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.quer .geraet,.quer .pfeil{animation:none}.quer .pfeil{opacity:0}}
 /* ---------- Bedienung mit dem Finger (Durchsicht 30.09.2026) ---------- */
 /* kein Doppeltipp-Zoom auf Knöpfen, dafür eine sichtbare Antwort auf den Druck */
 button,a,select,[role=button],.tl-name{touch-action:manipulation}
@@ -395,6 +423,17 @@ input[type=date]{min-height:50px}
   <path class="p" d="M60 661L67 673L53 673Z"/>
 </svg></div>
 <main id="app"></main>
+<div class="quer" id="quer" role="alertdialog" aria-labelledby="quert" hidden><div>
+  <svg viewBox="0 0 64 64" aria-hidden="true">
+    <g class="geraet"><rect x="20" y="8" width="24" height="44" rx="5" fill="var(--card)" stroke="var(--ink)" stroke-width="3"/>
+      <rect x="24.5" y="14" width="15" height="30" rx="1.5" fill="var(--flag)" opacity=".85"/>
+      <rect x="28.5" y="10.2" width="7" height="2.2" rx="1.1" fill="var(--ink)"/></g>
+    <path class="pfeil" d="M52 15a20 20 0 0 1 3 17" fill="none" stroke="var(--flag)" stroke-width="3" stroke-linecap="round"/>
+        <path class="pfeil" d="M51 27l4 6 4-6" fill="none" stroke="var(--flag)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <h2 id="quert">Bitte hochkant halten</h2>
+  <p>Die Stadtjagd ist fürs Hochformat gemacht. Dreh das Handy einfach zurück.</p>
+</div></div>
 
 <script src="config.js"></script>
 <script>
@@ -622,6 +661,14 @@ const DANGER = {
       return "Alle Fotos gelöscht.";
     }
   },
+  testan: {
+    when: () => false, wort: false,
+    title: "Testmodus im laufenden Spiel einschalten",
+    lead: "Solange er an ist, prüft die App bei keinem Team mehr Entfernung und Antworten. Jedes Team kann überall einchecken und mit jeder Antwort weiterkommen.",
+    keeps: "Fortschritt, Ziffern und Plätze bleiben. Ausschalten geht jederzeit ohne Rückfrage.",
+    btn: "Testmodus einschalten",
+    async run() { await ACT["a-test"]({ on: "1", bestaetigt: true }); return "Testmodus ist an."; }
+  },
   // Station ohne GPS freischalten: die Zeilen im Reiter Teams ordnen sich alle 10 s neu, ein Tipp landet leicht beim falschen Team
   unlock: {
     when: () => false, wort: false, neutral: true,
@@ -751,7 +798,7 @@ function viewPublic() {
          <p class="small muted" style="margin-top:10px;text-align:center">Jede Person meldet sich auf dem eigenen Handy an. Dieses Handy gehört jetzt zu dir.</p>`
       : `<div class="panel"><h2>Mitmachen</h2><p class="muted">Trag deinen Namen ein. Die Teams werden später zufällig ausgelost.</p>
          <div style="margin-top:12px"><label for="pname">Vor- und Nachname</label><input id="pname" autocomplete="name" autocapitalize="words" enterkeyhint="send"></div>
-         <button class="btn" data-act="pub-reg" ${S.busy ? "disabled" : ""}>Anmelden</button>${msgBox("anm")}${fotoHinweis}</div>`;
+         <button class="btn" data-act="pub-reg" data-wait="Wird angemeldet …" ${S.busy ? "disabled" : ""}>Anmelden</button>${msgBox("anm")}${fotoHinweis}</div>`;
     out += `<div class="panel"><div class="count">${p.participantCount}</div><div class="muted small">Personen angemeldet</div></div>`;
     out += helpBtn("Stadtjagd: Ich komme bei der Anmeldung nicht weiter.");
     return out + nav();
@@ -801,8 +848,8 @@ function viewPublic() {
     const f = S.fremd;
     out += `<div class="panel"><label for="plook">${eigenBekannt ? "Anderes Team nachschauen" : "In welchem Team bin ich?"}</label>
     <input id="plook" value="${eigenBekannt ? "" : esc(S.myName || "")}" autocapitalize="words" enterkeyhint="search">
-    <button class="btn" data-act="pub-look">Team anzeigen</button>${msgBox("suche")}
-    ${S.kandidaten ? `<div class="wahl">${S.kandidaten.map(n => `<button class="btn sm alt" data-act="pub-look" data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : ""}
+    <button class="btn" data-act="pub-look" data-wait="Wird gesucht …">Team anzeigen</button>${msgBox("suche")}
+    ${S.kandidaten ? `<div class="wahl">${S.kandidaten.map(n => `<button class="btn sm alt" data-act="pub-look" data-wait="Wird gesucht …" data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : ""}
     ${f ? `<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px"><h3>${teamEmoji(f.name)} Team ${esc(f.name)}</h3>
       <p class="small">Teamleitung: <b>${esc(f.leaderName || "offen")}</b></p>
       <p class="small muted">${(f.members || []).map(esc).join(", ")}</p></div>` : ""}</div>`;
@@ -932,11 +979,13 @@ function lockHTML(st, klein) {
   for (let k = 0; k < 6; k++) {
     const v = k < 5 ? d[k] : st.finalDigit;
     const neu = S.neueZiffer && S.neueZiffer.i === k && S.neueZiffer.bis > Date.now();
-    h += `<div class="wheel ${klein ? "klein" : ""} ${v == null ? "empty" : ""} ${neu ? "neu" : ""}">${v == null ? "?" : v}</div>`;
+    h += `<div class="wheel ${klein ? "klein" : ""} ${v == null ? "empty" : ""} ${neu ? "neu" : ""} ${k === 5 ? "schluss" : ""}" ${k === 5 ? 'title="Schlussziffer"' : ""}>${v == null ? "?" : v}</div>`;
   }
   return h + "</div>";
 }
 function routeHTML(st) {
+  // erledigt ist eine Station erst mit ihrer Ziffer; beim Gruppenselfie kommt die nach dem Foto
+  st = { ...st, solvedCount: (st.digits || []).filter(d => d != null).length };
   let h = '<div class="route">';
   for (let k = 0; k < (st.totalStations || 5); k++) {
     if (k) h += `<i class="${k <= st.solvedCount ? "done" : ""}"></i>`;
@@ -1016,16 +1065,16 @@ function viewTeam() {
     const warum = !tok ? `<h2>Eingeben kann nur die Teamleitung</h2>
         <p class="muted">Und zwar auf dem Handy, mit dem sie sich angemeldet hat. Auf diesem Handy hat sich niemand angemeldet.</p>`
       : ab ? `<h2>Du hast dich abgemeldet</h2><p class="muted">Dieses Handy gibt gerade nichts ein.</p>
-        <button class="btn" data-act="t-ohne-code">Wieder als Teamleitung einloggen</button>`
+        <button class="btn" data-act="t-ohne-code" data-wait="Wird geprüft …">Wieder als Teamleitung einloggen</button>`
       : `<h2>Du leitest gerade kein Team</h2>
         <p class="muted">Eingeben kann nur die Teamleitung, auf ihrem eigenen Handy. Station und Rätsel siehst du auf der Anmeldeseite mit.</p>
-        <button class="btn alt" data-act="t-ohne-code">Noch einmal prüfen</button>`;
+        <button class="btn alt" data-act="t-ohne-code" data-wait="Wird geprüft …">Noch einmal prüfen</button>`;
     return brand("Teamleitung") + `<div class="panel">${warum}${msgBox()}
       <a class="btn ${ab ? "alt" : ""}" href="#/public">Zur Anmeldeseite</a></div>
       ${S.team.codeFeld ? `<div class="panel"><h3>Mit Team-Code eingeben</h3>
         <p class="small muted">Nur für die Spielleitung, wenn das Handy einer Teamleitung ausfällt. Den Code zeigt der Reiter Teams.</p>
         <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="FUCHS-1234"></div>
-        <button class="btn" data-act="t-login" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox("code")}</div>`
+        <button class="btn" data-act="t-login" data-wait="Wird geprüft …" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox("code")}</div>`
       : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-codefeld">Spielleitung: mit Team-Code eingeben</button></p>`}`
       + helpBtn("Stadtjagd: Ich komme als Teamleitung nicht hinein.") + nav();
   }
@@ -1043,9 +1092,9 @@ function teamAnsicht(st, lesen) {
   const ende = albumHTML(st) + (lesen ? "" : (st.status === "finished" ? "" : leitungHTML(st)) + abmeldenHTML() + nav());
   let out = `<div class="bar"><div>${logo()}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
     <div class="muted small">${lesen ? `Teamleitung: ${esc(st.team.leaderName || "offen")}`
-      : st.team.leaderName === S.myName ? "Du leitest das Team" : `Leitung ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div></div>`;
+      : st.team.leaderName === S.myName ? "Du leitest das Team" : `Teamleitung: ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div></div>`;
 
-  if (st.testMode) out += `<div class="msg err">Testmodus: Entfernung und Antworten werden nicht geprüft.</div>`;
+  if (st.testMode) out += `<div class="msg warn">Testmodus: Entfernung und Antworten werden nicht geprüft.</div>`;
   // Liest die Teamleitung selbst nur mit, fehlt ihr der Einstieg zur Eingabe
   if (lesen && st.name && st.name === st.team.leaderName && st.status !== "finished")
     out += `<div class="panel"><h3>Du bist Teamleitung</h3>
@@ -1128,7 +1177,7 @@ function teamAnsicht(st, lesen) {
         ${lesen ? (ichSelbst ? "" : `<p class="small muted" style="margin-top:6px">Freiwillig: Dann zeigt auch dein Handy Richtung und Entfernung.</p>`)
           : st.testMode ? "" : `<p class="small muted" style="text-align:center;margin-top:6px">Erst den Standort freigeben, dann könnt ihr einchecken.</p>`}` : ""}
       ${lesen ? (ichSelbst ? "" : `<p class="small muted" style="margin-top:12px">Einchecken macht <b>${esc(leitung)}</b>, sobald ihr da seid. Dann erscheint hier das Rätsel.</p>`)
-        : g.on || st.testMode ? `<button class="btn" data-act="t-check" data-wait="Standort wird bestimmt …" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>Wir sind da</button>
+        : g.on || st.testMode ? `<button class="btn ${checkWeit(st, s) ? "weit" : ""}" id="tcheck" data-act="t-check" data-wait="Standort wird bestimmt …" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>${checkText(st, s)}</button>
       ${!st.testMode && hasTarget && g.on && !g.pos ? `<p class="small muted" style="text-align:center;margin-top:6px">Sobald der Standort da ist, könnt ihr einchecken.</p>` : ""}` : ""}
       ${okOben ? "" : msgBox()}
       ${grobHTML()}${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
@@ -1155,18 +1204,19 @@ function teamAnsicht(st, lesen) {
     // Tipp: nach der ersten Denkpause aufdeckbar, danach für alle im Team sichtbar
     const tipp = s.tip ? `<div class="msg info"><b>Tipp:</b> ${esc(s.tip)}</div>`
       : s.tipAvailable ? (lesen ? `<p class="small muted">${ichSelbst ? "Du kannst" : esc(leitung) + " kann"} jetzt einen Tipp aufdecken.</p>`
-        : `<button class="btn alt" data-act="t-tip">Tipp aufdecken</button>`) : "";
+        : `<button class="btn alt" data-act="t-tip" data-wait="Wird aufgedeckt …">Tipp aufdecken</button>`) : "";
     out += `<div class="panel ${neuKlasse}"><p class="muted small">Station ${s.position}: ${esc(s.name)}</p>${okOben ? msgBox() : ""}
       <p class="riddle" style="margin-top:8px">${esc(s.riddle || "")}</p>${tipp}
       ${pause ? `<div class="msg err" id="pause" data-bis="${esc(st.lockedUntil)}">${pauseText(st.lockedUntil)}</div>` : ""}
       ${lesen ? (ichSelbst ? "" : `<p class="small" style="margin-top:12px">Die Antwort gibt <b>${esc(leitung)}</b> ein. Überlegt gemeinsam.</p>`)
-        : `<div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" ${pause ? "disabled" : ""}></div>
+        : `<div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans" ${s.numeric ? 'inputmode="numeric" pattern="[0-9]*"' : ""} autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" ${pause ? "disabled" : ""}></div>
       <button class="btn" data-act="t-answer" data-wait="Wird geprüft …" ${S.busy || pause ? "disabled" : ""}>Antwort prüfen</button>`}
       ${pause ? "" : (okOben ? "" : msgBox()) + `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
           : `Fehlversuche: ${st.failedAttempts} von 3, danach 2 Minuten Pause.`}</p>`}</div>`;
   }
   if (unterwegs) out += `<div class="panel ziffern"><div class="bar"><h3>Eure Ziffern</h3>
-    <span class="small muted">${st.solvedCount} von ${st.totalStations}</span></div>${lockHTML(st, true)}${routeHTML(st)}</div>`;
+    <span class="small muted">${st.solvedCount} von ${st.totalStations}</span></div>${lockHTML(st, true)}${routeHTML(st)}
+    <p class="small muted" style="margin-top:6px">Die abgesetzte sechste Ziffer ist die Schlussziffer: die Einerstelle der Summe eurer fünf Ziffern.</p></div>`;
   out += `<p class="small muted" style="text-align:center;margin-top:12px">Mitglieder: ${(st.team.members || []).map(esc).join(", ")}</p>`;
   out += helpBtn(`Stadtjagd: Hier ist ${kennung}. `
     + (s ? `Wir brauchen Hilfe bei Station ${s.position}.` : "Wir brauchen Hilfe."));
@@ -1204,7 +1254,7 @@ function leitungHTML(st, ohneMit) {
     ? `<div class="panel"><h3>Leitung abgeben</h3>
         <p class="small muted">Die neue Leitung tippt auf ihrem eigenen Handy auf „Teamleitung“ und ist gleich drin. Dieses Handy gibt danach nichts mehr ein.</p>
         <div style="margin-top:12px"><label for="tneu">Neue Teamleitung</label><select id="tneu"><option value="" selected disabled>Person wählen</option>${andere.map(m => `<option>${esc(m)}</option>`).join("")}</select></div>
-        <div class="row2"><button class="btn alt" data-act="t-abgeben-nein">Abbrechen</button><button class="btn" id="tabgeben" data-act="t-abgeben" disabled>Übergeben</button></div>${msgBox("abgeben")}</div>`
+        <div class="row2"><button class="btn alt" data-act="t-abgeben-nein">Abbrechen</button><button class="btn" id="tabgeben" data-act="t-abgeben" data-wait="Wird übergeben …" disabled>Übergeben</button></div>${msgBox("abgeben")}</div>`
     : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-abgeben-frage">Leitung abgeben</button></p>${msgBox("abgeben")}`);
 }
 // Abmelden ist selten gewollt: kleiner Link, dann eine Rückfrage
@@ -1510,7 +1560,7 @@ function viewAdmin() {
   const A = S.admin;
   if (!A.pin) return brand("Spielleitung") + `<div class="panel"><h2>Einloggen</h2>
     <div style="margin-top:12px"><label for="apin">PIN</label><input id="apin" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"></div>
-    <button class="btn" data-act="a-login" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox()}</div>` + nav();
+    <button class="btn" data-act="a-login" data-wait="Wird geprüft …" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox()}</div>` + nav();
   const st = A.state;
   if (!st) return brand("Spielleitung") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
 
@@ -1519,10 +1569,10 @@ function viewAdmin() {
       : st.status === "drawn" ? '<span class="chip">Teams ausgelost</span>' : '<span class="chip">Anmeldung offen</span>';
   let actions = "";
   // Alles, was Daten löscht, steht nicht hier oben, sondern im Reiter "Daten löschen".
-  if (st.status === "registration") actions += `<button class="btn sm alt" data-act="a-draw">Teams auslosen</button>`;
+  if (st.status === "registration") actions += `<button class="btn sm alt" data-act="a-draw" data-wait="Wird ausgelost …">Teams auslosen</button>`;
   if (st.status === "drawn") actions += `<button class="btn sm" data-act="a-start">Spiel starten</button>`;
   if (st.status === "running") actions += `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
-  if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-resume">Spiel fortsetzen</button>`;
+  if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-resume" data-wait="Wird fortgesetzt …">Spiel fortsetzen</button>`;
 
   let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div>${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}</div></div></div><div>${actions}</div></div>${msgBox()}`;
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
@@ -1577,7 +1627,7 @@ function viewAdmin() {
             <input id="dval" inputmode="numeric" value="${esc(d.value)}"></div>
         </div>
         <p class="small" id="dprev" style="margin-top:10px">&nbsp;</p>
-        <button class="btn ${st.status === "drawn" ? "alt" : ""}" data-act="a-draw" ${n < 2 ? "disabled" : ""}>${st.status === "drawn" ? "Neu auslosen" : "Auslosen"}</button>
+        <button class="btn ${st.status === "drawn" ? "alt" : ""}" data-act="a-draw" data-wait="Wird ausgelost …" ${n < 2 ? "disabled" : ""}>${st.status === "drawn" ? "Neu auslosen" : "Auslosen"}</button>
         ${n < 2 ? `<p class="small muted">Es müssen mindestens zwei Personen angemeldet sein.</p>` : ""}</div>`;
     }
     // im Spiel nach Platz und Fortschritt, sonst alphabetisch
@@ -1618,7 +1668,7 @@ function viewAdmin() {
     const liste = `<div class="panel"><div class="bar"><div><span class="count">${(st.participants || []).length}</span> <span class="muted">angemeldet</span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${DANGER.testdaten.when(st) ? `<button class="btn sm alt" data-act="a-danger" data-key="testdaten">Testdaten entfernen</button>` : ""}
       ${(st.participants || []).length ? `<button class="btn sm alt" data-act="a-danger" data-key="people">Alle löschen</button>` : ""}</div></div>
-      <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen" autocapitalize="words" autocomplete="off" enterkeyhint="done" aria-label="Name des Nachzüglers"><button class="btn sm" data-act="a-add">Hinzufügen</button></div>
+      <div style="display:flex;gap:8px;margin-top:12px"><input id="aadd" placeholder="Nachzügler eintragen" autocapitalize="words" autocomplete="off" enterkeyhint="done" aria-label="Name des Nachzüglers"><button class="btn sm" data-act="a-add" data-wait="Wird eingetragen …">Hinzufügen</button></div>
       <div style="margin-top:8px"><input id="asuche" type="search" enterkeyhint="search" placeholder="Name oder Team suchen" autocomplete="off" data-enter="none" aria-label="Name oder Team suchen" value="${esc(A.suche || "")}"></div>
       <ul class="names">${(st.participants || []).map(p => `<li data-such="${esc((p.name + " " + (p.teamName || "")).toLowerCase())}" ${treffer(p) ? "" : "hidden"}>${esc(p.name)}${p.teamName ? ` <span class="small muted">${esc(p.teamName)}</span>` : ""}
         <button class="btn sm alt del" data-act="a-danger" data-key="person" data-id="${p.id}" data-name="${esc(p.name)}" title="Diese Person löschen" aria-label="${esc(p.name)} löschen">×</button></li>`).join("")}</ul></div>`;
@@ -1631,7 +1681,7 @@ function viewAdmin() {
         <div><label for="a-dauer">Spieldauer, Minuten</label><input id="a-dauer" inputmode="numeric" value="${st.durationMin ?? 180}"></div>
         <div class="small muted" style="align-self:end;padding-bottom:12px">Ab „Spiel starten“ zählen alle Handys herunter${st.endsAt ? `, aktuell bis ${uhrzeit(st.endsAt)}` : ""}. Das Spiel endet trotzdem erst mit „Spiel beenden“.</div></div>
       <div style="margin-top:8px"><label for="a-koffer">Hinweis auf dem Koffer-Bildschirm</label><textarea id="a-koffer">${esc(st.caseHint || "")}</textarea></div>
-      <button class="btn sm" data-act="a-settings">Speichern</button>${msgBox("settings")}</div>`;
+      <button class="btn sm" data-act="a-settings" data-wait="Wird gespeichert …">Speichern</button>${msgBox("settings")}</div>`;
     out += `<div class="panel"><h3>Hintergrund</h3>
       <p class="small muted">Gilt für alle Handys und dieses Tablet, hell und dunkel. Die Entwürfe zum Vergleich liegen in mockups/hintergrund-varianten.html.</p>
       <div class="wahl">${Object.entries(HINTERGRUENDE).map(([k, v]) => `<button class="btn sm ${st.background === k ? "" : "alt"}" data-act="a-bg" data-bg="${k}" aria-pressed="${st.background === k}">${v}</button>`).join("")}</div>${msgBox("bg")}</div>`;
@@ -1672,7 +1722,7 @@ function viewAdmin() {
               <button class="btn sm alt" data-act="a-geheim-vorschlag">Vorschlag aus der Etappe (60 % und 30 %)</button></div>
             <div class="evorschau"><div class="small muted" id="e-wo"></div><div class="geheim" id="e-vorschau" style="margin-top:6px"></div></div>
           </div>
-          <div style="margin-top:6px"><button class="btn sm" data-act="a-save" data-id="${s.id}">Speichern</button>
+          <div style="margin-top:6px"><button class="btn sm" data-act="a-save" data-wait="Wird gespeichert …" data-id="${s.id}">Speichern</button>
             <button class="btn sm alt" data-act="a-cancel">Abbrechen</button></div>
         </div>` : `
         <div style="border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px;align-items:flex-start">
@@ -1745,7 +1795,7 @@ function viewAdmin() {
       ${msgBox("dlg")}
       <div class="row">
         <button class="btn alt" data-act="a-dlg-cancel">Abbrechen</button>
-        <button class="btn ${D.neutral ? "" : "warn"}" id="dlgok" data-act="a-dlg-ok" data-ort="dlg" ${brauchtWort(A.confirm.key) ? "disabled" : ""}>${esc(D.btn)}</button>
+        <button class="btn ${D.neutral ? "" : "warn"}" id="dlgok" data-act="a-dlg-ok" data-wait="Einen Moment …" data-ort="dlg" ${brauchtWort(A.confirm.key) ? "disabled" : ""}>${esc(D.btn)}</button>
       </div></div></div>`;
   }
   return out + nav();
@@ -2238,6 +2288,8 @@ const ACT = {
     S.msg = { type: "ok", ort: "zip", text: `${dateien.length} Fotos als stadtjagd-fotos.zip heruntergeladen.` };
   },
   async "a-test"(d) {
+    // Einschalten im laufenden Spiel hebt für alle Teams Entfernungs- und Antwortprüfung auf: erst nachfragen
+    if (d.on === "1" && S.admin.state.status === "running" && !d.bestaetigt) { S.admin.confirm = { key: "testan" }; S.msg = null; return; }
     S.admin.state = await rpc("admin_set_test_mode", { p_pin: S.admin.pin, p_on: d.on === "1" });
     S.msg = { type: "ok", text: d.on === "1" ? "Testmodus ist an." : "Testmodus ist aus." };
   },
@@ -2500,6 +2552,19 @@ function umkreisHTML() {
   return haversine(g.pos, { lat: s.lat, lng: s.lng }) <= s.radiusM
     ? `<b style="color:var(--ok)">Ihr seid im Umkreis</b>` : `Einchecken ab etwa ${s.radiusM} m`;
 }
+// Wie weit noch bis zum Einchecken: dieselbe Toleranz wie check_in in der Datenbank (Radius plus Genauigkeit, höchstens 25 m)
+function checkRest(st, s) {
+  const g = S.gps;
+  if (!st || !s || st.testMode || !g.pos || s.lat == null || s.lng == null) return 0;
+  return Math.max(0, haversine(g.pos, { lat: s.lat, lng: s.lng }) - ((s.radiusM || 50) + Math.min(Math.max(g.acc || 0, 0), 25)));
+}
+const checkWeit = (st, s) => checkRest(st, s) > 0;
+const checkText = (st, s) => checkWeit(st, s) ? `Noch ${fmtDist(checkRest(st, s))} bis zum Einchecken` : "Wir sind da";
+// Den Knopf mit jeder neuen Position nachziehen, ohne die Seite neu zu zeichnen
+function checkNachziehen() {
+  const b = $("#tcheck"), st = aktiverStand(); if (!b || !st || b.getAttribute("aria-busy") === "true") return;
+  b.classList.toggle("weit", checkWeit(st, st.station)); b.textContent = checkText(st, st.station);
+}
 function liveUpdate() {
   const g = S.gps, ziel = aktuellesZiel();
   const um = $("#umkreis"); if (um) um.innerHTML = umkreisHTML();
@@ -2508,7 +2573,7 @@ function liveUpdate() {
   const n = $("#needle"); if (n) n.closest(".compass").classList.toggle("unsicher", !richtungBekannt());
   const gs = $("#gstat"); if (gs) gs.textContent = gpsNote();
   if (!g.pos || !ziel) return;
-  geheimNachziehen();
+  geheimNachziehen(); checkNachziehen();
   const t = { lat: ziel.lat, lng: ziel.lng };
   const d = $("#dist"); if (d) d.textContent = fmtDist(haversine(g.pos, t));
   setNeedle(bearingTo(g.pos, t) - richtung());
@@ -2978,6 +3043,7 @@ function render() {
   if (S.view === "team" || (S.view === "public" && S.mit)) liveUpdate();
   if (S.admin.confirm) ($("#dlgword") || $("#dlgok"))?.focus();
   if (S.view === "admin" && S.admin.tab === "teams") drawPreview();
+  querPruefen();
   if (S.view === "admin" && S.admin.tab === "stations" && S.admin.edit) stationsKarte();
 }
 // Zeitachse: Schieber zieht den Zeitpunkt, ganz rechts heißt "jetzt"
@@ -3104,6 +3170,20 @@ setInterval(() => {
   }).catch(() => { });
 }, 10000);
 let fingerSeit = 0;
+// Handy im Querformat: nach einer halben Sekunde der Hinweis aufs Hochformat. Nicht bei Tablets (Fensterhöhe ab 500 px),
+// nicht bei der Spielleitung, nicht beim Einmessen (beim Schwenken in der Acht kippt das Handy fast immer kurz quer),
+// nicht beim Hochhalten und nicht im großen Foto. Die Seite dahinter bleibt, wie sie ist.
+let querSeit = 0, querTimer = 0;
+function querPruefen() {
+  const quer = matchMedia("(orientation: landscape) and (max-height: 500px) and (pointer: coarse)").matches;
+  const egal = S.view === "admin" || S.gps.kal || S.hoch || S.gross;
+  const el = $("#quer"); if (!el) return;
+  if (!quer || egal) { querSeit = 0; clearTimeout(querTimer); el.hidden = true; return; }
+  if (!querSeit) { querSeit = Date.now(); clearTimeout(querTimer); querTimer = setTimeout(querPruefen, 520); return; }
+  if (Date.now() - querSeit >= 500) el.hidden = false;
+}
+addEventListener("resize", querPruefen);
+addEventListener("orientationchange", querPruefen);
 addEventListener("pointerdown", () => { fingerSeit = Date.now(); }, true);
 addEventListener("pointerup", () => { fingerSeit = 0; }, true);
 addEventListener("pointercancel", () => { fingerSeit = 0; }, true);

@@ -301,7 +301,7 @@
       finalDigit: all && !selfieFeld(t, f).pending ? sum % 10 : null,
       selfie: selfieFeld(t, f),
       station: cur && running ? { position: cur.position, name: cur.name, locationHint: cur.locationHint, lat: cur.lat, lng: cur.lng,
-        radiusM: cur.radiusM, revealStartM: cur.revealStartM, revealClearM: cur.revealClearM, riddle: f.checkedIn ? cur.riddle : null,
+        radiusM: cur.radiusM, revealStartM: cur.revealStartM, revealClearM: cur.revealClearM, numeric: /^[0-9]+( *[|] *[0-9]+)*$/.test(cur.answer.trim()), riddle: f.checkedIn ? cur.riddle : null,
         tipAvailable: !!cur.tip && !!f.checkedIn && (WELT.testMode || f.pauses >= 1), tip: f.tipShown ? cur.tip : null } : null,
       checkedIn: !!f.checkedIn && !all, failedAttempts: f.failedAttempts, lockedUntil: iso(f.lockedUntil), pauses: f.pauses,
       allSolved: all && !selfieFeld(t, f).pending, caseHint: CASE_HINT, place, prizeCount: WELT.prizeCount, prizesLeft: Math.max(WELT.prizeCount - doneCount(), 0),
