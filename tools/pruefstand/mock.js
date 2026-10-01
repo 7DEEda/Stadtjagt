@@ -446,7 +446,8 @@
 
   /* ---------- Speicher und Ansicht vorbelegen ---------- */
   try {
-    Object.keys(localStorage).filter(k => k.startsWith("sj.")).forEach(k => localStorage.removeItem(k));
+    // sj.thema (hell/dunkel) ist kein Spielstand und bleibt stehen
+    Object.keys(localStorage).filter(k => k.startsWith("sj.") && k !== "sj.thema").forEach(k => localStorage.removeItem(k));
     Object.keys(sessionStorage).filter(k => k.startsWith("sj.")).forEach(k => sessionStorage.removeItem(k));
     const ls = Object.assign({}, C.ls || {});
     if (C.kalHeute !== false) ls["sj.kal"] = new Date().toDateString();   // Einmessen heute schon erledigt

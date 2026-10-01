@@ -7,6 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<script>
+// Hell oder dunkel, vom Schalter oben rechts gewählt. Ohne Wahl folgt die App dem Gerät.
+try { const t = localStorage.getItem("sj.thema"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch { /* privater Modus */ }
+</script>
 <style>
 :root{
   --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF;
@@ -26,6 +30,12 @@
   --ok-bg:#16332A; --err-bg:#3A1F1C; --info-bg:#172A36;
   --park:#142A20; --baum:#1D3A2B; --strasse:#1F352E; --strasse-haupt:#29443A;
   --ol-braun:#332A21; --ol-gelb:#1E2419; --ol-gruen:#142A1E; --ol-dicht:#1A3524; --ol-schwarz:#3B4C45;}}
+:root[data-theme="dark"]{
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38;
+  --contour:#1C312B; --flag:#FF7A3A; --flag-ink:#0F1B18; --feld:#5E786F; --water:#6FA8D6; --ok:#6CCB8E; --err:#FF8A80; --err-btn:#C5372C;
+  --ok-bg:#16332A; --err-bg:#3A1F1C; --info-bg:#172A36;
+  --park:#142A20; --baum:#1D3A2B; --strasse:#1F352E; --strasse-haupt:#29443A;
+  --ol-braun:#332A21; --ol-gelb:#1E2419; --ol-gruen:#142A1E; --ol-dicht:#1A3524; --ol-schwarz:#3B4C45;}
 *{box-sizing:border-box}
 [hidden]{display:none!important}   /* sonst schlägt .chip{display:inline-block} das hidden-Attribut */
 html,body{margin:0}
@@ -114,6 +124,12 @@ p{margin:.4em 0 0}
 .muted{color:var(--muted)}.small{font-size:14px}
 .brand{display:flex;gap:12px;align-items:center;margin-bottom:16px}
 .flag{width:32px;height:32px;flex:none}
+/* Schalter hell/dunkel oben rechts in jedem Kopf */
+.thema{display:inline-grid;place-items:center;width:44px;height:44px;flex:none;margin-left:auto;padding:0;border-radius:10px;border:1.5px solid var(--feld);background:var(--card);color:var(--ink);cursor:pointer;vertical-align:middle;
+  transition:background .16s cubic-bezier(.32,.72,.4,1),color .16s cubic-bezier(.32,.72,.4,1)}
+.thema svg{width:22px;height:22px}
+.thema:active{filter:brightness(.93)}
+body{transition:background-color .16s cubic-bezier(.32,.72,.4,1),color .16s cubic-bezier(.32,.72,.4,1)}
 .flag .nadel{transform-origin:12px 12px;transition:transform .16s linear}
 @media (prefers-reduced-motion:reduce){.flag .nadel{transition:none}}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
@@ -328,6 +344,7 @@ button.bild{cursor:pointer}
 /* ---------- Kritik vom 01.10.2026 ---------- */
 :root{--flag-text:#C2410C;--warn:#8A5A00;--warn-bg:#FBF0D9}   /* Orange als Schrift auf Weiß: 5,2:1 */
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--flag-text:var(--flag);--warn:#E8B75A;--warn-bg:#33290F}}
+:root[data-theme="dark"]{--flag-text:var(--flag);--warn:#E8B75A;--warn-bg:#33290F}
 .mapbadge.team{color:#fff}
 /* Zahlen, die sich laufend ändern, wackeln sonst in der Breite */
 .dist,.chip.uhr,.tl-time,#pause,.count,.wheel{font-variant-numeric:tabular-nums}
@@ -753,7 +770,15 @@ function helpBtn(text, klasse) {
     <div class="row2"><a class="btn ${klasse || "alt"} help" href="${href}" target="_blank" rel="noopener">${WA_ICON}WhatsApp</a>
     <a class="btn ${klasse || "alt"} help" href="${tel}">${TEL_ICON}Anrufen</a></div></div>`;
 }
-const brand = sub => `<div class="brand">${logo()}<div><h1>Stadtjagd</h1><div class="muted small">${esc(sub)}</div></div></div>`;
+// Hell/dunkel: gilt ist die gerade sichtbare Darstellung, egal ob gewählt oder vom Gerät
+const themaJetzt = () => document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+const SONNE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7L7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const MOND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+// Zeigt, wohin es geht: im Hellen der Mond, im Dunkeln die Sonne
+const themaInnen = () => themaJetzt() === "dark" ? SONNE : MOND;
+const themaTitel = () => themaJetzt() === "dark" ? "Helle Darstellung" : "Dunkle Darstellung";
+const themaBtn = () => `<button class="thema" data-act="thema" aria-label="${themaTitel()}" title="${themaTitel()}">${themaInnen()}</button>`;
+const brand = sub => `<div class="brand">${logo()}<div><h1>Stadtjagd</h1><div class="muted small">${esc(sub)}</div></div>${themaBtn()}</div>`;
 // Jede Meldung steht genau an einer Stelle: msgBox(ort) zeigt nur Meldungen mit demselben ort,
 // msgBox() nur die ohne ort. Jede Ansicht ruft msgBox() für allgemeine Meldungen genau einmal auf.
 const msgBox = ort => {
@@ -1092,7 +1117,7 @@ function teamAnsicht(st, lesen) {
   const ende = albumHTML(st) + (lesen ? "" : (st.status === "finished" ? "" : leitungHTML(st)) + abmeldenHTML() + nav());
   let out = `<div class="bar"><div>${logo()}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
     <div class="muted small">${lesen ? `Teamleitung: ${esc(st.team.leaderName || "offen")}`
-      : st.team.leaderName === S.myName ? "Du leitest das Team" : `Teamleitung: ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div></div>`;
+      : st.team.leaderName === S.myName ? "Du leitest das Team" : `Teamleitung: ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div>${themaBtn()}</div>`;
 
   if (st.testMode) out += `<div class="msg warn">Testmodus: Entfernung und Antworten werden nicht geprüft.</div>`;
   // Liest die Teamleitung selbst nur mit, fehlt ihr der Einstieg zur Eingabe
@@ -1574,7 +1599,7 @@ function viewAdmin() {
   if (st.status === "running") actions += `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
   if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-resume" data-wait="Wird fortgesetzt …">Spiel fortsetzen</button>`;
 
-  let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div>${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}</div></div></div><div>${actions}</div></div>${msgBox()}`;
+  let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div>${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}</div></div></div><div>${actions}${themaBtn()}</div></div>${msgBox()}`;
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
   if (missing.length) out += `<div class="msg err">Ohne Koordinaten kann dort niemand einchecken. Betroffen: Station ${missing.map(s => s.position).join(", ")}.</div>`;
 
@@ -2102,6 +2127,13 @@ function playStep(now) {
 
 /* ---------- Aktionen ---------- */
 const ACT = {
+  thema() {
+    const neu = themaJetzt() === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = neu;
+    LS.setItem("sj.thema", neu);
+    document.querySelectorAll(".thema").forEach(b => { b.innerHTML = themaInnen(); b.title = themaTitel(); b.setAttribute("aria-label", themaTitel()); });
+    return false;
+  },
   async "cfg-save"() {
     cfg.url = val("surl"); cfg.key = val("skey");
     LS.setItem("sj.url", cfg.url); LS.setItem("sj.key", cfg.key);
