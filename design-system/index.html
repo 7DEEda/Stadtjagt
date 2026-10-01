@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design System Stadtjagd</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+/* Ansicht zu design-system/MASTER.md. Token wie in index.html, Bausteine nachgebaut. Hell und dunkel umschaltbar. */
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --feld:#7D9189; --contour:#CFDBC8;
+  --flag:#EE5F1B; --flag-ink:#0F1B18; --flag-text:#C2410C; --water:#2F6E9E;
+  --ok:#25683F; --ok-bg:#E3F1E7; --err:#B3261E; --err-bg:#FBE9E7; --err-btn:#B3261E; --warn:#8A5A00; --warn-bg:#FBF0D9; --info-bg:#E6EEF4;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif; --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+:root[data-theme="dark"]{
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38; --feld:#5E786F; --contour:#1C312B;
+  --flag:#FF7A3A; --flag-ink:#0F1B18; --flag-text:#FF7A3A; --water:#6FA8D6;
+  --ok:#6CCB8E; --ok-bg:#16332A; --err:#FF8A80; --err-bg:#3A1F1C; --err-btn:#C5372C; --warn:#E8B75A; --warn-bg:#33290F; --info-bg:#172A36;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);transition:background .16s cubic-bezier(.32,.72,.4,1),color .16s}
+main{max-width:1000px;margin:0 auto;padding:20px 16px 80px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+h1{font-size:32px}h2{font-size:24px;margin-top:36px}h3{font-size:19px}
+p{margin:.4em 0 0}
+.muted{color:var(--muted)}.small{font-size:15px}
+.kopf{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;gap:12px;align-items:center}
+.flag{width:40px;height:40px;flex:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.raster .panel{margin-top:0}
+
+/* Farbfelder */
+.feld{display:flex;gap:10px;align-items:center;margin-top:8px}
+.feld i{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);flex:none}
+.feld b{font:600 15px var(--body);display:block}.feld code{font:500 13px var(--mono);color:var(--muted)}
+.paar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:8px;margin-top:6px;font-size:15px}
+.paar span{font:700 15px var(--head);white-space:nowrap}
+
+/* Schriftstufen */
+.stufe{display:grid;grid-template-columns:110px 1fr;gap:12px;align-items:baseline;border-top:1px solid var(--line);padding:8px 0}
+.stufe:first-child{border-top:0}
+.stufe code{font:500 13px var(--mono);color:var(--muted)}
+
+/* Bausteine wie im Spiel */
+.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 19px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);margin-top:12px;min-height:48px}
+.btn.alt,.btn.weit{background:transparent;color:var(--ink);border:1.5px solid var(--feld)}
+.btn.sm{display:inline-block;width:auto;padding:8px 12px;font-size:15px;margin:8px 8px 0 0;min-height:44px}
+.btn.warn{background:var(--err-btn);color:#fff}
+.btn:disabled{background:var(--line);color:var(--muted);cursor:not-allowed}
+.btn[aria-busy=true]{opacity:.75;cursor:progress}
+.btn:active{filter:brightness(.93)}
+.link{background:none;border:0;padding:10px 4px;min-height:44px;font:600 15px var(--body);color:var(--muted);text-decoration:underline;cursor:pointer}
+.msg{border-radius:10px;padding:10px 12px;margin-top:10px;font-size:15px}
+.msg.ok{background:var(--ok-bg);color:var(--ok)}.msg.err{background:var(--err-bg);color:var(--err)}
+.msg.info{background:var(--info-bg);color:var(--ink)}.msg.warn{background:var(--warn-bg);color:var(--warn)}
+.chip{display:inline-block;padding:4px 10px;border-radius:99px;font:600 13px var(--body);background:var(--paper);border:1px solid var(--line);margin:4px 6px 0 0}
+.chip.live{background:var(--flag);color:var(--flag-ink);border-color:var(--flag);font:700 14px var(--body)}
+.lock{display:flex;gap:6px;margin-top:10px}
+.wheel{width:40px;height:52px;border-radius:8px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font:700 30px var(--head);font-variant-numeric:tabular-nums}
+.wheel.empty{opacity:.45}.wheel.neu{background:var(--flag);color:var(--flag-ink)}
+.wheel.schluss{margin-left:10px;outline:2px dashed var(--feld);outline-offset:2px}
+.route{display:flex;align-items:center;margin-top:12px}
+.route i{flex:1;height:3px;background:var(--line)}.route i.done{background:var(--flag)}
+.route b{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--feld);display:grid;place-items:center;font:700 14px var(--head);background:var(--card);color:var(--muted)}
+.route b.done{background:var(--flag);border-color:var(--flag);color:var(--flag-ink)}.route b.now{border-color:var(--flag);color:var(--ink)}
+.compass{display:flex;gap:16px;align-items:center;margin-top:8px}
+.compass svg{width:88px;height:88px;flex:none}
+.ring{fill:none;stroke:var(--line);stroke-width:5}
+.needle{fill:var(--flag);transform-origin:39px 39px;animation:suchen 6s cubic-bezier(.32,.72,.4,1) infinite}
+@keyframes suchen{0%{transform:rotate(20deg)}40%{transform:rotate(48deg)}70%{transform:rotate(32deg)}100%{transform:rotate(20deg)}}
+.dist{font:700 38px var(--head);line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}
+.geheim{font:700 22px/1 var(--mono);display:flex;flex-wrap:wrap;gap:4px .55em}
+.geheim .wort{display:inline-flex;white-space:nowrap}
+.geheim i{font-style:normal;display:inline-block;width:.64em;height:1.2em;line-height:1.2em;text-align:center;overflow:hidden;color:var(--flag)}
+.geheim i.fest{color:var(--ink)}
+.geheimfort{height:4px;border-radius:2px;background:var(--line);margin-top:10px;overflow:hidden}
+.geheimfort span{display:block;height:100%;width:54%;background:var(--flag)}
+.album{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.album div{aspect-ratio:1;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;font:700 15px var(--head);color:var(--muted)}
+.album div.foto{border:0;background:linear-gradient(135deg,#7FB77E,#3A6E5A)}
+.marker{display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.mapbadge{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--flag);color:var(--flag-ink);font:700 15px var(--head);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.mapbadge.team{color:#fff;font-size:15px}
+.karte-grund{background:var(--paper);border-radius:10px;padding:12px;margin-top:8px;border:1px solid var(--line);
+  background-image:repeating-radial-gradient(circle at 30% 60%,transparent 0 14px,var(--contour) 14px 15px)}
+.dialog{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;box-shadow:0 12px 32px rgba(17,17,17,.28),0 2px 6px rgba(17,17,17,.12)}
+.quer svg{width:92px;height:92px;display:block;margin:0 auto}
+.quer .geraet{transform-origin:32px 32px;animation:querdrehen 2.4s cubic-bezier(.32,.72,.4,1) infinite}
+.quer .pfeil{animation:querpfeil 2.4s ease-in-out infinite}
+@keyframes querdrehen{0%,15%{transform:rotate(-90deg)}45%,85%{transform:rotate(0deg)}100%{transform:rotate(-90deg)}}
+@keyframes querpfeil{0%,15%{opacity:1}40%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.needle,.quer .geraet,.quer .pfeil{animation:none}.quer .pfeil{opacity:0}}
+.regel{font-size:15px;margin-top:6px;padding-left:12px;border-left:3px solid var(--flag)}
+.schalter{display:flex;gap:8px}
+</style>
+</head>
+<body>
+<main>
+  <div class="kopf">
+    <div class="brand">
+      <svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></svg>
+      <div><h1>Design System Stadtjagd</h1><div class="small muted">Kartenpapier und Signalorange · Stand 01.10.2026 · Regeln in design-system/MASTER.md</div></div>
+    </div>
+    <div class="schalter"><button class="btn sm" id="hell" aria-pressed="true">Hell</button><button class="btn sm alt" id="dunkel" aria-pressed="false">Dunkel</button></div>
+  </div>
+
+  <div class="panel">
+    <h3>Grundidee</h3>
+    <p>Ein Orientierungslauf durch die Stadt, also eine Wanderkarte: mattes Papier mit Höhenlinien, Panels wie eingeklebte Zettel, und <b>ein</b> Signalorange für das, was man als Nächstes tun soll. Gebaut für draußen: Sonne, eine Hand, beim Gehen, hochkant.</p>
+    <p class="regel">Lesbar in der Sonne · ein Orange pro Ansicht · mit dem Daumen bedienbar · nichts springt · Hochformat</p>
+  </div>
+
+  <h2>Farben</h2>
+  <div class="raster">
+    <div class="panel"><h3>Grund und Schrift</h3>
+      <div class="feld"><i style="background:var(--paper)"></i><div><b>--paper</b><code id="w-paper"></code></div></div>
+      <div class="feld"><i style="background:var(--card)"></i><div><b>--card</b><code id="w-card"></code></div></div>
+      <div class="feld"><i style="background:var(--ink)"></i><div><b>--ink</b><code id="w-ink"></code></div></div>
+      <div class="feld"><i style="background:var(--muted)"></i><div><b>--muted</b><code id="w-muted"></code></div></div>
+      <div class="feld"><i style="background:var(--feld)"></i><div><b>--feld</b><code id="w-feld"></code></div></div>
+      <div class="feld"><i style="background:var(--line)"></i><div><b>--line</b><code id="w-line"></code></div></div>
+    </div>
+    <div class="panel"><h3>Signal</h3>
+      <div class="feld"><i style="background:var(--flag)"></i><div><b>--flag</b><code id="w-flag"></code></div></div>
+      <div class="feld"><i style="background:var(--flag-ink)"></i><div><b>--flag-ink</b><code id="w-flag-ink"></code></div></div>
+      <div class="feld"><i style="background:var(--flag-text)"></i><div><b>--flag-text</b><code id="w-flag-text"></code></div></div>
+      <div class="feld"><i style="background:var(--water)"></i><div><b>--water</b><code id="w-water"></code></div></div>
+      <div class="feld"><i style="background:var(--contour)"></i><div><b>--contour</b><code id="w-contour"></code></div></div>
+    </div>
+    <div class="panel"><h3>Zustände, mit Kontrast</h3>
+      <div class="paar" style="background:var(--flag);color:var(--flag-ink)">Hauptknopf <span id="k-flag"></span></div>
+      <div class="paar" style="background:var(--ok-bg);color:var(--ok)">Erfolg <span id="k-ok"></span></div>
+      <div class="paar" style="background:var(--err-bg);color:var(--err)">Fehler <span id="k-err"></span></div>
+      <div class="paar" style="background:var(--warn-bg);color:var(--warn)">Warnung <span id="k-warn"></span></div>
+      <div class="paar" style="background:var(--info-bg);color:var(--ink)">Hinweis <span id="k-info"></span></div>
+      <div class="paar" style="background:var(--card);color:var(--muted);border:1px solid var(--line)">Nebentext <span id="k-muted"></span></div>
+    </div>
+  </div>
+  <p class="small muted">Nicht erlaubt: Weiß auf Orange (3,3:1), Orange als Schrift auf Weiß (3,3:1, dafür <code>--flag-text</code>), <code>--line</code> als Rand von Bedienelementen (1,4:1, dafür <code>--feld</code>).</p>
+
+  <h2>Schrift</h2>
+  <div class="panel">
+    <div class="stufe"><code>--fs-xxl 32</code><div style="font:700 32px var(--head)">Team Fuchs</div></div>
+    <div class="stufe"><code>--fs-xl 24</code><div style="font:700 24px var(--head)">Rudolfstollen</div></div>
+    <div class="stufe"><code>--fs-l 19</code><div style="font:500 19px var(--body)">Geht in den Park hinein Richtung Westen.</div></div>
+    <div class="stufe"><code>--fs-m 17</code><div style="font:400 17px var(--body)">Fließtext in Barlow, Zeilenhöhe 1,5. Eingabefelder nie unter 16 px.</div></div>
+    <div class="stufe"><code>--fs-s 15</code><div style="font:400 15px var(--body)" class="muted">Nebentext, Meldungen, kleine Knöpfe</div></div>
+    <div class="stufe"><code>--fs-xs 13</code><div style="font:400 13px var(--body)" class="muted">nur Achsen und Zeitachse am Tablet</div></div>
+    <div class="stufe"><code>--fs-zahl 38</code><div class="dist">245 m</div></div>
+    <div class="stufe"><code>--mono 22</code><div class="geheim" id="probe"></div></div>
+  </div>
+  <p class="small muted">Barlow Semi Condensed für Überschriften, Knöpfe und Zahlen, Barlow für Text. Die Skill ui-ux-pro-max empfiehlt genau dieses Paar für Sport und Wettkampf.</p>
+
+  <h2>Knöpfe und Meldungen</h2>
+  <div class="raster">
+    <div class="panel"><h3>Ein Hauptknopf pro Ansicht</h3>
+      <button class="btn">Wir sind da</button>
+      <button class="btn weit">Noch 177 m bis zum Einchecken</button>
+      <button class="btn alt">Link teilen</button>
+      <button class="btn" aria-busy="true">Wird geprüft …</button>
+      <button class="btn" disabled>Gesperrt</button>
+    </div>
+    <div class="panel"><h3>Klein, Gefahr, Link</h3>
+      <button class="btn sm">Speichern</button><button class="btn sm alt">Abbrechen</button><br>
+      <button class="btn warn">Alle Fotos löschen</button>
+      <button class="link">Kompass neu einmessen</button>
+      <div><span class="chip live">Läuft</span><span class="chip">Noch 1:47 h</span></div>
+    </div>
+    <div class="panel"><h3>Meldungen am Auslöser</h3>
+      <div class="msg ok">Foto ist drin. Station 2 gelöst, eure Ziffer: 7.</div>
+      <div class="msg err">Leider falsch. Noch 2 Versuche.</div>
+      <div class="msg warn">Testmodus: Entfernung und Antworten werden nicht geprüft.</div>
+      <div class="msg info">Der Kompass ist nach dem Neuladen aus. Einmal tippen.</div>
+    </div>
+  </div>
+
+  <h2>Spielbausteine</h2>
+  <div class="raster">
+    <div class="panel"><h3>Kompass und Entfernung</h3>
+      <div class="compass"><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/><polygon class="needle" points="39,8 47,42 39,36 31,42"/></svg>
+        <div><div class="muted small">Entfernung</div><div class="dist">245 m</div><div class="small">Einchecken ab etwa 60 m</div></div></div>
+    </div>
+    <div class="panel"><h3>Verschlüsselter Name</h3>
+      <div class="geheim" id="name"></div><div class="geheimfort"><span></span></div>
+      <p class="small muted">Feste Zellen, offen in Orange, eingerastet in Tinte. Die Zeile springt nicht.</p>
+    </div>
+    <div class="panel"><h3>Ziffern und Route</h3>
+      <div class="lock"><div class="wheel">3</div><div class="wheel neu">7</div><div class="wheel empty">?</div><div class="wheel empty">?</div><div class="wheel empty">?</div><div class="wheel empty schluss">?</div></div>
+      <div class="route"><b class="done">1</b><i class="done"></i><b class="done">2</b><i class="done"></i><b class="now">3</b><i></i><b>4</b><i></i><b>5</b></div>
+      <p class="small muted">Die sechste, abgesetzte Ziffer ist die Schlussziffer.</p>
+    </div>
+    <div class="panel"><h3>Album und Karte</h3>
+      <div class="album"><div class="foto"></div><div class="foto"></div><div>3</div><div>4</div><div>5</div></div>
+      <div class="karte-grund"><div class="marker"><span class="mapbadge">2</span><span class="mapbadge team" style="background:#2F6E9E">🦊</span><span class="mapbadge team" style="background:#7B3FA0">🦉</span><span class="small muted">28 px sichtbar, 44 px Trefferfläche</span></div></div>
+    </div>
+    <div class="panel"><h3>Dialog</h3>
+      <div class="dialog"><h3>Testmodus im laufenden Spiel einschalten</h3><p class="small">Solange er an ist, prüft die App bei keinem Team mehr Entfernung und Antworten.</p>
+        <button class="btn sm alt">Abbrechen</button><button class="btn sm warn">Einschalten</button></div>
+    </div>
+    <div class="panel quer" style="text-align:center"><h3>Hochformat-Hinweis</h3>
+      <svg viewBox="0 0 64 64" aria-hidden="true"><g class="geraet"><rect x="20" y="8" width="24" height="44" rx="5" fill="var(--card)" stroke="var(--ink)" stroke-width="3"/><rect x="24.5" y="14" width="15" height="30" rx="1.5" fill="var(--flag)" opacity=".85"/><rect x="28.5" y="10.2" width="7" height="2.2" rx="1.1" fill="var(--ink)"/></g>
+        <path class="pfeil" d="M52 15a20 20 0 0 1 3 17" fill="none" stroke="var(--flag)" stroke-width="3" stroke-linecap="round"/><path class="pfeil" d="M51 27l4 6 4-6" fill="none" stroke="var(--flag)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <p class="small"><b>Bitte hochkant halten</b></p>
+    </div>
+  </div>
+
+  <h2>Raum, Form, Bewegung</h2>
+  <div class="raster">
+    <div class="panel"><h3>Abstände</h3><p class="small">4 · 8 · 12 · 16 · 24 · 32 px. Panels 16 px innen, 14 px dazwischen, Seitenrand 16 px.</p></div>
+    <div class="panel"><h3>Radien</h3><p class="small">14 Panel · 10 Knopf und Feld · 8 Ziffer und Bild · 99 Chip. Keine weiteren.</p></div>
+    <div class="panel"><h3>Tiefe</h3><p class="small">Panels nur mit Rand. Schatten nur, was über der Seite liegt: Dialog, Marker, Griffe.</p></div>
+    <div class="panel"><h3>Bewegung</h3><p class="small">160 ms, <code>cubic-bezier(.32,.72,.4,1)</code>, nur mit Bedeutung. „Bewegung reduzieren“ schaltet alles ab.</p></div>
+    <div class="panel"><h3>Bedienung</h3><p class="small">44 px am Handy, 48 px am Tablet, 8 px Abstand. Knöpfe, die warten, sagen es. Was alle betrifft, fragt nach.</p></div>
+    <div class="panel"><h3>Sprache</h3><p class="small">Du und ihr, kurz, ohne Gedankenstriche. Fehler sagen, was zu tun ist.</p></div>
+  </div>
+</main>
+<script>
+const ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#%&$@?!/<>*+=";
+function geheim(el, name, fest) {
+  el.innerHTML = name.split(" ").map(w => `<span class="wort">${[...w].map((c, i) => fest.includes(c + i) || fest.includes(c) ? `<i class="fest">${c}</i>` : `<i data-i>${c}</i>`).join("")}</span>`).join("");
+}
+geheim(document.getElementById("name"), "Rudolfstollen", ["R", "u", "o", "s", "e"]);
+geheim(document.getElementById("probe"), "Wasserturm Letná", ["W", "t", "L", "n"]);
+setInterval(() => {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  document.querySelectorAll(".geheim i[data-i]").forEach(z => { if (Math.random() < .6) z.textContent = ZEICHEN[Math.floor(Math.random() * ZEICHEN.length)]; });
+}, 80);
+// Werte und Kontraste aus den gerade gültigen Token ablesen, damit die Seite nie etwas anderes zeigt als das CSS
+function hex(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function lum(h) { h = h.replace("#", ""); const c = [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16) / 255).map(x => x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; }
+function k(a, b) { const [x, y] = [lum(hex(a)), lum(hex(b))].sort((p, q) => q - p); return ((x + .05) / (y + .05)).toFixed(1).replace(".", ",") + ":1"; }
+function werte() {
+  ["paper", "card", "ink", "muted", "feld", "line", "flag", "flag-ink", "flag-text", "water", "contour"].forEach(n => { document.getElementById("w-" + n).textContent = hex("--" + n); });
+  document.getElementById("k-flag").textContent = k("--flag-ink", "--flag"); document.getElementById("k-ok").textContent = k("--ok", "--ok-bg");
+  document.getElementById("k-err").textContent = k("--err", "--err-bg"); document.getElementById("k-warn").textContent = k("--warn", "--warn-bg");
+  document.getElementById("k-info").textContent = k("--ink", "--info-bg"); document.getElementById("k-muted").textContent = k("--muted", "--card");
+}
+function thema(t) {
+  document.documentElement.dataset.theme = t;
+  document.getElementById("hell").className = "btn sm" + (t === "light" ? "" : " alt"); document.getElementById("hell").setAttribute("aria-pressed", t === "light");
+  document.getElementById("dunkel").className = "btn sm" + (t === "dark" ? "" : " alt"); document.getElementById("dunkel").setAttribute("aria-pressed", t === "dark");
+  werte();
+}
+document.getElementById("hell").onclick = () => thema("light");
+document.getElementById("dunkel").onclick = () => thema("dark");
+thema(matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+</script>
+</body>
+</html>
