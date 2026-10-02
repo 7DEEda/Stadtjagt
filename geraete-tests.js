@@ -249,14 +249,14 @@
     /* ================= mit der Hand ================= */
     {
       id: "kompass-drehen", titel: "Kompass drehen", bezug: "läuft die Richtung mit?", block: "hand",
-      kopf: "Handy einmal drehen", hand: "Leg das Handy flach vor dich und dreh es langsam einmal ganz herum. Die Kugel läuft mit, bis der Kreis orange ist.", grenze: 60,
+      kopf: "Handy einmal drehen", hand: "Leg das Handy flach vor dich und dreh es langsam einmal ganz herum. Die Kugel läuft mit, bis der Kreis orange ist.", grenze: 40,
       async lauf(ctx) {
         const s = ctx.sensor; s.faecher.clear();
         const t0 = jetzt();
         // jede Kompassmeldung mitschreiben (sensor.bei in geraete-test.html): [ms seit Los, Richtung in °, Genauigkeit in ° oder null]
         s.spur = { t0: performance.now(), w: [], letzte: null, max: 0, maxBei: null, ueber30: 0 };
-        // bis der Kreis voll ist (alle 36 Fächer), höchstens 45 s; dann kurz auf 100 % stehen bleiben, damit man es sieht
-        while (s.faecher.size < 36 && jetzt() - t0 < 45000) { ctx.status(`${s.faecher.size} von 36`); await ctx.warte(150); }
+        // bis der Kreis voll ist (alle 36 Fächer), höchstens 30 s; dann kurz auf 100 % stehen bleiben, damit man es sieht
+        while (s.faecher.size < 36 && jetzt() - t0 < 30000) { ctx.status(`${s.faecher.size} von 36`); await ctx.warte(150); }
         const n = s.faecher.size;
         ctx.status(`${n} von 36`);
         if (n >= 36) await ctx.warte(700);
@@ -266,7 +266,7 @@
           "Meldungen": sp.w.length, "Meldungen pro Sekunde": rund(sp.w.length / Math.max(dauer, 0.1), 1),
           "Größter Sprung zwischen zwei Meldungen": Math.round(sp.max) + "°" + (sp.maxBei != null ? ` nach ${rund(sp.maxBei / 1000, 1)} s` : ""),
           "Sprünge über 30°": sp.ueber30 };
-        // kompakt, damit 45 s bei voller Rate unter der Grenze des Servers (64 KB je Lauf) bleiben:
+        // kompakt, damit 30 s bei voller Rate unter der Grenze des Servers (64 KB je Lauf) bleiben:
         // je Meldung "Abstand zur vorigen in ms,Richtung in 0,1°[,Genauigkeit in °]", getrennt durch ";"
         let vor = 0;
         const roh = { format: "dt_ms,grad_x10[,genauigkeit_grad];...", daten: sp.w.map(([t, g, a]) => { const d = t - vor; vor = t; return d + "," + Math.round(g * 10) + (a == null ? "" : "," + a); }).join(";") };

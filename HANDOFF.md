@@ -1567,7 +1567,7 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
 - Suite 9 (02.10.): „Kompass nach Pause“ entfällt, sechs Hand-Schritte.
   Ältere Läufe enthalten ihn noch.
 - „Handy einmal drehen“ läuft bis zum vollen Kreis (36 von 36, höchstens
-  45 s) und bleibt kurz auf 100 % stehen; die Anzeige rechnet auf 36. „ok“
+  30 s) und bleibt kurz auf 100 % stehen; die Anzeige rechnet auf 36. „ok“
   gilt weiter ab 30 Fächern, falls die Zeit abläuft.
 - Suite 10 (02.10.): „Kompass“ im automatischen Teil gilt nicht mehr als
   Fehler, wenn das Handy still liegt (Chrome meldet nur Änderungen; die
@@ -1595,4 +1595,4 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   (`GLATT` 0,12 je Bild, Ausreißer über 40° nur mit 0,04); die Zählung der
   Striche bleibt roh. Anlass: auf dem Xiaomi 22021211RG sprang die Zahl
   sichtbar, am selben Platz wie beim Lauf davor.
-
+- Drehen höchstens 30 s (02.10.): bei 60 Meldungen pro Sekunde etwa 15 KB Rohdaten.
