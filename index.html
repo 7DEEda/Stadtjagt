@@ -1069,11 +1069,13 @@ function kompassChip() {
   if (kompassFolgt()) return `<span class="chip kchip ok" id="kchip">Kompass</span>`;
   return `<span class="chip kchip warn" id="kchip">${g.gpsHeading != null ? "nach Laufrichtung" : "erst ein paar Schritte"}</span>`;
 }
+// Gibt es jemanden, an den die Teamleitung (nicht ein Mitleser) die Leitung abgeben kann?
+const leitungAbgebbar = (st, lesen) => !lesen && (st.team.members || []).some(m => m !== st.team.leaderName);
 // Hinweis des Wächters; nach erfolglosem Einmessen ehrlicher (Mockup rollen-akku-kompass.html)
 function waechterHinweisHTML(st, lesen) {
   const g = S.gps, w = g.waechter;
   if (!g.waechterGrund || !w) return "";
-  const leitung = !lesen;
+  const leitung = leitungAbgebbar(st, lesen);
   const tipp = `Tipp: Schaut auf ein anderes Handy aus eurem Team. Wer mitliest und den Standort freigibt, sieht dort den Pfeil mit dem eigenen Kompass.${leitung ? " Oder gebt die Leitung an jemanden ab, dessen Handy richtig zeigt." : ""}`;
   const abgeben = leitung ? `<button class="btn alt" data-act="t-abgeben-frage">Leitung abgeben</button>` : "";
   if (w.prueft) return `<div class="msg info"><b>Kompass wird geprüft …</b> Dreht euch einmal um, dann sieht das Handy, ob der Kompass jetzt mitgeht.</div>`;
@@ -1340,8 +1342,8 @@ function qrSvg(text) {
 // Nur für die Teamleitung: Mitlese-Link fürs Team (außer er steht schon oben) und die Leitung abgeben
 function leitungHTML(st, ohneMit) {
   let h = ohneMit ? "" : mitlesePanelHTML(st, "Wer diesen Link öffnet, sieht auf dem eigenen Handy alles, was ihr hier seht: Station, Rätsel, Ziffern. Eingeben könnt nur ihr.");
-  const andere = (st.team.members || []).filter(m => m !== st.team.leaderName);
-  if (!andere.length) return h;
+  if (!leitungAbgebbar(st, false)) return h;
+  const andere = st.team.members.filter(m => m !== st.team.leaderName);
   return h + (S.team.abgeben
     ? `<div class="panel"><h3>Leitung abgeben</h3>
         <p class="small muted">Die neue Leitung tippt auf ihrem eigenen Handy auf „Teamleitung“ und ist gleich drin. Dieses Handy gibt danach nichts mehr ein.</p>
@@ -2324,7 +2326,11 @@ const ACT = {
     try { await navigator.clipboard.writeText(link); S.msg = { type: "ok", ort: "mit", text: "Link kopiert. Schickt ihn in eure Team-Gruppe." }; }
     catch { S.msg = { type: "info", ort: "mit", text: link }; }
   },
-  "t-abgeben-frage"() { S.team.abgeben = true; S.msg = null; },
+  "t-abgeben-frage"() {
+    S.team.abgeben = true; S.msg = null;
+    // Der Knopf im Kompass-Hinweis steht weit weg vom Fenster: nach dem Neuzeichnen hinscrollen
+    setTimeout(() => { const f = $("#tneu"); if (f) f.closest(".panel").scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }, 50);
+  },
   "t-abgeben-nein"() { S.team.abgeben = false; S.msg = null; },
   // Die Rückmeldung gehört unter das Abgeben-Feld (ort "abgeben"): das steht in jeder Phase,
   // die allgemeine Meldung nur an Station, Rätsel und Koffer
