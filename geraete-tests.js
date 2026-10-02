@@ -3,7 +3,7 @@
 // Ein Baustein:
 //   id      Kennung, unter der das Ergebnis gespeichert wird (nie umbenennen, sonst passen alte Läufe nicht mehr)
 //   titel   Zeile in der Liste
-//   bezug   wofür das Spiel es braucht
+//   bezug   wofür die App es braucht
 //   block   "auto" | "hand" | "neu": die Überschrift, unter der die Zeile steht
 //   selbst  true: läuft nach dem einen Tipp von allein (in "auto" immer)
 //   hand    Anweisung, wenn der Schritt eine Hand braucht
@@ -14,7 +14,7 @@
 // ctx: rpc(fn, args), cfg {url, key}, warte(ms), status(text), sensor (Ausrichtung, siehe geraete-test.html),
 //      bewegung (Ergebnis der iOS-Nachfrage), wach (gehaltener Wake Lock), feld (Element in der Zeile für Vorschau)
 //
-// Neuer Spielinhalt: Baustein anhängen und version hochzählen.
+// Neue Funktion: Baustein anhängen und version hochzählen.
 (function () {
   const KOMPASS_GRENZE = 25;   // wie in index.html
   const jetzt = () => performance.now();
@@ -87,7 +87,7 @@
       }
     },
     {
-      id: "speicher", titel: "Speicher", bezug: "für den Geräte-Schlüssel der Anmeldung", block: "auto",
+      id: "speicher", titel: "Speicher", bezug: "merkt sich Einstellungen", block: "auto",
       async lauf() {
         const probe = name => { try { const s = window[name]; s.setItem("sj._t", "1"); const ok = s.getItem("sj._t") === "1"; s.removeItem("sj._t"); return ok; } catch { return false; } };
         const ls = probe("localStorage"), ss = probe("sessionStorage");
@@ -100,7 +100,7 @@
       }
     },
     {
-      id: "server", titel: "Server", bezug: "für alles im Spiel", block: "auto",
+      id: "server", titel: "Server", bezug: "Verbindung zum Server", block: "auto",
       async lauf(ctx) {
         const zeiten = [];
         for (let i = 0; i < 5; i++) { const t = jetzt(); await ctx.rpc("public_state"); zeiten.push(Math.round(jetzt() - t)); }
@@ -110,7 +110,7 @@
       }
     },
     {
-      id: "uhr", titel: "Uhr", bezug: "für Zeitachse und Spieldauer", block: "auto",
+      id: "uhr", titel: "Uhr", bezug: "für Zeitangaben", block: "auto",
       async lauf(ctx) {
         let beste = null;
         for (let i = 0; i < 3; i++) {
@@ -124,7 +124,7 @@
       }
     },
     {
-      id: "standort", titel: "Standort", bezug: "für das Einchecken an der Station", block: "auto", grenze: 45,
+      id: "standort", titel: "Standort", bezug: "für die Ortung", block: "auto", grenze: 45,
       async lauf(ctx) {
         if (!navigator.geolocation) return { art: "err", wert: "fehlt", mess: { "Geolocation": "nicht vorhanden" } };
         let vorher = "keine Angabe";
@@ -202,7 +202,7 @@
       }
     },
     {
-      id: "karte", titel: "Karte", bezug: "für die Karte der Spielleitung", block: "auto",
+      id: "karte", titel: "Karte", bezug: "für Kartenansichten", block: "auto",
       async lauf() {
         const mess = {}; let ok = true;
         let t = jetzt();
@@ -211,10 +211,10 @@
         t = jetzt();
         try {
           await new Promise((res, rej) => { const i = new Image(); i.onload = res; i.onerror = () => rej(new Error("Fehler")); i.src = "https://a.tile.openstreetmap.org/15/17696/11100.png"; });
-          mess["OSM-Kachel Prag in ms"] = Math.round(jetzt() - t);
-        } catch { ok = false; mess["OSM-Kachel Prag"] = "lädt nicht"; }
+          mess["OSM-Kachel in ms"] = Math.round(jetzt() - t);
+        } catch { ok = false; mess["OSM-Kachel"] = "lädt nicht"; }
         if (!ok) return { art: "err", wert: "lädt nicht", mess };
-        const summe = mess["Leaflet von unpkg in ms"] + mess["OSM-Kachel Prag in ms"];
+        const summe = mess["Leaflet von unpkg in ms"] + mess["OSM-Kachel in ms"];
         return { art: summe <= 3000 ? "ok" : "warn", wert: komma(summe / 1000) + " s", mess };
       }
     },
@@ -229,7 +229,7 @@
       }
     },
     {
-      id: "teilen", titel: "Teilen", bezug: "für den Mitlese-Link", block: "auto",
+      id: "teilen", titel: "Teilen", bezug: "für das Teilen von Links", block: "auto",
       async lauf() {
         const a = typeof navigator.share === "function", b = !!navigator.clipboard?.writeText;
         const mess = { "Teilen-Dialog": janein(a), "Zwischenablage": janein(b) };
@@ -288,7 +288,7 @@
 
     {
       // Ein iPhone (iOS 18.7, kein Stromsparmodus) verweigerte die Sperre im automatischen Teil. Dieser Schritt
-      // fragt sie direkt im Fingertipp an: klappt es so, braucht das Gerät den Tipp, und das Spiel muss sie dort holen.
+      // fragt sie direkt im Fingertipp an: klappt es so, braucht das Gerät den Tipp, und die App muss sie dort holen.
       id: "wachhalten-tipp", titel: "Wach halten, mit Tipp", bezug: "braucht die Sperre einen Fingertipp?", block: "hand",
       hand: "Nur auf Los tippen, mehr ist nicht zu tun.", grenze: 20,
       lauf(ctx) {
@@ -299,7 +299,7 @@
         return anfrage.then(l => {
           ctx.wach.sperre = l;
           const mess = { "Mit Tipp": "erteilt", "Ohne Tipp": ohne, "Tipp gilt noch (userActivation)": aktiv, "Seite sichtbar": document.visibilityState };
-          if (ohne !== "erteilt") mess["Hinweis"] = "Dieses Gerät vergibt die Sperre nur direkt aus einem Fingertipp. Das Spiel muss sie beim Tippen holen.";
+          if (ohne !== "erteilt") mess["Hinweis"] = "Dieses Gerät vergibt die Sperre nur direkt aus einem Fingertipp. Eine Seite muss sie beim Tippen holen.";
           return { art: "ok", wert: ohne === "erteilt" ? "erteilt" : "nur mit Tipp", mess };
         }, e => ({ art: "warn", wert: "auch mit Tipp verweigert", mess: { "Fehler": e.name + ": " + e.message, "Ohne Tipp": ohne,
           "Tipp gilt noch (userActivation)": aktiv, "Seite sichtbar": document.visibilityState,
@@ -308,7 +308,7 @@
     },
 
     {
-      // Befund aus dem Spiel (Android): nach dem Wechsel in eine andere App zeigte der Kompass mit festem Versatz daneben.
+      // Befund aus der App (Android): nach dem Wechsel in eine andere App zeigte der Kompass mit festem Versatz daneben.
       // Der Schritt misst das: Richtung vor der Pause, dann stillhalten und zusehen, ob der Wert nachwandert.
       // Wandert er bei ruhigem Handy, war der erste Wert nach der Pause falsch.
       id: "kompass-pause", titel: "Kompass nach Pause", bezug: "stimmt die Richtung nach einem App-Wechsel?", block: "hand",
@@ -333,7 +333,7 @@
           "Gegenüber vorher gedreht um": Math.round(gedreht) + "°", "Im Stillhalten nachgewandert um": Math.round(wandert) + "°",
           "Ereignisse nach der Rückkehr": s.n - n0, "Quelle": s.quelle };
         if (s.n === n0) return { art: "err", wert: "kommt nicht wieder", mess };
-        if (wandert > 25) { mess["Hinweis"] = "Der Kompass lag nach der Pause daneben und hat sich erst beim Stillhalten berichtigt. Das Spiel lässt deshalb nach einer Pause neu einmessen."; return { art: "warn", wert: `wandert ${Math.round(wandert)}° nach`, mess }; }
+        if (wandert > 25) { mess["Hinweis"] = "Der Kompass lag nach der Pause daneben und hat sich erst beim Stillhalten berichtigt. Nach einer Pause muss man deshalb neu einmessen."; return { art: "warn", wert: `wandert ${Math.round(wandert)}° nach`, mess }; }
         if (gedreht < 30) { mess["Hinweis"] = "Die Richtung ist nach der Pause fast dieselbe wie vorher. Hast du dich eine Vierteldrehung gedreht? Falls ja, ist der Kompass stehen geblieben und hat sich in 20 Sekunden nicht gefangen."; return { art: "warn", wert: "unverändert", mess }; }
         return { art: "ok", wert: "sofort richtig", mess };
       }
@@ -341,7 +341,7 @@
 
     /* ================= neue Funktionen ================= */
     {
-      id: "kamera", titel: "Kamera und Foto", bezug: "für Foto-Rätsel und Beweisfoto", block: "neu",
+      id: "kamera", titel: "Kamera und Foto", bezug: "für Fotos", block: "neu",
       hand: "Mach ein Foto von irgendetwas.", grenze: 180,
       lauf(ctx) {
         // Der Klick auf das Feld muss noch im Fingertipp passieren, darum kein async vor input.click()
@@ -382,7 +382,7 @@
       }
     },
     {
-      id: "vibration", titel: "Vibration", bezug: "Rückmeldung bei richtiger Antwort", block: "neu",
+      id: "vibration", titel: "Vibration", bezug: "Rückmeldung per Vibration", block: "neu",
       hand: "Das Handy vibriert zweimal kurz.", frage: "Hast du die Vibration gespürt?",
       async lauf(ctx) {
         if (typeof navigator.vibrate !== "function") return { art: "err", wert: "fehlt", mess: { "navigator.vibrate": "nicht vorhanden, auf iPhones immer" } };
@@ -401,7 +401,7 @@
         try { r = await Notification.requestPermission(); } catch (e) { mess["Fehler"] = e.message; return { art: "err", wert: "Fehler", mess }; }
         mess["Erlaubnis"] = r;
         if (r !== "granted") return { art: "warn", wert: r === "denied" ? "abgelehnt" : "offen", mess };
-        try { new Notification("Stadtjagd Geräte-Test", { body: "Diese Mitteilung ist der Test." }); mess["Direkt angezeigt"] = "ja"; return { art: "ok", wert: "erlaubt", mess }; }
+        try { new Notification("Geräte-Test", { body: "Diese Mitteilung ist der Test." }); mess["Direkt angezeigt"] = "ja"; return { art: "ok", wert: "erlaubt", mess }; }
         catch (e) { mess["Direkt angezeigt"] = "nein, braucht einen Service Worker"; return { art: "warn", wert: "nur mit Service Worker", mess }; }
       }
     },

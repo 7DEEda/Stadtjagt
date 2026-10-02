@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Stadtjagd Geräte-Test</title>
+<title>Geräte-Test</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* Farben, Schrift, Karten und Hintergrund wie index.html, damit der Test das Spiel so zeigt, wie es das Gerät zeigen würde. */
+/* Farben, Schrift, Karten und Hintergrund wie index.html, damit der Test die App so zeigt, wie das Gerät sie zeigen würde. */
 :root{
   --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#445650; --line:#D3DECF;
   --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#0F1B18; --water:#2F6E9E;
@@ -58,7 +58,7 @@ body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);min-heig
 .topo .nord text{font:700 10px var(--head);fill:var(--muted);opacity:.55;text-anchor:middle}
 .topo .mass path{fill:none;stroke:var(--muted);opacity:.45}
 .topo .mass text{font:500 8px var(--body);fill:var(--muted);opacity:.55}
-/* B: Prag-Stadtplan aus OpenStreetMap */
+/* B: Stadtplan aus OpenStreetMap */
 .topo .park{fill:var(--park)}
 .topo .wasser{fill:var(--water);fill-opacity:.16;stroke:var(--water);stroke-opacity:.35;stroke-width:.7}
 .topo .bach{fill:none;stroke:var(--water);stroke-width:.8;opacity:.35}
@@ -216,9 +216,9 @@ li.dran,li.laeuft.hand,li.frage{background:var(--dran-bg);margin:0 -16px;padding
 <main>
   <div class="brand">
     <svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><g id="nadel"><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></g></svg>
-    <div><h1>Geräte-Test</h1><div class="small muted" id="unter">Stadtjagd</div></div>
+    <div><h1>Geräte-Test</h1><div class="small muted" id="unter"></div></div>
   </div>
-  <p>Prüft, was das Spiel von diesem Gerät braucht oder brauchen könnte. Erlaube Standort und Bewegung, wenn das Handy fragt.</p>
+  <p>Prüft, was eine Web-App auf diesem Gerät nutzen kann. Erlaube Standort und Bewegung, wenn das Handy fragt.</p>
 
   <div class="panel">
     <button class="btn" id="start">Alles testen</button>
@@ -234,7 +234,7 @@ li.dran,li.laeuft.hand,li.frage{background:var(--dran-bg);margin:0 -16px;padding
   <div class="panel"><div class="kopf"><h2>Von allein</h2><span id="k-auto"></span></div><ul class="liste" id="auto" hidden></ul></div>
   <div class="panel"><div class="kopf"><h2>Mit deiner Hand</h2><span id="k-hand"></span></div><ul class="liste" id="hand" hidden></ul></div>
   <div class="panel"><div class="kopf"><h2>Neue Funktionen</h2><span id="k-neu"></span></div>
-    <p class="small muted" id="neu-hinweis" hidden>Noch nicht im Spiel. Hier klären wir, ob sie auf diesem Gerät gehen würden.</p><ul class="liste" id="neu" hidden></ul></div>
+    <p class="small muted" id="neu-hinweis" hidden>Wird noch nicht gebraucht. Hier klären wir, ob es auf diesem Gerät gehen würde.</p><ul class="liste" id="neu" hidden></ul></div>
 
   <div class="unten" id="unten" hidden>
     <button class="btn alt" id="kopie">Bericht kopieren</button>
@@ -284,7 +284,7 @@ const sensor = {
   },
   bei(e) {
     this.n++;
-    // Richtung bestimmen wie das Spiel: iOS liefert webkitCompassHeading, Android alpha im absoluten Ereignis
+    // Richtung bestimmen wie die App: iOS liefert webkitCompassHeading, Android alpha im absoluten Ereignis
     if (typeof e.webkitCompassHeading === "number") {
       this.richtung = e.webkitCompassHeading; this.quelle = "webkitCompassHeading";
       if (typeof e.webkitCompassAccuracy === "number") this.genau = e.webkitCompassAccuracy;
@@ -321,11 +321,8 @@ const brauchtNachfrage = window.DeviceOrientationEvent && typeof DeviceOrientati
 // inzwischen auch in Chrome, am Vorhandensein lässt sich iOS also nicht mehr erkennen.
 sensor.start();
 
-/* ---------- Hintergrund wie im Spiel: die Wahl der Spielleitung ---------- */
-rpc("public_state").then(s => {
-  if (!s || !/^[abc]$/.test(s.background || "")) return;
-  return fetch(`hintergrund/${s.background}.svg`).then(r => r.ok ? r.text() : Promise.reject()).then(svg => { $("#topo").innerHTML = svg; });
-}).catch(() => { /* ohne Verbindung bleibt die klassische Karte */ });
+/* Hintergrund: immer die klassische Karte aus dem Markup. Die Varianten A bis C zeigt die Seite
+   bewusst nicht, sie tragen Ortsnamen und Posten, der Test soll neutral bleiben. */
 
 /* ---------- Lauf ---------- */
 const zufall = n => { const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", z = crypto.getRandomValues(new Uint8Array(n)); return [...z].map(b => a[b % a.length]).join(""); };
@@ -335,7 +332,7 @@ const Z = SUITE.tests.map(t => ({ t, selbst: t.block === "auto" || !!t.selbst, s
 const HAND = Z.filter(z => !z.selbst);
 let aktiv = null;   // der Hand-Schritt, der gerade läuft oder auf Ja/Nein wartet; solange ist kein anderer startbar
 
-$("#unter").textContent = `Stadtjagd · Suite ${SUITE.version} · ${Z.length} Schritte`;
+$("#unter").textContent = `Suite ${SUITE.version} · ${Z.length} Schritte`;
 
 // In jedem Block stehen die selbstlaufenden Schritte oben, die mit der Hand darunter
 for (const z of [...Z].sort((a, b) => b.selbst - a.selbst)) {
@@ -539,7 +536,7 @@ $("#neuLauf").onclick = () => {   // neuer Lauf, neuer Schlüssel
   if (!offen || confirm(`Noch ${offen === 1 ? "ein Schritt" : offen + " Schritte"} offen. Trotzdem neu beginnen?`)) location.reload();
 };
 
-// Wake Lock gibt der Browser beim Wechsel in eine andere App frei; beim Zurückkommen neu holen wie das Spiel
+// Wake Lock gibt der Browser beim Wechsel in eine andere App frei; beim Zurückkommen neu holen wie die App
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && basis.wach.sperre && basis.wach.sperre.released && navigator.wakeLock && !Z.some(z => z.t.id === "bildschirm" && z.st === "laeuft"))
     navigator.wakeLock.request("screen").then(l => { basis.wach.sperre = l; }).catch(() => {});
@@ -547,7 +544,7 @@ document.addEventListener("visibilitychange", () => {
 
 function kopieren(k, zurueck) {
   const p = payload();
-  const text = `Stadtjagd Geräte-Test, Suite ${p.suite}, Lauf ${lauf.key.slice(0, 4)}\n${p.label}\n${p.ua}\n\n`
+  const text = `Geräte-Test, Suite ${p.suite}, Lauf ${lauf.key.slice(0, 4)}\n${p.label}\n${p.ua}\n\n`
     + Z.map(z => `${z.t.titel}: ${z.erg ? z.erg.wert + " (" + z.erg.art + ")" : "nicht gelaufen"}`
       + (z.erg ? Object.keys(z.erg.mess || {}).map(k => `\n    ${k}: ${z.erg.mess[k]}`).join("") : "")).join("\n");
   const meld = s => { k.textContent = s; setTimeout(() => { k.textContent = zurueck; }, 2000); };
