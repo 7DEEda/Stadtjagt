@@ -14,10 +14,10 @@
     let kompassAlt = null, kompassWeg = 0;
     let dreh = null, still = null;
 
-    const melden = () => { if (opt.onWechsel) opt.onWechsel({ urteil, vorbelastet, versuche }); };
+    const melden = () => { if (opt.onWechsel) opt.onWechsel({ urteil, vorbelastet, versuche, prueft: nachEinmessen >= 0 }); };
     function ergebnis(e) {
       ergebnisse.push(e); if (ergebnisse.length > 4) ergebnisse.shift();
-      const vorher = urteil;
+      const vorher = urteil, prueftVorher = nachEinmessen >= 0;
       if (nachEinmessen >= 0) {
         nachEinmessen++;
         if (e === "schlecht" && urteil === "unzuverlaessig") { versuche++; nachEinmessen = -1; }
@@ -32,7 +32,7 @@
         if (ergebnisse.filter(x => x === "schlecht").length >= 3 && urteil !== "unzuverlaessig") { urteil = "unzuverlaessig"; vorbelastet = true; }
         else if (urteil == null) urteil = "ok";
       }
-      if (urteil !== vorher || e === "schlecht") melden();
+      if (urteil !== vorher || e === "schlecht" || (nachEinmessen >= 0) !== prueftVorher) melden();
     }
     function schritt(t) {
       if (!gyroDa) return;

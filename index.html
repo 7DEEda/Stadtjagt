@@ -563,9 +563,15 @@ const S = {
 function waechterNeu() {
   let m = {}; try { m = JSON.parse(LS.getItem("sj.kompass") || "{}"); } catch { /* defekt: neu anfangen */ }
   const frisch = m.datum && (Date.now() - Date.parse(m.datum)) < 86400000;
-  return window.KompassWaechter ? KompassWaechter({ vorbelastet: frisch && !!m.vorbelastet, versuche: frisch ? m.versuche || 0 : 0,
+  if (!window.KompassWaechter) return null;
+  // Neu zeichnen nur, wenn sich ändert, was der Hinweis zeigt (Urteil, Versuche, Prüfen). Ein stehender schlechter Kompass
+  // meldet alle 3 s "schlecht"; jedes Mal neu gezeichnet, setzte das die Auswahl bei "Leitung abgeben" zurück.
+  const zeigt = z => [z.urteil, z.versuche, z.prueft].join("/");
+  const w = KompassWaechter({ vorbelastet: frisch && !!m.vorbelastet, versuche: frisch ? m.versuche || 0 : 0,
     onWechsel: z => { try { LS.setItem("sj.kompass", JSON.stringify({ vorbelastet: z.vorbelastet, versuche: z.versuche, datum: new Date().toISOString().slice(0, 10) })); } catch { /* egal */ }
-      kompassNeu = true; } }) : null;
+      if (zeigt(z) !== gezeigt) { gezeigt = zeigt(z); kompassNeu = true; } } });
+  let gezeigt = zeigt(w);
+  return w;
 }
 S.gps.waechter = waechterNeu();
 const waechterSchlecht = () => { const st = aktiverStand(); return !!(st && st.testMode && S.gps.waechter && S.gps.waechter.urteil === "unzuverlaessig"); };
@@ -3256,7 +3262,7 @@ function render() {
   const fokus = document.activeElement && app.contains(document.activeElement) ? document.activeElement : null;
   const fokusId = fokus && fokus.id, auswahl = fokus && typeof fokus.selectionStart === "number" ? [fokus.selectionStart, fokus.selectionEnd] : null;
   if (!S.felderFrisch && S.feldKontext === kontext)
-    app.querySelectorAll("input[id]:not([type=range]):not([type=password]), textarea[id]").forEach(el => { getippt[el.id] = el.value; });
+    app.querySelectorAll("input[id]:not([type=range]):not([type=password]), textarea[id], select[id]").forEach(el => { getippt[el.id] = el.value; });
   S.felderFrisch = false;
   app.className = S.view === "admin" && S.admin.pin ? "wide" : "";
   const stand = S.view === "admin" ? S.admin.state : S.view === "team" ? S.team.state : S.pub;
@@ -3270,7 +3276,10 @@ function render() {
   document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross || $("#kal")));
   S.feldKontext = feldKontext();
   if (S.feldKontext === kontext) {
-    Object.keys(getippt).forEach(id => { const el = document.getElementById(id); if (el && !el.disabled && getippt[id] !== "") el.value = getippt[id]; });
+    Object.keys(getippt).forEach(id => { const el = document.getElementById(id); if (!el || el.disabled || getippt[id] === "") return;
+      el.value = getippt[id];
+      // eine gerettete Auswahl schaltet frei, was an ihr hängt (etwa "Übergeben")
+      if (el.tagName === "SELECT") el.dispatchEvent(new Event("change", { bubbles: true })); });
     const f = fokusId && document.getElementById(fokusId);
     if (f && !f.disabled) { f.focus({ preventScroll: true }); if (auswahl) try { f.setSelectionRange(auswahl[0], auswahl[1]); } catch { } }
   }

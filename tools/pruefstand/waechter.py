@@ -105,6 +105,9 @@ with sync_playwright() as pw:
     r = pg.evaluate("""() => { const z = []; const w = KompassWaechter({ onWechsel: x => z.push(x.urteil + "/" + x.vorbelastet) });
       lauf(w, [].concat(...Array.from({length: 3}, () => drehung(0.4)))); return z; }""")
     pruef("unzuverlaessig/true" in r, f"onWechsel meldet Urteil und Vermerk ({r})")
+    r = pg.evaluate("""() => { const z = []; const w = KompassWaechter({ vorbelastet: true, onWechsel: x => z.push(x.prueft) }); w.einmessen();
+      lauf(w, [].concat(...Array.from({length: 3}, () => drehung(1)))); return [z, w.prueft, w.urteil]; }""")
+    pruef(r == [[True, False], False, "unzuverlaessig"], f"onWechsel meldet Beginn und Ende des Prüfens nach dem Einmessen ({r})")
 
     print("Spiel")
     pg2 = b.new_page(viewport={"width": 390, "height": 844}); pg2.set_default_timeout(15000)
@@ -210,14 +213,14 @@ with sync_playwright() as pw:
     # Auswahl treffen, dann meldet der Wächter "schlecht" (Kompass wandert im Stillstand): Auswahl und Knopf bleiben
     name = pg2.evaluate("[...document.querySelectorAll('#tneu option')].map(o => o.textContent)[1]")
     pg2.select_option("#tneu", name); pg2.wait_for_timeout(100)
-    r = pg2.evaluate("""() => { let t = performance.now() + 1000, a = 63;
+    r = pg2.evaluate("""() => { window.__tneu = document.querySelector('#tneu'); let t = performance.now() + 1000, a = 63;
       for (let i = 0; i < 200; i++) { t += 20; a = (a + 0.3) % 360;
         motionH({ accelerationIncludingGravity: { x: 0, y: 0, z: 9.8 }, rotationRate: { alpha: 0, beta: 0, gamma: 0 }, timeStamp: t });
         window.__zustellen({ alpha: a, beta: 35, gamma: 0, absolute: true, timeStamp: t }); }
       return S.gps.waechter.ergebnisse; }""")
     pg2.wait_for_timeout(300)
-    z = pg2.evaluate("[document.querySelector('#tneu').value, document.querySelector('#tabgeben').disabled]")
-    pruef("schlecht" in r and z == [name, False], f"Wächter meldet schlecht: Auswahl bleibt, Übergeben bleibt aktiv ({r}, {z})")
+    z = pg2.evaluate("[document.querySelector('#tneu').value, document.querySelector('#tabgeben').disabled, document.querySelector('#tneu') === window.__tneu]")
+    pruef("schlecht" in r and z == [name, False, True], f"Wächter meldet schlecht: kein Neuzeichnen, Auswahl bleibt, Übergeben bleibt aktiv ({r}, {z})")
     pg2.evaluate("render()"); pg2.wait_for_timeout(100)
     z = pg2.evaluate("[document.querySelector('#tneu').value, document.querySelector('#tabgeben').disabled]")
     pruef(z == [name, False], f"Neuzeichnen behält die Auswahl ({z})")
