@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Rollen Akku Kompass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Klickbares Mockup: drei Handys eines Teams nebeneinander. Rolle (Teamleitung oder Mitglied) kommt vom "Server",
+   jedes Handy schaltet nach dem nächsten Abruf (hier 1,5 s) von selbst um. Unter jedem Handy die Regler zum Spielen:
+   Akku, lädt, Kompass schlecht, verbunden. Aussehen wie index.html. */
+:root{--paper:#F1F5EE;--card:#FFFFFF;--ink:#17302A;--muted:#5B6F68;--line:#D3DECF;--feld:#7D9189;--flag:#EE5F1B;--flag-ink:#0F1B18;
+  --warn:#8A5A00;--warn-bg:#FBF0D9;--err:#B3261E;--err-bg:#FBE9E7;--ok:#25683F;--ok-bg:#E3F1E7;--info-bg:#E6EEF4;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;--body:"Barlow",system-ui,sans-serif;--ease:cubic-bezier(.32,.72,.4,1)}
+*{box-sizing:border-box}
+body{margin:0;background:#2b2f2d;font:17px/1.5 var(--body);color:var(--ink);padding:20px 16px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+.kopfzeile{color:#fff;max-width:1240px;margin:0 auto 14px;font-size:15px}
+.kopfzeile b{font:700 22px var(--head)}
+.reihe{display:flex;flex-wrap:wrap;gap:22px;justify-content:center}
+.spalte{display:flex;flex-direction:column;align-items:center;gap:10px}
+.handy{width:380px;height:760px;border-radius:34px;border:10px solid #111;background:var(--paper);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.status{display:flex;justify-content:space-between;padding:8px 18px 0;font:600 13px var(--body);color:var(--muted)}
+.status .bat{display:inline-flex;align-items:center;gap:4px}
+.app{flex:1;overflow:auto;padding:10px 14px 16px}
+.top h1{font-size:26px}
+.rolle{font-size:14px;color:var(--muted);margin:2px 0 10px}
+.rolle b{color:var(--ink)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:10px}
+.small{font-size:14px}.muted{color:var(--muted)}
+.name{font:700 22px var(--head);margin:2px 0 8px}
+.compass{display:flex;gap:14px;align-items:center}
+.compass svg{width:96px;height:96px;flex:none}
+.ring{fill:none;stroke:var(--line);stroke-width:4}
+.needle{fill:var(--flag);transition:transform .4s var(--ease);transform-origin:39px 39px}
+.dist{font:700 34px var(--head);line-height:1}
+.btn{display:block;width:100%;min-height:46px;border:0;border-radius:10px;font:700 18px var(--head);background:var(--flag);color:var(--flag-ink);margin-top:10px;cursor:pointer}
+.btn.alt{background:var(--card);color:var(--ink);border:1.5px solid var(--feld);font-size:16px}
+.link{background:none;border:0;font:600 14px var(--body);color:var(--muted);text-decoration:underline;cursor:pointer;padding:8px 0;min-height:40px}
+.msg{border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14px}
+.msg b{display:block;font:700 16px var(--head);margin-bottom:2px}
+.msg.warn{background:var(--warn-bg);color:var(--warn)}
+.msg.err{background:var(--err-bg);color:var(--err)}
+.msg.ok{background:var(--ok-bg);color:var(--ok)}
+.msg.info{background:var(--info-bg)}
+.lock{display:flex;gap:6px;margin-top:6px}
+.wheel{width:38px;height:48px;border-radius:8px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font:700 26px var(--head)}
+.wheel.leer{opacity:.4}.wheel.schluss{margin-left:8px;outline:2px dashed var(--feld);outline-offset:2px}
+/* Hinweis "Du leitest jetzt" oben */
+.toast{position:absolute;left:12px;right:12px;top:40px;background:var(--ink);color:#fff;border-radius:10px;padding:10px 14px;font-size:15px;
+  opacity:0;transform:translateY(-6px);transition:opacity .16s var(--ease),transform .16s var(--ease);pointer-events:none;z-index:6}
+.toast.an{opacity:1;transform:none}
+/* Fenster */
+.overlay{position:absolute;inset:0;z-index:5;display:grid;place-items:center;padding:12px;background:color-mix(in srgb,var(--paper) 70%,transparent);
+  animation:ein .16s var(--ease)}
+@keyframes ein{from{opacity:0}to{opacity:1}}
+.dialog{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;width:100%;box-shadow:0 12px 32px rgba(17,17,17,.14),0 2px 6px rgba(17,17,17,.06);
+  animation:auf .16s var(--ease)}
+@keyframes auf{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+.akkuzeile{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.akkuzeile b{font:700 28px var(--head);white-space:nowrap}
+.dialog h2{font-size:22px;margin-bottom:4px}
+.dialog p{margin:0 0 8px;font-size:15px}
+.wahl{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.wahl button{min-height:46px;border-radius:10px;border:1.5px solid var(--feld);background:var(--card);font:600 16px var(--body);padding:6px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--ink)}
+.wahl button.an{border-color:var(--flag);box-shadow:0 0 0 3px rgba(238,95,27,.18)}
+.wahl small{color:var(--muted);font-weight:500;font-size:13px;white-space:nowrap}
+.wahl small.knapp{color:var(--err)}
+.row2{display:flex;gap:8px}.row2 .btn{flex:1}
+/* Regler unter dem Handy */
+.regler{background:#fff;border-radius:12px;padding:10px 12px;width:380px;font-size:14px;display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
+.regler b{grid-column:1/-1;font:700 16px var(--head)}
+.regler input[type=range]{width:100%}
+.regler label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.regler .haken{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 14px}
+.erkl{max-width:1240px;margin:16px auto 0;background:#fff;border-radius:12px;padding:14px 18px;font-size:14px}
+.erkl ul{margin:4px 0;padding-left:18px}
+</style>
+</head>
+<body>
+<div class="kopfzeile"><b>Team Fuchs: drei Handys</b><br>
+  Regler unter jedem Handy: Akku ziehen, „lädt“, „Kompass schlecht“, „Handy verbunden“. Auf den Handys selbst lässt sich tippen (Leitung abgeben, Übergeben, Später, Kompass einmessen).
+  Der „Server“ verteilt die Rolle, jedes Handy schaltet nach dem nächsten Abruf (1,5 s) von selbst um.</div>
+<div class="reihe" id="reihe"></div>
+<div class="erkl"><b>Was hier zu sehen ist</b>
+  <ul>
+    <li><b>Eine Ansicht für alle:</b> Teamleitung sieht „Wir sind da“, Mitglieder sehen „Einchecken macht Anna“. Nach einer Übergabe tauschen die Handys die Ansicht von selbst.</li>
+    <li><b>Akku:</b> fällt ein Handy unter 20 % (und lädt nicht), sehen alle im Team „Akku knapp“. Die Teamleitung bekommt bei 20 % und 10 % je einmal das Fenster zum Übergeben.</li>
+    <li><b>Kompass:</b> „Kompass schlecht“ zeigt den Hinweis des Wächters; bei der Teamleitung mit „Leitung abgeben“.</li>
+    <li><b>Nicht verbunden:</b> Personen, deren Handy sich gerade nicht meldet, stehen mit „Handy nicht verbunden“ in der Liste und sind trotzdem wählbar.</li>
+  </ul></div>
+<script>
+const NADEL = { anna: 35, jonas: 40, julia: 33 };
+const P = {
+  anna:  { name: "Anna Berger",  akku: 34, laedt: false, schlecht: false, verbunden: true, warn20: false, warn10: false },
+  jonas: { name: "Jonas Keller", akku: 81, laedt: false, schlecht: false, verbunden: true, warn20: false, warn10: false },
+  julia: { name: "Julia Krüger", akku: 52, laedt: false, schlecht: false, verbunden: true, warn20: false, warn10: false }
+};
+const IDS = Object.keys(P);
+const S = { leiter: "anna", sicht: { anna: "anna", jonas: "anna", julia: "anna" }, dialog: {}, wahl: {}, toast: {} };
+const vor = n => n.split(" ")[0];
+const AKKU = (p, farbe) => `<svg viewBox="0 0 30 16" width="26" height="14"><rect x="1" y="2" width="24" height="12" rx="3" fill="none" stroke="${farbe}" stroke-width="1.6"/><rect x="26" y="5.5" width="2.5" height="5" rx="1" fill="${farbe}"/><rect x="3" y="4" width="${Math.max(1, 20 * p / 100)}" height="8" rx="1.5" fill="${farbe}"/></svg>`;
+const knapp = id => P[id].akku < 20 && !P[id].laedt && P[id].verbunden;
+
+function telefon(id) {
+  const p = P[id], ichLeite = S.sicht[id] === id, leiter = P[S.leiter];
+  const farbe = p.akku < 10 ? "#B3261E" : p.akku < 20 ? "#8A5A00" : "#5B6F68";
+  let h = `<div class="status"><span>15:4${IDS.indexOf(id)}</span><span class="bat">${p.laedt ? "lädt " : ""}${p.akku} % ${AKKU(p.akku, farbe)}</span></div><div class="app">
+    <div class="top"><h1>🦊 Team Fuchs</h1></div>
+    <div class="rolle">${ichLeite ? "<b>Du leitest das Team</b>" : `Teamleitung: <b>${P[S.sicht[id]].name}</b>`} · Noch 1:12 h</div>`;
+  // Akku knapp bei anderen (für alle sichtbar)
+  // alle Handys des Teams unter 20 %, das eigene zuerst als "dein Handy"
+  const knappe = [...IDS.filter(x => x === id), ...IDS.filter(x => x !== id)].filter(knapp);
+  if (knappe.length) {
+    const istLeitung = knappe.includes(S.leiter) && S.leiter !== id;
+    h += `<div class="msg warn"><b>Akku knapp: ${knappe.map(x => x === id ? `dein Handy ${P[x].akku} %` : `${vor(P[x].name)} ${P[x].akku} %`).join(", ")}</b>${istLeitung ? `Das Handy der Teamleitung geht bald aus. ${vor(leiter.name)} sollte die Leitung rechtzeitig abgeben.` : "Ladet, wenn ihr könnt, oder lasst dieses Handy in Ruhe."}</div>`;
+  }
+  h += `<div class="panel"><p class="muted small" style="margin:0">Station 2 von 5</p><div class="name">Rudolfstollen</div>
+    <div class="compass"><svg viewBox="0 0 78 78"><circle class="ring" cx="39" cy="39" r="35"/>${p.schlecht ? "" : `<polygon class="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${NADEL[id]}deg)"/>`}${p.schlecht ? `<polygon class="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${NADEL[id] + 4}deg);opacity:.9"/>` : ""}</svg>
+      <div><div class="muted small">Entfernung</div><div class="dist">245 m</div><div class="muted small">GPS ±8 m<br>${p.schlecht ? "Pfeil nach Laufrichtung" : "Kompass aktiv"}</div></div></div>`;
+  if (p.schlecht) h += `<div class="msg warn"><b>Der Kompass dieses Handys zeigt gerade falsch</b>Der Pfeil richtet sich nach eurer Laufrichtung.
+      Tipp: Schaut auf ein anderes Handy aus eurem Team, dort zeigt der Pfeil mit dem eigenen Kompass.${ichLeite ? " Oder gebt die Leitung an jemanden ab, dessen Handy richtig zeigt." : ""}
+      <button class="btn alt" data-a="einmessen" data-id="${id}">Kompass einmessen</button>${ichLeite ? `<button class="btn alt" data-a="abgeben" data-id="${id}">Leitung abgeben</button>` : ""}</div>`;
+  h += ichLeite ? `<button class="btn alt">Noch 185 m bis zum Einchecken</button>`
+               : `<p class="small muted" style="margin:10px 0 0">Einchecken macht <b>${vor(P[S.sicht[id]].name)}</b>, sobald ihr da seid.</p>`;
+  h += `</div><div class="panel"><b style="font:700 18px var(--head)">Eure Ziffern</b><div class="lock"><div class="wheel">3</div><div class="wheel leer">?</div><div class="wheel leer">?</div><div class="wheel leer">?</div><div class="wheel leer">?</div><div class="wheel leer schluss">?</div></div></div>`;
+  if (ichLeite) h += `<p style="text-align:center;margin:6px 0 0"><button class="link" data-a="abgeben" data-id="${id}">Leitung abgeben</button></p>`;
+  h += `</div><div class="toast ${S.toast[id] ? "an" : ""}">${S.toast[id] || ""}</div>`;
+  // Fenster
+  const d = S.dialog[id];
+  if (d) {
+    const auswahl = IDS.filter(x => x !== id);
+    const kopf = d === "akku10" ? `<div class="akkuzeile" style="color:#B3261E">${AKKU(p.akku, "#B3261E")}<b>${p.akku} %</b></div><h2>Akku fast leer</h2><p>Bald geht dieses Handy aus. Jetzt abgeben, dann spielt euer Team ohne Pause weiter.</p>`
+      : d === "akku20" ? `<div class="akkuzeile" style="color:#8A5A00">${AKKU(p.akku, "#8A5A00")}<b>${p.akku} %</b></div><h2>Akku wird knapp</h2><p>Gebt die Leitung jetzt an jemanden mit vollerem Akku ab.</p>`
+      : `<h2>Leitung abgeben</h2><p>Die neue Leitung bekommt Einchecken, Antworten und Koffer auf ihr Handy, ohne etwas zu tippen.</p>`;
+    h += `<div class="overlay"><div class="dialog">${kopf}<div class="wahl">${auswahl.map(x => `<button data-a="wahl" data-id="${id}" data-wer="${x}" class="${S.wahl[id] === x ? "an" : ""}">${P[x].name}
+        <small class="${knapp(x) ? "knapp" : ""}">${P[x].verbunden ? `Akku ${P[x].akku} %${P[x].laedt ? ", lädt" : ""}` : "Handy nicht verbunden"}</small></button>`).join("")}</div>
+      <div class="row2"><button class="btn alt" data-a="spaeter" data-id="${id}">${d === "abgeben" ? "Abbrechen" : "Später"}</button><button class="btn" data-a="uebergeben" data-id="${id}" ${S.wahl[id] ? "" : "disabled style='opacity:.5'"}>Übergeben</button></div></div></div>`;
+  }
+  return h;
+}
+function regler(id) {
+  const p = P[id];
+  return `<b>${p.name}</b>
+    <span>Akku</span><input type="range" min="1" max="100" value="${p.akku}" data-r="akku" data-id="${id}">
+    <div class="haken"><label><input type="checkbox" data-r="laedt" data-id="${id}" ${p.laedt ? "checked" : ""}>lädt</label>
+      <label><input type="checkbox" data-r="schlecht" data-id="${id}" ${p.schlecht ? "checked" : ""}>Kompass schlecht</label>
+      <label><input type="checkbox" data-r="verbunden" data-id="${id}" ${p.verbunden ? "checked" : ""}>Handy verbunden</label></div>`;
+}
+function zeichne() {
+  const r = document.getElementById("reihe");
+  if (!r.children.length) r.innerHTML = IDS.map(id => `<div class="spalte"><div class="handy" id="h-${id}"></div><div class="regler" id="r-${id}"></div></div>`).join("");
+  IDS.forEach(id => { document.getElementById("h-" + id).innerHTML = telefon(id); });
+}
+function reglerZeichnen() { IDS.forEach(id => { document.getElementById("r-" + id).innerHTML = regler(id); }); }
+// Akku-Fenster nur bei der Teamleitung, je Schwelle einmal, nicht beim Laden
+function akkuPruefen() {
+  const id = S.leiter, p = P[id];
+  if (S.sicht[id] !== id || p.laedt || S.dialog[id]) return;
+  if (p.akku <= 10 && !p.warn10) { p.warn10 = true; p.warn20 = true; S.dialog[id] = "akku10"; }
+  else if (p.akku <= 20 && !p.warn20) { p.warn20 = true; S.dialog[id] = "akku20"; }
+}
+// "Server": jedes Handy holt nach 1,5 s seine Rolle ab
+function abruf() {
+  setTimeout(() => {
+    IDS.forEach(id => {
+      if (!P[id].verbunden) return;
+      const vorher = S.sicht[id] === id;
+      S.sicht[id] = S.leiter;
+      const jetzt = S.sicht[id] === id;
+      if (!vorher && jetzt) zeige(id, "Du leitest jetzt Team Fuchs");
+      if (vorher && !jetzt) zeige(id, `${vor(P[S.leiter].name)} leitet jetzt das Team`);
+    });
+    akkuPruefen(); zeichne();
+  }, 1500);
+}
+function zeige(id, text) { S.toast[id] = text; zeichne(); setTimeout(() => { S.toast[id] = null; zeichne(); }, 2600); }
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-a]"); if (!b) return;
+  const id = b.dataset.id, a = b.dataset.a;
+  if (a === "abgeben") { S.dialog[id] = "abgeben"; S.wahl[id] = null; }
+  if (a === "wahl") S.wahl[id] = b.dataset.wer;
+  if (a === "spaeter") S.dialog[id] = null;
+  if (a === "einmessen") { P[id].schlecht = false; reglerZeichnen(); zeige(id, "Kompass ist eingemessen"); }
+  if (a === "uebergeben" && S.wahl[id]) { S.leiter = S.wahl[id]; S.dialog[id] = null; S.wahl[id] = null; abruf(); }
+  zeichne();
+});
+document.addEventListener("input", e => {
+  const el = e.target, id = el.dataset.id, r = el.dataset.r; if (!r) return;
+  if (r === "akku") { P[id].akku = +el.value; if (P[id].akku > 20) { P[id].warn20 = false; P[id].warn10 = false; } else if (P[id].akku > 10) P[id].warn10 = false; }
+  else P[id][r] = el.checked;
+  if (r === "verbunden" && el.checked) abruf();
+  akkuPruefen(); zeichne();
+});
+zeichne(); reglerZeichnen();
+</script>
+</body>
+</html>
