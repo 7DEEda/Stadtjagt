@@ -421,7 +421,9 @@
       if (String(a.p_value).trim() !== CASE_CODE) return { ok: false, won: false, message: "Der Koffer bleibt zu. Prüft die letzte Ziffer.", state: teamState(t) };
       t.place = doneCount() + 1; t.finishedAt = Date.now();
       return { ok: true, won: t.place <= 3, message: "Koffer offen.", state: teamState(t) }; },
-    report_position: a => { window.__KOMPASS = a.p_kompass; return { ok: true }; },
+    // __ALTE_DB: Datenbank ohne Nachtrag 30, PostgREST findet keine Funktion mit p_kompass (PGRST202)
+    report_position: a => { if (window.__ALTE_DB && "p_kompass" in a) fehler("Could not find the function public.report_position(p_acc, p_code, p_kompass, p_lat, p_lng) in the schema cache");
+      window.__KOMPASS = a.p_kompass; window.__POSITION = [a.p_lat, a.p_lng]; return { ok: true }; },
     team_set_leader: a => teamState(fuchsByCode(a.p_code)),
     // Gruppenselfie (Nachtrag 25)
     team_selfie: a => { const t = fuchsByCode(a.p_code); if (C.fotoFehler) fehler("Das Foto ist zu groß.");

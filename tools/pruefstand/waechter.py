@@ -137,21 +137,90 @@ with sync_playwright() as pw:
     pg2.evaluate("S.gps.waechter.einmessen = (o => function () { window.__eingemessen = true; return o.call(this); })(S.gps.waechter.einmessen); kalStart(); kalEnde(true)")
     pruef(pg2.evaluate("window.__eingemessen === true"), "erfolgreiches Einmessen meldet sich beim Wächter")
     pruef(pg2.evaluate("JSON.parse(localStorage.getItem('sj.kompass') || '{}').vorbelastet") is not None, "Gedächtnis sj.kompass vorhanden")
+    # Gesunder Kompass, Handy in verschiedener Neigung: vier Drehungen um die Senkrechte, je 2 s mit 60°/s und 1,5 s Ruhe.
+    # Gyroskop und Kompass laufen über die Handler des Spiels (motionH, Orientierung). Android-Art: Schwerkraft zeigt nach
+    # oben, oben = (0, y, z) im Handy; Drehung im Uhrzeigersinn = Drehrate -60 um oben. Prüft auch das Vorzeichen (M4).
+    KIPP = """(z) => { const w = KompassWaechter({}); S.gps.waechter = w;
+      let t = performance.now() + 1000, k = 100;
+      for (let d = 0; d < 4; d++) for (let i = 0; i < 175; i++) {
+        t += 20; const rate = i < 100 ? 60 : 0; k = (k + rate * 0.02) % 360;
+        const zz = z + (i % 2 ? 0.05 : -0.05), y = Math.sqrt(Math.max(0, 1 - zz * zz));   // Hand wackelt ein wenig
+        motionH({ accelerationIncludingGravity: { x: 0, y: 9.8 * y, z: 9.8 * zz }, rotationRate: { alpha: 0, beta: -rate * y, gamma: -rate * zz }, timeStamp: t });
+        window.__zustellen({ alpha: (360 - k) % 360, beta: 35, gamma: 0, absolute: true, timeStamp: t });
+      }
+      return [w.urteil, w.ergebnisse.join(",")]; }"""
+    for z, grad in ((0.8, 37), (0.5, 60)):
+        r = pg2.evaluate(KIPP, z)
+        pruef(r == ["ok", "gut,gut,gut,gut"], f"gesund, {grad}° gekippt: Urteil ok, vier gute Drehungen ({r})")
+    for z, grad in ((-0.1, 84), (-0.3, 73)):
+        r = pg2.evaluate(KIPP, z)
+        pruef(r[0] != "unzuverlaessig" and "schlecht" not in r[1], f"gesund, über die Senkrechte gekippt (oben z {z}, {grad}°): kein schlecht ({r})")
+    pg2.wait_for_timeout(200)
+    # Chrome mit DeviceOrientationEvent.requestPermission, aber ohne DeviceMotionEvent.requestPermission: Gyroskop trotzdem an
+    pg4 = b.new_page(viewport={"width": 390, "height": 844}); pg4.set_default_timeout(15000)
+    pg4.on("pageerror", lambda e: err.append(str(e)))
+    pg4.add_init_script("try { Object.defineProperty(DeviceMotionEvent, 'requestPermission', { value: undefined, configurable: true }); } catch (e) { }")
+    pg4.goto("http://127.0.0.1:8826/app.html?szenario=waechter-schlecht"); pg4.wait_for_function("typeof S !== 'undefined' && S.gps.on")
+    pg4.wait_for_timeout(400)
+    z = pg4.evaluate("[typeof DeviceOrientationEvent.requestPermission, typeof DeviceMotionEvent.requestPermission, motionH !== null]")
+    pruef(z == ["function", "undefined", True], f"Fingertipp ohne Bewegungs-Freigabe: Gyroskop hört trotzdem zu ({z})")
+    pg4.close()
     print("Anzeige")
     pg2.goto("http://127.0.0.1:8826/app.html?szenario=waechter-schlecht"); pg2.wait_for_function("typeof S !== 'undefined' && S.gps.on")
     pg2.evaluate("window.__orient('gut'); window.__motion(0)"); pg2.wait_for_timeout(800)
-    k = pg2.locator(".compass.gross")
-    pruef("lauf" in k.get_attribute("class") or "unsicher" in k.get_attribute("class"), f"Kompass gestrichelt ({k.get_attribute('class')})")
-    pruef(pg2.inner_text("#kchip").strip() in ("nach Laufrichtung", "erst ein paar Schritte"), f"Plakette ({pg2.inner_text('#kchip')})")
+    OHNE = "Geht ein paar Schritte, dann zeigt der Pfeil eure Laufrichtung. Die Entfernung stimmt immer."
+    MIT = "Der Pfeil richtet sich nach eurer Laufrichtung."
+    ANZ = """() => { const c = document.querySelector('.compass.gross'), kc = document.querySelector('#kchip');
+      return [c.className, getComputedStyle(c.querySelector('#needle')).display, getComputedStyle(c.querySelector('.nq')).display,
+        kc && !kc.hidden ? kc.textContent.trim() : null, richtung(), S.gps.gpsHeading]; }"""
+    # Vorbelastet, noch keine Laufrichtung: der Kompass ist bekannt falsch, also keine Nadel, sondern das Fragezeichen
+    z = pg2.evaluate(ANZ)
+    pruef("unsicher" in z[0] and "lauf" not in z[0] and z[1] == "none" and z[2] != "none", f"ohne Laufrichtung: Ring gestrichelt mit Fragezeichen, keine Nadel ({z})")
+    pruef(z[3] == "erst ein paar Schritte", f"ohne Laufrichtung: Plakette erst ein paar Schritte ({z[3]})")
+    pruef(z[4] is None and z[5] is None, f"ohne Laufrichtung: richtung() liefert keinen Kompasswert ({z[4]})")
     t = pg2.inner_text("#app")
     pruef("Der Kompass dieses Handys zeigt gerade falsch" in t, "Hinweis des Wächters")
+    pruef(OHNE in t and MIT not in t, "Hinweis ohne Laufrichtung: erst ein paar Schritte gehen")
     pruef(pg2.locator("[data-act=t-kal]").count() >= 1, "Knopf Kompass einmessen")
     pruef(pg2.locator(".msg [data-act=t-abgeben-frage]").count() == 1, "Teamleitung: Leitung abgeben im Hinweis")
-    pg2.evaluate("S.gps.gpsHeading = 40; liveUpdate()"); pg2.wait_for_timeout(200)
-    pruef("lauf" in pg2.locator(".compass.gross").get_attribute("class") and pg2.inner_text("#kchip").strip() == "nach Laufrichtung", "mit Laufrichtung: Nadel gestrichelt, Plakette nach Laufrichtung")
+    pg2.screenshot(path=str(HIER / "shots" / "waechter-ohne-richtung.png"), full_page=True)
+    # Plakette: liveUpdate ersetzt sie nur, wenn sich etwas ändert; nach Standort aus und wieder an ist sie wieder da
+    z = pg2.evaluate("""() => { const a = document.querySelector('#kchip'); liveUpdate(); liveUpdate(); const gleich = a === document.querySelector('#kchip');
+      S.gps.on = false; liveUpdate(); const k = document.querySelector('#kchip'), aus = !k || k.hidden;
+      S.gps.on = true; liveUpdate(); const k2 = document.querySelector('#kchip'); return [gleich, aus, k2 && !k2.hidden ? k2.textContent.trim() : null]; }""")
+    pruef(z[0], f"Plakette bleibt stehen, solange sich nichts ändert ({z})")
+    pruef(z[1] and z[2] == "erst ein paar Schritte", f"Plakette verschwindet ohne Standort und kommt wieder ({z})")
+    # Ein paar Schritte (GPS über 6 m): Laufrichtung da. Der Hinweis entsteht nur in render(), er muss trotzdem nachziehen.
+    pg2.evaluate("window.__gps(50.10520, 14.42290, 8)"); pg2.wait_for_timeout(400)
+    z = pg2.evaluate(ANZ)
+    pruef("lauf" in z[0] and "unsicher" not in z[0] and z[1] != "none" and z[3] == "nach Laufrichtung" and z[5] is not None and z[4] == z[5],
+          f"mit Laufrichtung: Nadel gestrichelt nach Laufrichtung, Plakette nach Laufrichtung ({z})")
+    t = pg2.inner_text("#app")
+    pruef(MIT in t and OHNE not in t, "Hinweis mit Laufrichtung, ohne eigenes Neuzeichnen")
+    # alle drei Hinweise richten sich nach der Lage
+    r = pg2.evaluate("""() => { const g = S.gps, alt = [g.waechter, g.gpsHeading], r = [];
+      for (const v of [0, 1, 2]) for (const gh of [null, 40]) {
+        g.waechter = KompassWaechter({ vorbelastet: true, versuche: v }); g.gpsHeading = gh; const h = waechterHinweisHTML(S.team.state, false);
+        r.push([v, gh, h.includes(%r), /Der Pfeil (richtet sich nach eurer|folgt solange eurer|bleibt bei der) Laufrichtung/.test(h)]); }
+      [g.waechter, g.gpsHeading] = alt; return r; }""" % OHNE)
+    pruef(all(x[2] == (x[1] is None) and x[3] == (x[1] is not None) for x in r), f"Hinweis nach Versuchen 0, 1, 2: Satz je nach Laufrichtung ({r})")
     pg2.screenshot(path=str(HIER / "shots" / "waechter-schlecht.png"), full_page=True)
     pg2.click(".msg [data-act=t-abgeben-frage]"); pg2.wait_for_timeout(900)
     pruef(pg2.locator("#tneu").is_visible() and pg2.locator("#tneu").evaluate("e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight }"), "Leitung abgeben im Hinweis: Fenster offen und im Blick")
+    # Auswahl treffen, dann meldet der Wächter "schlecht" (Kompass wandert im Stillstand): Auswahl und Knopf bleiben
+    name = pg2.evaluate("[...document.querySelectorAll('#tneu option')].map(o => o.textContent)[1]")
+    pg2.select_option("#tneu", name); pg2.wait_for_timeout(100)
+    r = pg2.evaluate("""() => { let t = performance.now() + 1000, a = 63;
+      for (let i = 0; i < 200; i++) { t += 20; a = (a + 0.3) % 360;
+        motionH({ accelerationIncludingGravity: { x: 0, y: 0, z: 9.8 }, rotationRate: { alpha: 0, beta: 0, gamma: 0 }, timeStamp: t });
+        window.__zustellen({ alpha: a, beta: 35, gamma: 0, absolute: true, timeStamp: t }); }
+      return S.gps.waechter.ergebnisse; }""")
+    pg2.wait_for_timeout(300)
+    z = pg2.evaluate("[document.querySelector('#tneu').value, document.querySelector('#tabgeben').disabled]")
+    pruef("schlecht" in r and z == [name, False], f"Wächter meldet schlecht: Auswahl bleibt, Übergeben bleibt aktiv ({r}, {z})")
+    pg2.evaluate("render()"); pg2.wait_for_timeout(100)
+    z = pg2.evaluate("[document.querySelector('#tneu').value, document.querySelector('#tabgeben').disabled]")
+    pruef(z == [name, False], f"Neuzeichnen behält die Auswahl ({z})")
     pg2.evaluate("S.team.abgeben = false; S.team.state.team.members = [S.team.state.team.leaderName]; render()"); pg2.wait_for_timeout(200)
     pruef(pg2.locator(".msg [data-act=t-abgeben-frage]").count() == 0 and "Oder gebt die Leitung" not in pg2.inner_text("#app"), "allein im Team: kein Knopf, kein Satz")
     pg2.goto("http://127.0.0.1:8826/app.html?szenario=waechter-versuche-2"); pg2.wait_for_function("typeof S !== 'undefined' && S.gps.on")
@@ -161,6 +230,15 @@ with sync_playwright() as pw:
     pruef(pg2.locator(".msg .btn[data-act=t-kal]").count() == 0 and pg2.locator(".msg .link[data-act=t-kal]").count() == 1, "kein großer Knopf, nur Link")
     pg2.evaluate("S.team.state.testMode = false; window.__orient('gut')"); pg2.wait_for_timeout(400)
     pruef("lauf" not in (pg2.locator(".compass.gross").get_attribute("class") or "") and pg2.inner_text("#kchip").strip() == "Kompass", "Testmodus aus: volle Nadel, Plakette Kompass")
+    # Übungskompass vor dem Start: dieselbe Regel. iPhone ungenau, noch keine Laufrichtung: Fragezeichen statt Nadel
+    pg2.goto("http://127.0.0.1:8826/app.html?szenario=leitung-startklar-kompass"); pg2.wait_for_function("typeof S !== 'undefined' && S.gps.on")
+    pg2.wait_for_timeout(1500)   # die Schritte des Szenarios (Kompass gut) erst durchlaufen lassen
+    pg2.evaluate("window.__orient('ungenau')"); pg2.wait_for_timeout(400)
+    UEB = "() => { const c = document.querySelector('#needle').closest('.compass'); return [c.className, richtung()]; }"
+    z = pg2.evaluate(UEB)
+    pruef("unsicher" in z[0] and "lauf" not in z[0] and z[1] is None, f"Übungskompass, Kompass ungenau ohne Laufrichtung: Fragezeichen ({z})")
+    z = pg2.evaluate("() => { S.gps.gpsHeading = 40; render(); return (" + UEB + ")(); }")
+    pruef("lauf" in z[0] and "unsicher" not in z[0] and z[1] == 40, f"Übungskompass mit Laufrichtung: schon render() zeichnet gestrichelt ({z})")
     print("Spielleitung")
     pg2.goto("http://127.0.0.1:8826/app.html?szenario=waechter-schlecht"); pg2.wait_for_function("typeof S !== 'undefined' && S.gps.on")
     pg2.evaluate("window.__orient('gut'); window.__motion(0)"); pg2.wait_for_timeout(600)
@@ -169,6 +247,11 @@ with sync_playwright() as pw:
     pruef(z[0] == "unzuverlaessig" and z[1] == "unzuverlaessig", f"Handy meldet das Urteil mit der Position ({z})")
     pg2.evaluate("S.team.state.testMode = false; window.__KOMPASS = 'nichts'; window.__gps(52.4712, 13.4632, 8)"); pg2.wait_for_timeout(800)
     pruef(pg2.evaluate("window.__KOMPASS") == "unzuverlaessig", "Urteil geht auch außerhalb des Testmodus mit")
+    # Datenbank noch ohne Nachtrag 30: report_position kennt p_kompass nicht. Die Position muss trotzdem ankommen.
+    pg2.evaluate("window.__ALTE_DB = true; window.__POSITION = null; window.__gps(52.4730, 13.4660, 8)"); pg2.wait_for_timeout(800)
+    z = pg2.evaluate("window.__POSITION")
+    pruef(z == [52.473, 13.466], f"alte Datenbank lehnt p_kompass ab: Position kommt ohne an ({z})")
+    pg2.evaluate("window.__ALTE_DB = false")
     pg3 = b.new_page(viewport={"width": 1180, "height": 820}); pg3.set_default_timeout(15000)
     pg3.on("pageerror", lambda e: err.append(str(e)))
     pg3.goto("http://127.0.0.1:8826/app.html?szenario=admin-teststation"); pg3.wait_for_selector(".tabs")
@@ -176,6 +259,12 @@ with sync_playwright() as pw:
     zeile = pg3.locator("text=Kompass falsch, Pfeil nach Laufrichtung")
     pruef(zeile.count() == 1, f"Reiter Teams: genau ein Team mit Hinweis ({zeile.count()})")
     pruef(pg3.locator(".card, tr, li", has=pg3.locator("text=Fuchs")).filter(has=zeile).count() >= 1, "der Hinweis steht bei Fuchs")
+    # Testmodus aus: der Pfeil des Teams folgt weiter dem Kompass, also nur der Vermerk, ohne "Pfeil nach Laufrichtung"
+    VERMERK = "[...document.querySelectorAll('.chip')].map(c => c.textContent.trim()).filter(x => x.startsWith('Kompass falsch'))"
+    z = pg3.evaluate("() => { S.admin.state.testMode = false; render(); return " + VERMERK + "; }")
+    pruef(z == ["Kompass falsch"], f"Testmodus aus: Vermerk nur Kompass falsch ({z})")
+    z = pg3.evaluate("() => { S.admin.state.testMode = true; render(); return " + VERMERK + "; }")
+    pruef(z == ["Kompass falsch, Pfeil nach Laufrichtung"], f"Testmodus an: Kompass falsch, Pfeil nach Laufrichtung ({z})")
     pruef(not err, f"keine Skriptfehler {err[:2]}")
     b.close()
 print("FEHLER: " + str(len(fehler)) if fehler else "OK")
