@@ -2875,6 +2875,9 @@ function addMotion(neu) {
     }
     if (!w || !r || typeof r.alpha !== "number" || !motionOben || document.hidden) return;
     if (S.gps.kal) { w.pause(); return; }
+    // Handy nahe senkrecht oder darüber hinaus (Tasche, über dem Kopf): das Wenden auf z > 0 rät dort das Vorzeichen von
+    // "oben" falsch, ein gesunder Kompass sähe aus wie ein schlechter. Dann nichts beurteilen (Gesamt-Review I2).
+    if (Math.abs(motionOben[2]) < 0.4) { w.pause(); return; }
     const v = r.alpha * motionOben[0] + r.beta * motionOben[1] + r.gamma * motionOben[2];
     w.gyro(-v, e.timeStamp || performance.now());   // Drehraten gegen den Uhrzeigersinn positiv, Kompass im Uhrzeigersinn
   };
