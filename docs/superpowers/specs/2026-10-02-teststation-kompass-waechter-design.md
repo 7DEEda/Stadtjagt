@@ -193,9 +193,12 @@ Mockups: `mockups/kompass-waechter.html`, `mockups/akku-warnung.html`.
   Person (`participants.akku`, `akku_laedt`, `akku_at`).
 - `team_state` liefert je Teammitglied Akku und letzte Meldung; die
   Team-Ansicht zeigt bei allen Handys des Teams einen Hinweis, wenn ein
-  Handy unter 20 % ist und nicht lädt: „Akku knapp: Julia 15 %“. Gilt das für
-  die Teamleitung, steht dort „Akku der Teamleitung knapp: … Gebt die Leitung
-  rechtzeitig ab.“
+  Handy unter 20 % ist und nicht lädt: „Akku knapp: dein Handy 18 %, Julia
+  15 %“, darunter „Ladet das Handy, wenn ihr könnt.“ Ist es das Handy der
+  Teamleitung, steht auf den anderen Handys „Das Handy der Teamleitung geht
+  bald aus. Anna sollte die Leitung rechtzeitig abgeben.“ und auf dem Handy der
+  Teamleitung selbst „Gib die Leitung rechtzeitig an jemanden mit vollerem
+  Akku ab.“ mit dem Knopf „Leitung abgeben“ (öffnet das Übergabe-Fenster).
 - Auf dem Handy der Teamleitung springt bei 20 % und bei 10 % (nicht ladend,
   je einmal pro Schwelle und Handy) das Fenster aus dem Mockup auf: Personen
   zum Antippen mit ihrem Akku, „Übergeben“ oder „Später“.

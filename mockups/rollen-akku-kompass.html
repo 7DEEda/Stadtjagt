@@ -114,8 +114,12 @@ function telefon(id) {
   // alle Handys des Teams unter 20 %, das eigene zuerst als "dein Handy"
   const knappe = [...IDS.filter(x => x === id), ...IDS.filter(x => x !== id)].filter(knapp);
   if (knappe.length) {
-    const istLeitung = knappe.includes(S.leiter) && S.leiter !== id;
-    h += `<div class="msg warn"><b>Akku knapp: ${knappe.map(x => x === id ? `dein Handy ${P[x].akku} %` : `${vor(P[x].name)} ${P[x].akku} %`).join(", ")}</b>${istLeitung ? `Das Handy der Teamleitung geht bald aus. ${vor(leiter.name)} sollte die Leitung rechtzeitig abgeben.` : "Ladet, wenn ihr könnt, oder lasst dieses Handy in Ruhe."}</div>`;
+    const liste = knappe.map(x => x === id ? `dein Handy ${P[x].akku} %` : `${vor(P[x].name)} ${P[x].akku} %`).join(", ");
+    let text;
+    if (ichLeite && knappe.includes(id)) text = `Gib die Leitung rechtzeitig an jemanden mit vollerem Akku ab.<button class="btn alt" data-a="abgeben" data-id="${id}">Leitung abgeben</button>`;
+    else if (knappe.includes(S.leiter) && S.leiter !== id) text = `Das Handy der Teamleitung geht bald aus. ${vor(leiter.name)} sollte die Leitung rechtzeitig abgeben.`;
+    else text = "Ladet das Handy, wenn ihr könnt.";
+    h += `<div class="msg warn"><b>Akku knapp: ${liste}</b>${text}</div>`;
   }
   h += `<div class="panel"><p class="muted small" style="margin:0">Station 2 von 5</p><div class="name">Rudolfstollen</div>
     <div class="compass"><svg viewBox="0 0 78 78"><circle class="ring" cx="39" cy="39" r="35"/>${p.schlecht ? "" : `<polygon class="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${NADEL[id]}deg)"/>`}${p.schlecht ? `<polygon class="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${NADEL[id] + 4}deg);opacity:.9"/>` : ""}</svg>
