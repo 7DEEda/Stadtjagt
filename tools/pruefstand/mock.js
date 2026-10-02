@@ -171,7 +171,7 @@
     "teststation-koffer": { welt: "running", view: "team", ls: IM_TEAM, testMode: true, teststation: true, fuchs: { solved: 1 } },
     "admin-testfotos": { welt: "running", view: "admin", testMode: true, teststation: true, testfoto: true, fuchs: { solved: 2 }, ss: { "sj.pin": "4711" },
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { wait: 600 }] },
-    "admin-teststation": { welt: "running", view: "admin", testMode: true, teststation: true, ss: { "sj.pin": "4711" } },
+    "admin-teststation": { welt: "running", view: "admin", testMode: true, teststation: true, kompassFalsch: true, ss: { "sj.pin": "4711" } },
     "admin-auslosen-allein": { welt: "registration", view: "admin", testMode: true, ss: { "sj.pin": "4711" }, nurEine: true },
     "admin-stationen": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=stations]" }, { wait: 300 }] },
@@ -254,7 +254,8 @@
     const letztesEreignis = t.events.reduce((m, e) => Math.max(m, e.solvedAt || 0, e.checkedInAt || 0), 0);
     t.lastActivity = letztesEreignis || null;
     if (lag === null) pts.length = 0;   // hat nie einen Standort gemeldet (GPS nie freigegeben)
-    if (pts.length) { const p = pts[pts.length - 1]; t.position = { lat: p[0], lng: p[1], accuracy: 9 + Math.round(rnd() * 14), updatedAt: p[2] }; }
+    if (pts.length) { const p = pts[pts.length - 1]; t.position = { lat: p[0], lng: p[1], accuracy: 9 + Math.round(rnd() * 14), updatedAt: p[2] };
+      if (t.name === "Fuchs" && C.kompassFalsch) t.position.kompass = "unzuverlaessig"; }
   });
   // Delfin im laufenden Spiel: nie Standort gemeldet, aber schon an Station 1? Nein: noch unterwegs, ohne Aktivität.
 
@@ -420,7 +421,7 @@
       if (String(a.p_value).trim() !== CASE_CODE) return { ok: false, won: false, message: "Der Koffer bleibt zu. Prüft die letzte Ziffer.", state: teamState(t) };
       t.place = doneCount() + 1; t.finishedAt = Date.now();
       return { ok: true, won: t.place <= 3, message: "Koffer offen.", state: teamState(t) }; },
-    report_position: () => ({ ok: true }),
+    report_position: a => { window.__KOMPASS = a.p_kompass; return { ok: true }; },
     team_set_leader: a => teamState(fuchsByCode(a.p_code)),
     // Gruppenselfie (Nachtrag 25)
     team_selfie: a => { const t = fuchsByCode(a.p_code); if (C.fotoFehler) fehler("Das Foto ist zu groß.");

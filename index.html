@@ -1948,7 +1948,9 @@ function zustandHTML(t, st) {
   const gps = alt == null ? `<span class="chip test" style="margin:0">kein GPS</span>`
     : alt > 5 * 60000 ? `<span class="chip test" style="margin:0;white-space:nowrap">GPS ${ago(upd)}</span>`
       : `<span class="small muted" style="white-space:nowrap">GPS ${ago(upd)}</span>`;
-  return `<br><b class="small">${wo}</b><br>${gps}`;
+  const kompass = t.position && t.position.kompass === "unzuverlaessig"
+    ? ` <span class="chip test" style="margin:0;white-space:nowrap">Kompass falsch, Pfeil nach Laufrichtung</span>` : "";
+  return `<br><b class="small">${wo}</b><br>${gps}${kompass}`;
 }
 // leer oder noch der Platzhalter aus der Seed-Datei
 const offen = v => !v || !String(v).trim() || /^(Ortshinweis|Rätsel) folgt$/.test(String(v).trim());
@@ -3002,10 +3004,13 @@ async function maybeReport() {
   if (!st || st.status !== "running" || !S.team.code || !g.pos) return;
   const moved = !g.lastSentPos || haversine(g.lastSentPos, g.pos) > 20;
   const oldEnough = Date.now() - g.lastSent > 60000;
-  if (!moved && !oldEnough) return;
+  const urteil = g.waechter ? g.waechter.urteil : null;
+  const neuUrteil = urteil !== g.lastSentUrteil;
+  if (!moved && !oldEnough && !neuUrteil) return;
+  g.lastSentUrteil = urteil;
   g.lastSent = Date.now(); g.lastSentPos = { ...g.pos };
   try {
-    await rpc("report_position", { p_code: S.team.code, p_lat: g.pos.lat, p_lng: g.pos.lng, p_acc: g.acc });
+    await rpc("report_position", { p_code: S.team.code, p_lat: g.pos.lat, p_lng: g.pos.lng, p_acc: g.acc, p_kompass: urteil });
     g.sentAt = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   } catch { /* Funkloch: beim nächsten Mal erneut */ }
 }
