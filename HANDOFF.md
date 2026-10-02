@@ -1615,4 +1615,16 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   Magnetsensor dieses Geräts liefert keine brauchbare Richtung; das andere
   Xiaomi lief am selben Platz sauber. Pages lässt Browser bis zu 10 min
   zwischenspeichern: die Startseite zeigt jetzt „Version x“ (= Suite).
+- Lauf 9S87 (02.10., Xiaomi 22021211RG, Suite 12): Kompass 36 von 36, aber
+  485° für eine echte Drehung von 360° (Aussage Friedrich), ungleichmäßig
+  (15°/s bis über 50°/s bei gleichmäßigem Drehen): verzerrter Magnetsensor.
+  Das Gyroskop meldete nur −2°: Chrome legt die Hochachse nicht in
+  `rotationRate.alpha` ab.
+- Suite 13/14 (02.10.): `sensor.gyroDreh()` nimmt die Gyro-Achse mit dem
+  meisten Weg seit „Los“ (im Lauf: „Gyro je Achse“, „Gyro-Achse der
+  Drehung“). Neu bewertet: „Kompass folgt zu x %“ und „Größte Abweichung
+  Kompass gegen Gyroskop“ an jeder Stelle der Drehung. Ab einer halben
+  Umdrehung laut Gyroskop: mehr als 20 % Unterschied oder mehr als 30°
+  daneben = Warnung, mehr als 40 % oder 60° = Fehler („bis x° daneben“).
+  „36 von 36“ allein heißt also nicht mehr „geht“.
 
