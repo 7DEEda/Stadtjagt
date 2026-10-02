@@ -1745,3 +1745,58 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
 - Kopf der Spielleitung mit mehr Abstand zwischen Titel, Chips und Meldung.
 - Geräte-Test Suite 20 (02.10.): eigener Schritt „Akku“ mit Stand und „lädt“; ohne `navigator.getBattery` (Safari, Firefox) Warnung „nicht lesbar“.
 
+## Stand zum Fortsetzen (02.10.2026, abends)
+
+**Live (gepusht und eingespielt):** Teststation (Nachtrag 28), Startpunkt je
+Route (Nachtrag 29), Geräte-Test bis Suite 20 unter
+https://7deeda.github.io/geraetetest/ (Akku-Schritt ist dort schon live, das
+Veröffentlichungsskript pusht ins Repo `7DEEda/geraetetest`).
+
+**Nur lokal auf master, NICHT gepusht (5 Commits vor origin):** Kompass-Wächter
+Teil 2, Aufgabe 1 und 2, plus der Akku-Commit für dieses Repo. Bewusst nicht
+veröffentlicht, weil der Wächter halbfertig ist: Aufgabe 2 wirkt im Testmodus
+schon (Kompass gilt als ungenau), aber Anzeige (Aufgabe 3) und Meldung an die
+Spielleitung (Aufgabe 4) fehlen, und der Testmodus ist live an.
+
+**Kompass-Wächter fortsetzen:**
+- Spezifikation: `docs/superpowers/specs/2026-10-02-teststation-kompass-waechter-design.md` (Teil 2; Nadel Variante A)
+- Plan: `docs/superpowers/plans/2026-10-02-kompass-waechter.md` (Aufgaben 1 bis 5)
+- Ledger mit allen Entscheidungen und Befunden (lokal, nicht im Repo):
+  `.superpowers/sdd/2026-10-02-kompass-waechter/progress.md`, dazu Aufträge,
+  Berichte und Reviews der Agenten im selben Ordner (`task-2-review.md`).
+- Aufgabe 1 (`kompass-waechter.js`, Logik, 13 Prüfungen in
+  `tools/pruefstand/waechter.py`): fertig und geprüft. Entscheidungen:
+  Stillstand zählt nur als schlecht; Wandern = Nettoverschiebung; 5 gute
+  Abschnitte nur bei Vermerk aus früherer Sitzung, sonst 3.
+- Aufgabe 2 (Anbindung in `index.html`: devicemotion, Drehung um die
+  Senkrechte, Wirkung im Testmodus, Gedächtnis `sj.kompass`, iOS-Freigabe im
+  selben Tipp): umgesetzt (Commit d9dc55d), Review „Nachbessern“. **Als
+  Nächstes Fix-Runde 1** mit zwei wichtigen Befunden:
+  1. iOS: die Genauigkeits-Hysterese (20° bis 25°) hält ein vom Wächter
+     gesetztes `kalibrieren` fest, `waechterGrund` springt beim nächsten
+     Ereignis zurück auf false; Hinweis flackert, und nach Testmodus aus bleibt
+     `kalibrieren` hängen. Hysterese auf den Rohzustand anwenden
+     (`index.html` um Zeile 2773 und 2794).
+  2. Test „iPhone meldet schlechte Genauigkeit“ in `waechter.py` (um Zeile
+     391) prüft nichts: ersetzt den vorbelasteten Wächter vor der Prüfung.
+  Kleinere Befunde (aufgeschoben): ohne `DeviceMotionEvent.requestPermission`
+  wird `addMotion` im Tipp-Zweig nicht aufgerufen; „oben“ kippt nahe der
+  Senkrechten; `Date.parse("YYYY-MM-DD")` ist UTC (Vermerk verfällt früher);
+  Prüfstand treibt das Gyroskop im Spiel nie mit Drehung (Vorzeichen ohne
+  Regressionstest).
+- Danach Aufgabe 3 (Anzeige: gestrichelte Nadel, Plakette, Hinweis mit
+  Einmessen und Leitung abgeben), Aufgabe 4 (Migration Nachtrag 30:
+  `report_position` mit `p_kompass`, Vermerk in der Teamzeile), Aufgabe 5
+  (einspielen, pushen, Doku). Ausführung mit Agenten: je Aufgabe ein
+  Umsetzer und ein Prüfer (superpowers:subagent-driven-development), am Ende
+  ein Gesamt-Review.
+
+**Danach (Teil 3, Spezifikation fertig, kein Plan):** Rollen ohne Tippen
+(Teamleitung übergeben, Handy schaltet von selbst um), Akku-Warnung bei 20 %
+und 10 % mit Übergabe, Akku aller Teammitglieder, Mockups
+`mockups/rollen-akku-kompass.html`, `mockups/akku-warnung.html`.
+
+**Weitere offene Punkte:** Stresstest mit 100 Geräten (siehe oben); Positionen
+aus 4 älteren Geräte-Test-Läufen löschen (Frage an Friedrich offen);
+iPhone-Lauf des Kollegen auswerten (`python tools/testlaeufe.py`).
+
