@@ -166,6 +166,8 @@
     "waechter-schlecht": { welt: "running", view: "team", testMode: true, teststation: true, gps: GPS_UNTERWEGS, steps: kompassAn,
       // Datum von heute, sonst verfällt der Vermerk nach einem Tag
       ls: Object.assign({ "sj.kompass": JSON.stringify({ vorbelastet: true, versuche: 0, datum: new Date().toISOString().slice(0, 10) }) }, IM_TEAM) },
+    "waechter-versuche-2": { welt: "running", view: "team", testMode: true, teststation: true, gps: GPS_UNTERWEGS, steps: kompassAn,
+      ls: Object.assign({ "sj.kompass": JSON.stringify({ vorbelastet: true, versuche: 2, datum: new Date().toISOString().slice(0, 10) }) }, IM_TEAM) },
     "teststation-koffer": { welt: "running", view: "team", ls: IM_TEAM, testMode: true, teststation: true, fuchs: { solved: 1 } },
     "admin-testfotos": { welt: "running", view: "admin", testMode: true, teststation: true, testfoto: true, fuchs: { solved: 2 }, ss: { "sj.pin": "4711" },
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { wait: 600 }] },

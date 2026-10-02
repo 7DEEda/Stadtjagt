@@ -175,6 +175,12 @@ ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line
 .compass .nq{display:none;font:700 var(--fs-xl) var(--head);fill:var(--muted)}
 .compass.unsicher .nq{display:inline}
 .compass.unsicher .needle{display:none}
+/* Nadel Variante A (Entscheidung 02.10.2026): folgt der Pfeil der Laufrichtung, nur Umriss und Ring gestrichelt */
+.compass.lauf .needle{fill:none;stroke:var(--flag);stroke-width:2.5;stroke-dasharray:4 3;stroke-linejoin:round}
+.compass.lauf .ring,.compass.unsicher .ring{stroke-dasharray:5 5}
+.kchip{display:inline-flex;margin-top:6px;white-space:nowrap}
+.kchip.ok{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+.kchip.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
 .names .del{min-width:42px;min-height:42px;padding:0;margin:0 0 0 6px;font-size:var(--fs-l);line-height:1}
 .fehlt{color:var(--err);font-weight:600}
 .row2{display:flex;gap:8px}.row2 .btn{flex:1}
@@ -1055,8 +1061,32 @@ function routeHTML(st) {
   return h + "</div>";
 }
 const accText = a => a != null && a >= 0 ? `±${Math.round(a)}°` : "unbekannt";
+// Folgt der Pfeil dem Kompass? Sonst Laufrichtung (gestrichelte Nadel) oder noch keine Richtung (Fragezeichen)
+const kompassFolgt = () => S.gps.heading != null && S.gps.kompass === "an";
+function kompassChip() {
+  const g = S.gps;
+  if (!g.on) return "";
+  if (kompassFolgt()) return `<span class="chip kchip ok" id="kchip">Kompass</span>`;
+  return `<span class="chip kchip warn" id="kchip">${g.gpsHeading != null ? "nach Laufrichtung" : "erst ein paar Schritte"}</span>`;
+}
+// Hinweis des Wächters; nach erfolglosem Einmessen ehrlicher (Mockup rollen-akku-kompass.html)
+function waechterHinweisHTML(st, lesen) {
+  const g = S.gps, w = g.waechter;
+  if (!g.waechterGrund || !w) return "";
+  const leitung = !lesen;
+  const tipp = `Tipp: Schaut auf ein anderes Handy aus eurem Team. Wer mitliest und den Standort freigibt, sieht dort den Pfeil mit dem eigenen Kompass.${leitung ? " Oder gebt die Leitung an jemanden ab, dessen Handy richtig zeigt." : ""}`;
+  const abgeben = leitung ? `<button class="btn alt" data-act="t-abgeben-frage">Leitung abgeben</button>` : "";
+  if (w.prueft) return `<div class="msg info"><b>Kompass wird geprüft …</b> Dreht euch einmal um, dann sieht das Handy, ob der Kompass jetzt mitgeht.</div>`;
+  if (w.versuche === 0) return `<div class="msg warn"><b>Der Kompass dieses Handys zeigt gerade falsch</b><br>Der Pfeil richtet sich nach eurer Laufrichtung. ${tipp}
+    <button class="btn alt" data-act="t-kal">Kompass einmessen</button>${abgeben}</div>`;
+  if (w.versuche === 1) return `<div class="msg warn"><b>Einmessen hat nicht geholfen</b><br>Probiert es noch einmal, mit etwas Abstand zu Metall, Magneten und Handyhüllen. Der Pfeil folgt solange eurer Laufrichtung. ${tipp}
+    <button class="btn alt" data-act="t-kal">Noch einmal einmessen</button>${abgeben}</div>`;
+  return `<div class="msg warn"><b>Einmessen hilft bei diesem Handy nicht</b><br>Der Pfeil bleibt bei der Laufrichtung, die Entfernung stimmt immer. ${tipp}
+    ${abgeben}<button class="link" data-act="t-kal">Trotzdem noch einmal einmessen</button></div>`;
+}
 function kompassText() {
   const g = S.gps, lauf = g.gpsHeading != null;
+  if (g.waechterGrund) return lauf ? "Pfeil nach Laufrichtung" : "Erst ein paar Schritte gehen, dann zeigt der Pfeil eure Laufrichtung";
   if (g.heading != null) {
     if (g.kompass !== "kalibrieren")
       return "Kompass aktiv" + (g.kompassAcc != null && g.kompassAcc >= 0 ? ", " + accText(g.kompassAcc) : "");
@@ -1227,12 +1257,12 @@ function teamAnsicht(st, lesen) {
     const kalOk = kalOkHTML();
     out += `<div class="panel ${neuKlasse}"><p class="muted small">Station ${s.position} von ${st.totalStations}</p>${okOben ? msgBox() : ""}
       ${stationsNameHTML(st, s)}
-      <div class="compass gross ${richtungBekannt() ? "" : "unsicher"}"><div><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
+      <div class="compass gross ${!richtungBekannt() ? "unsicher" : kompassFolgt() ? "" : "lauf"}"><div><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
         <polygon class="needle" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/>
         <text class="nq" x="39" y="48" text-anchor="middle">?</text></svg><div class="cap">Richtung</div></div>
         <div><div class="muted small">Entfernung</div><div class="dist" id="dist">${dist}</div>
           <div class="small" id="umkreis">${umkreisHTML()}</div>
-          <div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div></div></div>
+          <div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div>${kompassChip()}</div></div>
       ${!hasTarget ? `<div class="msg err">Für diese Station fehlen die Koordinaten. Die Spielleitung muss sie setzen.</div>` : ""}
       ${!g.on ? `<button class="btn ${lesen ? "alt" : ""}" data-act="t-gps">Standort und Kompass freigeben</button>
         ${lesen ? (ichSelbst ? "" : `<p class="small muted" style="margin-top:6px">Freiwillig: Dann zeigt auch dein Handy Richtung und Entfernung.</p>`)
@@ -1253,7 +1283,8 @@ function teamAnsicht(st, lesen) {
         Fragt das Handy nicht mehr nach, den Browser ganz beenden und neu öffnen.
         Bis dahin zeigt der Pfeil die Richtung aus eurer Laufrichtung, sobald ihr ein paar Schritte gegangen seid.
         <button class="btn alt" data-act="t-gps">Kompass erneut versuchen</button></div>` : ""}
-      ${g.on && g.kompass === "kalibrieren" && !kalOk && !g.kal ? `<div class="msg info">Der Kompass ist ungenau.
+      ${!g.kal ? waechterHinweisHTML(st, lesen) : ""}
+      ${g.on && g.kompass === "kalibrieren" && !g.waechterGrund && !kalOk && !g.kal ? `<div class="msg info">Der Kompass ist ungenau.
         Schwenkt das Handy ein paar Mal in einer liegenden Acht, dann fängt sich der Pfeil.
         <button class="btn alt" data-act="t-kal">Jetzt einmessen</button></div>` : ""}
       ${kompassDa() && !g.kal && (g.kompass !== "kalibrieren" || kalOk) ? `<button class="link" data-act="t-kal">Kompass neu einmessen</button>` : ""}
@@ -2719,7 +2750,8 @@ function liveUpdate() {
   const um = $("#umkreis"); if (um) um.innerHTML = umkreisHTML();
   kalZeigen();
   const note = $("#gnote"); if (note && ziel) note.textContent = gpsNote() || "Standort noch nicht aktiv";
-  const n = $("#needle"); if (n) n.closest(".compass").classList.toggle("unsicher", !richtungBekannt());
+  const n = $("#needle"); if (n) { const c = n.closest(".compass"); c.classList.toggle("unsicher", !richtungBekannt()); c.classList.toggle("lauf", richtungBekannt() && !kompassFolgt()); }
+  const kc = $("#kchip"); if (kc) kc.outerHTML = kompassChip();
   const gs = $("#gstat"); if (gs) gs.textContent = gpsNote();
   if (!g.pos || !ziel) return;
   geheimNachziehen(); checkNachziehen();
