@@ -2904,7 +2904,8 @@ async function startGps(auto) {
       const r = await DOE.requestPermission();
       if (r === "granted") { g.kompass = "wartet"; addOrient(true); neigungStart(); logoStart(true); }
       else g.kompass = "abgelehnt";
-      if (mot) mot.then(x => { if (x === "granted") addMotion(true); });
+      // Chrome kennt teils nur DeviceOrientationEvent.requestPermission: dann ist die Bewegung ohne Nachfrage frei
+      if (mot) mot.then(x => { if (x === "granted") addMotion(true); }); else if (r === "granted") addMotion(true);
     } else { g.kompass = "wartet"; addOrient(); addMotion(); }
   } catch { g.kompass = "abgelehnt"; }
   // Handys ohne Magnetsensor schweigen einfach oder schicken leere Ereignisse.
