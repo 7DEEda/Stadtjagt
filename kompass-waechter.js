@@ -11,7 +11,7 @@
     let urteil = opt.vorbelastet ? "unzuverlaessig" : null, vorbelastet = !!opt.vorbelastet, streng = !!opt.vorbelastet, versuche = opt.versuche || 0;
     let ergebnisse = [], gutInFolge = 0, nachEinmessen = -1;   // -1: nicht nach Einmessen, sonst Zahl der Ergebnisse seither
     let gyroWinkel = 0, gyroT = null, gyroDa = false, rate = 0, letzteBewegung = 0;
-    let kompassAlt = null, kompassWeg = 0, kompassPfad = 0;
+    let kompassAlt = null, kompassWeg = 0;
     let dreh = null, still = null;
 
     const melden = () => { if (opt.onWechsel) opt.onWechsel({ urteil, vorbelastet, versuche }); };
@@ -49,11 +49,11 @@
       }
       if (!dreh) {
         if (a >= RUHE) still = null;
-        else if (!still) still = { t0: t, p0: kompassPfad };
+        else if (!still) still = { t0: t, w0: kompassWeg };
         else if (t - still.t0 >= STILL_MS) {
           // Stillstand zählt nur als schlecht (Wandern), nie als gut: ein eingefrorener Kompass wandert nicht
-          if (kompassPfad - still.p0 > WANDERN) ergebnis("schlecht");
-          still = { t0: t, p0: kompassPfad };
+          if (Math.abs(kompassWeg - still.w0) > WANDERN) ergebnis("schlecht");
+          still = { t0: t, w0: kompassWeg };
         }
       }
     }
@@ -63,7 +63,7 @@
         gyroT = t; rate = r; gyroDa = true; schritt(t);
       },
       kompass(g, t) {
-        if (kompassAlt != null) { const d = kurz(g - kompassAlt); kompassWeg += d; kompassPfad += Math.abs(d); }
+        if (kompassAlt != null) { const d = kurz(g - kompassAlt); kompassWeg += d; }
         kompassAlt = g; schritt(t);
       },
       pause() { dreh = null; still = null; kompassAlt = null; gyroT = null; },

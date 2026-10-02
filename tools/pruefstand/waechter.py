@@ -35,10 +35,11 @@ window.lauf = (w, schritte) => { let t = w._t || 0, k = w._k ?? 100, rausch = 0;
     const n = Math.round(s.ms / 20);
     for (let i = 0; i < n; i++) {
       t += 20;
-      const rate = s.rate + (s.schuetteln ? (i % 10 < 2 ? 40 : -40) : 0);   // Spitzen ohne Netto-Drehung
+      const rate = s.rate + (s.schuetteln ? (i % 10 < 2 ? 160 : -40) : 0);   // Spitzen ohne Netto-Drehung: 2 x 160 + 8 x -40 = 0
       w.gyro(rate, t);
       k += (s.kompassFaktor ?? 1) * s.rate * 0.02 + (s.wandern || 0) * 0.02;
       rausch = s.rauschen ? (Math.sin(t / 37) * s.rauschen) : 0;
+      if (s.zittern) rausch += (i % 2 ? s.zittern : -s.zittern);   // Zittern ohne Netto-Wandern
       if (!s.eingefroren) w.kompass(((k + rausch) % 360 + 360) % 360, t);
       else if (i === 0) w.kompass(((k + rausch) % 360 + 360) % 360, t);
     }
@@ -62,7 +63,10 @@ with sync_playwright() as pw:
     pruef(r[0] == "ok", f"gesund mit Rauschen ±10°: ok ({r})")
     r = pg.evaluate("""() => { const w = KompassWaechter({}); lauf(w, [].concat(...Array.from({length: 6}, () => [{ ms: 3000, rate: 0, schuetteln: true, rauschen: 10 }])));
       return [w.urteil, w.ergebnisse.join(",")]; }""")
-    pruef(r[0] != "unzuverlaessig", f"gutes Handy, beim Gehen geschüttelt: nicht unzuverlässig ({r})")
+    pruef(r[0] != "unzuverlaessig" and "schlecht" not in r[1], f"gutes Handy, beim Gehen geschüttelt: nicht unzuverlässig, kein schlecht ({r})")
+    r = pg.evaluate("""() => { const w = KompassWaechter({}); lauf(w, [].concat(...Array.from({length: 4}, () => [{ ms: 3200, rate: 0, zittern: 1.5 }])));
+      return [w.urteil, w.ergebnisse.join(",")]; }""")
+    pruef(r[0] != "unzuverlaessig" and "schlecht" not in r[1], f"gesund im Stillstand mit Zittern ±1,5° je Wert: kein schlecht ({r})")
     r = pg.evaluate("""() => { const w = KompassWaechter({}); lauf(w, [].concat(...Array.from({length: 3}, () => drehung(0.4))));
       return [w.urteil, w.ergebnisse.join(",")]; }""")
     pruef(r[0] == "unzuverlaessig", f"folgt zu 40 %: nach 3 Drehungen unzuverlässig ({r})")
@@ -84,9 +88,9 @@ with sync_playwright() as pw:
     r = pg.evaluate("""() => { const w = KompassWaechter({}); let t = 0; for (let i = 0; i < 2000; i++) { t += 20; w.kompass((i * 3) % 360, t); } return w.urteil; }""")
     pruef(r is None, f"ohne Gyroskop: kein Urteil ({r})")
     r = pg.evaluate("""() => { const w = KompassWaechter({}); lauf(w, [{ ms: 1000, rate: 60, kompassFaktor: 1 }]); w.pause();
-      let t = 100000; for (let i = 0; i < 100; i++) { t += 20; w.gyro(0, t); w.kompass(300, t); }
-      lauf(w, [{ ms: 1500, rate: 0 }]); return [w.urteil, w.ergebnisse.join(",")]; }""")
-    pruef(r[1].count("schlecht") == 0, f"pause verwirft offene Abschnitte, Sprung danach zählt nicht ({r})")
+      w._k += 100;   // Kompass springt einmal um 100° (Seite war verborgen)
+      lauf(w, [{ ms: 1000, rate: 60, kompassFaktor: 1 }, { ms: 1500, rate: 0 }]); return [w.urteil, w.ergebnisse.join(",")]; }""")
+    pruef("schlecht" not in r[1], f"pause mitten in der Drehung verwirft den Abschnitt, Sprung zählt nicht ({r})")
     r = pg.evaluate("""() => { const z = []; const w = KompassWaechter({ onWechsel: x => z.push(x.urteil + "/" + x.vorbelastet) });
       lauf(w, [].concat(...Array.from({length: 3}, () => drehung(0.4)))); return z; }""")
     pruef("unzuverlaessig/true" in r, f"onWechsel meldet Urteil und Vermerk ({r})")
