@@ -154,6 +154,17 @@ Mockups: `mockups/kompass-waechter.html`, `mockups/akku-warnung.html`.
 - Zurück auf `ok` braucht ein vorbelastetes Handy 5 gute Abschnitte in Folge
   statt 3; dann vergisst es den Vermerk. Einmessen leert die Abschnitte, der
   Vermerk bleibt aber, bis die 5 guten Abschnitte da sind.
+- Einmessen, das nicht hilft: bleibt das Urteil nach dem Einmessen
+  `unzuverlaessig` (die ersten 3 gewerteten Abschnitte danach nicht gut),
+  zählt das Handy einen erfolglosen Versuch (lokal, `sj.kompass`). Hinweis nach
+  einem Versuch: „Einmessen hat nicht geholfen. Probiert es noch einmal, mit
+  etwas Abstand zu Metall, Magneten und Handyhüllen.“ mit „Noch einmal
+  einmessen“. Ab zwei Versuchen: „Einmessen hilft bei diesem Handy nicht. Der
+  Pfeil bleibt bei der Laufrichtung, die Entfernung stimmt immer.“, kein
+  großer Knopf mehr, nur der Link „Trotzdem noch einmal einmessen“; die
+  Teamleitung behält „Leitung abgeben“. Während das Handy nach dem Einmessen
+  prüft: „Kompass wird geprüft … Dreht euch einmal um.“ Mockup:
+  `mockups/rollen-akku-kompass.html` (Regler „Einmessen hilft“).
 
 ### Anzeige für die Spielleitung (Mockup Bild 3)
 

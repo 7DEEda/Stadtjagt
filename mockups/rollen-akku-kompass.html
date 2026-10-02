@@ -88,15 +88,15 @@ h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
   <ul>
     <li><b>Eine Ansicht für alle:</b> Teamleitung sieht „Wir sind da“, Mitglieder sehen „Einchecken macht Anna“. Nach einer Übergabe tauschen die Handys die Ansicht von selbst.</li>
     <li><b>Akku:</b> fällt ein Handy unter 20 % (und lädt nicht), sehen alle im Team „Akku knapp“. Die Teamleitung bekommt bei 20 % und 10 % je einmal das Fenster zum Übergeben.</li>
-    <li><b>Kompass:</b> „Kompass schlecht“ zeigt den Hinweis des Wächters; bei der Teamleitung mit „Leitung abgeben“.</li>
+    <li><b>Kompass:</b> „Kompass schlecht“ zeigt den Hinweis des Wächters; bei der Teamleitung mit „Leitung abgeben“. Ist „Einmessen hilft“ aus, wird der Hinweis nach jedem Einmessen ehrlicher: erst „noch einmal“, nach dem zweiten Mal „hilft bei diesem Handy nicht“ ohne großen Knopf.</li>
     <li><b>Nicht verbunden:</b> Personen, deren Handy sich gerade nicht meldet, stehen mit „Handy nicht verbunden“ in der Liste und sind trotzdem wählbar.</li>
   </ul></div>
 <script>
 const NADEL = { anna: 35, jonas: 40, julia: 33 };
 const P = {
-  anna:  { name: "Anna Berger",  akku: 34, laedt: false, schlecht: false, verbunden: true, warn20: false, warn10: false },
-  jonas: { name: "Jonas Keller", akku: 81, laedt: false, schlecht: false, verbunden: true, warn20: false, warn10: false },
-  julia: { name: "Julia Krüger", akku: 52, laedt: false, schlecht: false, verbunden: true, warn20: false, warn10: false }
+  anna:  { name: "Anna Berger",  akku: 34, laedt: false, schlecht: false, verbunden: true, warn20: false, warn10: false, hilft: false, versuche: 0, misst: false },
+  jonas: { name: "Jonas Keller", akku: 81, laedt: false, schlecht: false, verbunden: true, warn20: false, warn10: false, hilft: false, versuche: 0, misst: false },
+  julia: { name: "Julia Krüger", akku: 52, laedt: false, schlecht: false, verbunden: true, warn20: false, warn10: false, hilft: false, versuche: 0, misst: false }
 };
 const IDS = Object.keys(P);
 const S = { leiter: "anna", sicht: { anna: "anna", jonas: "anna", julia: "anna" }, dialog: {}, wahl: {}, toast: {} };
@@ -124,9 +124,18 @@ function telefon(id) {
   h += `<div class="panel"><p class="muted small" style="margin:0">Station 2 von 5</p><div class="name">Rudolfstollen</div>
     <div class="compass"><svg viewBox="0 0 78 78"><circle class="ring" cx="39" cy="39" r="35"/>${p.schlecht ? "" : `<polygon class="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${NADEL[id]}deg)"/>`}${p.schlecht ? `<polygon class="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${NADEL[id] + 4}deg);opacity:.9"/>` : ""}</svg>
       <div><div class="muted small">Entfernung</div><div class="dist">245 m</div><div class="muted small">GPS ±8 m<br>${p.schlecht ? "Pfeil nach Laufrichtung" : "Kompass aktiv"}</div></div></div>`;
-  if (p.schlecht) h += `<div class="msg warn"><b>Der Kompass dieses Handys zeigt gerade falsch</b>Der Pfeil richtet sich nach eurer Laufrichtung.
-      Tipp: Schaut auf ein anderes Handy aus eurem Team, dort zeigt der Pfeil mit dem eigenen Kompass.${ichLeite ? " Oder gebt die Leitung an jemanden ab, dessen Handy richtig zeigt." : ""}
-      <button class="btn alt" data-a="einmessen" data-id="${id}">Kompass einmessen</button>${ichLeite ? `<button class="btn alt" data-a="abgeben" data-id="${id}">Leitung abgeben</button>` : ""}</div>`;
+  if (p.schlecht) {
+    // nach jedem erfolglosen Einmessen ehrlicher: beim zweiten Mal kein großer Knopf mehr
+    const tipp = `Tipp: Schaut auf ein anderes Handy aus eurem Team, dort zeigt der Pfeil mit dem eigenen Kompass.${ichLeite ? " Oder gebt die Leitung an jemanden ab, dessen Handy richtig zeigt." : ""}`;
+    const abgeben = ichLeite ? `<button class="btn alt" data-a="abgeben" data-id="${id}">Leitung abgeben</button>` : "";
+    if (p.misst) h += `<div class="msg info"><b>Kompass wird geprüft …</b>Dreht euch einmal um, dann sieht das Handy, ob der Kompass jetzt mitgeht.</div>`;
+    else if (p.versuche === 0) h += `<div class="msg warn"><b>Der Kompass dieses Handys zeigt gerade falsch</b>Der Pfeil richtet sich nach eurer Laufrichtung. ${tipp}
+      <button class="btn alt" data-a="einmessen" data-id="${id}">Kompass einmessen</button>${abgeben}</div>`;
+    else if (p.versuche === 1) h += `<div class="msg warn"><b>Einmessen hat nicht geholfen</b>Probiert es noch einmal, mit etwas Abstand zu Metall, Magneten und Handyhüllen. Der Pfeil folgt solange eurer Laufrichtung. ${tipp}
+      <button class="btn alt" data-a="einmessen" data-id="${id}">Noch einmal einmessen</button>${abgeben}</div>`;
+    else h += `<div class="msg warn"><b>Einmessen hilft bei diesem Handy nicht</b>Der Pfeil bleibt bei der Laufrichtung, die Entfernung stimmt immer. ${tipp}
+      ${abgeben}<button class="link" data-a="einmessen" data-id="${id}">Trotzdem noch einmal einmessen</button></div>`;
+  }
   h += ichLeite ? `<button class="btn alt">Noch 185 m bis zum Einchecken</button>`
                : `<p class="small muted" style="margin:10px 0 0">Einchecken macht <b>${vor(P[S.sicht[id]].name)}</b>, sobald ihr da seid.</p>`;
   h += `</div><div class="panel"><b style="font:700 18px var(--head)">Eure Ziffern</b><div class="lock"><div class="wheel">3</div><div class="wheel leer">?</div><div class="wheel leer">?</div><div class="wheel leer">?</div><div class="wheel leer">?</div><div class="wheel leer schluss">?</div></div></div>`;
@@ -151,6 +160,7 @@ function regler(id) {
     <span>Akku</span><input type="range" min="1" max="100" value="${p.akku}" data-r="akku" data-id="${id}">
     <div class="haken"><label><input type="checkbox" data-r="laedt" data-id="${id}" ${p.laedt ? "checked" : ""}>lädt</label>
       <label><input type="checkbox" data-r="schlecht" data-id="${id}" ${p.schlecht ? "checked" : ""}>Kompass schlecht</label>
+      <label><input type="checkbox" data-r="hilft" data-id="${id}" ${p.hilft ? "checked" : ""}>Einmessen hilft</label>
       <label><input type="checkbox" data-r="verbunden" data-id="${id}" ${p.verbunden ? "checked" : ""}>Handy verbunden</label></div>`;
 }
 function zeichne() {
@@ -187,14 +197,20 @@ document.addEventListener("click", e => {
   if (a === "abgeben") { S.dialog[id] = "abgeben"; S.wahl[id] = null; }
   if (a === "wahl") S.wahl[id] = b.dataset.wer;
   if (a === "spaeter") S.dialog[id] = null;
-  if (a === "einmessen") { P[id].schlecht = false; reglerZeichnen(); zeige(id, "Kompass ist eingemessen"); }
+  if (a === "einmessen") {
+    // Einmessen dauert, danach prüft der Wächter ein paar Drehungen lang; hilft es nicht, bleibt "schlecht"
+    P[id].misst = true; zeichne();
+    setTimeout(() => { P[id].misst = false;
+      if (P[id].hilft) { P[id].schlecht = false; P[id].versuche = 0; reglerZeichnen(); zeige(id, "Kompass ist eingemessen und zeigt richtig"); }
+      else { P[id].versuche++; zeichne(); } }, 2200);
+  }
   if (a === "uebergeben" && S.wahl[id]) { S.leiter = S.wahl[id]; S.dialog[id] = null; S.wahl[id] = null; abruf(); }
   zeichne();
 });
 document.addEventListener("input", e => {
   const el = e.target, id = el.dataset.id, r = el.dataset.r; if (!r) return;
   if (r === "akku") { P[id].akku = +el.value; if (P[id].akku > 20) { P[id].warn20 = false; P[id].warn10 = false; } else if (P[id].akku > 10) P[id].warn10 = false; }
-  else P[id][r] = el.checked;
+  else { P[id][r] = el.checked; if (r === "schlecht" && el.checked) P[id].versuche = 0; }
   if (r === "verbunden" && el.checked) abruf();
   akkuPruefen(); zeichne();
 });
