@@ -48,6 +48,8 @@ revoke all on function aktive_route() from public, anon, authenticated;
 -- current_station lieferte den Zeilentyp der Tabelle (jetzt stations_alle); neu mit dem Typ der Sicht,
 -- damit Tabelle und Sicht nicht auseinanderlaufen. Aufrufer sind plpgsql und hängen nicht daran.
 drop function current_station(uuid);
+-- admin_photo bekommt p_route dazu: alte Fassung weg, sonst gäbe es zwei
+drop function admin_photo(text, uuid, int, boolean);
 create function current_station(p_team uuid) returns stations
 language sql security definer set search_path = public as $$
   select s.* from stations s
@@ -93,10 +95,15 @@ AUFGABEN = [
      [(ADMIN_FELDER_ALT, ADMIN_FELDER_NEU, 1), (PR_SOLVED_ALT, PR_SOLVED_NEU, 1), (PR_LAST_ALT, PR_LAST_NEU, 1)]),
     ("admin_save_station", "20260930200000_name_verschluesselt.sql", [("  update stations set", "  update stations_alle set", 1)]),
     # Fotos der Spielleitung immer von der echten Route: Event-Fotos verschwinden im Testmodus nicht (Review M-3)
+    # Fotos der Spielleitung: alle Routen, mit route; die Teststation erscheint als eigene Kachel (Friedrich 02.10.)
     ("admin_photos", "20260930180000_gruppenselfie.sql",
-     [("join stations s on s.id = ph.station_id", "join stations_alle s on s.id = ph.station_id and s.route = 'echt'", 1)]),
+     [("join stations s on s.id = ph.station_id", "join stations_alle s on s.id = ph.station_id", 1),
+      ('s.name as "stationName",', 's.name as "stationName", s.route,', 1),
+      ("order by t.name, s.position", "order by t.name, s.route, s.position", 1)]),
     ("admin_photo", "20260930180000_gruppenselfie.sql",
-     [("join stations s on s.id = ph.station_id", "join stations_alle s on s.id = ph.station_id and s.route = 'echt'", 1)]),
+     [("create or replace function admin_photo(p_pin text, p_team uuid, p_position int, p_full boolean default false)",
+       "create or replace function admin_photo(p_pin text, p_team uuid, p_position int, p_full boolean default false, p_route text default 'echt')", 1),
+      ("join stations s on s.id = ph.station_id", "join stations_alle s on s.id = ph.station_id and s.route = coalesce(p_route, 'echt')", 1)]),
     # im Testmodus reicht eine Person (ein Team zum Ausprobieren), sonst wie bisher zwei
     ("admin_draw", "20260919100000_bugjagd.sql",
      [("  if v_count < 2 then raise exception 'Es sind noch zu wenige Personen angemeldet.' using errcode='P0001'; end if;",
@@ -127,6 +134,7 @@ def main() -> None:
                 sys.exit(f"{name}: '{alt[:50]}' kommt {f.count(alt)}x vor, erwartet {n}x")
             f = f.replace(alt, neu)
         teile.append(f"-- ---------- {name} (aus {datei}, für die Teststation angepasst) ----------\n{f}\n")
+    teile.append("grant execute on function admin_photo(text, uuid, int, boolean, text) to anon, authenticated;\n")
     teile.append("notify pgrst, 'reload schema';\n")
     ZIEL.write_text("\n".join(teile), encoding="utf-8", newline="\n")
     print("geschrieben:", ZIEL.relative_to(REPO))

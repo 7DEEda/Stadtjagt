@@ -62,6 +62,12 @@ with sync_playwright() as pw:
     # die gespielten Teams stehen im Prüfstand in Prag; geprüft wird, wo Start-Haus und Station liegen
     orte = pg.evaluate("layers.stations.map(l => l.getLatLng ? [l.getLatLng().lat, l.getLatLng().lng] : null).filter(Boolean)")
     pruef(orte and all(abs(o[0] - 52.47) < 0.05 for o in orte), f"Start-Haus und Teststation in Berlin ({orte})")
+    print("Test-Fotos bei der Spielleitung")
+    pg.goto("http://127.0.0.1:8822/app.html?szenario=admin-testfotos"); pg.wait_for_selector(".tabs")
+    pg.click("[data-act=a-tab][data-tab=fotos]"); pg.wait_for_selector(".galerie", timeout=20000); pg.wait_for_timeout(800)
+    t = pg.inner_text("#app")
+    pruef("Teststation" in t and "EDEKA Grenzallee" in t, "Galerie zeigt die Kachel Teststation")
+    pruef("test" in (pg.evaluate("window.__FOTO_ROUTE") or []), f"Test-Foto mit p_route test geholt ({pg.evaluate('window.__FOTO_ROUTE')})")
     print("Auslosen mit einer Person im Testmodus")
     pg.goto("http://127.0.0.1:8822/app.html?szenario=admin-auslosen-allein"); pg.wait_for_selector(".tabs")
     pg.click("[data-act=a-tab][data-tab=teams]"); pg.wait_for_selector("#dval")

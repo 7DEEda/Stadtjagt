@@ -1392,15 +1392,15 @@ async function fotoNachreichen(s) {
 // Fotos holen: wer = "team" (eigenes Album, Zugang wie beim Mitlesen) oder eine Team-Kennung (Spielleitung).
 // Gibt die data-URL zurück oder null, solange geladen wird; ist das Foto da, zeichnet die Seite neu.
 const fotoCache = {};
-function fotoUrl(wer, pos, stempel, voll) {
-  const k = [wer, pos, stempel, voll ? 1 : 0].join("|");
+function fotoUrl(wer, pos, stempel, voll, route) {
+  const k = [wer, pos, stempel, voll ? 1 : 0, route || "echt"].join("|");
   if (fotoCache[k] && fotoCache[k] !== "laedt") return fotoCache[k];
   if (!fotoCache[k]) {
     fotoCache[k] = "laedt";
     const ruf = wer === "team"
       ? rpc("team_photo", { p_code: S.view === "team" ? S.team.code : null, p_token: S.view === "team" ? null : LS.getItem("sj.token"),
           p_read_token: S.view === "team" ? null : LS.getItem("sj.mit"), p_position: pos, p_full: !!voll })
-      : rpc("admin_photo", { p_pin: S.admin.pin, p_team: wer, p_position: pos, p_full: !!voll });
+      : rpc("admin_photo", { p_pin: S.admin.pin, p_team: wer, p_position: pos, p_full: !!voll, p_route: route || "echt" });
     ruf.then(r => { const b = r && r.data; if (b) fotoCache[k] = "data:image/jpeg;base64," + String(b).replace(/\s/g, ""); else delete fotoCache[k]; if (b) render(); })
       .catch(() => { delete fotoCache[k]; });
   }
@@ -1448,9 +1448,9 @@ function fotoGrossHTML() {
   const G = S.gross; if (!G) return "";
   const st = G.team ? null : aktiverStand();
   const liste = G.team ? (S.admin.fotos || []).filter(f => f.teamId === G.team) : ((st && st.selfie && st.selfie.photos) || []);
-  const f = liste.find(x => x.position === G.pos);
+  const f = liste.find(x => x.position === G.pos && (x.route || "echt") === (G.route || "echt"));
   if (!f) return "";
-  const wer = G.team || "team", voll = fotoUrl(wer, G.pos, f.takenAt, true), klein = fotoUrl(wer, G.pos, f.takenAt, false);
+  const wer = G.team || "team", voll = fotoUrl(wer, G.pos, f.takenAt, true, G.route), klein = fotoUrl(wer, G.pos, f.takenAt, false, G.route);
   const ersetzen = !G.team && S.view === "team" && st.selfie.on && st.selfie.replaceable === G.pos;
   const name = `stadtjagd-${G.team ? String(f.teamName).toLowerCase() + "-" : ""}station-${G.pos}.jpg`;
   return `<div class="fotogross" data-act="foto-zu" role="dialog" aria-modal="true" aria-label="Foto von Station ${G.pos}"><div>
@@ -1813,10 +1813,13 @@ function viewAdmin() {
     for (const t of (st.teams || [])) {
       const eigene = fotos.filter(f => f.teamId === t.id);
       if (!eigene.length) continue;
-      out += `<div class="panel"><h3>${teamEmoji(t.name)} Team ${esc(t.name)}</h3><div class="galerie">${(st.stations || []).map(s => {
-        const f = eigene.find(x => x.position === s.position), u = f && fotoUrl(t.id, s.position, f.takenAt, false);
-        return `<figure>${f ? `<button class="bild" data-act="foto-gross" data-pos="${s.position}" data-team="${t.id}" aria-label="Foto groß zeigen">${u ? `<img src="${u}" alt="">` : "…"}</button>` : `<div class="bild"></div>`}
-          <figcaption>${s.position}. ${esc(s.name)}${f ? ", " + uhrzeit(f.takenAt) : ", offen"}</figcaption></figure>`; }).join("")}</div></div>`;
+      // Test-Fotos (Teststation) als eigene Kachel vorneweg, nur wenn es eins gibt
+      const kacheln = [...(st.testStation && eigene.some(f => f.route === "test") ? [{ ...st.testStation, route: "test" }] : []),
+        ...(st.stations || []).map(s => ({ ...s, route: "echt" }))];
+      out += `<div class="panel"><h3>${teamEmoji(t.name)} Team ${esc(t.name)}</h3><div class="galerie">${kacheln.map(s => {
+        const f = eigene.find(x => x.position === s.position && (x.route || "echt") === s.route), u = f && fotoUrl(t.id, s.position, f.takenAt, false, s.route);
+        return `<figure>${f ? `<button class="bild" data-act="foto-gross" data-pos="${s.position}" data-team="${t.id}" data-route="${s.route}" aria-label="Foto groß zeigen">${u ? `<img src="${u}" alt="">` : "…"}</button>` : `<div class="bild"></div>`}
+          <figcaption>${s.route === "test" ? "Teststation, " + esc(s.name) : `${s.position}. ${esc(s.name)}`}${f ? ", " + uhrzeit(f.takenAt) : ", offen"}</figcaption></figure>`; }).join("")}</div></div>`;
     }
   }
   if (A.tab === "danger") {
@@ -2335,7 +2338,7 @@ const ACT = {
     if (z != null) S.neueZiffer = { i: p.position - 1, bis: Date.now() + 8000 };
     S.msg = { type: "ok", text: `Station ${p.position} gelöst${z != null ? ", eure Ziffer: " + z : ""}.` + (hatte ? " Das Foto reichen wir nach, sobald das Netz reicht." : "") };
   },
-  "foto-gross"(d) { S.gross = { pos: Number(d.pos), team: d.team || null }; },
+  "foto-gross"(d) { S.gross = { pos: Number(d.pos), team: d.team || null, route: d.route || "echt" }; },
   "foto-zu"() { S.gross = null; },
   "foto-bild"() { return false; },
   async "a-selfie"(d) {
@@ -2347,8 +2350,9 @@ const ACT = {
     const fotos = S.admin.fotos || [], dateien = [];
     const sauber = s => String(s).replace(/[^A-Za-z0-9ÄÖÜäöüß-]+/g, "-").replace(/^-|-$/g, "");
     for (const f of fotos) {
-      const b = atob(String((await rpc("admin_photo", { p_pin: S.admin.pin, p_team: f.teamId, p_position: f.position, p_full: true })).data).replace(/\s/g, ""));
-      dateien.push({ name: `Team-${sauber(f.teamName)}/Station-${f.position}-${sauber(f.stationName)}.jpg`, bytes: Uint8Array.from(b, c => c.charCodeAt(0)) });
+      const test = f.route === "test";
+      const b = atob(String((await rpc("admin_photo", { p_pin: S.admin.pin, p_team: f.teamId, p_position: f.position, p_full: true, p_route: f.route || "echt" })).data).replace(/\s/g, ""));
+      dateien.push({ name: `Team-${sauber(f.teamName)}/${test ? "Teststation" : "Station-" + f.position}-${sauber(f.stationName)}.jpg`, bytes: Uint8Array.from(b, c => c.charCodeAt(0)) });
     }
     const a = document.createElement("a");
     a.href = URL.createObjectURL(zipBauen(dateien)); a.download = "stadtjagd-fotos.zip";

@@ -164,6 +164,8 @@
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=teams]" }, { wait: 300 }] },
     "teststation": { welt: "running", view: "team", ls: IM_TEAM, testMode: true, teststation: true, fuchs: { solved: 0 } },
     "teststation-koffer": { welt: "running", view: "team", ls: IM_TEAM, testMode: true, teststation: true, fuchs: { solved: 1 } },
+    "admin-testfotos": { welt: "running", view: "admin", testMode: true, teststation: true, testfoto: true, fuchs: { solved: 2 }, ss: { "sj.pin": "4711" },
+      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { wait: 600 }] },
     "admin-teststation": { welt: "running", view: "admin", testMode: true, teststation: true, ss: { "sj.pin": "4711" } },
     "admin-auslosen-allein": { welt: "registration", view: "admin", testMode: true, ss: { "sj.pin": "4711" }, nurEine: true },
     "admin-stationen": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
@@ -281,6 +283,8 @@
   if (C.selfie) TEAMS.forEach(t => { if (t !== FUCHS) for (let i = 1; i <= t.solved; i++) ANDERE_FOTOS.push({ t, position: i, at: NOW - (t.solved - i + 1) * 9 * MIN }); });
   const fotoListe = () => Object.keys(FOTOS).map(p => ({ teamId: FUCHS.id, teamName: FUCHS.name, position: +p, stationName: STATIONEN[p - 1].name, takenAt: iso(FOTOS[p].at) }))
     .concat(ANDERE_FOTOS.map(f => ({ teamId: f.t.id, teamName: f.t.name, position: f.position, stationName: STATIONEN[f.position - 1].name, takenAt: iso(f.at) })))
+    .concat(C.testfoto ? [{ teamId: FUCHS.id, teamName: FUCHS.name, position: 1, stationName: TESTSTATION.name, takenAt: iso(NOW - 5 * MIN), route: "test" }] : [])
+    .map(f => Object.assign({ route: "echt" }, f))
     .sort((a, b) => a.teamName.localeCompare(b.teamName) || a.position - b.position);
   function selfieFeld(t, f) {
     if (t !== FUCHS) return { on: WELT.selfieOn, pending: null, replaceable: null, deleteOn: WELT.photosDeleteOn, photos: [] };
@@ -419,7 +423,7 @@
     admin_save_station: a => { pin(a); const s = STATIONEN.concat([TESTSTATION]).find(x => x.id === a.p_id); window.__GESPEICHERT = a;
       Object.assign(s, { name: a.p_name, lat: a.p_lat, lng: a.p_lng, radiusM: a.p_radius, revealStartM: a.p_reveal_start, revealClearM: a.p_reveal_clear }); return adminState(); },
     admin_photos: a => { pin(a); return fotoListe(); },
-    admin_photo: a => { pin(a); const t = TEAMS.find(x => x.id === a.p_team); return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full) }; },
+    admin_photo: a => { pin(a); window.__FOTO_ROUTE = (window.__FOTO_ROUTE || []).concat([a.p_route || "echt"]); const t = TEAMS.find(x => x.id === a.p_team); return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full) }; },
     admin_set_selfie: a => { pin(a); WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
     admin_delete_photos: a => { pin(a); ANDERE_FOTOS.length = 0; Object.keys(FOTOS).forEach(k => delete FOTOS[k]); return adminState(); },
     admin_state: a => { pin(a); return adminState(); },

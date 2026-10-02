@@ -30,6 +30,8 @@ revoke all on function aktive_route() from public, anon, authenticated;
 -- current_station lieferte den Zeilentyp der Tabelle (jetzt stations_alle); neu mit dem Typ der Sicht,
 -- damit Tabelle und Sicht nicht auseinanderlaufen. Aufrufer sind plpgsql und hängen nicht daran.
 drop function current_station(uuid);
+-- admin_photo bekommt p_route dazu: alte Fassung weg, sonst gäbe es zwei
+drop function admin_photo(text, uuid, int, boolean);
 create function current_station(p_team uuid) returns stations
 language sql security definer set search_path = public as $$
   select s.* from stations s
@@ -342,18 +344,18 @@ language plpgsql security definer set search_path = public as $$
 begin
   perform require_admin(p_pin);
   return coalesce((select json_agg(to_json(x)) from (
-    select t.id as "teamId", t.name as "teamName", s.position, s.name as "stationName", ph.taken_at as "takenAt"
-    from station_photos ph join teams t on t.id = ph.team_id join stations_alle s on s.id = ph.station_id and s.route = 'echt'
-    order by t.name, s.position) x), '[]'::json);
+    select t.id as "teamId", t.name as "teamName", s.position, s.name as "stationName", s.route, ph.taken_at as "takenAt"
+    from station_photos ph join teams t on t.id = ph.team_id join stations_alle s on s.id = ph.station_id
+    order by t.name, s.route, s.position) x), '[]'::json);
 end $$;
 
 -- ---------- admin_photo (aus 20260930180000_gruppenselfie.sql, für die Teststation angepasst) ----------
-create or replace function admin_photo(p_pin text, p_team uuid, p_position int, p_full boolean default false)
+create or replace function admin_photo(p_pin text, p_team uuid, p_position int, p_full boolean default false, p_route text default 'echt')
 returns json language plpgsql security definer set search_path = public as $$
 begin
   perform require_admin(p_pin);
   return json_build_object('data', (select encode(case when p_full then ph.photo else ph.thumb end, 'base64')
-          from station_photos ph join stations_alle s on s.id = ph.station_id and s.route = 'echt'
+          from station_photos ph join stations_alle s on s.id = ph.station_id and s.route = coalesce(p_route, 'echt')
           where ph.team_id = p_team and s.position = p_position));
 end $$;
 
@@ -413,5 +415,7 @@ begin
   update game_state set status = 'drawn' where id = 1;
   return admin_state(p_pin);
 end $$;
+
+grant execute on function admin_photo(text, uuid, int, boolean, text) to anon, authenticated;
 
 notify pgrst, 'reload schema';

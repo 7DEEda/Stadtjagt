@@ -89,10 +89,11 @@ begin
   revoke all on stations from anon, authenticated;   -- neu angelegt: Supabase vergibt Rechte von selbst
   v_n := v_n + 1;
 
-  -- I: Fotos der echten Route bleiben im Testmodus bei der Spielleitung (Review M-3)
-  if position('route = ''echt''' in pg_get_functiondef('admin_photos'::regproc)) = 0
-     or position('route = ''echt''' in pg_get_functiondef('admin_photo'::regproc)) = 0
-    then raise exception 'PROBE FEHLT I1: admin_photos/admin_photo folgen der aktiven Route'; end if;
+  -- I: die Spielleitung sieht Fotos beider Routen, unabhängig vom Testmodus (Review M-3, Friedrich 02.10.)
+  if position('stations_alle' in pg_get_functiondef('admin_photos'::regproc)) = 0
+     or position('p_route' in pg_get_functiondef('admin_photo'::regproc)) = 0
+     or (select count(*) from pg_proc where proname = 'admin_photo') <> 1
+    then raise exception 'PROBE FEHLT I1: admin_photos/admin_photo nicht über beide Routen'; end if;
   v_n := v_n + 1;
 
   -- F: die Sicht ist ohne PIN nicht lesbar
