@@ -175,6 +175,11 @@
           "Genauigkeit": s.genau == null ? "meldet das Gerät nicht" : "±" + rund(s.genau, 1) + "°",
           "deviceorientationabsolute": janein("ondeviceorientationabsolute" in window)
         };
+        // Chrome meldet nur Änderungen: liegt das Handy still, kommt in 3 s nichts Neues, obwohl die Richtung längst da ist
+        if (!n && s.richtung != null && s.quelle && s.quelle !== "relativ") {
+          mess["Hinweis"] = "In den 3 s kam kein neues Ereignis, das Handy lag vermutlich still. Die Richtung war schon vorher da.";
+          return { art: "ok", wert: "Nordbezug", mess };
+        }
         if (!n) return { art: "err", wert: "keine Daten", mess };
         if (s.quelle === "relativ" || s.richtung == null) return { art: "err", wert: "kein Nordbezug", mess };
         if (s.genau != null && (s.genau < 0 || s.genau > KOMPASS_GRENZE)) return { art: "warn", wert: s.genau < 0 ? "nicht kalibriert" : "±" + Math.round(s.genau) + "°", mess };
@@ -416,5 +421,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 9, tests };   // 9: ohne "Kompass nach Pause" (02.10.2026)
+  window.SJ_TESTS = { version: 10, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler (02.10.2026)
 })();

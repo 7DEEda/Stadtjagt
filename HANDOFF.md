@@ -1569,3 +1569,14 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
 - „Handy einmal drehen“ läuft bis zum vollen Kreis (36 von 36, höchstens
   45 s) und bleibt kurz auf 100 % stehen; die Anzeige rechnet auf 36. „ok“
   gilt weiter ab 30 Fächern, falls die Zeit abläuft.
+- Suite 10 (02.10.): „Kompass“ im automatischen Teil gilt nicht mehr als
+  Fehler, wenn das Handy still liegt (Chrome meldet nur Änderungen; die
+  Richtung war da). Befund aus vier Läufen am 02.10. (Xiaomi 23113RKC6G,
+  Chrome): drei Mal „keine Daten“ bei vorhandener Richtung.
+- Läufe 02.10. (Xiaomi, Android 16, Chrome): Standort ±7 m nach 2,9 s, Handy
+  drehen 36 von 36 in 13 s, Wach halten schon ohne Tipp erteilt, Standort
+  nach dem Entsperren in 1,9 s zurück, Kamera ok, Lauf etwa 70 s. Vibration
+  zweimal nicht gespürt (wie am 30.09.), Mitteilungen nur mit Service Worker.
+  Unklar: Lauf Z95K, Handy drehen nur 1 von 36 in 45 s und Kompass nach Pause
+  starr auf 90°, der Kompass stand in diesem Lauf vermutlich.
+
