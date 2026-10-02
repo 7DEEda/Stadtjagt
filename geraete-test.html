@@ -377,20 +377,25 @@ const sensor = {
     this.beta = e.beta; this.gamma = e.gamma;
     // Neigungs-Parallax wie neigungStart() in index.html
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Fast senkrecht kippt gamma schlagartig um 180° (Eigenheit der Winkel bei beta um 90°): dann stillhalten statt springen
+    if (Math.abs(e.beta) > 75) return;
+
     const quer = Math.abs(screen.orientation?.angle ?? window.orientation ?? 0) === 90;
     const x = quer ? e.beta : e.gamma, y = quer ? -e.gamma : e.beta;
     if (!this.bezug) this.bezug = { x, y };
     this.bezug.x += (x - this.bezug.x) * 0.02; this.bezug.y += (y - this.bezug.y) * 0.02;
     const k = d => Math.max(-18, Math.min(18, (d / 25) * 18));
     this.ziel = { x: k(x - this.bezug.x), y: k(y - this.bezug.y) };
-    if (!this.tick) {
-      this.tick = true;
-      requestAnimationFrame(() => {
-        this.tick = false;
-        const t = $("#topo");
-        t.style.setProperty("--nx", this.ziel.x.toFixed(1) + "px"); t.style.setProperty("--ny", this.ziel.y.toFixed(1) + "px");
-      });
-    }
+    if (!this.tick) { this.tick = true; requestAnimationFrame(() => this.gleiten()); }
+  },
+  // Die Karte gleitet zur neuen Lage, statt jedem Messwert sofort zu folgen (kein Zucken bei verrauschten Sensoren)
+  ist: { x: 0, y: 0 },
+  gleiten() {
+    this.tick = false;
+    const t = $("#topo"), i = this.ist, z = this.ziel;
+    i.x += (z.x - i.x) * 0.18; i.y += (z.y - i.y) * 0.18;
+    t.style.setProperty("--nx", i.x.toFixed(1) + "px"); t.style.setProperty("--ny", i.y.toFixed(1) + "px");
+    if (Math.abs(z.x - i.x) > 0.1 || Math.abs(z.y - i.y) > 0.1) { this.tick = true; requestAnimationFrame(() => this.gleiten()); }
   }
 };
 const brauchtNachfrage = window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === "function";

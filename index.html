@@ -3042,12 +3042,14 @@ try { const bg = LS.getItem("sj.bg"); if (bg) hintergrundSetzen(bg); } catch { /
 // in der das Handy gerade ruht: ein Tiefpass zieht den Bezug langsam nach, so bleibt die Karte bei ruhiger
 // Hand still und reagiert nur auf Bewegung. Android liefert die Ereignisse ohne Nachfrage, iOS erst nach
 // der Freigabe, die startGps() für den Kompass einholt; dann hängt sich neigungStart() erneut ein.
-let neigungAn = false, neigungBezug = null, neigungTick = false, neigungZiel = { x: 0, y: 0 };
+let neigungAn = false, neigungBezug = null, neigungTick = false, neigungZiel = { x: 0, y: 0 }, neigungIst = { x: 0, y: 0 };
 function neigungStart() {
   if (neigungAn || !window.DeviceOrientationEvent || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   neigungAn = true;
   addEventListener("deviceorientation", e => {
     if (e.beta == null || e.gamma == null) return;
+    // Fast senkrecht kippt gamma schlagartig um 180° (Eigenheit der Winkel bei beta um 90°): dann stillhalten statt springen
+    if (Math.abs(e.beta) > 75) return;
     // Hochkant: gamma = links/rechts, beta = vor/zurück. Querformat: vertauscht.
     const quer = Math.abs(screen.orientation?.angle ?? window.orientation ?? 0) === 90;
     const x = quer ? e.beta : e.gamma, y = quer ? -e.gamma : e.beta;
@@ -3058,11 +3060,14 @@ function neigungStart() {
     if (!neigungTick) { neigungTick = true; requestAnimationFrame(neigungZeichnen); }
   }, { passive: true });
 }
+// Die Karte gleitet zur neuen Lage, statt jedem Messwert sofort zu folgen (kein Zucken bei verrauschten Sensoren)
 function neigungZeichnen() {
   neigungTick = false;
   const t = $("#topo"); if (!t) return;
-  t.style.setProperty("--nx", neigungZiel.x.toFixed(1) + "px");
-  t.style.setProperty("--ny", neigungZiel.y.toFixed(1) + "px");
+  neigungIst.x += (neigungZiel.x - neigungIst.x) * 0.18; neigungIst.y += (neigungZiel.y - neigungIst.y) * 0.18;
+  t.style.setProperty("--nx", neigungIst.x.toFixed(1) + "px");
+  t.style.setProperty("--ny", neigungIst.y.toFixed(1) + "px");
+  if (Math.abs(neigungZiel.x - neigungIst.x) > 0.1 || Math.abs(neigungZiel.y - neigungIst.y) > 0.1) { neigungTick = true; requestAnimationFrame(neigungZeichnen); }
 }
 neigungStart();
 

@@ -1653,4 +1653,12 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   meldet die Genauigkeit vorher und nachher. Sieben Hand-Schritte. Der
   Prüfstand legt sein gespieltes Handy jetzt flach (sonst sperrt der
   Drehschritt) und überspringt das Einmessen.
+- Hintergrund-Neigung ruhiger (Spiel und Testseite, 02.10.): steht das Handy
+  steiler als 75° (beta), hält die Karte still, weil gamma dort schlagartig um
+  180° kippt (beim Einmessen ständig); die Karte gleitet zur neuen Lage
+  (0,18 je Bild, `neigungIst` bzw. `sensor.gleiten()`), höchstens etwa 3 px
+  je Bild statt Sprüngen bis 36 px. Hinweis: der Prüfstand stellt
+  Lageereignisse nur dem Kompass zu, nicht dem Neigungs-Effekt.
+- Lauf ASC3 (Xiaomi 23113RKC6G, Suite 16): eingemessen 5,1 s, danach
+  Gyroskop −354°, Kompass −369° (104 %), höchstens 16° daneben.
 
