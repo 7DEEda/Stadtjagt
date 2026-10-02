@@ -93,7 +93,7 @@ details[open] summary::after{transform:rotate(-135deg);margin-top:4px}
     <li><b>Alles Automatische</b> läuft gleich nach „Test starten“ in einem Rutsch: nur Häkchen, keine Messwerte.</li>
     <li><b>7 statt 8 Handschritte:</b> „Wach halten, mit Tipp“ entfällt als eigener Schritt. Die Seite fragt die Sperre einmal beim Laden (ohne Tipp) und einmal im Tipp auf „Test starten“ (mit Tipp). Gemessen wird dasselbe.</li>
     <li><b>Lange Anweisungen</b> (Kompass nach Pause) als nummerierte Liste.</li>
-    <li><b>Am Ende</b>: „Fertig, danke“, die Laufkennung, und nur dann eine Karte, wenn man selbst etwas einstellen kann (etwa „Genauer Standort“). Messwerte unter „Ergebnis ansehen“, eingeklappt.</li>
+    <li><b>Am Ende</b>: „Fertig, danke“, die Laufkennung, und nur dann eine Karte, wenn man selbst etwas einstellen kann (etwa „Genauer Standort“). Messwerte unter „Ergebnis ansehen“, eingeklappt. Kein „Bericht kopieren“ mehr: der Lauf kommt von allein in der Datenbank an. Nur wenn das Speichern scheitert (kein Netz), gibt es „Erneut senden“ und als Ausweg „Bericht kopieren“.</li>
     <li>Knöpfe 52 px hoch, Textknöpfe 48 px (Material: mindestens 48 dp).</li>
     <li><b>Datenschutz:</b> Heute speichert der Lauf die Position auf etwa einen Meter genau. Künftig nur noch die Genauigkeit („±12 m“), nicht wo das Handy war. Das Foto geht wie bisher nur zur Probe an den Server und wird nicht behalten.</li>
   </ul>
@@ -169,14 +169,15 @@ function zeichne() {
     const n = Object.values(S.erg).filter(v => v === "skip").length;
     app.innerHTML = kopf("Fertig", 1) + `<div class="inhalt"><div class="bild" style="border-color:transparent;background:var(--ok-bg)">${I.fertig}</div>
       <h2>Fertig, danke!</h2>
-      <p>Das Ergebnis ist gespeichert als Lauf <span class="kenn">${S.laufKey}</span>. Du kannst die Seite jetzt schließen.</p>
+      ${S.offline ? `<p>Das Ergebnis ließ sich nicht speichern, das Handy ist gerade ohne Netz.</p><p class="klein">Das Ergebnis bleibt auf dem Handy und geht beim nächsten Öffnen der Seite von selbst raus. Oder gleich „Erneut senden“, sobald wieder Netz da ist.</p>`
+        : `<p>Das Ergebnis ist gespeichert als Lauf <span class="kenn">${S.laufKey}</span>. Die Seite kann jetzt zu.</p>`}
       ${S.grob ? `<div class="karte warn"><h3>Eine Sache kannst du einstellen</h3><p>Dein Handy gibt nur den ungefähren Standort frei. iPhone: Einstellungen, Datenschutz und Sicherheit, Ortungsdienste, Safari-Websites, „Genauer Standort“ einschalten.</p></div>` : ""}
       ${n ? `<p class="klein" style="margin-top:12px">${n} ${n === 1 ? "Schritt" : "Schritte"} übersprungen. Kein Problem.</p>` : ""}
       <details><summary>Ergebnis ansehen</summary><ul class="auto erg">
         ${AUTO.map(a => `<li><span class="ic">${a === "Standort" ? WARN : OK}</span>${a}<span>${a === "Standort" ? "nur ungefähr" : "geht"}</span></li>`).join("")}
         ${HAND.map(h => { const v = S.erg[h.id] || "skip"; return `<li><span class="ic">${v === "ok" ? OK : v === "nein" ? WARN : SKIP}</span>${h.titel}<span>${v === "ok" ? "geht" : v === "nein" ? "nicht gespürt" : "übersprungen"}</span></li>`; }).join("")}
       </ul></details></div>
-      <div class="aktion"><button class="btn alt" data-a="kopie">Bericht kopieren</button></div>`;
+      ${S.offline ? `<div class="aktion"><button class="btn" data-a="senden">Erneut senden</button><button class="txt" data-a="kopie">Bericht kopieren</button></div>` : ""}`;
   }
 }
 function weiter(v) {
@@ -190,13 +191,15 @@ app.addEventListener("click", e => {
      go() { S.phase = "laeuft"; zeichne(); },
      skip() { weiter("skip"); },
      ja() { weiter("ok"); }, nein() { weiter("nein"); },
-     kopie() { a.textContent = "Kopiert"; } })[a.dataset.a]();
+     kopie() { a.textContent = "Kopiert"; },
+     senden() { S.offline = false; zeichne(); } })[a.dataset.a]();
 });
 // rechts: direkt in einen Zustand springen
 const SPR = [["Start", () => { S.seite = "start"; }], ["Automatisch", () => { S.seite = "auto"; S.autoN = 4; }],
   ["Schritt 1", () => { S.seite = "hand"; S.i = 0; S.phase = "bereit"; }], ["Schritt läuft", () => { S.seite = "hand"; S.i = 1; S.phase = "laeuft"; }],
   ["Kompass-Pause", () => { S.seite = "hand"; S.i = 3; S.phase = "bereit"; }], ["Ja/Nein", () => { S.seite = "hand"; S.i = 5; S.phase = "frage"; }],
-  ["Fertig", () => { S.seite = "ende"; S.erg = { dreh: "ok", sperre: "ok", app: "ok", pause: "skip", kamera: "ok", vib: "nein", glocke: "ok" }; }]];
+  ["Ohne Netz", () => { S.seite = "ende"; S.offline = true; }],
+  ["Fertig", () => { S.seite = "ende"; S.offline = false; S.erg = { dreh: "ok", sperre: "ok", app: "ok", pause: "skip", kamera: "ok", vib: "nein", glocke: "ok" }; }]];
 document.getElementById("sprung").innerHTML = SPR.map((s, k) => `<button data-k="${k}">${s[0]}</button>`).join("");
 document.getElementById("sprung").addEventListener("click", e => { const b = e.target.closest("[data-k]"); if (!b) return; SPR[+b.dataset.k][1](); zeichne(); });
 zeichne();
