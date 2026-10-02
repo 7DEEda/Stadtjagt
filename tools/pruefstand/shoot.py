@@ -21,6 +21,7 @@ def bauen():
     # config.js und die Hintergründe neben app.html, damit relative Pfade tragen
     import shutil
     shutil.copy(REPO / "config.js", HIER / "config.js")
+    shutil.copy(REPO / "kompass-waechter.js", HIER / "kompass-waechter.js")
     shutil.copytree(REPO / "hintergrund", HIER / "hintergrund", dirs_exist_ok=True)
     shutil.copytree(REPO / "vendor", HIER / "vendor", dirs_exist_ok=True)   # QR-Generator für den Mitlese-Link
 

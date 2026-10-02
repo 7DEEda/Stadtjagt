@@ -455,6 +455,7 @@ input[type=date]{min-height:50px}
 </div></div>
 
 <script src="config.js"></script>
+<script src="kompass-waechter.js"></script>
 <script>
 /* ===========================================================
    KONFIGURATION – hier eintragen, bevor die Datei online geht.
@@ -552,6 +553,16 @@ const S = {
            tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false, confirm: null,
            draw: { mode: "size", value: 10 } }
 };
+// Kompass-Wächter (Nachtrag 30): Gedächtnis je Handy, ohne Namen; Datum, damit ein alter Vermerk nach einem Tag verfällt
+function waechterNeu() {
+  let m = {}; try { m = JSON.parse(LS.getItem("sj.kompass") || "{}"); } catch { /* defekt: neu anfangen */ }
+  const frisch = m.datum && (Date.now() - Date.parse(m.datum)) < 86400000;
+  return window.KompassWaechter ? KompassWaechter({ vorbelastet: frisch && !!m.vorbelastet, versuche: frisch ? m.versuche || 0 : 0,
+    onWechsel: z => { try { LS.setItem("sj.kompass", JSON.stringify({ vorbelastet: z.vorbelastet, versuche: z.versuche, datum: new Date().toISOString().slice(0, 10) })); } catch { /* egal */ }
+      kompassNeu = true; } }) : null;
+}
+S.gps.waechter = waechterNeu();
+const waechterSchlecht = () => { const st = aktiverStand(); return !!(st && st.testMode && S.gps.waechter && S.gps.waechter.urteil === "unzuverlaessig"); };
 // Farben für bis zu 16 Teams, auf hellem wie dunklem Grund unterscheidbar
 const TEAM_COLORS = ["#2F6E9E", "#2E7D4F", "#7B3FA0", "#C62828", "#F9A825", "#00838F", "#AD1457", "#4E6E1F",
   "#E65100", "#3949AB", "#00695C", "#8D6E63", "#D81B60", "#455A64", "#0277BD", "#9E9D24"];
@@ -2624,6 +2635,7 @@ function kalEnde(fertig) {
   g.kal = null; g.nachPause = false; g.nachPauseOffen = false;
   LS.setItem(KAL_KEY, heute());
   g.kalOk = fertig ? { acc: g.kompassAcc, bis: Date.now() + 8000 } : null;
+  if (fertig && g.waechter) g.waechter.einmessen();
 }
 // ein Orientierungsereignis auswerten; true, wenn das Einmessen damit fertig ist
 function kalSchritt(e) {
@@ -2656,6 +2668,7 @@ function kalZeigen() {
 // (kompassAcc), dort regelt das der Zustand "kalibrieren" schon.
 function kompassNachPause(wegMs) {
   const g = S.gps;
+  if (g.waechter) g.waechter.pause();
   if (wegMs < 3000 || !g.on || !kompassDa() || g.kompassAcc != null) return;
   g.nachPause = true; g.nachPauseOffen = true; g.kalOk = null; g.kompass = "kalibrieren";
 }
@@ -2773,6 +2786,14 @@ function addOrient(neu) {
       const so = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
       g.heading = (hd + so + 360) % 360;
     }
+    // Wächter füttern (nicht beim Einmessen, nicht im Hintergrund) und seine Wirkung anwenden
+    const w = g.waechter;
+    if (w) {
+      if (g.kal || document.hidden) w.pause();
+      else if (hd != null) w.kompass(hd, e.timeStamp || performance.now());
+      g.waechterGrund = false;
+      if (waechterSchlecht() && g.kompass === "an") { g.kompass = "kalibrieren"; g.waechterGrund = true; }
+    }
     // Einmessen: läuft es, zählt jedes Ereignis mit; sonst beim ersten echten
     // Kompass des Tages von selbst anbieten
     let kalWechsel = false;
@@ -2791,6 +2812,26 @@ function addOrient(neu) {
   if ("ondeviceorientationabsolute" in window) window.addEventListener("deviceorientationabsolute", h);
   else window.addEventListener("deviceorientation", h);
 }
+// Gyroskop für den Kompass-Wächter: Drehung um die Senkrechte (Drehrate auf "oben" projiziert, oben aus der Schwerkraft,
+// auf z > 0 gewendet; alpha um x, beta um y, gamma um z, so auf Android-Chrome und iOS-Safari gemessen)
+let motionH = null, motionOben = null;
+function addMotion(neu) {
+  if (!window.DeviceMotionEvent || (motionH && !neu)) return;
+  if (motionH) window.removeEventListener("devicemotion", motionH);
+  motionH = e => {
+    const g = e.accelerationIncludingGravity, r = e.rotationRate, w = S.gps.waechter;
+    if (g && typeof g.z === "number") {
+      const b = Math.hypot(g.x || 0, g.y || 0, g.z);
+      if (b > 1) { let o = [(g.x || 0) / b, (g.y || 0) / b, g.z / b]; if (o[2] < 0) o = o.map(v => -v);
+        motionOben = motionOben ? motionOben.map((v, i) => v + (o[i] - v) * 0.6) : o; }
+    }
+    if (!w || !r || typeof r.alpha !== "number" || !motionOben || document.hidden) return;
+    if (S.gps.kal) { w.pause(); return; }
+    const v = r.alpha * motionOben[0] + r.beta * motionOben[1] + r.gamma * motionOben[2];
+    w.gyro(-v, e.timeStamp || performance.now());   // Drehraten gegen den Uhrzeigersinn positiv, Kompass im Uhrzeigersinn
+  };
+  window.addEventListener("devicemotion", motionH, { passive: true });
+}
 async function startGps(auto) {
   const g = S.gps;
   if (!navigator.geolocation) { g.err = "Dieses Gerät liefert keinen Standort."; render(); return; }
@@ -2803,13 +2844,17 @@ async function startGps(auto) {
       // Nach dem Neuladen, ohne Fingertipp. iOS liefert erst nach neuer Freigabe. Chrome kennt requestPermission
       // inzwischen auch, liefert aber ohne Nachfrage (gemessen 30.09.2026, Chrome 155 auf Android). Am Vorhandensein
       // lässt sich iOS also nicht erkennen: zuhören, und nur wenn nichts kommt, um den Tipp bitten.
-      g.kompass = "wartet"; tippNoetig = true; addOrient();
+      g.kompass = "wartet"; tippNoetig = true; addOrient(); addMotion();
     } else if (typeof DOE.requestPermission === "function") {
-      // iOS: muss aus einem Fingertipp kommen, sonst wird abgelehnt
+      // iOS: muss aus einem Fingertipp kommen, sonst wird abgelehnt. Die Bewegungs-Freigabe (Gyroskop für den
+      // Kompass-Wächter) im selben Tipp anstoßen, vor dem ersten await
+      const DME = window.DeviceMotionEvent;
+      const mot = DME && typeof DME.requestPermission === "function" ? DME.requestPermission().catch(() => "denied") : null;
       const r = await DOE.requestPermission();
       if (r === "granted") { g.kompass = "wartet"; addOrient(true); neigungStart(); logoStart(true); }
       else g.kompass = "abgelehnt";
-    } else { g.kompass = "wartet"; addOrient(); }
+      if (mot) mot.then(x => { if (x === "granted") addMotion(true); });
+    } else { g.kompass = "wartet"; addOrient(); addMotion(); }
   } catch { g.kompass = "abgelehnt"; }
   // Handys ohne Magnetsensor schweigen einfach oder schicken leere Ereignisse.
   // Kommt in 3 s nichts Brauchbares, gilt der Kompass als fehlend; meldet er sich

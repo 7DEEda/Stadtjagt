@@ -5,7 +5,7 @@ Kompass-Wächter im Prüfstand, ohne Datenbank.
     python tools/pruefstand/waechter.py
 
 Teil Logik: kompass-waechter.js mit erfundenen Sensorfolgen (virtuelle Zeit, läuft in Millisekunden).
-Teile Spiel und Anzeige ergänzen Task 2 und 3. Im Vordergrund mit Timeout aufrufen.
+Teil Spiel: Anbindung in index.html (Szenario waechter-schlecht, Port 8826). Teil Anzeige ergänzt Task 3. Im Vordergrund mit Timeout aufrufen.
 """
 import functools
 import http.server
@@ -17,8 +17,19 @@ sys.stdout.reconfigure(encoding="utf-8")
 HIER = pathlib.Path(__file__).resolve().parent
 REPO = HIER.parent.parent
 sys.path.insert(0, str(HIER))
+import shoot  # noqa: E402
+
+shoot.bauen()
 from playwright.sync_api import sync_playwright  # noqa: E402
 
+
+class Leise(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+
+srv = http.server.ThreadingHTTPServer(("127.0.0.1", 8826), functools.partial(Leise, directory=str(HIER)))
+threading.Thread(target=srv.serve_forever, daemon=True).start()
 fehler = []
 
 
@@ -94,6 +105,22 @@ with sync_playwright() as pw:
     r = pg.evaluate("""() => { const z = []; const w = KompassWaechter({ onWechsel: x => z.push(x.urteil + "/" + x.vorbelastet) });
       lauf(w, [].concat(...Array.from({length: 3}, () => drehung(0.4)))); return z; }""")
     pruef("unzuverlaessig/true" in r, f"onWechsel meldet Urteil und Vermerk ({r})")
+
+    print("Spiel")
+    pg2 = b.new_page(viewport={"width": 390, "height": 844}); pg2.set_default_timeout(15000)
+    pg2.on("pageerror", lambda e: err.append(str(e)))
+    pg2.goto("http://127.0.0.1:8826/app.html?szenario=waechter-schlecht"); pg2.wait_for_function("typeof S !== 'undefined' && S.gps.on")
+    pg2.evaluate("window.__orient('gut'); window.__motion(0)"); pg2.wait_for_timeout(600)
+    z = pg2.evaluate("[S.gps.waechter && S.gps.waechter.urteil, S.gps.kompass, S.gps.waechterGrund]")
+    pruef(z == ["unzuverlaessig", "kalibrieren", True], f"vorbelastet im Testmodus: Kompass gilt als ungenau ({z})")
+    pg2.evaluate("S.team.state.testMode = false; window.__orient('gut')"); pg2.wait_for_timeout(400)
+    pruef(pg2.evaluate("S.gps.kompass") == "an", "Testmodus aus: Wächter wirkt nicht")
+    pg2.evaluate("S.team.state.testMode = true; window.__zustellen({ alpha: 63, beta: 35, gamma: 0, absolute: false, webkitCompassHeading: 297, webkitCompassAccuracy: 42 })"); pg2.wait_for_timeout(300)
+    pg2.evaluate("S.gps.waechter = KompassWaechter({}); window.__zustellen({ alpha: 63, beta: 35, gamma: 0, absolute: false, webkitCompassHeading: 297, webkitCompassAccuracy: 42 })"); pg2.wait_for_timeout(300)
+    pruef(pg2.evaluate("S.gps.kompass") == "kalibrieren", "iPhone meldet schlechte Genauigkeit: Wächter stellt nicht auf an")
+    pg2.evaluate("S.gps.waechter.einmessen = (o => function () { window.__eingemessen = true; return o.call(this); })(S.gps.waechter.einmessen); kalStart(); kalEnde(true)")
+    pruef(pg2.evaluate("window.__eingemessen === true"), "erfolgreiches Einmessen meldet sich beim Wächter")
+    pruef(pg2.evaluate("JSON.parse(localStorage.getItem('sj.kompass') || '{}').vorbelastet") is not None, "Gedächtnis sj.kompass vorhanden")
     pruef(not err, f"keine Skriptfehler {err[:2]}")
     b.close()
 print("FEHLER: " + str(len(fehler)) if fehler else "OK")
