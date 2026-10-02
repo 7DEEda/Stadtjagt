@@ -110,6 +110,9 @@ main{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;paddi
 .bild{width:96px;height:96px;border-radius:24px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;margin:4px 0 20px;text-shadow:none}
 .bild svg{width:52px;height:52px}
 .bild.fertig{background:var(--ok-bg);border-color:transparent}
+/* Start und Ende: Zeichen mittig und größer, so erkennt man die beiden Bildschirme auf einen Blick */
+.bild.mitte{width:120px;height:120px;border-radius:30px;margin:12px auto 24px}
+.bild.mitte svg{width:66px;height:66px}
 .inhalt h2{font-size:32px;margin-bottom:10px}
 .inhalt p{margin:0 0 10px;font-size:19px}
 .inhalt p.klein{font-size:15px;color:var(--muted)}
@@ -373,7 +376,7 @@ function zeichne() {
   if (inh.dataset.s !== schluessel) { inh.dataset.s = schluessel; inh.style.animation = "none"; void inh.offsetWidth; inh.style.animation = ""; }
   if (S.seite === "start") {
     kopf("", 0);
-    inh.innerHTML = `<div class="bild">${ICON.start}</div><h2>Was kann dieses Handy?</h2>
+    inh.innerHTML = `<div class="bild mitte">${ICON.start}</div><h2>Was kann dieses Handy?</h2>
       <p>Geprüft wird, was eine Web-App auf diesem Handy nutzen kann. Dauer: etwa fünf Minuten.</p>
       <p class="klein">Erlaube Standort, Bewegung und Kamera, wenn das Handy fragt. Fotos werden nicht gespeichert.</p>`;
     akt.innerHTML = `<button class="btn" id="start" data-was="start">Test starten</button>`;
@@ -402,7 +405,7 @@ function zeichne() {
     const st = Z.find(z => z.t.id === "standort");
     const selbstHilfe = st && st.erg && st.erg.wert === "nur ungefähr"
       ? `<div class="karte warn"><h3>Eine Sache kannst du einstellen</h3><p>${esc(st.erg.mess["Hinweis"])}</p></div>` : "";
-    inh.innerHTML = `<div class="bild fertig">${ICON.fertig}</div><h2>Fertig, danke!</h2><div id="ende-sp"></div>${selbstHilfe}
+    inh.innerHTML = `<div class="bild fertig mitte">${ICON.fertig}</div><h2>Fertig, danke!</h2><div id="ende-sp"></div>${selbstHilfe}
       ${weg ? `<p class="klein" style="margin-top:12px">${weg === 1 ? "Ein Schritt" : weg + " Schritte"} übersprungen. Kein Problem.</p>` : ""}
       <details><summary>Ergebnis ansehen</summary><ul class="liste">${Z.map((z, k) => ergZeile(z, k)).join("")}</ul>
         <button class="txt" data-was="neu">Neuer Lauf</button></details>`;
