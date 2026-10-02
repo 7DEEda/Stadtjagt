@@ -253,14 +253,25 @@
       async lauf(ctx) {
         const s = ctx.sensor; s.faecher.clear();
         const t0 = jetzt();
+        // jede Kompassmeldung mitschreiben (sensor.bei in geraete-test.html): [ms seit Los, Richtung in °, Genauigkeit in ° oder null]
+        s.spur = { t0: performance.now(), w: [], letzte: null, max: 0, maxBei: null, ueber30: 0 };
         // bis der Kreis voll ist (alle 36 Fächer), höchstens 45 s; dann kurz auf 100 % stehen bleiben, damit man es sieht
         while (s.faecher.size < 36 && jetzt() - t0 < 45000) { ctx.status(`${s.faecher.size} von 36`); await ctx.warte(150); }
         const n = s.faecher.size;
         ctx.status(`${n} von 36`);
         if (n >= 36) await ctx.warte(700);
-        const mess = { "Richtungen gesehen": `${n} von 36`, "Quelle": s.quelle || "keine", "Dauer in s": rund((jetzt() - t0) / 1000, 1) };
-        if (s.quelle === "relativ" || !s.quelle) return { art: "err", wert: "kein Nordbezug", mess };
-        return { art: n >= 30 ? "ok" : n >= 12 ? "warn" : "err", wert: `${n} von 36`, mess };
+        const sp = s.spur || { w: [], max: 0, maxBei: null, ueber30: 0 }; s.spur = null;
+        const dauer = (jetzt() - t0) / 1000;
+        const mess = { "Richtungen gesehen": `${n} von 36`, "Quelle": s.quelle || "keine", "Dauer in s": rund(dauer, 1),
+          "Meldungen": sp.w.length, "Meldungen pro Sekunde": rund(sp.w.length / Math.max(dauer, 0.1), 1),
+          "Größter Sprung zwischen zwei Meldungen": Math.round(sp.max) + "°" + (sp.maxBei != null ? ` nach ${rund(sp.maxBei / 1000, 1)} s` : ""),
+          "Sprünge über 30°": sp.ueber30 };
+        // kompakt, damit 45 s bei voller Rate unter der Grenze des Servers (64 KB je Lauf) bleiben:
+        // je Meldung "Abstand zur vorigen in ms,Richtung in 0,1°[,Genauigkeit in °]", getrennt durch ";"
+        let vor = 0;
+        const roh = { format: "dt_ms,grad_x10[,genauigkeit_grad];...", daten: sp.w.map(([t, g, a]) => { const d = t - vor; vor = t; return d + "," + Math.round(g * 10) + (a == null ? "" : "," + a); }).join(";") };
+        if (s.quelle === "relativ" || !s.quelle) return { art: "err", wert: "kein Nordbezug", mess, roh };
+        return { art: n >= 30 ? "ok" : n >= 12 ? "warn" : "err", wert: `${n} von 36`, mess, roh };
       }
     },
     {
@@ -421,5 +432,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 10, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler (02.10.2026)
+  window.SJ_TESTS = { version: 11, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf (02.10.2026)
 })();

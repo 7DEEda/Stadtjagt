@@ -1584,4 +1584,15 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   geben sie nicht an Webseiten weiter. Messbar wäre sie nur über einen
   Geh-Schritt (GPS-Laufrichtung gegen Kompass). Entscheidung 02.10.: die
   Tests laufen vorerst drinnen, ohne Gehen; kein solcher Schritt.
+- Suite 11 (02.10.): „Handy einmal drehen“ schreibt jede Kompassmeldung mit
+  (so schnell der Browser liefert, Android-Chrome etwa 60 pro Sekunde; eine
+  Webseite kann nicht schneller abfragen). Im Lauf unter
+  `tests["kompass-drehen"].roh`, kompakt `dt_ms,grad_x10[,genauigkeit];…`,
+  dazu in `mess` Meldungen pro Sekunde, größter Sprung zwischen zwei
+  Meldungen und Sprünge über 30°. Grenze des Servers 64 KB je Lauf: wird es
+  eng, lässt `payload()` die Rohdaten weg, nie den Lauf.
+- Die Zahl und die Kugel im Drehkreis folgen der Richtung geglättet
+  (`GLATT` 0,12 je Bild, Ausreißer über 40° nur mit 0,04); die Zählung der
+  Striche bleibt roh. Anlass: auf dem Xiaomi 22021211RG sprang die Zahl
+  sichtbar, am selben Platz wie beim Lauf davor.
 

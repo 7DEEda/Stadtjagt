@@ -262,11 +262,23 @@ const sensor = {
   bei(e) {
     this.n++;
     // Richtung bestimmen wie die App: iOS liefert webkitCompassHeading, Android alpha im absoluten Ereignis
+    let neu = null;
     if (typeof e.webkitCompassHeading === "number") {
-      this.richtung = e.webkitCompassHeading; this.quelle = "webkitCompassHeading";
+      neu = this.richtung = e.webkitCompassHeading; this.quelle = "webkitCompassHeading";
       if (typeof e.webkitCompassAccuracy === "number") this.genau = e.webkitCompassAccuracy;
-    } else if (e.absolute && e.alpha != null) { this.richtung = (360 - e.alpha) % 360; this.quelle = "alpha (absolut)"; }
+    } else if (e.absolute && e.alpha != null) { neu = this.richtung = (360 - e.alpha) % 360; this.quelle = "alpha (absolut)"; }
     else if (e.alpha != null && !this.quelle) this.quelle = "relativ";
+    // Aufzeichnung für "Handy einmal drehen": jede Meldung mit Zeit, dazu Sprünge zwischen zwei Meldungen
+    if (neu != null && this.spur) {
+      const t = Math.round(performance.now() - this.spur.t0);
+      if (this.spur.letzte != null) {
+        const d = Math.abs(((neu - this.spur.letzte) % 360 + 540) % 360 - 180);
+        if (d > this.spur.max) { this.spur.max = d; this.spur.maxBei = t; }
+        if (d > 30) this.spur.ueber30++;
+      }
+      this.spur.letzte = neu;
+      if (this.spur.w.length < 3000) this.spur.w.push([t, Math.round(neu * 10) / 10, this.genau == null ? null : Math.round(this.genau)]);
+    }
     if (this.richtung != null && this.quelle !== "relativ") {
       this.faecher.add(Math.floor(this.richtung / 10) % 36);
       // Nadel im Kopf nachführen, auf dem kürzesten Weg (von 359° auf 1° sind es 2°, nicht 358°)
@@ -335,20 +347,37 @@ const KREIS = (() => {
   }
   return `<svg id="kreis" viewBox="0 0 100 100" aria-hidden="true">${striche}<circle class="mitte" cx="50" cy="50" r="22"/><text id="kreiszahl" x="50" y="50"></text><circle id="kugel" cx="50" cy="15" r="5.5"/></svg>`;
 })();
+// Zahl und Kugel folgen der Richtung geglättet: der Magnetsensor rauscht (Tisch, Laptop, Metall), roh sprangen sie mit.
+// Je Bild ein Stück des Wegs, immer auf dem kürzesten Weg (von 359° nach 1° sind es 2°). Die Striche zählen weiter roh.
+const GLATT = 0.12;
+const kurz = d => ((d % 360) + 540) % 360 - 180;
+let kreisLaeuft = false;
+function kreisSchleife() {
+  if (!$("#kreis")) { kreisLaeuft = false; return; }
+  const r = sensor.richtung;
+  if (r != null && sensor.quelle !== "relativ") {
+    // Große Abweichung auf einen Schlag ist meist ein Ausreißer: nur zögerlich folgen. Hält sie an, holt die Anzeige sie trotzdem ein.
+    const d = S.glatt == null ? 0 : kurz(r - S.glatt);
+    S.glatt = S.glatt == null ? r : S.glatt + d * (Math.abs(d) > 40 ? 0.04 : GLATT);
+  }
+  kreisMalen();
+  requestAnimationFrame(kreisSchleife);
+}
 function kreisMalen() {
   const k = $("#kreis"); if (!k) return;
-  const z = HAND[S.i], laeuft = z && z.st === "laeuft", r = sensor.richtung;
+  if (!kreisLaeuft) { kreisLaeuft = true; requestAnimationFrame(kreisSchleife); }
+  const z = HAND[S.i], laeuft = z && z.st === "laeuft", g = S.glatt;
   const kugel = k.querySelector("#kugel");
-  kugel.style.display = r == null || sensor.quelle === "relativ" ? "none" : "";
-  if (r != null) { const w = r * Math.PI / 180; kugel.setAttribute("cx", (50 + 34 * Math.sin(w)).toFixed(1)); kugel.setAttribute("cy", (50 - 34 * Math.cos(w)).toFixed(1)); }
+  kugel.style.display = g == null ? "none" : "";
+  if (g != null) { const w = g * Math.PI / 180; kugel.setAttribute("cx", (50 + 34 * Math.sin(w)).toFixed(1)); kugel.setAttribute("cy", (50 - 34 * Math.cos(w)).toFixed(1)); }
   // Orange erst, wenn der Schritt läuft: vorher zeigt die Kugel nur, dass sie mitgeht
   k.querySelectorAll("line").forEach(l => l.classList.toggle("an", laeuft && sensor.faecher.has(+l.dataset.f)));
   const n = laeuft ? sensor.faecher.size : 0, zahl = k.querySelector("#kreiszahl");
   zahl.textContent = laeuft ? Math.min(100, Math.round(n / 36 * 100)) + " %" : "";
   // Die Zahl bleibt zur Person am Tisch ausgerichtet: dreht sich das Handy seit "Los" um w Grad, dreht sie sich um w zurück
-  if (laeuft && r != null && sensor.quelle !== "relativ") {
-    if (S.kreisNull == null) S.kreisNull = r;
-    zahl.setAttribute("transform", `rotate(${(-(r - S.kreisNull)).toFixed(1)} 50 50)`);
+  if (laeuft && g != null) {
+    if (S.kreisNull == null) S.kreisNull = g;
+    zahl.setAttribute("transform", `rotate(${(-kurz(g - S.kreisNull)).toFixed(1)} 50 50)`);
   } else zahl.removeAttribute("transform");
 }
 // Status mit eigener Form, nicht nur Farbe: Haken im Kreis, Ausrufezeichen im Quadrat, Kreuz, Strich
@@ -501,12 +530,15 @@ async function automatisch(bewegung) {
 /* ---------- Speichern ---------- */
 function payload() {
   const tests = {};
-  for (const z of Z) if (z.erg) tests[z.t.id] = { art: z.erg.art, wert: z.erg.wert, mess: z.erg.mess || {}, dauerMs: z.erg.dauerMs ?? null };
+  for (const z of Z) if (z.erg) tests[z.t.id] = { art: z.erg.art, wert: z.erg.wert, mess: z.erg.mess || {}, dauerMs: z.erg.dauerMs ?? null, ...(z.erg.roh ? { roh: z.erg.roh } : {}) };
   // Der Name des Laufs entsteht aus dem, was das Gerät über sich meldet
   const u = (tests.umgebung || {}).mess || {};
   const label = [u["Geräteart"], u["Modell"] === "keine Angabe" ? null : u["Modell"], u["Betriebssystem"], u["Browser"], `${screen.width} x ${screen.height}`].filter(Boolean).join(", ").slice(0, 80);
-  return { suite: SUITE.version, label, begonnen: lauf.begonnen, beendet: new Date().toISOString(),
+  const p = { suite: SUITE.version, label, begonnen: lauf.begonnen, beendet: new Date().toISOString(),
     ua: navigator.userAgent, seite: location.href.split("?")[0], bilanz: bilanz(), tests };
+  // Der Server nimmt höchstens 64 KB je Lauf. Wird es eng, fallen die Rohdaten weg, nie der Lauf selbst.
+  if (new Blob([JSON.stringify(p)]).size > 60000) for (const t of Object.values(tests)) if (t.roh) { delete t.roh; t.mess["Rohdaten"] = "weggelassen, Lauf zu groß"; }
+  return p;
 }
 // Jeder Lauf liegt unter eigenem Namen auf dem Gerät, bis der Server ihn bestätigt hat. So überschreibt
 // ein neuer Lauf keinen alten, der im Funkloch hängen geblieben ist.
