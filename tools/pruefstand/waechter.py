@@ -115,9 +115,25 @@ with sync_playwright() as pw:
     pruef(z == ["unzuverlaessig", "kalibrieren", True], f"vorbelastet im Testmodus: Kompass gilt als ungenau ({z})")
     pg2.evaluate("S.team.state.testMode = false; window.__orient('gut')"); pg2.wait_for_timeout(400)
     pruef(pg2.evaluate("S.gps.kompass") == "an", "Testmodus aus: Wächter wirkt nicht")
-    pg2.evaluate("S.team.state.testMode = true; window.__zustellen({ alpha: 63, beta: 35, gamma: 0, absolute: false, webkitCompassHeading: 297, webkitCompassAccuracy: 42 })"); pg2.wait_for_timeout(300)
-    pg2.evaluate("S.gps.waechter = KompassWaechter({}); window.__zustellen({ alpha: 63, beta: 35, gamma: 0, absolute: false, webkitCompassHeading: 297, webkitCompassAccuracy: 42 })"); pg2.wait_for_timeout(300)
-    pruef(pg2.evaluate("S.gps.kompass") == "kalibrieren", "iPhone meldet schlechte Genauigkeit: Wächter stellt nicht auf an")
+    ios = lambda acc: "window.__zustellen({ alpha: 63, beta: 35, gamma: 0, absolute: false, webkitCompassHeading: 297, webkitCompassAccuracy: %s })" % acc
+    zs = "[S.gps.kompass, S.gps.waechterGrund, S.gps.waechter.urteil]"
+    # iPhone meldet schlechte Genauigkeit, Wächter ist vorbelastet: iOS gewinnt, der Wächter hebt nichts auf
+    pg2.evaluate("S.team.state.testMode = true; " + ios(42)); pg2.wait_for_timeout(300)
+    z = pg2.evaluate(zs)
+    pruef(z == ["kalibrieren", False, "unzuverlaessig"], f"iPhone meldet schlechte Genauigkeit: Wächter hebt es nicht auf, Grund bleibt iOS ({z})")
+    # Hysterese (20 bis 25 Grad) arbeitet auf dem Rohzustand: Wächter-Grund bleibt über mehrere Ereignisse stabil
+    pg2.evaluate(ios(10)); pg2.wait_for_timeout(200)
+    z = pg2.evaluate(zs)
+    pruef(z == ["kalibrieren", True, "unzuverlaessig"], f"iPhone genau, Wächter ungenau: Grund Wächter ({z})")
+    zz = []
+    for _ in range(3):
+        pg2.evaluate(ios(22)); pg2.wait_for_timeout(200); zz.append(pg2.evaluate(zs))
+    pruef(all(x == ["kalibrieren", True, "unzuverlaessig"] for x in zz), f"Wächter-Grund flackert nicht in der Hysterese ({zz})")
+    pg2.evaluate("S.team.state.testMode = false; " + ios(22)); pg2.wait_for_timeout(200)
+    pruef(pg2.evaluate("[S.gps.kompass, S.gps.waechterGrund]") == ["an", False], "Testmodus aus: Zustand kehrt auf den Rohzustand zurück, nichts hängt")
+    pg2.evaluate("S.team.state.testMode = true; " + ios(22)); pg2.wait_for_timeout(200)
+    pg2.evaluate("S.gps.waechter = KompassWaechter({}); " + ios(22)); pg2.wait_for_timeout(200)
+    pruef(pg2.evaluate("[S.gps.kompass, S.gps.waechterGrund]") == ["an", False], "Wächter-Urteil ok: Zustand kehrt auf den Rohzustand zurück")
     pg2.evaluate("S.gps.waechter.einmessen = (o => function () { window.__eingemessen = true; return o.call(this); })(S.gps.waechter.einmessen); kalStart(); kalEnde(true)")
     pruef(pg2.evaluate("window.__eingemessen === true"), "erfolgreiches Einmessen meldet sich beim Wächter")
     pruef(pg2.evaluate("JSON.parse(localStorage.getItem('sj.kompass') || '{}').vorbelastet") is not None, "Gedächtnis sj.kompass vorhanden")

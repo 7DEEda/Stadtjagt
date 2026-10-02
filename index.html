@@ -2768,9 +2768,12 @@ function addOrient(neu) {
       // damit Hinweis und Knopf nicht an der Grenze flackern.
       const acc = e.webkitCompassAccuracy;
       g.kompassAcc = typeof acc === "number" ? acc : null;
-      if (typeof acc !== "number") g.kompass = "an";
-      else if (acc < 0 || acc > KOMPASS_GRENZE) g.kompass = "kalibrieren";
-      else if (acc <= KOMPASS_GRENZE - 5 || g.kompass !== "kalibrieren") g.kompass = "an";
+      // Die Hysterese gilt für den Rohzustand von iOS (g.kompassRoh), nicht für den angezeigten: sonst hielte
+      // ein vom Wächter gesetztes "kalibrieren" sich selbst fest (siehe Wächter-Block unten).
+      if (typeof acc !== "number") g.kompassRoh = "an";
+      else if (acc < 0 || acc > KOMPASS_GRENZE) g.kompassRoh = "kalibrieren";
+      else if (acc <= KOMPASS_GRENZE - 5 || g.kompassRoh !== "kalibrieren") g.kompassRoh = "an";
+      g.kompass = g.kompassRoh;
     } else if (e.absolute && e.alpha != null) {
       // nachPause: die Seite war im Hintergrund, der Richtung ist bis zum Einmessen nicht zu trauen (siehe kompassNachPause)
       hd = 360 - e.alpha; g.kompass = g.nachPause ? "kalibrieren" : "an";
