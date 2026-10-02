@@ -3028,8 +3028,11 @@ async function maybeReport() {
   if (!moved && !oldEnough && !neuUrteil) return;
   g.lastSentUrteil = urteil;
   g.lastSent = Date.now(); g.lastSentPos = { ...g.pos };
+  const pos = { p_code: S.team.code, p_lat: g.pos.lat, p_lng: g.pos.lng, p_acc: g.acc };
   try {
-    await rpc("report_position", { p_code: S.team.code, p_lat: g.pos.lat, p_lng: g.pos.lng, p_acc: g.acc, p_kompass: urteil });
+    // Eine Datenbank ohne Nachtrag 30 kennt p_kompass nicht (PostgREST findet die Funktion nicht): dann einmal ohne,
+    // die Position ist wichtiger als das Urteil
+    try { await rpc("report_position", { ...pos, p_kompass: urteil }); } catch { await rpc("report_position", pos); }
     g.sentAt = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   } catch { /* Funkloch: beim nächsten Mal erneut */ }
 }
