@@ -1958,8 +1958,9 @@ function zustandHTML(t, st) {
   const gps = alt == null ? `<span class="chip test" style="margin:0">kein GPS</span>`
     : alt > 5 * 60000 ? `<span class="chip test" style="margin:0;white-space:nowrap">GPS ${ago(upd)}</span>`
       : `<span class="small muted" style="white-space:nowrap">GPS ${ago(upd)}</span>`;
+  // Nach Laufrichtung zeigt der Pfeil nur im Testmodus; sonst folgt er weiter dem Kompass, also nur der Vermerk
   const kompass = t.position && t.position.kompass === "unzuverlaessig"
-    ? ` <span class="chip test" style="margin:0;white-space:nowrap">Kompass falsch, Pfeil nach Laufrichtung</span>` : "";
+    ? ` <span class="chip test" style="margin:0;white-space:nowrap">${st.testMode ? "Kompass falsch, Pfeil nach Laufrichtung" : "Kompass falsch"}</span>` : "";
   return `<br><b class="small">${wo}</b><br>${gps}${kompass}`;
 }
 // leer oder noch der Platzhalter aus der Seed-Datei
