@@ -162,6 +162,8 @@
     "admin-karte": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, fertig: ["Adler"], settle: 3500 },
     "admin-teams": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=teams]" }, { wait: 300 }] },
+    "teststation": { welt: "running", view: "team", ls: IM_TEAM, testMode: true, teststation: true, fuchs: { solved: 0 } },
+    "teststation-koffer": { welt: "running", view: "team", ls: IM_TEAM, testMode: true, teststation: true, fuchs: { solved: 1 } },
     "admin-teststation": { welt: "running", view: "admin", testMode: true, teststation: true, ss: { "sj.pin": "4711" } },
     "admin-auslosen-allein": { welt: "registration", view: "admin", testMode: true, ss: { "sj.pin": "4711" }, nurEine: true },
     "admin-stationen": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
@@ -290,19 +292,20 @@
 
   /* ---------- Antworten ---------- */
   function teamState(t) {
+    const LISTE = WELT.testMode && C.teststation ? [TESTSTATION] : STATIONEN;
     const istFuchs = t === FUCHS;
     const f = istFuchs ? FU : { solved: t.solved, checkedIn: t.checkedIn, failedAttempts: 0, lockedUntil: null, pauses: 0, tipShown: false };
-    const all = f.solved >= 5;
-    const cur = all ? null : STATIONEN[f.solved];
-    const sum = STATIONEN.slice(0, f.solved).reduce((s, x) => s + x.digit, 0);
+    const all = f.solved >= LISTE.length;
+    const cur = all ? null : LISTE[f.solved];
+    const sum = LISTE.slice(0, f.solved).reduce((s, x) => s + x.digit, 0);
     const running = WELT.status === "running";
     const place = t.place;
     return {
       team: { id: t.id, name: t.name, code: t.code, readToken: t.readToken, leaderName: t.leaderName, members: members(t) },
       background: WELT.background, status: WELT.status, startedAt: iso(WELT.startedAt), durationMin: WELT.durationMin,
       endsAt: WELT.startedAt ? iso(WELT.startedAt + WELT.durationMin * MIN) : null,
-      totalStations: 5, solvedCount: f.solved,
-      digits: STATIONEN.map((s, i) => i < f.solved && (!WELT.selfieOn || !istFuchs || SELFIE_DA[i + 1]) ? s.digit : null),
+      totalStations: LISTE.length, solvedCount: f.solved,
+      digits: LISTE.map((s, i) => i < f.solved && (!WELT.selfieOn || !istFuchs || SELFIE_DA[i + 1]) ? s.digit : null),
       finalDigit: all && !selfieFeld(t, f).pending ? sum % 10 : null,
       selfie: selfieFeld(t, f),
       station: cur && running ? { position: cur.position, name: cur.name, locationHint: cur.locationHint, lat: cur.lat, lng: cur.lng,
