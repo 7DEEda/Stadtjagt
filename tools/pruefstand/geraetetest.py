@@ -32,7 +32,7 @@ for strom in (sys.stdout, sys.stderr):
 REPO = pathlib.Path(__file__).resolve().parent.parent.parent
 PORT = 8792
 SELBST = ["umgebung", "speicher", "server", "uhr", "standort", "kompass", "neigung",
-          "wachhalten", "karte", "schrift", "teilen", "wachhalten-tipp", "live", "offline"]
+          "wachhalten", "karte", "schrift", "akku", "teilen", "wachhalten-tipp", "live", "offline"]
 
 # Dreht das gespielte Handy stetig im Kreis, flach auf dem Tisch (sonst sperrt der Drehschritt), wie ein Android-Gerät es melden würde
 SENSOR = """

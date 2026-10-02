@@ -52,6 +52,12 @@ geprüft):
 - Tablet: Tastatur verdeckt keine Knöpfe, Griffe auf der Stationskarte lassen
   sich ziehen, ohne dass die Seite scrollt
 - QR-Code des Mitlese-Links mit einer Handykamera scannen
+- **Offen (02.10., Friedrich): Stresstest mit 100 Geräten.** Prüfen, ob
+  Supabase (Anmeldung, team_state-Abfragen alle paar Sekunden, report_position,
+  Selfie-Uploads, Realtime) 100 gleichzeitige Handys trägt; Antwortzeiten und
+  Fehlerquote messen, Grenzen des Supabase-Tarifs (Verbindungen, Anfragen)
+  gegenprüfen. Vorschlag: Lastskript, das 100 gespielte Handys gegen eine
+  Kopie der Datenbank oder im Testmodus laufen lässt.
 
 **Befund vom 29.09., erledigt am 02.10.:** Ändert die Spielleitung im laufenden
 Spiel die Ziffer einer Station, die Teams schon gelöst haben, ändert sich deren
@@ -1737,4 +1743,5 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   Wert gelten die alten Konstanten `START`/`TEST_START`. Probelauf
   `tools/pruefstand/startpunkt_db.py`.
 - Kopf der Spielleitung mit mehr Abstand zwischen Titel, Chips und Meldung.
+- Geräte-Test Suite 20 (02.10.): eigener Schritt „Akku“ mit Stand und „lädt“; ohne `navigator.getBattery` (Safari, Firefox) Warnung „nicht lesbar“.
 
