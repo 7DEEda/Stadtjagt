@@ -1627,4 +1627,19 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   Umdrehung laut Gyroskop: mehr als 20 % Unterschied oder mehr als 30°
   daneben = Warnung, mehr als 40 % oder 60° = Fehler („bis x° daneben“).
   „36 von 36“ allein heißt also nicht mehr „geht“.
+- Läufe 02.10. mittags: iPhone 2Z8H (iOS 18.7) schnell gedreht und 38° schräg
+  gehalten; die Gyro-Drehung verteilte sich auf beta (388°) und gamma (364°),
+  zusammen etwa 530°, der Kompass 529°: Kompass in Ordnung (meldet selbst
+  ±10°), die Achsenwahl war falsch. Xiaomi 22021211RG zweimal schlecht
+  (124 % mit 116° Abweichung, 48 % mit 228°). Xiaomi 23113RKC6G (DD2H) als
+  Vergleich: Gyroskop −360°, Kompass −356°, höchstens 5° daneben.
+- Suite 15 (02.10.): Drehung um die Senkrechte statt um eine Gerätachse:
+  Drehrate (alpha um x, beta um y, gamma um z, so auf Android-Chrome und
+  iOS-Safari gemessen) auf „oben“ projiziert, „oben“ aus
+  accelerationIncludingGravity, auf z > 0 gewendet (iOS meldet die
+  Schwerkraft umgekehrt). Ohne Schwerkraftdaten: Achse mit dem meisten Weg.
+- „Handy einmal drehen“ ist gesperrt, bis das Handy flach liegt (Fenster mit
+  Animation `#flach`, `flachPruefen()`): unter 8° Neigung für 0,7 s gibt
+  „Los“ frei, über 15° sperrt wieder. Ohne Beschleunigungsdaten nach 1,5 s
+  keine Sperre.
 

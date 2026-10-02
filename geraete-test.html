@@ -126,6 +126,21 @@ ol.teil li{margin-bottom:6px}
 #kreis .mitte{fill:var(--card);stroke:var(--line);stroke-width:1}
 #kreis #kugel{fill:var(--flag);stroke:var(--card);stroke-width:1.5}
 #kreis text{font:700 15px var(--head);fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+/* Sperre vor dem Drehen: erst wenn das Handy flach liegt, geht es los. Fenster wie die Dialoge, ohne Unschärfe dahinter. */
+#flach{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;background:color-mix(in srgb,var(--paper) 84%,transparent);
+  transition:opacity .16s cubic-bezier(.32,.72,.4,1)}
+#flach.weg{opacity:0;pointer-events:none}
+#flach .fenster{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:340px;text-align:center;text-shadow:none;
+  box-shadow:0 12px 32px rgba(17,17,17,.14),0 2px 6px rgba(17,17,17,.06);animation:auf .16s cubic-bezier(.32,.72,.4,1)}
+@keyframes auf{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+#flach svg{width:180px;height:110px;display:block;margin:0 auto 12px}
+#flach h3{font:700 22px var(--head);margin:0 0 6px}
+#flach p{font-size:16px;margin:0;color:var(--muted)}
+#flachgrad{font:700 19px var(--head);color:var(--ink);margin-top:10px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.liegt{transform-origin:46px 82px;animation:hinlegen 2.6s cubic-bezier(.32,.72,.4,1) infinite}
+@keyframes hinlegen{0%,12%{transform:rotate(-58deg)}50%,86%{transform:rotate(0deg)}100%{transform:rotate(-58deg)}}
+@media (prefers-reduced-motion:reduce){.liegt{animation:none}#flach .fenster{animation:none}}
+.btn:disabled{background:var(--line);color:var(--muted);cursor:default}
 .aktion{position:sticky;bottom:0;z-index:2;display:flex;flex-direction:column;gap:8px;padding:16px 0 calc(20px + env(safe-area-inset-bottom));
   background:linear-gradient(to bottom,transparent,var(--paper) 24px)}
 .aktion:empty{display:none}
@@ -254,6 +269,9 @@ const sensor = {
   // Welche Achse die Hochachse ist, legt Chrome auf Android anders ab als der Standard: gyroDreh() nimmt die,
   // die sich seit Beginn der Aufzeichnung am meisten bewegt hat (liegt das Handy flach, eindeutig).
   gyroAchse: [0, 0, 0], gyroPfad: [0, 0, 0], gyroN: 0, gyroT: null,
+  // Drehung um die Senkrechte: Drehrate auf "oben" projiziert (oben = Schwerkraft aus accelerationIncludingGravity),
+  // gilt auch, wenn das Handy schräg gehalten wird. hochN zählt die Meldungen, in denen "oben" bekannt war.
+  oben: null, gyroHoch: 0, hochN: 0,
   // neu = true hängt den Zuhörer frisch ein: nach der iOS-Freigabe, falls Safari den alten nicht bedient
   start(neu) {
     if (!window.DeviceOrientationEvent || (this.h && !neu)) return;
@@ -272,6 +290,8 @@ const sensor = {
   // Kompassrichtung. Drehraten zählen nach der rechten Hand gegen den Uhrzeigersinn positiv, darum das Minus.
   gyroDreh() {
     const sp = this.spur; if (!sp || this.gyroN <= sp.gyroN0) return null;
+    // bevorzugt die Drehung um die Senkrechte; nur ohne Schwerkraftdaten die Achse mit dem meisten Weg
+    if (this.hochN > sp.hochN0) { sp.achse = "senkrecht"; return -(this.gyroHoch - sp.hoch0); }
     let bi = 0, best = -1;
     for (let i = 0; i < 3; i++) { const d = this.gyroPfad[i] - sp.pfad0[i]; if (d > best) { best = d; bi = i; } }
     sp.achse = bi;
@@ -284,10 +304,25 @@ const sensor = {
       if (this.gyroT != null) {
         const dt = Math.min(0.1, (t - this.gyroT) / 1000);
         [r.alpha, r.beta, r.gamma].forEach((w, i) => { if (typeof w === "number") { this.gyroAchse[i] += w * dt; this.gyroPfad[i] += Math.abs(w) * dt; } });
+        // Achsen wie in den Läufen vom 02.10. gemessen, auf Android-Chrome und iOS-Safari gleich:
+        // alpha um x, beta um y, gamma um z (z zeigt aus dem Bildschirm)
+        if (this.oben && typeof r.beta === "number" && typeof r.gamma === "number") {
+          this.gyroHoch += (r.alpha * this.oben[0] + r.beta * this.oben[1] + r.gamma * this.oben[2]) * dt; this.hochN++;
+        }
       }
       this.gyroT = t; this.gyroN++;
     }
     const g = e.accelerationIncludingGravity;
+    if (g && typeof g.z === "number") {
+      const b = Math.hypot(g.x || 0, g.y || 0, g.z);
+      if (b > 1) {
+        // "oben" so wenden, dass es aus dem Bildschirm zeigt (z > 0): iOS meldet die Schwerkraft mit umgekehrtem Vorzeichen
+        let o = [(g.x || 0) / b, (g.y || 0) / b, g.z / b];
+        if (o[2] < 0) o = o.map(v => -v);
+        // leicht glätten, das Gehen und Zittern soll "oben" nicht verreißen
+        this.oben = this.oben ? this.oben.map((v, i) => v + (o[i] - v) * 0.2) : o;
+      }
+    }
     if (this.spur && g && typeof g.z === "number") {
       const b = Math.hypot(g.x || 0, g.y || 0, g.z);
       if (b > 1) {
@@ -390,8 +425,25 @@ const KREIS = (() => {
 const GLATT = 0.12;
 const kurz = d => ((d % 360) + 540) % 360 - 180;
 let kreisLaeuft = false;
+// Flach heißt: weniger als 8° geneigt, 0,7 s lang. Hebt man es danach über 15° an, sperrt der Schritt wieder.
+// Ohne Beschleunigungsdaten (kein devicemotion nach 1,5 s) sperrt nichts.
+function flachPruefen() {
+  const el = $("#flach"); if (!el) return;
+  const los = $("#aktion [data-was=los]"), t = performance.now(), o = sensor.oben, grad = $("#flachgrad");
+  if (!o) {
+    if (t - S.flachAb > 1500) S.flachFrei = true;
+  } else {
+    const neig = Math.acos(Math.min(1, Math.max(-1, o[2]))) * 180 / Math.PI;
+    if (neig < 8) { if (S.flachSeit == null) S.flachSeit = t; if (t - S.flachSeit > 700) S.flachFrei = true; }
+    else { S.flachSeit = null; if (neig > 15) S.flachFrei = false; }
+    grad.textContent = neig < 8 ? "Liegt flach" : `Noch ${Math.round(neig)}° schräg`;
+  }
+  el.classList.toggle("weg", S.flachFrei);
+  if (los) los.disabled = !S.flachFrei;
+}
 function kreisSchleife() {
   if (!$("#kreis")) { kreisLaeuft = false; return; }
+  flachPruefen();
   const r = sensor.richtung;
   if (r != null && sensor.quelle !== "relativ") {
     // Große Abweichung auf einen Schlag ist meist ein Ausreißer: nur zögerlich folgen. Hält sie an, holt die Anzeige sie trotzdem ein.
@@ -469,6 +521,22 @@ function zeichne() {
       : z.st === "frage"
         ? `<p class="frage">${esc(z.t.frage)}</p><div class="paar"><button class="btn alt" data-was="nein">Nein</button><button class="btn" data-was="ja">Ja</button></div>`
         : `<button class="btn" data-was="los">Los</button><button class="txt" data-was="weg">Überspringen</button>`;
+    if (z.t.id === "kompass-drehen" && z.st === "wartet") {
+      // Das Handy liegt auf der Seite und kippt flach auf die Tischkante; erst dann gibt es "Los"
+      inh.insertAdjacentHTML("beforeend", `<div id="flach" role="dialog" aria-modal="true" aria-labelledby="flacht"><div class="fenster">
+        <svg viewBox="0 0 180 110" aria-hidden="true">
+          <path d="M10 86h160" stroke="var(--feld)" stroke-width="3" stroke-linecap="round"/>
+          <path d="M28 86v20M152 86v20" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/>
+          <g class="liegt"><rect x="46" y="74" width="88" height="10" rx="3" fill="var(--card)" stroke="var(--ink)" stroke-width="2.5"/>
+            <path d="M54 74h72" stroke="var(--flag)" stroke-width="2.5" stroke-linecap="round"/></g>
+        </svg>
+        <h3 id="flacht">Leg das Handy flach auf den Tisch</h3>
+        <p>Sobald es flach liegt, geht es weiter.</p>
+        <div id="flachgrad" aria-live="polite"></div>
+        <button class="txt" data-was="weg">Überspringen</button></div></div>`);
+      S.flachAb = performance.now(); S.flachSeit = null; S.flachFrei = false;
+      $("#aktion [data-was=los]").disabled = true;
+    }
     kreisMalen();
   } else {
     kopf("Fertig", 1);

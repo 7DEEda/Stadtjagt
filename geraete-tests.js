@@ -255,7 +255,7 @@
         const t0 = jetzt();
         // jede Kompassmeldung mitschreiben (sensor.bei in geraete-test.html): [ms seit Los, Richtung in °, Gyro-Drehung seit Los in °, Genauigkeit in °]
         s.spur = { t0: performance.now(), w: [], letzte: null, max: 0, maxBei: null, ueber30: 0, neigMax: 0, neigSum: 0, neigN: 0,
-          gyroN0: s.gyroN, achse0: [...s.gyroAchse], pfad0: [...s.gyroPfad], achse: null };
+          gyroN0: s.gyroN, achse0: [...s.gyroAchse], pfad0: [...s.gyroPfad], achse: null, hoch0: s.gyroHoch, hochN0: s.hochN };
         const gedreht = () => Math.abs(s.gyroDreh() || 0);
         // bis der Kreis voll ist (alle 36 Fächer), höchstens 30 s. Mit Gyroskop auch dann Schluss, wenn das Handy
         // laut Gyroskop mehr als eine Umdrehung hinter sich hat: dann kommt der Kompass nicht mehr nach.
@@ -286,7 +286,7 @@
           "Gyroskop": gyroDa ? "ja" : "keine Daten",
           "Laut Gyroskop gedreht": gyroDa ? Math.round(gyroWeg) + "°" : "–",
           "Gyro je Achse (alpha / beta / gamma)": gyroDa ? achsen.join("° / ") + "°" : "–",
-          "Gyro-Achse der Drehung": gyroDa && sp.achse != null ? ["alpha", "beta", "gamma"][sp.achse] : "–",
+          "Gyro-Achse der Drehung": gyroDa && sp.achse != null ? (sp.achse === "senkrecht" ? "senkrecht (nach Schwerkraft)" : ["alpha", "beta", "gamma"][sp.achse]) : "–",
           "Kompass mitgedreht": Math.round(kWeg) + "°",
           "Kompass folgt zu": folgt != null ? Math.round(folgt * 100) + " %" : "–",
           "Größte Abweichung Kompass gegen Gyroskop": k0 != null ? Math.round(abw) + "°" + (abwBei != null ? ` nach ${rund(abwBei / 1000, 1)} s` : "") : "–",
@@ -468,5 +468,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 14, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen; 13: Gyro-Achse aus den Daten; 14: Abweichung Kompass gegen Gyroskop (02.10.2026)
+  window.SJ_TESTS = { version: 15, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen; 13: Gyro-Achse aus den Daten; 14: Abweichung Kompass gegen Gyroskop; 15: Drehung um die Senkrechte, auch schräg (02.10.2026)
 })();
