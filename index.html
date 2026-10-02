@@ -501,6 +501,8 @@ const fmtDist = m => m < 1000 ? Math.round(m) + " m"
 const PROBEZIEL = { name: "TSE AG in Berlin", lat: 52.46175, lng: 13.46070 };
 // Startpunkt der Route, als Haus auf der Karte der Spielleitung (Hotel Mama Shelter, Holešovice)
 const START = { name: "Mama Shelter Prague", lat: 50.102458, lng: 14.431681 };
+// Start der Teststation (Nachtrag 28): TSE Berlin, von dort wird probegelaufen
+const TEST_START = { name: "TSE Berlin, Grenzallee 4", lat: 52.4698774, lng: 13.4627621 };
 const HAUS = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>`;
 function ago(ts) {
   if (!ts) return "nie";
@@ -1496,6 +1498,53 @@ function koordPaar(la, lo) {
   return [la, lo];
 }
 const ekZahl = id => { const v = parseInt(val(id), 10); return v > 0 ? v : null; };
+// Teststation (Nachtrag 28): echte Stationen und Teststation zum Bearbeiten; gespielt wird die aktive Route
+const alleStationen = st => [...(st.testStation ? [st.testStation] : []), ...(st.stations || [])];
+const aktiv = st => st.aktiveStationen || st.stations || [];
+function stationZeile(s, st) {
+  return S.admin.edit === s.id ? `
+        <div class="stack" style="border-top:1px solid var(--line);padding-top:12px;margin-top:12px">
+          <h3>${s.route === "test" ? "Teststation" : "Station " + s.position}</h3>
+          <div style="margin-top:8px"><label for="e-name">Name</label><input id="e-name" value="${esc(s.name)}"></div>
+          <div style="margin-top:8px"><label for="e-hint">Ortshinweis</label><textarea id="e-hint">${esc(s.locationHint)}</textarea></div>
+          <div style="margin-top:8px"><label for="e-riddle">Rätsel</label><textarea id="e-riddle">${esc(s.riddle)}</textarea></div>
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-top:8px">
+            <div><label for="e-answer">Lösung</label><input id="e-answer" value="${esc(s.answer)}" placeholder="mehrere mit | trennen"></div>
+            <div><label for="e-digit">Ziffer</label><input id="e-digit" inputmode="numeric" maxlength="1" value="${s.digit}" required></div>
+            <div><label for="e-radius">Radius m</label><input id="e-radius" inputmode="numeric" value="${s.radiusM}"></div></div>
+          <p class="small muted" style="margin-top:6px">Mehrere richtige Antworten mit | trennen, etwa „5|fünf“. Groß und klein, Umlaute, Akzente wie é oder ř und Satzzeichen zählen nicht.</p>
+          <div style="margin-top:8px"><label for="e-tip">Tipp (optional, aufdeckbar nach der ersten Denkpause)</label><textarea id="e-tip">${esc(s.tip || "")}</textarea></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <div><label for="e-lat">Breite</label><input id="e-lat" inputmode="decimal" value="${s.lat ?? ""}"></div>
+            <div><label for="e-lng">Länge</label><input id="e-lng" inputmode="decimal" value="${s.lng ?? ""}"></div></div>
+          <div style="margin-top:10px"><button class="btn sm alt" data-act="a-here">Meinen Standort übernehmen</button>
+            <span class="small muted" id="e-here"></span></div>
+          <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+            <h3>Name entschlüsseln</h3>
+            <p class="small muted" style="margin-top:4px">Drei Kreise um die Station: Zieh an den weißen Punkten oder trag die Meter ein.
+              Die gestrichelte Linie ist der direkte Weg von der Station davor. Das blaue 🐾 ist ein Probe-Team zum Verschieben.</p>
+            <div id="emap"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+              <div><label for="e-beginn"><i class="efarbe" style="--c:#2F6E9E"></i>Entschlüsseln beginnt bei (m)</label><input id="e-beginn" inputmode="numeric" value="${s.revealStartM ?? ""}" ${S.admin.karte && S.admin.karte.aus ? "disabled" : ""}></div>
+              <div><label for="e-klar"><i class="efarbe" style="--c:#2E7D4F"></i>Ganz lesbar ab (m)</label><input id="e-klar" inputmode="numeric" value="${s.revealClearM ?? ""}" ${S.admin.karte && S.admin.karte.aus ? "disabled" : ""}></div></div>
+            <p class="small muted" id="e-etappe" style="margin-top:6px"></p>
+            <div style="margin-top:8px"><button class="btn sm ${S.admin.karte && S.admin.karte.aus ? "" : "alt"}" data-act="a-geheim-aus" aria-pressed="${!!(S.admin.karte && S.admin.karte.aus)}">${S.admin.karte && S.admin.karte.aus ? "Name sofort lesbar. Verschlüsseln einschalten" : "Nicht verschlüsseln"}</button>
+              <button class="btn sm alt" data-act="a-geheim-vorschlag">Vorschlag aus der Etappe (60 % und 30 %)</button></div>
+            <div class="evorschau"><div class="small muted" id="e-wo"></div><div class="geheim" id="e-vorschau" style="margin-top:6px"></div></div>
+          </div>
+          <div style="margin-top:6px"><button class="btn sm" data-act="a-save" data-wait="Wird gespeichert …" data-id="${s.id}">Speichern</button>
+            <button class="btn sm alt" data-act="a-cancel">Abbrechen</button></div>
+        </div>` : `
+        <div style="border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px;align-items:flex-start">
+          <b style="font:700 var(--fs-xl) var(--head);color:var(--flag);width:20px">${s.route === "test" ? "T" : s.position}</b>
+          <div style="flex:1"><h3>${esc(s.name)}</h3>
+            <p class="small">Ortshinweis: ${offen(s.locationHint) ? '<span class="fehlt">fehlt</span>' : esc(s.locationHint)}</p>
+            <p class="small">Rätsel: ${offen(s.riddle) ? '<span class="fehlt">fehlt</span>' : esc(s.riddle)}</p>
+            <p class="small muted">Lösung: ${offen(s.answer) ? '<span class="fehlt">fehlt</span>' : esc(s.answer)}, Ziffer ${s.digit}, Radius ${s.radiusM} m, ${s.revealStartM != null ? `Name verschlüsselt, löst sich von ${s.revealStartM} m bis ${s.revealClearM} m auf` : "Name sofort lesbar"}${s.tip ? `, Tipp: ${esc(s.tip)}` : ""}<br>
+            Koordinaten: ${s.lat != null ? `<span style="white-space:nowrap">${Number(s.lat).toFixed(5)}, ${Number(s.lng).toFixed(5)}</span>` : "fehlen noch"}</p></div>
+          <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
+        </div>`;
+}
 function ekMitte() {
   let la = val("e-lat"), lo = val("e-lng");
   [la, lo] = koordPaar(la, lo);
@@ -1503,7 +1552,8 @@ function ekMitte() {
   return isNaN(lat) || isNaN(lng) ? null : [lat, lng];
 }
 function ekVorgaenger() {
-  const st = S.admin.state, s = (st.stations || []).find(x => x.id === S.admin.edit);
+  const st = S.admin.state, s = alleStationen(st).find(x => x.id === S.admin.edit);
+  if (s && s.route === "test") return { name: TEST_START.name, nr: null, lat: TEST_START.lat, lng: TEST_START.lng };
   const v = s && (st.stations || []).find(x => x.position === s.position - 1 && x.lat != null);
   return v ? { name: v.name, nr: v.position, lat: v.lat, lng: v.lng } : { name: START.name, nr: null, lat: START.lat, lng: START.lng };
 }
@@ -1667,8 +1717,8 @@ function viewAdmin() {
             <input id="dval" inputmode="numeric" value="${esc(d.value)}"></div>
         </div>
         <p class="small" id="dprev" style="margin-top:10px">&nbsp;</p>
-        <button class="btn ${st.status === "drawn" ? "alt" : ""}" data-act="a-draw" data-wait="Wird ausgelost …" ${n < 2 ? "disabled" : ""}>${st.status === "drawn" ? "Neu auslosen" : "Auslosen"}</button>
-        ${n < 2 ? `<p class="small muted">Es müssen mindestens zwei Personen angemeldet sein.</p>` : ""}</div>`;
+        <button class="btn ${st.status === "drawn" ? "alt" : ""}" data-act="a-draw" data-wait="Wird ausgelost …" ${n < (st.testMode ? 1 : 2) ? "disabled" : ""}>${st.status === "drawn" ? "Neu auslosen" : "Auslosen"}</button>
+        ${n < (st.testMode ? 1 : 2) ? `<p class="small muted">Es müssen mindestens ${st.testMode ? "eine Person" : "zwei Personen"} angemeldet sein.</p>` : ""}</div>`;
     }
     // im Spiel nach Platz und Fortschritt, sonst alphabetisch
     const reihe = laeuft ? [...(st.teams || [])].sort((a, b) => (a.place || 99) - (b.place || 99)
@@ -1682,8 +1732,8 @@ function viewAdmin() {
             ${(st.participants || []).filter(p => p.teamId === t.id).map(p => `<option value="${esc(p.id)}" ${p.id === t.leaderId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}
           </select></td>
         <td class="small" style="white-space:nowrap">${esc(t.code)}<br>${t.readToken ? `<button class="btn sm alt" style="margin-top:6px" data-act="a-mit" data-id="${t.id}" data-ort="t:${t.id}" data-token="${esc(t.readToken)}" data-name="${esc(t.name)}">Mitlese-Link</button>` : ""}</td>
-        <td><div class="prog"><span style="width:${(t.solved / Math.max(1, (st.stations || []).length)) * 100}%"></span></div>
-          <span class="small muted">${t.solved} / ${(st.stations || []).length} gelöst</span>${zustandHTML(t, st)}
+        <td><div class="prog"><span style="width:${(t.solved / Math.max(1, aktiv(st).length)) * 100}%"></span></div>
+          <span class="small muted">${t.solved} / ${aktiv(st).length} gelöst</span>${zustandHTML(t, st)}
           ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}
           ${msgBox("t:" + t.id)}</td>
         <td>${st.status === "running" && t.currentPosition && !t.place ? `<div style="display:flex;flex-direction:column;gap:6px">
@@ -1731,49 +1781,14 @@ function viewAdmin() {
       <button class="btn ${st.testMode ? "warn" : "alt"}" data-act="a-test" data-on="${st.testMode ? "0" : "1"}">${st.testMode ? "Testmodus ausschalten" : "Testmodus einschalten"}</button></div>`;
     const unfertig = (st.stations || []).filter(s => offen(s.locationHint) || offen(s.riddle) || offen(s.answer) || s.lat == null);
     if (unfertig.length) out += `<div class="msg err">Noch nicht fertig: Station ${unfertig.map(s => s.position).join(", ")}. Dort fehlt Ortshinweis, Rätsel, Lösung oder Standort.</div>`;
+    if (st.testStation) out += `<div class="panel" id="teststation"><h3>Teststation</h3>
+      <p class="small ${st.route === "test" ? "" : "muted"}">${st.route === "test"
+        ? "Testmodus an: alle Teams spielen nur die Teststation."
+        : `Testmodus aus: es gilt die echte Route (${(st.stations || []).length} Stationen). Mit dem Testmodus spielen alle Teams nur die Teststation.`}</p>
+      ${stationZeile(st.testStation, st)}</div>`;
     out += `<div class="panel"><p class="small muted">Lauf die Route einmal ab und drück an jeder Station „Meinen Standort übernehmen“. Ein Paar wie 50.08750, 14.42806 kannst du auch ins Feld Breite einfügen.</p>
-      ${(st.stations || []).map(s => S.admin.edit === s.id ? `
-        <div class="stack" style="border-top:1px solid var(--line);padding-top:12px;margin-top:12px">
-          <h3>Station ${s.position}</h3>
-          <div style="margin-top:8px"><label for="e-name">Name</label><input id="e-name" value="${esc(s.name)}"></div>
-          <div style="margin-top:8px"><label for="e-hint">Ortshinweis</label><textarea id="e-hint">${esc(s.locationHint)}</textarea></div>
-          <div style="margin-top:8px"><label for="e-riddle">Rätsel</label><textarea id="e-riddle">${esc(s.riddle)}</textarea></div>
-          <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-top:8px">
-            <div><label for="e-answer">Lösung</label><input id="e-answer" value="${esc(s.answer)}" placeholder="mehrere mit | trennen"></div>
-            <div><label for="e-digit">Ziffer</label><input id="e-digit" inputmode="numeric" maxlength="1" value="${s.digit}" required></div>
-            <div><label for="e-radius">Radius m</label><input id="e-radius" inputmode="numeric" value="${s.radiusM}"></div></div>
-          <p class="small muted" style="margin-top:6px">Mehrere richtige Antworten mit | trennen, etwa „5|fünf“. Groß und klein, Umlaute, Akzente wie é oder ř und Satzzeichen zählen nicht.</p>
-          <div style="margin-top:8px"><label for="e-tip">Tipp (optional, aufdeckbar nach der ersten Denkpause)</label><textarea id="e-tip">${esc(s.tip || "")}</textarea></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-            <div><label for="e-lat">Breite</label><input id="e-lat" inputmode="decimal" value="${s.lat ?? ""}"></div>
-            <div><label for="e-lng">Länge</label><input id="e-lng" inputmode="decimal" value="${s.lng ?? ""}"></div></div>
-          <div style="margin-top:10px"><button class="btn sm alt" data-act="a-here">Meinen Standort übernehmen</button>
-            <span class="small muted" id="e-here"></span></div>
-          <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
-            <h3>Name entschlüsseln</h3>
-            <p class="small muted" style="margin-top:4px">Drei Kreise um die Station: Zieh an den weißen Punkten oder trag die Meter ein.
-              Die gestrichelte Linie ist der direkte Weg von der Station davor. Das blaue 🐾 ist ein Probe-Team zum Verschieben.</p>
-            <div id="emap"></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-              <div><label for="e-beginn"><i class="efarbe" style="--c:#2F6E9E"></i>Entschlüsseln beginnt bei (m)</label><input id="e-beginn" inputmode="numeric" value="${s.revealStartM ?? ""}" ${S.admin.karte && S.admin.karte.aus ? "disabled" : ""}></div>
-              <div><label for="e-klar"><i class="efarbe" style="--c:#2E7D4F"></i>Ganz lesbar ab (m)</label><input id="e-klar" inputmode="numeric" value="${s.revealClearM ?? ""}" ${S.admin.karte && S.admin.karte.aus ? "disabled" : ""}></div></div>
-            <p class="small muted" id="e-etappe" style="margin-top:6px"></p>
-            <div style="margin-top:8px"><button class="btn sm ${S.admin.karte && S.admin.karte.aus ? "" : "alt"}" data-act="a-geheim-aus" aria-pressed="${!!(S.admin.karte && S.admin.karte.aus)}">${S.admin.karte && S.admin.karte.aus ? "Name sofort lesbar. Verschlüsseln einschalten" : "Nicht verschlüsseln"}</button>
-              <button class="btn sm alt" data-act="a-geheim-vorschlag">Vorschlag aus der Etappe (60 % und 30 %)</button></div>
-            <div class="evorschau"><div class="small muted" id="e-wo"></div><div class="geheim" id="e-vorschau" style="margin-top:6px"></div></div>
-          </div>
-          <div style="margin-top:6px"><button class="btn sm" data-act="a-save" data-wait="Wird gespeichert …" data-id="${s.id}">Speichern</button>
-            <button class="btn sm alt" data-act="a-cancel">Abbrechen</button></div>
-        </div>` : `
-        <div style="border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px;align-items:flex-start">
-          <b style="font:700 var(--fs-xl) var(--head);color:var(--flag);width:20px">${s.position}</b>
-          <div style="flex:1"><h3>${esc(s.name)}</h3>
-            <p class="small">Ortshinweis: ${offen(s.locationHint) ? '<span class="fehlt">fehlt</span>' : esc(s.locationHint)}</p>
-            <p class="small">Rätsel: ${offen(s.riddle) ? '<span class="fehlt">fehlt</span>' : esc(s.riddle)}</p>
-            <p class="small muted">Lösung: ${offen(s.answer) ? '<span class="fehlt">fehlt</span>' : esc(s.answer)}, Ziffer ${s.digit}, Radius ${s.radiusM} m, ${s.revealStartM != null ? `Name verschlüsselt, löst sich von ${s.revealStartM} m bis ${s.revealClearM} m auf` : "Name sofort lesbar"}${s.tip ? `, Tipp: ${esc(s.tip)}` : ""}<br>
-            Koordinaten: ${s.lat != null ? `<span style="white-space:nowrap">${Number(s.lat).toFixed(5)}, ${Number(s.lng).toFixed(5)}</span>` : "fehlen noch"}</p></div>
-          <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
-        </div>`).join("")}
+      ${st.route === "test" ? `<p class="small muted">Im Testmodus wird diese Route nicht gespielt.</p>` : ""}
+      ${(st.stations || []).map(s => stationZeile(s, st)).join("")}
       <p class="small" style="border-top:1px solid var(--line);padding-top:12px">Koffer-Code: <b style="white-space:nowrap">${esc(st.caseCode || "")}</b>, gilt für alle ${st.prizeCount ?? 3} Koffer.
         Die Reihenfolge der Koffer ergibt sich aus dem Platz in der App.</p></div>`;
   }
@@ -1877,7 +1892,7 @@ function drawArgs() {
   const st = S.admin.state, n = (st && st.participants || []).length;
   const mode = $("#dmode") ? $("#dmode").value : S.admin.draw.mode;
   const v = parseInt($("#dval") ? $("#dval").value : S.admin.draw.value, 10);
-  if (n < 2 || !v || v < 1) return null;
+  if (n < (st && st.testMode ? 1 : 2) || !v || v < 1) return null;
   return mode === "teams" ? { p_teams: v } : { p_size: v };
 }
 function drawPreview() {
@@ -1938,7 +1953,7 @@ async function drawMap(first) {
     icon: L.divIcon({ html: `<div class="mapbadge start" title="Start">${HAUS}</div>`, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] }) })
     .bindPopup(`<b>Start</b><br>${esc(START.name)}`);
   haus.addTo(map); layers.stations.push(haus);
-  (st.stations || []).forEach(s => {
+  aktiv(st).forEach(s => {
     if (s.lat == null || s.lng == null) return;
     const icon = L.divIcon({ html: `<div class="mapbadge">${s.position}</div>`, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] });
     const m = L.marker([s.lat, s.lng], { icon, zIndexOffset: 1000 }).bindPopup(`<b>Station ${s.position}</b><br>${esc(s.name)}`);
@@ -1947,7 +1962,7 @@ async function drawMap(first) {
   });
   const drop = (store, id) => { if (store[id]) { map.removeLayer(store[id]); delete store[id]; } };
   // Punkte weit weg von der Route (etwa 0/0 eines Geräts ohne Fix) weder zeichnen noch in den Ausschnitt nehmen
-  const anker = (st.stations || []).find(s => s.lat != null && s.lng != null);
+  const anker = aktiv(st).find(s => s.lat != null && s.lng != null);
   // Im Testmodus gilt die Grenze nicht: wer das Spiel anderswo durchprobiert (Berlin statt Prag), soll sein Team sehen
   const nah = (lat, lng) => st.testMode || !anker || haversine({ lat, lng }, anker) < 30000;
   (st.teams || []).forEach((t, i) => {
@@ -2453,7 +2468,7 @@ const ACT = {
   },
   "a-edit"(d) {
     S.admin.edit = d.id;
-    const s = (S.admin.state.stations || []).find(x => x.id === d.id);
+    const s = alleStationen(S.admin.state).find(x => x.id === d.id);
     S.admin.karte = { aus: !s || s.revealStartM == null, team: null };
   },
   "a-cancel"() { S.admin.edit = null; S.admin.karte = null; },
@@ -2509,7 +2524,7 @@ const ACT = {
     };
     // Neue Ziffer, und Teams haben die Station schon gelöst: erst nachfragen. Alle laufen dieselbe Route,
     // gelöst hat Station p also, wer mindestens p Stationen gelöst hat.
-    const st = S.admin.state, alt = (st.stations || []).find(s => String(s.id) === String(d.id));
+    const st = S.admin.state, alt = alleStationen(st).find(s => String(s.id) === String(d.id));
     const geloest = alt && st.status !== "registration" && st.status !== "drawn" && alt.digit !== daten.p_digit
       ? (st.teams || []).filter(t => (t.solved || 0) >= alt.position).map(t => t.name) : [];
     if (geloest.length) {

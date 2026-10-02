@@ -387,14 +387,14 @@ with sync_playwright() as pw:
     pg.on("pageerror", lambda e: err.append(str(e)))
 
     print("Spielleitung, Reiter Stationen")
-    pg.goto("http://127.0.0.1:8822/app.html?szenario=admin-teststation"); pg.wait_for_selector("[data-act=a-edit]")
-    pg.evaluate("S.admin.tab = 'stationen'; render()"); pg.wait_for_selector("#teststation")
+    pg.goto("http://127.0.0.1:8822/app.html?szenario=admin-teststation"); pg.wait_for_selector(".tabs")
+    pg.click("[data-act=a-tab][data-tab=stations]"); pg.wait_for_selector("[data-act=a-edit]")
     t = pg.inner_text("#teststation")
     pruef("EDEKA Grenzallee" in t and "Testmodus an: alle Teams spielen nur die Teststation" in t, f"Abschnitt Teststation: {t[:80]!r}")
     pruef(pg.locator("[data-act=a-edit]").count() == 6, "sechs Bearbeiten-Knöpfe (Teststation und fünf Stationen)")
-    pg.click("#teststation [data-act=a-edit]"); pg.wait_for_selector("#emap .leaflet-container", timeout=20000)
+    pg.click("#teststation [data-act=a-edit]"); pg.wait_for_selector("#emap .leaflet-marker-icon", timeout=25000)
     pruef(pg.input_value("#e-name") == "EDEKA Grenzallee", "Formular zeigt die Teststation")
-    pruef("Start" in pg.inner_text("#e-etappe"), "Etappe beginnt am Start, nicht bei einer Prager Station")
+    pruef("TSE Berlin" in pg.inner_text("#e-etappe"), "Etappe beginnt bei der TSE (TEST_START)")
     pg.fill("#e-radius", "40"); pg.evaluate("window.__GESPEICHERT = null")
     pg.click("[data-act=a-save]"); pg.wait_for_function("window.__GESPEICHERT")
     g = pg.evaluate("window.__GESPEICHERT")
@@ -481,8 +481,8 @@ Im Reiter Teams (Panel „Teams auslosen“) die Bedingung `n < 2` an beiden Ste
 
 ```python
     print("Auslosen mit einer Person im Testmodus")
-    pg.goto("http://127.0.0.1:8822/app.html?szenario=admin-auslosen-allein"); pg.wait_for_selector("[data-act=a-draw]")
-    pg.evaluate("S.admin.tab = 'teams'; render()"); pg.wait_for_selector("#dval")
+    pg.goto("http://127.0.0.1:8822/app.html?szenario=admin-auslosen-allein"); pg.wait_for_selector(".tabs")
+    pg.click("[data-act=a-tab][data-tab=teams]"); pg.wait_for_selector("#dval")
     pruef(not pg.locator(".panel [data-act=a-draw]").last.is_disabled(), "Auslosen-Knopf aktiv bei einer Person im Testmodus")
 ```
 

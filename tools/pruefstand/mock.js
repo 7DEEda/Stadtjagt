@@ -49,6 +49,9 @@
       riddle: "In welchem Jahr wurde das Metronom aufgestellt? Die Jahreszahl steht auf der Infotafel am Sockel.",
       answer: "1991", tip: "Die Tafel steht an der Treppe auf der Seite zur Stadt." }
   ];
+  // Nachtrag 28: Teststation, gilt im Testmodus mit C.teststation
+  const TESTSTATION = { id: "st", position: 1, name: "EDEKA Grenzallee", lat: 52.470116, lng: 13.462131, radiusM: 50, digit: 1,
+    locationHint: "Ortshinweis folgt", riddle: "Rätsel folgt", answer: "", tip: "", revealStartM: null, revealClearM: null, route: "test" };
   const CASE_HINT = "Die Koffer stehen im Hotel Mama Shelter, im Innenhof hinter der Bar. Dort wartet die Spielleitung.";
   const CASE_CODE = "371955";
 
@@ -159,6 +162,8 @@
     "admin-karte": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, fertig: ["Adler"], settle: 3500 },
     "admin-teams": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=teams]" }, { wait: 300 }] },
+    "admin-teststation": { welt: "running", view: "admin", testMode: true, teststation: true, ss: { "sj.pin": "4711" } },
+    "admin-auslosen-allein": { welt: "registration", view: "admin", testMode: true, ss: { "sj.pin": "4711" }, nurEine: true },
     "admin-stationen": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=stations]" }, { wait: 300 }] },
     "admin-teilnehmende": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
@@ -328,10 +333,12 @@
     return { background: WELT.background, status: WELT.status, startedAt: iso(WELT.startedAt), finishedAt: iso(WELT.finishedAt),
       durationMin: WELT.durationMin, endsAt: WELT.startedAt ? iso(WELT.startedAt + WELT.durationMin * MIN) : null,
       caseHint: CASE_HINT, winnerTeamId: (TEAMS.find(x => x.place === 1) || {}).id || null, prizeCount: WELT.prizeCount, testMode: WELT.testMode,
-      participants: PERSONEN.map(p => ({ id: p.id, name: p.name, teamId: mitTeams() ? p.teamId : null, teamName: mitTeams() ? teamOf(p).name : null })),
+      participants: (C.nurEine ? PERSONEN.slice(0, 1) : PERSONEN).map(p => ({ id: p.id, name: p.name, teamId: mitTeams() ? p.teamId : null, teamName: mitTeams() ? teamOf(p).name : null })),
       stations: STATIONEN.map(s => ({ id: s.id, position: s.position, name: s.name, lat: s.lat, lng: s.lng, radiusM: s.radiusM,
         locationHint: s.locationHint, riddle: s.riddle, answer: s.answer, digit: s.digit, tip: s.tip,
-        revealStartM: s.revealStartM, revealClearM: s.revealClearM })),
+        revealStartM: s.revealStartM, revealClearM: s.revealClearM, route: "echt" })),
+      testStation: TESTSTATION, route: WELT.testMode && C.teststation ? "test" : "echt",
+      aktiveStationen: (WELT.testMode && C.teststation ? [TESTSTATION] : STATIONEN).map(s => ({ id: s.id, position: s.position, name: s.name, lat: s.lat, lng: s.lng, radiusM: s.radiusM })),
       caseCode: CASE_CODE, selfieOn: WELT.selfieOn, photosDeleteOn: WELT.photosDeleteOn, photoCount: fotoListe().length,
       teams: teams.map(t => ({ id: t.id, name: t.name, code: t.code, readToken: t.readToken, leaderId: t.leaderId, leaderName: t.leaderName,
         memberCount: t.members.length, members: members(t), solved: t.solved,
@@ -406,7 +413,7 @@
       FOTOS[a.p_position] = { foto: a.p_photo, thumb: a.p_thumb, at: Date.now() }; SELFIE_DA[a.p_position] = true; return teamState(t); },
     team_selfie_skip: a => { const t = fuchsByCode(a.p_code); SELFIE_DA[a.p_position] = true; return teamState(t); },
     team_photo: a => { const f = FOTOS[a.p_position]; return { data: f ? (a.p_full ? f.foto : f.thumb) : null }; },
-    admin_save_station: a => { pin(a); const s = STATIONEN.find(x => x.id === a.p_id); window.__GESPEICHERT = a;
+    admin_save_station: a => { pin(a); const s = STATIONEN.concat([TESTSTATION]).find(x => x.id === a.p_id); window.__GESPEICHERT = a;
       Object.assign(s, { name: a.p_name, lat: a.p_lat, lng: a.p_lng, radiusM: a.p_radius, revealStartM: a.p_reveal_start, revealClearM: a.p_reveal_clear }); return adminState(); },
     admin_photos: a => { pin(a); return fotoListe(); },
     admin_photo: a => { pin(a); const t = TEAMS.find(x => x.id === a.p_team); return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full) }; },
