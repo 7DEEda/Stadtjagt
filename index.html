@@ -1063,6 +1063,8 @@ function routeHTML(st) {
 const accText = a => a != null && a >= 0 ? `±${Math.round(a)}°` : "unbekannt";
 // Folgt der Pfeil dem Kompass? Sonst Laufrichtung (gestrichelte Nadel) oder noch keine Richtung (Fragezeichen)
 const kompassFolgt = () => S.gps.heading != null && S.gps.kompass === "an";
+// Klasse des Kompasses, für render() und liveUpdate() gleich: "" Nadel nach Kompass, "lauf" gestrichelt, "unsicher" Fragezeichen
+const kompassKlasse = () => !richtungBekannt() ? "unsicher" : kompassFolgt() ? "" : "lauf";
 function kompassChip() {
   const g = S.gps;
   if (!g.on) return "";
@@ -1077,13 +1079,15 @@ function waechterHinweisHTML(st, lesen) {
   if (!g.waechterGrund || !w) return "";
   const leitung = leitungAbgebbar(st, lesen);
   const tipp = `Tipp: Schaut auf ein anderes Handy aus eurem Team. Wer mitliest und den Standort freigibt, sieht dort den Pfeil mit dem eigenen Kompass.${leitung ? " Oder gebt die Leitung an jemanden ab, dessen Handy richtig zeigt." : ""}`;
+  // je nach Lage: mit Laufrichtung folgt der Pfeil ihr, sonst erst ein paar Schritte (Spezifikation Teil 2, Anzeige)
+  const ohne = g.gpsHeading == null ? "Geht ein paar Schritte, dann zeigt der Pfeil eure Laufrichtung. Die Entfernung stimmt immer." : "";
   const abgeben = leitung ? `<button class="btn alt" data-act="t-abgeben-frage">Leitung abgeben</button>` : "";
   if (w.prueft) return `<div class="msg info"><b>Kompass wird geprüft …</b> Dreht euch einmal um, dann sieht das Handy, ob der Kompass jetzt mitgeht.</div>`;
-  if (w.versuche === 0) return `<div class="msg warn"><b>Der Kompass dieses Handys zeigt gerade falsch</b><br>Der Pfeil richtet sich nach eurer Laufrichtung. ${tipp}
+  if (w.versuche === 0) return `<div class="msg warn"><b>Der Kompass dieses Handys zeigt gerade falsch</b><br>${ohne || "Der Pfeil richtet sich nach eurer Laufrichtung."} ${tipp}
     <button class="btn alt" data-act="t-kal">Kompass einmessen</button>${abgeben}</div>`;
-  if (w.versuche === 1) return `<div class="msg warn"><b>Einmessen hat nicht geholfen</b><br>Probiert es noch einmal, mit etwas Abstand zu Metall, Magneten und Handyhüllen. Der Pfeil folgt solange eurer Laufrichtung. ${tipp}
+  if (w.versuche === 1) return `<div class="msg warn"><b>Einmessen hat nicht geholfen</b><br>Probiert es noch einmal, mit etwas Abstand zu Metall, Magneten und Handyhüllen. ${ohne || "Der Pfeil folgt solange eurer Laufrichtung."} ${tipp}
     <button class="btn alt" data-act="t-kal">Noch einmal einmessen</button>${abgeben}</div>`;
-  return `<div class="msg warn"><b>Einmessen hilft bei diesem Handy nicht</b><br>Der Pfeil bleibt bei der Laufrichtung, die Entfernung stimmt immer. ${tipp}
+  return `<div class="msg warn"><b>Einmessen hilft bei diesem Handy nicht</b><br>${ohne || "Der Pfeil bleibt bei der Laufrichtung, die Entfernung stimmt immer."} ${tipp}
     ${abgeben}<button class="link" data-act="t-kal">Trotzdem noch einmal einmessen</button></div>`;
 }
 function kompassText() {
@@ -1259,7 +1263,7 @@ function teamAnsicht(st, lesen) {
     const kalOk = kalOkHTML();
     out += `<div class="panel ${neuKlasse}"><p class="muted small">Station ${s.position} von ${st.totalStations}</p>${okOben ? msgBox() : ""}
       ${stationsNameHTML(st, s)}
-      <div class="compass gross ${!richtungBekannt() ? "unsicher" : kompassFolgt() ? "" : "lauf"}"><div><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
+      <div class="compass gross ${kompassKlasse()}"><div><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
         <polygon class="needle" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/>
         <text class="nq" x="39" y="48" text-anchor="middle">?</text></svg><div class="cap">Richtung</div></div>
         <div><div class="muted small">Entfernung</div><div class="dist" id="dist">${dist}</div>
@@ -1368,7 +1372,7 @@ function vorbereitenHTML() {
       <button class="btn alt" data-act="t-gps">Standort und Kompass freigeben</button>`
       : `<p class="small muted">Zum Ausprobieren zeigt der Pfeil auf die ${PROBEZIEL.name}.
         Dreht euch einmal: Der Pfeil sollte in dieselbe Himmelsrichtung zeigen, egal wie ihr das Handy haltet.</p>
-      <div class="compass ${richtungBekannt() ? "" : "unsicher"}"><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
+      <div class="compass ${kompassKlasse()}"><svg viewBox="0 0 78 78" aria-hidden="true"><circle class="ring" cx="39" cy="39" r="35"/>
         <polygon class="needle" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/>
         <text class="nq" x="39" y="48" text-anchor="middle">?</text></svg>
         <div><div class="dist" id="dist">${g.pos ? fmtDist(haversine(g.pos, PROBEZIEL)) : "- -"}</div>
@@ -2652,7 +2656,8 @@ async function stationSpeichern(daten) {
 
 /* ---------- GPS und Kompass ---------- */
 let watchId = null, orientOn = false, orientH = null, raf = 0, kompassNeu = false;
-const richtungBekannt = () => S.gps.heading != null || S.gps.gpsHeading != null;
+// Ein Kompass, dem nicht zu trauen ist (Wächter, iPhone ungenau, nach Pause), gibt keine Richtung: dann nur die Laufrichtung
+const richtungBekannt = () => kompassFolgt() || S.gps.gpsHeading != null;
 const kompassDa = () => S.gps.kompass === "an" || S.gps.kompass === "kalibrieren";
 // nur neu zeichnen, solange Kompass oder Einmessen zu sehen sind, sonst ginge
 // eine halb getippte Rätselantwort verloren
@@ -2723,7 +2728,7 @@ function richtung() {
   const g = S.gps;
   if (g.heading != null && g.kompass === "an") return g.heading;
   if (g.gpsHeading != null) return g.gpsHeading;
-  return g.heading ?? 0;
+  return null;   // keine Richtung: Fragezeichen statt Nadel (siehe richtungBekannt)
 }
 // Wohin der Pfeil zeigt: unterwegs die Station, vor dem Start das Übungsziel
 const aktiverStand = () => S.view === "team" ? S.team.state : S.mit;
@@ -2758,14 +2763,14 @@ function liveUpdate() {
   const um = $("#umkreis"); if (um) um.innerHTML = umkreisHTML();
   kalZeigen();
   const note = $("#gnote"); if (note && ziel) note.textContent = gpsNote() || "Standort noch nicht aktiv";
-  const n = $("#needle"); if (n) { const c = n.closest(".compass"); c.classList.toggle("unsicher", !richtungBekannt()); c.classList.toggle("lauf", richtungBekannt() && !kompassFolgt()); }
+  const n = $("#needle"); if (n) { const c = n.closest(".compass"), k = kompassKlasse(); c.classList.toggle("unsicher", k === "unsicher"); c.classList.toggle("lauf", k === "lauf"); }
   const kc = $("#kchip"); if (kc) kc.outerHTML = kompassChip();
   const gs = $("#gstat"); if (gs) gs.textContent = gpsNote();
   if (!g.pos || !ziel) return;
   geheimNachziehen(); checkNachziehen();
   const t = { lat: ziel.lat, lng: ziel.lng };
   const d = $("#dist"); if (d) d.textContent = fmtDist(haversine(g.pos, t));
-  setNeedle(bearingTo(g.pos, t) - richtung());
+  const r = richtung(); if (r != null) setNeedle(bearingTo(g.pos, t) - r);
 }
 // Nadel im Zeichen oben: eigener Zuhörer, damit sie überall mitläuft, auch auf der Anmeldeseite und bevor
 // der Standort freigegeben ist (vorher drehte sie nur, solange der Kompass zur Station lief). Android liefert
@@ -2921,12 +2926,15 @@ async function startGps(auto) {
     const next = { lat: p.coords.latitude, lng: p.coords.longitude };
     // Laufrichtung auch dann mitrechnen, wenn der Kompass zwar etwas liefert,
     // aber zu ungenau ist. Sonst gibt es keinen Ersatz, wenn er ausfällt.
+    // Die erste Laufrichtung ändert Nadel und Hinweise ("erst ein paar Schritte"): dann neu zeichnen, nicht nur nachziehen
+    const ersteLauf = S.gps.gpsHeading == null;
     if (last && haversine(last, next) > 6 && S.gps.kompass !== "an") S.gps.gpsHeading = bearingTo(last, next);
+    const lageNeu = ersteLauf && S.gps.gpsHeading != null && kompassSichtbar();
     last = next;
     const firstFix = !S.gps.pos;
     S.gps.pos = next; S.gps.acc = p.coords.accuracy ?? 999; S.gps.err = null; S.gps.posAt = Date.now();
     maybeReport();
-    if (firstFix) render(); else liveUpdate();
+    if (firstFix || lageNeu) render(); else liveUpdate();
   }, e => {
     if (e.code === 3) {
       // Ohne je einen Standort liegt es meist an der Erlaubnis, nicht am Signal
