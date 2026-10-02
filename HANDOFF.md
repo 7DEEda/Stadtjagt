@@ -1596,3 +1596,17 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   Striche bleibt roh. Anlass: auf dem Xiaomi 22021211RG sprang die Zahl
   sichtbar, am selben Platz wie beim Lauf davor.
 - Drehen höchstens 30 s (02.10.): bei 60 Meldungen pro Sekunde etwa 15 KB Rohdaten.
+- Lauf RY4K (02.10., Xiaomi 22021211RG): beim Drehen gegen den
+  Uhrzeigersinn fiel die Richtung zuerst in 1,5 s von 40° auf 210°, danach
+  pendelte sie bei gleichmäßigem Weiterdrehen nur zwischen etwa 115° und 155°,
+  gut einmal je Umdrehung. Bild eines Magnetsensors unter einem starken festen
+  Störfeld (Magnet in Hülle oder Halterung, oder stark verstellt).
+- Suite 12 (02.10.): Gyroskop und Beschleunigung beim Drehen
+  (`devicemotion`, `sensor.bewegt`). Gemessen werden die Drehung laut
+  Gyroskop, der Weg des Kompasses, „Kompass folgt zu x %“ und die Neigung
+  (liegt das Handy flach). Hat sich das Handy laut Gyroskop um mehr als
+  400° gedreht, endet der Schritt; sind dann weniger als 30 Fächer
+  gesehen: „Kompass folgt nicht“ mit Hinweis. Die Zahl in der Kreismitte
+  dreht sich nach dem Gyroskop zurück. Rohdaten jetzt
+  `dt_ms,grad_x10,gyro_grad[,genauigkeit]`.
+

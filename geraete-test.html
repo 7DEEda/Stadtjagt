@@ -250,6 +250,8 @@ async function rpc(fn, args) {
 /* ---------- Ausrichtung: ein Zuhörer für Kompass, Neigung und Hintergrund ---------- */
 const sensor = {
   dreh: 0, nTick: false, n: 0, richtung: null, quelle: null, genau: null, beta: null, gamma: null, faecher: new Set(), an: false, bezug: null, tick: false, ziel: { x: 0, y: 0 },
+  // Gyroskop: gyro = aufsummierte Drehung um die Hochachse in Grad, im Uhrzeigersinn positiv wie die Kompassrichtung
+  gyro: 0, gyroN: 0, gyroT: null,
   // neu = true hängt den Zuhörer frisch ein: nach der iOS-Freigabe, falls Safari den alten nicht bedient
   start(neu) {
     if (!window.DeviceOrientationEvent || (this.h && !neu)) return;
@@ -258,6 +260,28 @@ const sensor = {
     this.h = e => this.bei(e);
     addEventListener("deviceorientation", this.h, { passive: true });
     if ("ondeviceorientationabsolute" in window) addEventListener("deviceorientationabsolute", this.h, { passive: true });
+    if (window.DeviceMotionEvent) {
+      if (this.hm) removeEventListener("devicemotion", this.hm);
+      this.hm = e => this.bewegt(e);
+      addEventListener("devicemotion", this.hm, { passive: true });
+    }
+  },
+  // Gyroskop und Beschleunigung. rotationRate.alpha dreht um die Hochachse (z) des Geräts, gegen den Uhrzeigersinn
+  // positiv (rechte Hand, z zeigt aus dem Bildschirm); die Kompassrichtung steigt im Uhrzeigersinn, darum das Minus.
+  bewegt(e) {
+    const t = performance.now(), r = e.rotationRate;
+    if (r && typeof r.alpha === "number") {
+      if (this.gyroT != null) this.gyro -= r.alpha * Math.min(0.1, (t - this.gyroT) / 1000);
+      this.gyroT = t; this.gyroN++;
+    }
+    const g = e.accelerationIncludingGravity;
+    if (this.spur && g && typeof g.z === "number") {
+      const b = Math.hypot(g.x || 0, g.y || 0, g.z);
+      if (b > 1) {
+        const neig = Math.acos(Math.min(1, Math.abs(g.z) / b)) * 180 / Math.PI;   // 0° = liegt flach
+        this.spur.neigMax = Math.max(this.spur.neigMax, neig); this.spur.neigSum += neig; this.spur.neigN++;
+      }
+    }
   },
   bei(e) {
     this.n++;
@@ -277,7 +301,7 @@ const sensor = {
         if (d > 30) this.spur.ueber30++;
       }
       this.spur.letzte = neu;
-      if (this.spur.w.length < 3000) this.spur.w.push([t, Math.round(neu * 10) / 10, this.genau == null ? null : Math.round(this.genau)]);
+      if (this.spur.w.length < 3000) this.spur.w.push([t, Math.round(neu * 10) / 10, this.gyroN ? Math.round(this.gyro - this.spur.gyro0) : null, this.genau == null ? null : Math.round(this.genau)]);
     }
     if (this.richtung != null && this.quelle !== "relativ") {
       this.faecher.add(Math.floor(this.richtung / 10) % 36);
@@ -375,7 +399,11 @@ function kreisMalen() {
   const n = laeuft ? sensor.faecher.size : 0, zahl = k.querySelector("#kreiszahl");
   zahl.textContent = laeuft ? Math.min(100, Math.round(n / 36 * 100)) + " %" : "";
   // Die Zahl bleibt zur Person am Tisch ausgerichtet: dreht sich das Handy seit "Los" um w Grad, dreht sie sich um w zurück
-  if (laeuft && g != null) {
+  if (laeuft && sensor.gyroN) {
+    // Gyroskop: misst die echte Drehung, unabhängig vom Magnetfeld
+    if (S.kreisNull == null) S.kreisNull = sensor.gyro;
+    zahl.setAttribute("transform", `rotate(${(-(sensor.gyro - S.kreisNull)).toFixed(1)} 50 50)`);
+  } else if (laeuft && g != null) {
     if (S.kreisNull == null) S.kreisNull = g;
     zahl.setAttribute("transform", `rotate(${(-kurz(g - S.kreisNull)).toFixed(1)} 50 50)`);
   } else zahl.removeAttribute("transform");

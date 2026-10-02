@@ -253,24 +253,40 @@
       async lauf(ctx) {
         const s = ctx.sensor; s.faecher.clear();
         const t0 = jetzt();
-        // jede Kompassmeldung mitschreiben (sensor.bei in geraete-test.html): [ms seit Los, Richtung in °, Genauigkeit in ° oder null]
-        s.spur = { t0: performance.now(), w: [], letzte: null, max: 0, maxBei: null, ueber30: 0 };
-        // bis der Kreis voll ist (alle 36 Fächer), höchstens 30 s; dann kurz auf 100 % stehen bleiben, damit man es sieht
-        while (s.faecher.size < 36 && jetzt() - t0 < 30000) { ctx.status(`${s.faecher.size} von 36`); await ctx.warte(150); }
+        // jede Kompassmeldung mitschreiben (sensor.bei in geraete-test.html): [ms seit Los, Richtung in °, Gyro-Drehung seit Los in °, Genauigkeit in °]
+        s.spur = { t0: performance.now(), w: [], letzte: null, max: 0, maxBei: null, ueber30: 0, gyro0: s.gyro, gyroN0: s.gyroN, neigMax: 0, neigSum: 0, neigN: 0 };
+        const gedreht = () => Math.abs(s.gyro - s.spur.gyro0);
+        // bis der Kreis voll ist (alle 36 Fächer), höchstens 30 s. Mit Gyroskop auch dann Schluss, wenn das Handy
+        // laut Gyroskop mehr als eine Umdrehung hinter sich hat: dann kommt der Kompass nicht mehr nach.
+        while (s.faecher.size < 36 && jetzt() - t0 < 30000 && !(s.gyroN > s.spur.gyroN0 && gedreht() >= 400)) { ctx.status(`${s.faecher.size} von 36`); await ctx.warte(150); }
         const n = s.faecher.size;
         ctx.status(`${n} von 36`);
         if (n >= 36) await ctx.warte(700);
-        const sp = s.spur || { w: [], max: 0, maxBei: null, ueber30: 0 }; s.spur = null;
+        const gyroDa = s.gyroN > s.spur.gyroN0, gyroWeg = s.gyro - s.spur.gyro0;
+        const sp = s.spur; s.spur = null;
+        // Weg des Kompasses: Summe der Änderungen auf dem kürzesten Weg, mit Vorzeichen (im Uhrzeigersinn positiv)
+        let kWeg = 0;
+        for (let i = 1; i < sp.w.length; i++) kWeg += ((sp.w[i][1] - sp.w[i - 1][1]) % 360 + 540) % 360 - 180;
         const dauer = (jetzt() - t0) / 1000;
         const mess = { "Richtungen gesehen": `${n} von 36`, "Quelle": s.quelle || "keine", "Dauer in s": rund(dauer, 1),
           "Meldungen": sp.w.length, "Meldungen pro Sekunde": rund(sp.w.length / Math.max(dauer, 0.1), 1),
           "Größter Sprung zwischen zwei Meldungen": Math.round(sp.max) + "°" + (sp.maxBei != null ? ` nach ${rund(sp.maxBei / 1000, 1)} s` : ""),
-          "Sprünge über 30°": sp.ueber30 };
+          "Sprünge über 30°": sp.ueber30,
+          "Gyroskop": gyroDa ? "ja" : "keine Daten",
+          "Laut Gyroskop gedreht": gyroDa ? Math.round(gyroWeg) + "°" : "–",
+          "Kompass mitgedreht": Math.round(kWeg) + "°",
+          "Kompass folgt zu": gyroDa && Math.abs(gyroWeg) >= 90 ? Math.round(kWeg / gyroWeg * 100) + " %" : "–",
+          "Neigung beim Drehen": sp.neigN ? `im Mittel ${Math.round(sp.neigSum / sp.neigN)}°, höchstens ${Math.round(sp.neigMax)}°` : "keine Daten" };
         // kompakt, damit 30 s bei voller Rate unter der Grenze des Servers (64 KB je Lauf) bleiben:
-        // je Meldung "Abstand zur vorigen in ms,Richtung in 0,1°[,Genauigkeit in °]", getrennt durch ";"
+        // je Meldung "Abstand zur vorigen in ms,Richtung in 0,1°,Gyro-Drehung seit Los in °[,Genauigkeit in °]", getrennt durch ";"
         let vor = 0;
-        const roh = { format: "dt_ms,grad_x10[,genauigkeit_grad];...", daten: sp.w.map(([t, g, a]) => { const d = t - vor; vor = t; return d + "," + Math.round(g * 10) + (a == null ? "" : "," + a); }).join(";") };
+        const roh = { format: "dt_ms,grad_x10,gyro_grad[,genauigkeit_grad];...", daten: sp.w.map(([t, g, y, a]) => { const d = t - vor; vor = t; return d + "," + Math.round(g * 10) + "," + (y == null ? "" : y) + (a == null ? "" : "," + a); }).join(";") };
         if (s.quelle === "relativ" || !s.quelle) return { art: "err", wert: "kein Nordbezug", mess, roh };
+        // Handy hat sich laut Gyroskop ganz gedreht, der Kompass kam nicht mit: Magnetfeld gestört oder nicht eingemessen
+        if (gyroDa && Math.abs(gyroWeg) >= 330 && n < 30) {
+          mess["Hinweis"] = `Das Handy hat sich laut Gyroskop um ${Math.round(Math.abs(gyroWeg))}° gedreht, der Kompass hat davon nur ${n} von 36 Richtungen gesehen. Häufige Gründe: Magnet in der Hülle oder Halterung, Metall in der Nähe, Kompass nicht eingemessen (Handy in einer Acht schwenken).`;
+          return { art: "err", wert: "Kompass folgt nicht", mess, roh };
+        }
         return { art: n >= 30 ? "ok" : n >= 12 ? "warn" : "err", wert: `${n} von 36`, mess, roh };
       }
     },
@@ -432,5 +448,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 11, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf (02.10.2026)
+  window.SJ_TESTS = { version: 12, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen (02.10.2026)
 })();
