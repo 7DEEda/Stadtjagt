@@ -614,4 +614,10 @@ Probedaten weg, Löschdatum für Fotos).
   `white-space:nowrap`.
 - Prüfen: `python tools/pruefstand/kritik.py`; der Prüfstand lässt `sj.thema`
   beim Laden stehen.
+- **Ziffer im laufenden Spiel ändern (02.10.):** Haben Teams die Station schon
+  gelöst (`t.solved >= position`, alle laufen dieselbe Route), fragt `a-save`
+  über `DANGER.ziffer` nach; gespeichert wird in `stationSpeichern()`. Das
+  Getippte hält `confirm.felder`, `a-dlg-cancel` schreibt es über
+  `S.felderZurueck` nach dem Neuzeichnen zurück. Test:
+  `python tools/pruefstand/ziffer.py`.
 

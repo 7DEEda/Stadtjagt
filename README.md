@@ -103,7 +103,7 @@ supabase/seed-*.sql            Prager Stationen und Testpersonen
   `MASTER.md`, Ansicht in `index.html`, online unter `/design-system/`).
 
 Prüfen ohne Datenbank: `python tools/pruefstand/selfie.py`, `name.py`,
-`geraetetest.py`, `kritik.py`. Einzelheiten in `HANDOFF.md`, geordnet in `SPIEL.md`
+`geraetetest.py`, `kritik.py`, `ziffer.py`. Einzelheiten in `HANDOFF.md`, geordnet in `SPIEL.md`
 Abschnitt 11 und 12.
 
 ## SQL ausführen

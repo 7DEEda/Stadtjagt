@@ -683,6 +683,22 @@ const DANGER = {
       return "Alle Fotos gelöscht.";
     }
   },
+  // Ziffer einer Station ändern, die Teams schon gelöst haben: deren notierte Ziffer stimmt danach nicht mehr,
+  // der Koffer verlangt still die neue (Befund aus t4_ziffer_aenderung.mjs, 29.09.)
+  ziffer: {
+    when: () => false, wort: false,
+    title: () => "Ziffer von Station " + (S.admin.confirm?.pos || "") + " ändern",
+    lead: () => {
+      const c = S.admin.confirm || {}, n = (c.teams || []).length;
+      return (n === 1 ? "Team " + c.teams[0] + " hat" : n + " Teams haben") + " Station " + c.pos + " schon gelöst und die Ziffer "
+        + c.alt + " notiert. Nach dem Speichern verlangt der Koffer die " + c.neu + ". Sagt "
+        + (n === 1 ? "dem Team" : "diesen Teams") + " die neue Ziffer, sonst scheitern sie am Koffer."
+        + (n > 1 ? " Betroffen: " + c.teams.join(", ") + "." : "");
+    },
+    keeps: "Fortschritt und Plätze bleiben. Teams, die die Station noch vor sich haben, bekommen gleich die neue Ziffer.",
+    btn: "Ziffer ändern",
+    async run(c) { await stationSpeichern(c.daten); return "Station gespeichert. Die neue Ziffer ist " + c.neu + "."; }
+  },
   testan: {
     when: () => false, wort: false,
     title: "Testmodus im laufenden Spiel einschalten",
@@ -2385,7 +2401,7 @@ const ACT = {
   "a-finish"() { S.admin.confirm = { key: "finish" }; S.msg = null; },
   // Löschen: erst den Dialog öffnen, gelöscht wird erst nach dem getippten Wort
   "a-danger"(d) { S.admin.confirm = { key: d.key, id: d.id, name: d.name, pos: d.pos }; S.msg = null; },
-  "a-dlg-cancel"() { S.admin.confirm = null; S.msg = null; },
+  "a-dlg-cancel"() { S.felderZurueck = S.admin.confirm && S.admin.confirm.felder; S.admin.confirm = null; S.msg = null; },
   async "a-dlg-ok"() {
     const c = S.admin.confirm;
     if (!c) return false;
@@ -2490,16 +2506,34 @@ const ACT = {
     // Name entschlüsseln: beide Entfernungen oder keine, außen beginnt es, innen ist er lesbar
     const geheim = !(S.admin.karte && S.admin.karte.aus), beginn = geheim ? ekZahl("e-beginn") : null, klar = geheim ? ekZahl("e-klar") : null;
     if (geheim && (!beginn || !klar || beginn <= klar)) { S.msg = { type: "err", text: "Name entschlüsseln: „beginnt bei“ muss größer sein als „ganz lesbar ab“. Oder „Nicht verschlüsseln“ wählen." }; return; }
-    S.admin.state = await rpc("admin_save_station", {
+    const daten = {
       p_pin: S.admin.pin, p_id: d.id, p_name: val("e-name"),
       p_lat: isNaN(lat) ? null : lat, p_lng: isNaN(lng) ? null : lng,
       p_radius: parseInt(val("e-radius"), 10) || 50, p_hint: val("e-hint"),
       p_riddle: val("e-riddle"), p_answer: val("e-answer"), p_digit: Number(ziffer), p_tip: val("e-tip"),
       p_reveal_start: beginn, p_reveal_clear: klar
-    });
-    S.admin.edit = null; S.admin.karte = null; S.msg = { type: "ok", text: "Station gespeichert." };
+    };
+    // Neue Ziffer, und Teams haben die Station schon gelöst: erst nachfragen. Alle laufen dieselbe Route,
+    // gelöst hat Station p also, wer mindestens p Stationen gelöst hat.
+    const st = S.admin.state, alt = (st.stations || []).find(s => String(s.id) === String(d.id));
+    const geloest = alt && st.status !== "registration" && st.status !== "drawn" && alt.digit !== daten.p_digit
+      ? (st.teams || []).filter(t => (t.solved || 0) >= alt.position).map(t => t.name) : [];
+    if (geloest.length) {
+      // Der Dialog zeichnet das Formular neu: das Getippte für "Abbrechen" aufheben
+      const felder = {};
+      $("#app").querySelectorAll("input[id^='e-'], textarea[id^='e-']").forEach(el => { felder[el.id] = el.value; });
+      S.admin.confirm = { key: "ziffer", pos: alt.position, alt: alt.digit, neu: daten.p_digit, teams: geloest, daten, felder };
+      S.msg = null;
+      return;
+    }
+    await stationSpeichern(daten);
+    S.msg = { type: "ok", text: "Station gespeichert." };
   }
 };
+async function stationSpeichern(daten) {
+  S.admin.state = await rpc("admin_save_station", daten);
+  S.admin.edit = null; S.admin.karte = null;
+}
 
 /* ---------- GPS und Kompass ---------- */
 let watchId = null, orientOn = false, orientH = null, raf = 0, kompassNeu = false;
@@ -3066,6 +3100,10 @@ function render() {
     Object.keys(getippt).forEach(id => { const el = document.getElementById(id); if (el && !el.disabled && getippt[id] !== "") el.value = getippt[id]; });
     const f = fokusId && document.getElementById(fokusId);
     if (f && !f.disabled) { f.focus({ preventScroll: true }); if (auswahl) try { f.setSelectionRange(auswahl[0], auswahl[1]); } catch { } }
+  }
+  if (S.felderZurueck) {
+    Object.entries(S.felderZurueck).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
+    S.felderZurueck = null;
   }
   // Läuft eine Aktion noch (Standort holen), sagt ihr Knopf das auch nach dem Neuzeichnen
   if (S.busy && S.wartetAuf) {

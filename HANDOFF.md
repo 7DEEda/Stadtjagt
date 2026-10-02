@@ -53,11 +53,12 @@ geprüft):
   sich ziehen, ohne dass die Seite scrollt
 - QR-Code des Mitlese-Links mit einer Handykamera scannen
 
-**Offener Befund (aus `t4_ziffer_aenderung.mjs` vom 29.09., Probe gegen eine
-Test-Datenbank):** Ändert die Spielleitung im laufenden Spiel die Ziffer einer
-Station, die Teams schon gelöst haben, ändert sich deren Ziffer lautlos mit.
-Der Koffer nimmt danach nur noch den Code mit der neuen Ziffer an; ein Team,
-das die alte notiert hat, scheitert ohne Erklärung. `a-save` fragt nicht nach.
+**Befund vom 29.09., erledigt am 02.10.:** Ändert die Spielleitung im laufenden
+Spiel die Ziffer einer Station, die Teams schon gelöst haben, ändert sich deren
+Ziffer lautlos mit, und der Koffer verlangt die neue. Jetzt fragt `a-save` in
+dem Fall nach (`DANGER.ziffer`): nennt alte und neue Ziffer und die betroffenen
+Teams. Abbrechen lässt das Getippte im Formular stehen. Test:
+`python tools/pruefstand/ziffer.py`.
 - Hochformat-Hinweis am Handy: erscheint quer nach einer halben Sekunde, nicht
   beim Einmessen
 - **Nächster Schritt (01.10.):** ein Kollege mit modernem iPhone macht den
