@@ -435,7 +435,8 @@ function zeichne() {
     kopf("", 0);
     inh.innerHTML = `<div class="bild mitte">${ICON.start}</div><h2>Was kann dieses Handy?</h2>
       <p>Geprüft wird, was eine Web-App auf diesem Handy nutzen kann. Dauer: etwa fünf Minuten.</p>
-      <p class="klein">Erlaube Standort, Bewegung und Kamera, wenn das Handy fragt. Fotos werden nicht gespeichert.</p>`;
+      <p class="klein">Erlaube Standort, Bewegung und Kamera, wenn das Handy fragt. Fotos werden nicht gespeichert.</p>
+      <p class="klein" style="margin-top:20px">Version ${SUITE.version}</p>`;
     akt.innerHTML = `<button class="btn" id="start" data-was="start">Test starten</button>`;
   } else if (S.seite === "auto") {
     const fertigN = SELBST.filter(z => z.st === "fertig").length;

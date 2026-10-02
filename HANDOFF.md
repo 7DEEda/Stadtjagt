@@ -1609,4 +1609,10 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   gesehen: „Kompass folgt nicht“ mit Hinweis. Die Zahl in der Kreismitte
   dreht sich nach dem Gyroskop zurück. Rohdaten jetzt
   `dt_ms,grad_x10,gyro_grad[,genauigkeit]`.
+- Lauf VRB5 (02.10., Xiaomi 22021211RG, noch Suite 11 aus dem Browser-Cache):
+  eine volle Drehung, der Kompass ging nur etwa 80° mit (210° bis 291°) und
+  stand ab 13 s starr auf 291,4°, obwohl weiter Meldungen kamen. Der
+  Magnetsensor dieses Geräts liefert keine brauchbare Richtung; das andere
+  Xiaomi lief am selben Platz sauber. Pages lässt Browser bis zu 10 min
+  zwischenspeichern: die Startseite zeigt jetzt „Version x“ (= Suite).
 
