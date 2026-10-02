@@ -185,6 +185,36 @@ summary::after{content:"";width:8px;height:8px;border-right:2px solid;border-bot
 details[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 #feld img{max-width:160px;border-radius:8px;margin-top:4px}
 /* Speicherstand für Screenreader und Prüfstand; zu sehen ist er am Ende */
+/* Tafel auf der Startseite: Piktogramme wie am Eingang eines Parks, ein Wort je Feld */
+.tafel{border-radius:10px;padding:14px 10px 12px;margin:14px 0 4px;background:var(--ink);color:var(--paper);text-shadow:none}
+.tafel ul{list-style:none;margin:0;padding:0;display:flex;justify-content:space-between;gap:4px}
+.tafel li{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}
+.pikto{width:48px;height:48px;border-radius:8px;display:grid;place-items:center;background:var(--paper);color:var(--ink)}
+.pikto svg{width:30px;height:30px}
+.pikto .ak{color:var(--flag)}
+.tafel b{font:700 14px var(--head);white-space:nowrap}
+/* Freigaben: nachgebaute Systemfragen, orange umrandet ist, was man tippen soll */
+.schritt{display:flex;gap:10px;margin-top:12px;align-items:flex-start}
+.nr{flex:none;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--paper);font:700 15px var(--head);display:grid;place-items:center;margin-top:2px;text-shadow:none}
+.schritt .was{flex:1;min-width:0}
+.schritt .was > b{font:700 17px var(--head);display:block;margin-bottom:6px}
+.and{background:#F3EFF4;border-radius:22px;padding:14px 16px 10px;font-family:Roboto,system-ui,sans-serif;color:#1C1B1F;box-shadow:0 2px 6px rgba(0,0,0,.18);text-shadow:none}
+.and .t{font-size:14px;line-height:1.3;margin-bottom:10px}
+.and .wahl{display:flex;gap:10px;margin-bottom:8px}
+.and .wahl span{flex:1;text-align:center;font-size:12px;padding:6px 4px;border-radius:12px;border:1px solid #CAC4D0}
+.and .wahl span.an{background:#E8DEF8;border-color:#E8DEF8;font-weight:600}
+.and .kn{display:flex;justify-content:flex-end;gap:14px;font-size:13px;font-weight:600;color:#6750A4}
+.and .kn span{padding:6px 8px;border-radius:16px}
+.ios{background:#F2F2F7;border-radius:14px;text-align:center;font-family:-apple-system,"SF Pro Text",system-ui,sans-serif;color:#000;box-shadow:0 2px 8px rgba(0,0,0,.2);overflow:hidden;text-shadow:none}
+.ios .t{font-size:13px;font-weight:600;line-height:1.3;padding:12px 14px 8px}
+.ios .zeile{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 14px;border-top:.5px solid #C6C6C8;text-align:left}
+.ios .schalter{width:34px;height:20px;border-radius:10px;background:#34C759;position:relative}
+.ios .schalter::after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.ios .kn{display:flex;border-top:.5px solid #C6C6C8;font-size:14px;color:#007AFF}
+.ios .kn span{flex:1;padding:9px 4px}
+.ios .kn span + span{border-left:.5px solid #C6C6C8;font-weight:600}
+.tipp{outline:2.5px solid var(--flag);outline-offset:-2px}
+.hinw{font-size:13px;color:var(--muted);margin-top:5px}
 #speicher{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
@@ -530,6 +560,32 @@ const anleitung = h => Array.isArray(h) ? `<ol class="teil">${h.map(x => `<li>${
 // Der Grund für Gelb oder Rot steht in den Messwerten unter einem dieser Namen
 const GRUND = ["Hinweis", "Häufiger Grund", "Brauchbar wäre", "Fehler", "Fehler im Test", "Zeitgrenze"];
 
+// Startseite: Tafel mit Piktogrammen. "Ort privat": gemessen wird der Standort, gespeichert nur die Genauigkeit.
+const TAFEL = `<div class="tafel"><ul>
+  <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h16M7 10l1.5-5h7L17 10"/><circle cx="8" cy="15" r="2.6"/><circle cx="16" cy="15" r="2.6"/><path d="M10.6 15h2.8"/></svg></span><b>Anonym</b></li>
+  <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.6-6-10.5a6 6 0 0 1 12 0C18 15.4 12 21 12 21z"/><path class="ak" d="M4 4l16 16"/></svg></span><b>Ort privat</b></li>
+  <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2.5h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><b>Kamera</b></li>
+  <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polygon class="ak" points="12,5.5 14.2,12 12,11 9.8,12" fill="currentColor" stroke="none"/><path d="M12 13.5v4"/></svg></span><b>Sensoren</b></li>
+  <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M10.5 6h3M10 17.5h4"/></svg></span><b>Gerät</b></li>
+</ul></div>`;
+// Freigaben: welche Variante, aus der Browserkennung (iPad meldet sich als Mac mit Touch)
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const HOST = esc(location.hostname || "diese Seite");
+const schrittHTML = (nr, titel, dialog, hinw) => `<div class="schritt"><span class="nr">${nr}</span><div class="was"><b>${titel}</b>${dialog}${hinw ? `<div class="hinw">${hinw}</div>` : ""}</div></div>`;
+const FREIGABEN_ANDROID =
+  schrittHTML(1, "Standort: Genau", `<div class="and" aria-hidden="true"><div class="t">Chrome den Zugriff auf den Standort dieses Geräts erlauben?</div>
+    <div class="wahl"><span class="an tipp">Genau</span><span>Ungefähr</span></div><div class="kn"><span class="tipp">Bei Nutzung der App</span><span>Nicht zulassen</span></div></div>`)
+  + schrittHTML(2, "Website zulassen", `<div class="and" aria-hidden="true"><div class="t">${HOST} möchte Ihren Standort verwenden</div>
+    <div class="kn"><span>Blockieren</span><span class="tipp">Zulassen</span></div></div>`)
+  + schrittHTML(3, "Kamera zulassen", `<div class="and" aria-hidden="true"><div class="t">Chrome erlauben, Bilder und Videos aufzunehmen?</div>
+    <div class="kn"><span class="tipp">Bei Nutzung der App</span><span>Nicht zulassen</span></div></div>`, "Kommt erst beim Foto-Schritt.");
+const FREIGABEN_IOS =
+  schrittHTML(1, "Standort erlauben", `<div class="ios" aria-hidden="true"><div class="t">„${HOST}“ möchte deinen aktuellen Standort verwenden.</div>
+    <div class="zeile">Genauer Standort <span class="schalter tipp"></span></div><div class="kn"><span>Nicht erlauben</span><span class="tipp">Erlauben</span></div></div>`)
+  + schrittHTML(2, "Bewegung erlauben", `<div class="ios" aria-hidden="true"><div class="t">„${HOST}“ möchte auf Bewegung und Ausrichtung zugreifen.</div>
+    <div class="kn"><span>Abbrechen</span><span class="tipp">Erlauben</span></div></div>`)
+  + schrittHTML(3, "Kamera erlauben", `<div class="ios" aria-hidden="true"><div class="t">„${HOST}“ möchte auf die Kamera zugreifen.</div>
+    <div class="kn"><span>Nicht erlauben</span><span class="tipp">Erlauben</span></div></div>`, "Kommt erst beim Foto-Schritt.");
 function kopf(zahl, anteil) {
   $("#zahl").textContent = zahl;
   $("#fort").style.width = Math.round(anteil * 100) + "%";
@@ -542,9 +598,12 @@ function zeichne() {
   if (S.seite === "start") {
     kopf("", 0);
     inh.innerHTML = `<div class="bild mitte">${ICON.start}</div><h2>Was kann dieses Handy?</h2>
-      <p>Geprüft wird, was eine Web-App auf diesem Handy nutzen kann. Dauer: etwa fünf Minuten.</p>
-      <p class="klein">Erlaube Standort, Bewegung und Kamera, wenn das Handy fragt. Fotos werden nicht gespeichert.</p>
+      <p>Geprüft wird, was eine Web-App auf diesem Handy nutzen kann.</p>${TAFEL}
       <p class="klein" style="margin-top:20px">Version ${SUITE.version}</p>`;
+    akt.innerHTML = `<button class="btn" id="weiter" data-was="weiter">Weiter</button>`;
+  } else if (S.seite === "freigaben") {
+    kopf("", 0.02);
+    inh.innerHTML = `<h2>Gleich fragt dein Handy</h2><p>Bitte so antworten, sonst fehlen Messwerte:</p>${IOS ? FREIGABEN_IOS : FREIGABEN_ANDROID}`;
     akt.innerHTML = `<button class="btn" id="start" data-was="start">Test starten</button>`;
   } else if (S.seite === "auto") {
     const fertigN = SELBST.filter(z => z.st === "fertig").length;
@@ -605,6 +664,7 @@ function ergZeile(z, k) {
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-was]"); if (!b) return;
   const was = b.dataset.was, z = HAND[S.i];
+  if (was === "weiter") { S.seite = "freigaben"; return zeichne(); }
   if (was === "start") return starten();
   if (was === "los") return fuehre(z);              // ohne await davor: Kamera und Mitteilungen brauchen den Fingertipp
   if (was === "weg") return fertig(z, { art: "skip", wert: "übersprungen", mess: {} });
@@ -656,7 +716,7 @@ function bilanz() {
 
 /* ---------- Start: alles, was einen Fingertipp braucht, steht vor dem ersten await ---------- */
 function starten() {
-  if (S.seite !== "start") return;
+  if (S.seite !== "freigaben") return;
   // Wach halten mit Tipp: die Anfrage noch im Tipp stellen, der Schritt "wachhalten-tipp" wertet sie aus
   if (navigator.wakeLock) {
     basis.wach.tippAktiv = navigator.userActivation ? (navigator.userActivation.isActive ? "ja" : "nein") : "keine Angabe";

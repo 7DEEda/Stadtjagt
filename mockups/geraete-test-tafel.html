@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Tafel Geräte-Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Mockup: Hinweistafel auf dem Startbildschirm des Geräte-Tests, wie die Piktogramm-Tafeln am Eingang eines Parks.
+   Zwei Varianten: A dunkle Tafel mit hellen Piktogrammen, B helle Tafel mit dunklen Feldern. Token wie index.html. */
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --feld:#7D9189;
+  --flag:#EE5F1B; --flag-ink:#0F1B18;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif; --body:"Barlow",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#2b2f2d;font:17px/1.5 var(--body);color:var(--ink);min-height:100vh;display:flex;flex-wrap:wrap;gap:28px;justify-content:center;align-items:flex-start;padding:24px 16px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+.spalte{display:flex;flex-direction:column;align-items:center;gap:10px}
+.spalte > b{color:#fff;font:700 18px var(--head)}
+.handy{width:390px;height:800px;border-radius:36px;border:10px solid #111;background:var(--paper);overflow:hidden;position:relative;display:flex;flex-direction:column;padding:18px 16px 0}
+.top{display:flex;align-items:center;gap:10px}
+.top svg{width:30px;height:30px}
+.top h1{font-size:22px;flex:1}
+.fort{height:4px;border-radius:2px;background:var(--line);margin-top:12px}
+.inhalt{flex:1;padding-top:16px;overflow:hidden}
+.bild{width:96px;height:96px;border-radius:24px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;margin:4px auto 14px}
+.bild svg{width:54px;height:54px}
+.inhalt h2{font-size:30px;margin-bottom:8px}
+.inhalt p{margin:0 0 6px;font-size:17px}
+.klein{font-size:13px;color:var(--muted);margin-top:10px}
+.aktion{padding:12px 0 20px}
+.btn{width:100%;min-height:52px;border:0;border-radius:10px;font:700 19px var(--head);background:var(--flag);color:var(--flag-ink)}
+
+/* ---------- die Tafel ---------- */
+.tafel{border-radius:10px;padding:14px 12px 12px;margin-top:12px}
+.tafel h3{font:700 13px var(--body);letter-spacing:.08em;text-transform:uppercase;margin:0 0 10px}
+.tafel ul{list-style:none;margin:0;padding:0;display:flex;justify-content:space-between;gap:6px}
+.tafel li{flex:1 1 0;min-width:0}
+.tafel li{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px}
+.tafel .pikto{width:48px;height:48px;border-radius:8px;display:grid;place-items:center}
+.tafel .pikto svg{width:30px;height:30px}
+.tafel b{font:700 13px var(--head);line-height:1.15}
+.tafel small{font-size:12px;line-height:1.25}
+/* A: dunkle Tafel, helle Piktogramme in hellen Feldern (wie ein Parkschild) */
+.a .tafel{background:var(--ink);color:#F1F5EE}
+.a .tafel h3{color:#B9CBC2}
+.a .pikto{background:#F1F5EE;color:var(--ink)}
+.a .tafel small{color:#B9CBC2}
+/* B: helle Tafel mit Rahmen, dunkle Felder mit hellen Piktogrammen */
+.b .tafel{background:var(--card);border:1.5px solid var(--feld)}
+.b .tafel h3{color:var(--muted)}
+.b .pikto{background:var(--ink);color:#F1F5EE}
+.b .tafel small{color:var(--muted)}
+.pikto .ak{color:var(--flag)}
+.regeln{background:#fff;border-radius:14px;padding:18px;max-width:380px;font-size:15px}
+.regeln h2{font-size:22px;margin-bottom:6px}
+.regeln ul{padding-left:18px;margin:6px 0}
+</style>
+</head>
+<body>
+<template id="seite">
+  <div class="top"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></svg><h1>Geräte-Test</h1></div>
+  <div class="fort"></div>
+  <div class="inhalt">
+    <div class="bild"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 5h4M9.5 12.5l2 2 3.5-4"/></svg></div>
+    <h2>Was kann dieses Handy?</h2>
+    <p>Geprüft wird, was eine Web-App auf diesem Handy nutzen kann.</p>
+    <div class="tafel">
+      <ul>
+        <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16M7 10l1.5-5h7L17 10"/><circle cx="8" cy="15" r="2.6"/><circle cx="16" cy="15" r="2.6"/><path d="M10.6 15h2.8"/></svg></span><b>Anonym</b></li>
+        <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.6-6-10.5a6 6 0 0 1 12 0C18 15.4 12 21 12 21z"/><path class="ak" d="M4 4l16 16"/></svg></span><b>Standort privat</b></li>
+        <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2.5h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><b>Kamera</b></li>
+        <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon class="ak" points="12,5.5 14.2,12 12,11 9.8,12" fill="currentColor" stroke="none"/><path d="M12 13.5v4"/></svg></span><b>Sensoren</b></li>
+        <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M10.5 6h3M10 17.5h4"/></svg></span><b>Handy-Daten</b></li>
+      </ul>
+    </div>
+    <p class="klein">Erlaube Standort, Bewegung und Kamera, wenn das Handy fragt.</p>
+  </div>
+  <div class="aktion"><button class="btn">Test starten</button></div>
+</template>
+
+<div class="spalte a"><b>A: dunkle Tafel</b><div class="handy"></div></div>
+<div class="spalte b"><b>B: helle Tafel</b><div class="handy"></div></div>
+<div class="regeln">
+  <h2>Hinweistafel</h2>
+  <p>Wie die Piktogramm-Tafeln am Eingang eines Parks: auf einen Blick, was passiert und was nicht.</p>
+  <ul>
+    <li><b>Anonym:</b> kein Name, kein Konto, nur eine zufällige Laufkennung.</li>
+    <li><b>Standort privat:</b> gemessen wird der Standort, gespeichert wird nur, wie genau die Ortung ist, nicht wo das Handy war (ab Version 18).</li>
+    <li><b>Kamera:</b> das Foto geht nur zur Probe an den Server und wird nicht behalten.</li>
+    <li><b>Sensoren:</b> Kompass, Gyroskop und Neigung werden gemessen.</li>
+    <li><b>Handy-Daten:</b> Modell, Betriebssystem, Browser, Bildschirmgröße, damit man die Läufe auseinanderhält.</li>
+  </ul>
+  <p>Orange markiert nur das, was bewusst <i>nicht</i> passiert (durchgestrichener Standort) und die Kompassnadel.</p>
+</div>
+<script>
+document.querySelectorAll(".handy").forEach(h => h.appendChild(document.getElementById("seite").content.cloneNode(true)));
+</script>
+</body>
+</html>

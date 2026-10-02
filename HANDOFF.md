@@ -1671,4 +1671,17 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   Gyroskop dreht (über 8°/s um die Senkrechte, `drehRate`). Neu „Kompass
   wandert ohne Drehung“ (in `sensor.bei` gezählt); über 30° gehört zur
   Bewertung „bis x° daneben“.
+- Suite 18 (02.10.): der Geräte-Test speichert keine Position und keine Höhe
+  mehr, nur die Genauigkeit (und ob Höhe und Bewegungsrichtung gemeldet
+  werden). Ältere Läufe in der Datenbank enthalten die Position noch.
+- Startseite mit Hinweistafel (Piktogramme wie am Parkeingang, Variante A
+  dunkel, `TAFEL`): Anonym, Ort privat, Kamera, Sensoren, Gerät. „Weiter“
+  führt auf die neue Seite „Gleich fragt dein Handy“ (`S.seite =
+  "freigaben"`) mit nachgebauten Systemfragen für Android oder iPhone (aus der
+  Browserkennung, `IOS`), orange umrandet, was man tippen soll; erst dort
+  „Test starten“. Mockups: `mockups/geraete-test-tafel.html`,
+  `mockups/geraete-test-freigaben.html`; QR-Code zum Verschicken:
+  `mockups/qr-geraete-test.png`.
+- Neuer Ordner `sicherungen/` (nicht im Repo): Stationen und Spielstand vom
+  02.10. vor dem Umbau auf eine Teststation.
 

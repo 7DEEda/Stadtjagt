@@ -149,8 +149,9 @@
         const c = letzte.coords;
         const mess = {
           "Erlaubnis vorher": vorher, "Erster Fix nach s": rund(erst / 1000, 1), "Beste Genauigkeit in m": rund(beste),
-          "Meldungen": n, "Position": `${c.latitude.toFixed(5)}, ${c.longitude.toFixed(5)}`,
-          "Höhe": c.altitude == null ? "keine" : rund(c.altitude) + " m", "Bewegungsrichtung": c.heading == null || Number.isNaN(c.heading) ? "keine" : rund(c.heading) + "°",
+          // keine Position und keine Höhe speichern (Entscheidung 02.10.2026: der Test ist anonym), nur ob es sie gibt
+          "Meldungen": n, "Höhe gemeldet": janein(c.altitude != null),
+          "Bewegungsrichtung gemeldet": janein(!(c.heading == null || Number.isNaN(c.heading))),
           "Brauchbar wäre": "unter ±25 m"
         };
         // über einem Kilometer ist es kein schlechter Empfang, sondern die Einstellung "nur ungefährer Standort"
@@ -493,5 +494,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 17, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen; 13: Gyro-Achse aus den Daten; 14: Abweichung Kompass gegen Gyroskop; 15: Drehung um die Senkrechte, auch schräg; 16: Einmessen vor dem Drehen; 17: Striche nur beim Drehen, Wandern ohne Drehung (02.10.2026)
+  window.SJ_TESTS = { version: 18, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen; 13: Gyro-Achse aus den Daten; 14: Abweichung Kompass gegen Gyroskop; 15: Drehung um die Senkrechte, auch schräg; 16: Einmessen vor dem Drehen; 17: Striche nur beim Drehen, Wandern ohne Drehung; 18: keine Position mehr (02.10.2026)
 })();

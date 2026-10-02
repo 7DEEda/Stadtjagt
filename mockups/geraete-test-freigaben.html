@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Freigaben Geräte-Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Mockup: Startseite mit Tafel (Variante A, kurze Beschriftung) und neue zweite Seite "Gleich fragt dein Handy"
+   mit nachgebauten Systemfragen für Android und iPhone. Die markierte Taste ist die, die man tippen soll. */
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --feld:#7D9189;
+  --flag:#EE5F1B; --flag-ink:#0F1B18;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif; --body:"Barlow",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#2b2f2d;font:17px/1.5 var(--body);color:var(--ink);min-height:100vh;display:flex;flex-wrap:wrap;gap:24px;justify-content:center;align-items:flex-start;padding:24px 16px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+.spalte{display:flex;flex-direction:column;align-items:center;gap:10px}
+.spalte > b{color:#fff;font:700 18px var(--head)}
+.handy{width:390px;height:820px;border-radius:36px;border:10px solid #111;background:var(--paper);overflow:hidden;display:flex;flex-direction:column;padding:18px 16px 0}
+.top{display:flex;align-items:center;gap:10px}
+.top svg{width:30px;height:30px}
+.top h1{font-size:22px;flex:1}
+.top .zahl{font:600 15px var(--body);color:var(--muted)}
+.fort{height:4px;border-radius:2px;background:var(--line);margin-top:12px;overflow:hidden}
+.fort i{display:block;height:100%;background:var(--flag)}
+.inhalt{flex:1;padding-top:16px;overflow:hidden}
+.bild{width:96px;height:96px;border-radius:24px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;margin:4px auto 14px}
+.bild svg{width:54px;height:54px}
+.inhalt h2{font-size:30px;margin-bottom:8px}
+.inhalt p{margin:0 0 6px;font-size:17px}
+.aktion{padding:12px 0 20px}
+.btn{width:100%;min-height:52px;border:0;border-radius:10px;font:700 19px var(--head);background:var(--flag);color:var(--flag-ink)}
+
+/* Tafel, Variante A, eine Reihe, ein Wort je Feld */
+.tafel{border-radius:10px;padding:14px 10px 12px;margin:14px 0 4px;background:var(--ink);color:#F1F5EE}
+.tafel ul{list-style:none;margin:0;padding:0;display:flex;justify-content:space-between;gap:4px}
+.tafel li{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}
+.pikto{width:48px;height:48px;border-radius:8px;display:grid;place-items:center;background:#F1F5EE;color:var(--ink)}
+.pikto svg{width:30px;height:30px}
+.pikto .ak{color:var(--flag)}
+.tafel b{font:700 14px var(--head);white-space:nowrap}
+
+/* zweite Seite: Schritte mit nachgebauten Systemfragen */
+.schritt{display:flex;gap:10px;margin-top:12px;align-items:flex-start}
+.nr{flex:none;width:26px;height:26px;border-radius:50%;background:var(--ink);color:#F1F5EE;font:700 15px var(--head);display:grid;place-items:center;margin-top:2px}
+.schritt .was{flex:1;min-width:0}
+.schritt .was > b{font:700 17px var(--head);display:block;margin-bottom:6px}
+/* Android-Dialog (Material) */
+.and{background:#F3EFF4;border-radius:22px;padding:14px 16px 10px;font-family:Roboto,system-ui,sans-serif;color:#1C1B1F;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.and .t{font-size:14px;line-height:1.3;margin-bottom:10px}
+.and .wahl{display:flex;gap:10px;margin-bottom:8px}
+.and .wahl span{flex:1;text-align:center;font-size:12px;padding:6px 4px;border-radius:12px;border:1px solid #CAC4D0}
+.and .wahl span.an{background:#E8DEF8;border-color:#E8DEF8;font-weight:600}
+.and .kn{display:flex;justify-content:flex-end;gap:14px;font-size:13px;font-weight:600;color:#6750A4}
+.and .kn span{padding:6px 8px;border-radius:16px}
+/* iPhone-Dialog */
+.ios{background:rgba(242,242,247,.98);border-radius:14px;text-align:center;font-family:-apple-system,"SF Pro Text",system-ui,sans-serif;color:#000;box-shadow:0 2px 8px rgba(0,0,0,.2);overflow:hidden}
+.ios .t{font-size:13px;font-weight:600;line-height:1.3;padding:12px 14px 4px}
+.ios .z{font-size:11px;color:#3C3C43;padding:0 14px 10px}
+.ios .zeile{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 14px;border-top:.5px solid #C6C6C8;text-align:left}
+.ios .schalter{width:34px;height:20px;border-radius:10px;background:#34C759;position:relative}
+.ios .schalter::after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.ios .kn{display:flex;border-top:.5px solid #C6C6C8;font-size:14px;color:#007AFF}
+.ios .kn span{flex:1;padding:9px 4px}
+.ios .kn span + span{border-left:.5px solid #C6C6C8;font-weight:600}
+/* die Taste, die man tippen soll */
+.tipp{outline:2.5px solid var(--flag);outline-offset:1px;position:relative}
+.hinw{font-size:13px;color:var(--muted);margin-top:5px}
+.regeln{background:#fff;border-radius:14px;padding:18px;max-width:360px;font-size:15px}
+.regeln h2{font-size:22px;margin-bottom:6px}
+.regeln ul{padding-left:18px;margin:6px 0}
+</style>
+</head>
+<body>
+<template id="kopf"><div class="top"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></svg><h1>Geräte-Test</h1><span class="zahl"></span></div></template>
+
+<div class="spalte"><b>1: Start (Tafel A)</b>
+  <div class="handy"><div data-kopf></div><div class="fort"><i style="width:0"></i></div>
+    <div class="inhalt">
+      <div class="bild"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 5h4M9.5 12.5l2 2 3.5-4"/></svg></div>
+      <h2>Was kann dieses Handy?</h2>
+      <p>Geprüft wird, was eine Web-App auf diesem Handy nutzen kann.</p>
+      <div class="tafel"><ul>
+        <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16M7 10l1.5-5h7L17 10"/><circle cx="8" cy="15" r="2.6"/><circle cx="16" cy="15" r="2.6"/><path d="M10.6 15h2.8"/></svg></span><b>Anonym</b></li>
+        <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.6-6-10.5a6 6 0 0 1 12 0C18 15.4 12 21 12 21z"/><path class="ak" d="M4 4l16 16"/></svg></span><b>Ort privat</b></li>
+        <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2.5h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><b>Kamera</b></li>
+        <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon class="ak" points="12,5.5 14.2,12 12,11 9.8,12" fill="currentColor" stroke="none"/><path d="M12 13.5v4"/></svg></span><b>Sensoren</b></li>
+        <li><span class="pikto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M10.5 6h3M10 17.5h4"/></svg></span><b>Gerät</b></li>
+      </ul></div>
+    </div>
+    <div class="aktion"><button class="btn">Weiter</button></div>
+  </div>
+</div>
+
+<div class="spalte"><b>2: Freigaben, Android</b>
+  <div class="handy"><div data-kopf></div><div class="fort"><i style="width:8%"></i></div>
+    <div class="inhalt">
+      <h2>Gleich fragt dein Handy</h2>
+      <p>Bitte so antworten, sonst fehlen Messwerte:</p>
+      <div class="schritt"><span class="nr">1</span><div class="was"><b>Standort: Genau</b>
+        <div class="and"><div class="t">Chrome den Zugriff auf den Standort dieses Geräts erlauben?</div>
+          <div class="wahl"><span class="an tipp">Genau</span><span>Ungefähr</span></div>
+          <div class="kn"><span class="tipp">Bei Nutzung der App</span><span>Nicht zulassen</span></div></div></div></div>
+      <div class="schritt"><span class="nr">2</span><div class="was"><b>Website zulassen</b>
+        <div class="and"><div class="t">7deeda.github.io möchte Ihren Standort verwenden</div>
+          <div class="kn"><span>Blockieren</span><span class="tipp">Zulassen</span></div></div></div></div>
+      <div class="schritt"><span class="nr">3</span><div class="was"><b>Kamera zulassen</b>
+        <div class="and"><div class="t">Chrome erlauben, Bilder und Videos aufzunehmen?</div>
+          <div class="kn"><span class="tipp">Bei Nutzung der App</span><span>Nicht zulassen</span></div></div>
+        <div class="hinw">Kommt erst beim Foto-Schritt.</div></div></div>
+    </div>
+    <div class="aktion"><button class="btn">Test starten</button></div>
+  </div>
+</div>
+
+<div class="spalte"><b>2: Freigaben, iPhone</b>
+  <div class="handy"><div data-kopf></div><div class="fort"><i style="width:8%"></i></div>
+    <div class="inhalt">
+      <h2>Gleich fragt dein Handy</h2>
+      <p>Bitte so antworten, sonst fehlen Messwerte:</p>
+      <div class="schritt"><span class="nr">1</span><div class="was"><b>Standort erlauben</b>
+        <div class="ios"><div class="t">„7deeda.github.io“ möchte deinen aktuellen Standort verwenden.</div>
+          <div class="zeile">Genauer Standort <span class="schalter tipp"></span></div>
+          <div class="kn"><span>Nicht erlauben</span><span class="tipp">Erlauben</span></div></div></div></div>
+      <div class="schritt"><span class="nr">2</span><div class="was"><b>Bewegung erlauben</b>
+        <div class="ios"><div class="t">„7deeda.github.io“ möchte auf Bewegung und Ausrichtung zugreifen.</div>
+          <div class="kn"><span>Abbrechen</span><span class="tipp">Erlauben</span></div></div></div></div>
+      <div class="schritt"><span class="nr">3</span><div class="was"><b>Kamera erlauben</b>
+        <div class="ios"><div class="t">„7deeda.github.io“ möchte auf die Kamera zugreifen.</div>
+          <div class="kn"><span>Nicht erlauben</span><span class="tipp">Erlauben</span></div></div>
+        <div class="hinw">Kommt erst beim Foto-Schritt.</div></div></div>
+    </div>
+    <div class="aktion"><button class="btn">Test starten</button></div>
+  </div>
+</div>
+
+<div class="regeln">
+  <h2>Was sich ändert</h2>
+  <ul>
+    <li><b>Tafel A</b> mit einem Wort je Feld, nichts bricht um: Anonym, Ort privat, Kamera, Sensoren, Gerät.</li>
+    <li>Die Startseite führt mit <b>Weiter</b> auf eine neue Seite <b>„Gleich fragt dein Handy“</b>. Erst dort startet der Test.</li>
+    <li>Die Seite zeigt nur die Variante fürs eigene Handy (Android oder iPhone, aus der Browserkennung).</li>
+    <li>Orange umrandet ist jeweils, was man tippen soll. Wichtig vor allem: <b>Genau</b> statt Ungefähr.</li>
+    <li>Die Dialoge sind vereinfacht nachgebaut, nicht pixelgenau; Wortlaut wie auf aktuellem Android 16 / iOS 18, kann je nach Version leicht abweichen.</li>
+  </ul>
+</div>
+<script>
+document.querySelectorAll("[data-kopf]").forEach(d => d.replaceWith(document.getElementById("kopf").content.cloneNode(true)));
+</script>
+</body>
+</html>
