@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Geräte-Test einfach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Mockup: Geräte-Test vereinfacht nach Material 3 (mobile-android-design):
+   ein Schritt pro Bildschirm, eine Hauptaktion unten im Daumenbereich, Fortschritt oben, Details nur auf Wunsch.
+   Token wie index.html / design-system. Links das Handy, rechts was sich ändert. */
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --feld:#7D9189;
+  --flag:#EE5F1B; --flag-ink:#0F1B18; --ok:#25683F; --ok-bg:#E3F1E7; --warn:#8A5A00; --warn-bg:#FBF0D9; --err:#B3261E; --err-bg:#FBE9E7;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif; --body:"Barlow",system-ui,sans-serif;
+  --fs-xs:13px; --fs-s:15px; --fs-m:17px; --fs-l:19px; --fs-xl:24px; --fs-xxl:32px;
+  --ease:cubic-bezier(.32,.72,.4,1);
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38; --feld:#5E786F;
+  --flag:#FF7A3A; --ok:#6CCB8E; --ok-bg:#16332A; --warn:#E8B75A; --warn-bg:#33290F; --err:#FF8A80; --err-bg:#3A1F1C;}}
+*{box-sizing:border-box}
+body{margin:0;background:#2b2f2d;font:var(--fs-m)/1.5 var(--body);color:var(--ink);min-height:100vh;
+  display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;justify-content:center;padding:24px 16px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+/* Handy-Rahmen nur am Rechner; auf dem Handy selbst füllt die App den Bildschirm */
+.handy{width:390px;height:780px;border-radius:36px;border:10px solid #111;background:var(--paper);position:relative;overflow:hidden;flex:none;box-shadow:0 12px 32px rgba(0,0,0,.4)}
+@media (max-width:500px){body{padding:0;background:var(--paper)}.handy{width:100%;height:100dvh;border:0;border-radius:0;box-shadow:none}.regeln{display:none}}
+.app{position:absolute;inset:0;display:flex;flex-direction:column}
+/* Kopfzeile: Titel, Schrittzähler, Fortschritt */
+.top{padding:18px 20px 10px;display:flex;align-items:center;gap:10px}
+.top .flag{width:28px;height:28px;flex:none}
+.top h1{font-size:var(--fs-l);flex:1}
+.top .zahl{font:600 var(--fs-s) var(--body);color:var(--muted);white-space:nowrap}
+.fort{height:4px;background:var(--line);margin:0 20px;border-radius:2px;overflow:hidden}
+.fort i{display:block;height:100%;width:0;background:var(--flag);transition:width .3s var(--ease)}
+/* Inhalt mittig, Aktionen unten */
+.inhalt{flex:1;overflow:auto;padding:28px 24px 12px;display:flex;flex-direction:column;animation:ein .16s var(--ease)}
+@keyframes ein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.bild{width:96px;height:96px;border-radius:24px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;margin:8px 0 20px}
+.bild svg{width:52px;height:52px}
+.inhalt h2{font-size:var(--fs-xxl);margin-bottom:10px}
+.inhalt p{margin:0 0 10px;font-size:var(--fs-l)}
+.inhalt .klein{font-size:var(--fs-s);color:var(--muted)}
+ol.teil{margin:4px 0 0;padding-left:22px;font-size:var(--fs-l)}ol.teil li{margin-bottom:6px}
+.aktion{padding:12px 20px 24px;display:flex;flex-direction:column;gap:8px}
+.btn{width:100%;min-height:52px;border:0;border-radius:10px;font:700 var(--fs-l) var(--head);background:var(--flag);color:var(--flag-ink);cursor:pointer}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--feld)}
+.btn:active{filter:brightness(.93)}
+.txt{min-height:48px;border:0;background:none;font:600 var(--fs-m) var(--body);color:var(--muted);cursor:pointer}
+.paar{display:flex;gap:8px}.paar .btn{flex:1}
+/* automatische Prüfung */
+.auto{list-style:none;padding:0;margin:8px 0 0}
+.auto li{display:flex;align-items:center;gap:12px;min-height:44px;border-bottom:1px solid var(--line);font-size:var(--fs-m)}
+.auto li .ic{width:22px;height:22px;flex:none;display:grid;place-items:center}
+.dreh{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--flag);animation:d 0.8s linear infinite}
+@keyframes d{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.dreh{animation:none}.inhalt{animation:none}}
+.lauf{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);border:1px solid var(--line);border-radius:14px;margin-top:6px;font-size:var(--fs-m)}
+.lauf b{font:700 var(--fs-xl) var(--head);margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Ende */
+.karte{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:12px}
+.karte.warn{background:var(--warn-bg);border-color:transparent;color:var(--warn)}
+.karte h3{font-size:var(--fs-l);margin-bottom:4px}
+.karte p{font-size:var(--fs-s)!important;margin:0!important}
+.kenn{font:700 var(--fs-m) var(--head);white-space:nowrap;letter-spacing:.04em}
+details{margin-top:12px}
+summary{min-height:48px;display:flex;align-items:center;font:600 var(--fs-m) var(--body);color:var(--muted);cursor:pointer;list-style:none}
+summary::after{content:"";width:8px;height:8px;border-right:2px solid;border-bottom:2px solid;transform:rotate(45deg);margin-left:10px;margin-top:-4px}
+details[open] summary::after{transform:rotate(-135deg);margin-top:4px}
+.erg li{min-height:40px}
+.erg li span:last-child{margin-left:auto;font-size:var(--fs-s);color:var(--muted);white-space:nowrap}
+/* rechte Spalte */
+.regeln{background:#fff;color:#17302A;border-radius:14px;padding:20px;max-width:440px;font-size:15px}
+.regeln h2{font-size:22px;margin-bottom:8px}.regeln h3{font-size:17px;margin:14px 0 4px}
+.regeln ul{margin:0;padding-left:18px}.regeln li{margin-top:4px}
+.regeln .sprung{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.regeln .sprung button{font:600 13px Barlow,sans-serif;border:1.5px solid #7D9189;background:#fff;border-radius:99px;padding:6px 10px;cursor:pointer;min-height:36px}
+</style>
+</head>
+<body>
+<div class="handy"><div class="app" id="app"></div></div>
+
+<div class="regeln">
+  <h2>Geräte-Test, einfach</h2>
+  <p>Heute: 21 Zeilen in drei Listen, Zähler, Messwerte, „Weiter: 6 Schritte von Hand“. Für jemanden, der nur helfen will, ist das zu viel.</p>
+  <h3>Was sich ändert</h3>
+  <ul>
+    <li><b>Ein Schritt pro Bildschirm</b> mit Bild, kurzem Satz und einem großen Knopf unten, dort wo der Daumen ist. „Überspringen“ ist ein leiser Textknopf.</li>
+    <li><b>Fortschritt oben</b>: „Schritt 3 von 7“ und ein Balken. Man weiß immer, wie lange es noch dauert.</li>
+    <li><b>Alles Automatische</b> läuft gleich nach „Test starten“ in einem Rutsch: nur Häkchen, keine Messwerte.</li>
+    <li><b>7 statt 8 Handschritte:</b> „Wach halten, mit Tipp“ entfällt als eigener Schritt. Die Seite fragt die Sperre einmal beim Laden (ohne Tipp) und einmal im Tipp auf „Test starten“ (mit Tipp). Gemessen wird dasselbe.</li>
+    <li><b>Lange Anweisungen</b> (Kompass nach Pause) als nummerierte Liste.</li>
+    <li><b>Am Ende</b>: „Fertig, danke“, die Laufkennung, und nur dann eine Karte, wenn man selbst etwas einstellen kann (etwa „Genauer Standort“). Messwerte unter „Ergebnis ansehen“, eingeklappt.</li>
+    <li>Knöpfe 52 px hoch, Textknöpfe 48 px (Material: mindestens 48 dp).</li>
+    <li><b>Datenschutz:</b> Heute speichert der Lauf die Position auf etwa einen Meter genau. Künftig nur noch die Genauigkeit („±12 m“), nicht wo das Handy war. Das Foto geht wie bisher nur zur Probe an den Server und wird nicht behalten.</li>
+  </ul>
+  <h3>Was gleich bleibt</h3>
+  <ul><li>Alle Messungen, die Suite, das Speichern in die Datenbank, die Auswertung mit <code>tools/testlaeufe.py</code>.</li></ul>
+  <h3>Direkt springen</h3>
+  <div class="sprung" id="sprung"></div>
+</div>
+
+<script>
+const FLAG = '<svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></svg>';
+const I = {
+  start: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 5h4M9.5 12.5l2 2 3.5-4"/></svg>',
+  dreh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/><circle cx="12" cy="12" r="2" fill="var(--flag)" stroke="none"/></svg>',
+  sperre: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.4" fill="var(--flag)" stroke="none"/></svg>',
+  app: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><path d="M14 17.25h6M17.5 14.5l2.75 2.75-2.75 2.75" stroke="var(--flag)"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="12,5.5 14.2,12 12,11 9.8,12" fill="var(--flag)" stroke="none"/><path d="M12 15v3"/></svg>',
+  kamera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2.5h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/><circle cx="12" cy="13" r="1.2" fill="var(--flag)" stroke="none"/></svg>',
+  vib: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3.5" width="8" height="17" rx="2"/><path d="M4.5 8v8M2 10v4M19.5 8v8M22 10v4" stroke="var(--flag)"/></svg>',
+  glocke: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><circle cx="17.5" cy="6.5" r="2.2" fill="var(--flag)" stroke="none"/></svg>',
+  fertig: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>'
+};
+const OK = '<svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="10" fill="var(--ok)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const WARN = '<svg viewBox="0 0 24 24" width="22" height="22"><rect x="2" y="2" width="20" height="20" rx="4" fill="var(--warn)"/><path d="M12 7v6M12 16.5v.5" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>';
+const SKIP = '<svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="9.5" fill="none" stroke="var(--feld)" stroke-width="2"/><path d="M8 12h8" stroke="var(--feld)" stroke-width="2" stroke-linecap="round"/></svg>';
+
+const AUTO = ["Verbindung", "Uhr", "Standort", "Kompass", "Neigung", "Bildschirm wach halten", "Karte", "Schrift", "Teilen", "Live-Verbindung", "Offline"];
+const HAND = [
+  { id: "dreh", bild: "dreh", titel: "Einmal im Kreis drehen", text: "<p>Halt das Handy flach vor dich und dreh dich langsam einmal ganz herum.</p>", lauf: "Dreh dich weiter …", sek: 8 },
+  { id: "sperre", bild: "sperre", titel: "Handy sperren", text: "<p>Sperr das Handy, zähl bis zehn und entsperr es wieder.</p><p class='klein'>Die Seite wartet, bis du zurück bist.</p>", lauf: "Warte, bis du zurück bist …", sek: 6 },
+  { id: "app", bild: "app", titel: "Kurz in eine andere App", text: "<p>Wechsel kurz in eine andere App, zum Beispiel WhatsApp, und komm wieder her.</p>", lauf: "Warte, bis du zurück bist …", sek: 6 },
+  { id: "pause", bild: "pause", titel: "Kompass nach einer Pause", text: "<ol class='teil'><li>Tipp auf Los.</li><li>Wechsel in eine andere App und dreh dich dort eine Vierteldrehung.</li><li>Komm zurück und halt das Handy <span style=\"white-space:nowrap\">20 Sekunden</span> still.</li></ol>", lauf: "Still halten …", sek: 8 },
+  { id: "kamera", bild: "kamera", titel: "Ein Foto machen", text: "<p>Mach ein Foto von irgendetwas. Es geht nur darum, ob die Kamera aufgeht.</p>", lauf: "Kamera ist offen …", sek: 4 },
+  { id: "vib", bild: "vib", titel: "Vibration", text: "<p>Das Handy vibriert gleich zweimal kurz.</p>", lauf: "Vibriert …", sek: 2, frage: "Hast du es gespürt?" },
+  { id: "glocke", bild: "glocke", titel: "Mitteilungen", text: "<p>Erlaube Mitteilungen, wenn das Handy fragt. Es kommt nur eine einzige Test-Mitteilung.</p>", lauf: "Warte auf die Freigabe …", sek: 3 }
+];
+const S = { seite: "start", i: 0, phase: "bereit", erg: {}, autoN: 0, laufKey: "6GUX", grob: true };
+const app = document.getElementById("app");
+let uhr = null;
+
+function kopf(zahl, anteil) {
+  return `<div class="top">${FLAG}<h1>Geräte-Test</h1>${zahl ? `<span class="zahl">${zahl}</span>` : ""}</div>
+    <div class="fort"><i style="width:${Math.round(anteil * 100)}%"></i></div>`;
+}
+function zeichne() {
+  clearInterval(uhr);
+  if (S.seite === "start") {
+    app.innerHTML = kopf("", 0) + `<div class="inhalt"><div class="bild">${I.start}</div>
+      <h2>Was kann dieses Handy?</h2>
+      <p>Geprüft wird, was eine Web-App auf diesem Handy nutzen kann. Dauer: etwa fünf Minuten.</p>
+      <p class="klein">Erlaube Standort, Bewegung und Kamera, wenn das Handy fragt. Gespeichert wird nur, ob etwas geht und wie genau. Kein Foto, keine Position.</p></div>
+      <div class="aktion"><button class="btn" data-a="los">Test starten</button></div>`;
+  } else if (S.seite === "auto") {
+    const n = S.autoN;
+    app.innerHTML = kopf("Automatisch", n / AUTO.length * 0.3) + `<div class="inhalt"><h2>Prüfung läuft</h2>
+      <p class="klein">Einen Moment, dafür ist nichts zu tun.</p>
+      <ul class="auto">${AUTO.map((a, k) => `<li><span class="ic">${k < n ? (a === "Standort" ? WARN : OK) : k === n ? '<i class="dreh"></i>' : ""}</span>${a}</li>`).join("")}</ul></div>`;
+    if (n < AUTO.length) setTimeout(() => { S.autoN++; zeichne(); }, 260);
+    else setTimeout(() => { S.seite = "hand"; S.i = 0; S.phase = "bereit"; zeichne(); }, 500);
+  } else if (S.seite === "hand") {
+    const h = HAND[S.i], zahl = `Schritt ${S.i + 1} von ${HAND.length}`, anteil = 0.3 + 0.7 * (S.i / HAND.length);
+    let unten;
+    if (S.phase === "bereit") unten = `<button class="btn" data-a="go">Los</button><button class="txt" data-a="skip">Überspringen</button>`;
+    else if (S.phase === "laeuft") unten = `<div class="lauf"><i class="dreh"></i>${h.lauf}<b id="rest">${h.sek} s</b></div><button class="txt" data-a="skip">Abbrechen</button>`;
+    else unten = `<p style="text-align:center;font:700 var(--fs-l) var(--head);margin:0 0 4px">${h.frage}</p><div class="paar"><button class="btn alt" data-a="nein">Nein</button><button class="btn" data-a="ja">Ja</button></div>`;
+    app.innerHTML = kopf(zahl, anteil) + `<div class="inhalt"><div class="bild">${I[h.bild]}</div><h2>${h.titel}</h2>${h.text}</div><div class="aktion">${unten}</div>`;
+    if (S.phase === "laeuft") {
+      let r = h.sek;
+      uhr = setInterval(() => { r--; const el = document.getElementById("rest"); if (el) el.textContent = r + " s";
+        if (r <= 0) { clearInterval(uhr); if (h.frage) { S.phase = "frage"; zeichne(); } else weiter("ok"); } }, 1000);
+    }
+  } else {
+    const n = Object.values(S.erg).filter(v => v === "skip").length;
+    app.innerHTML = kopf("Fertig", 1) + `<div class="inhalt"><div class="bild" style="border-color:transparent;background:var(--ok-bg)">${I.fertig}</div>
+      <h2>Fertig, danke!</h2>
+      <p>Das Ergebnis ist gespeichert als Lauf <span class="kenn">${S.laufKey}</span>. Du kannst die Seite jetzt schließen.</p>
+      ${S.grob ? `<div class="karte warn"><h3>Eine Sache kannst du einstellen</h3><p>Dein Handy gibt nur den ungefähren Standort frei. iPhone: Einstellungen, Datenschutz und Sicherheit, Ortungsdienste, Safari-Websites, „Genauer Standort“ einschalten.</p></div>` : ""}
+      ${n ? `<p class="klein" style="margin-top:12px">${n} ${n === 1 ? "Schritt" : "Schritte"} übersprungen. Kein Problem.</p>` : ""}
+      <details><summary>Ergebnis ansehen</summary><ul class="auto erg">
+        ${AUTO.map(a => `<li><span class="ic">${a === "Standort" ? WARN : OK}</span>${a}<span>${a === "Standort" ? "nur ungefähr" : "geht"}</span></li>`).join("")}
+        ${HAND.map(h => { const v = S.erg[h.id] || "skip"; return `<li><span class="ic">${v === "ok" ? OK : v === "nein" ? WARN : SKIP}</span>${h.titel}<span>${v === "ok" ? "geht" : v === "nein" ? "nicht gespürt" : "übersprungen"}</span></li>`; }).join("")}
+      </ul></details></div>
+      <div class="aktion"><button class="btn alt" data-a="kopie">Bericht kopieren</button></div>`;
+  }
+}
+function weiter(v) {
+  S.erg[HAND[S.i].id] = v;
+  if (S.i < HAND.length - 1) { S.i++; S.phase = "bereit"; } else S.seite = "ende";
+  zeichne();
+}
+app.addEventListener("click", e => {
+  const a = e.target.closest("[data-a]"); if (!a) return;
+  ({ los() { S.seite = "auto"; S.autoN = 0; zeichne(); },
+     go() { S.phase = "laeuft"; zeichne(); },
+     skip() { weiter("skip"); },
+     ja() { weiter("ok"); }, nein() { weiter("nein"); },
+     kopie() { a.textContent = "Kopiert"; } })[a.dataset.a]();
+});
+// rechts: direkt in einen Zustand springen
+const SPR = [["Start", () => { S.seite = "start"; }], ["Automatisch", () => { S.seite = "auto"; S.autoN = 4; }],
+  ["Schritt 1", () => { S.seite = "hand"; S.i = 0; S.phase = "bereit"; }], ["Schritt läuft", () => { S.seite = "hand"; S.i = 1; S.phase = "laeuft"; }],
+  ["Kompass-Pause", () => { S.seite = "hand"; S.i = 3; S.phase = "bereit"; }], ["Ja/Nein", () => { S.seite = "hand"; S.i = 5; S.phase = "frage"; }],
+  ["Fertig", () => { S.seite = "ende"; S.erg = { dreh: "ok", sperre: "ok", app: "ok", pause: "skip", kamera: "ok", vib: "nein", glocke: "ok" }; }]];
+document.getElementById("sprung").innerHTML = SPR.map((s, k) => `<button data-k="${k}">${s[0]}</button>`).join("");
+document.getElementById("sprung").addEventListener("click", e => { const b = e.target.closest("[data-k]"); if (!b) return; SPR[+b.dataset.k][1](); zeichne(); });
+zeichne();
+</script>
+</body>
+</html>
