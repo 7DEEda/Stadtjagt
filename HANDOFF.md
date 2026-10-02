@@ -1566,3 +1566,6 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   zur Person am Tisch ausgerichtet.
 - Suite 9 (02.10.): „Kompass nach Pause“ entfällt, sechs Hand-Schritte.
   Ältere Läufe enthalten ihn noch.
+- „Handy einmal drehen“ läuft bis zum vollen Kreis (36 von 36, höchstens
+  45 s) und bleibt kurz auf 100 % stehen; die Anzeige rechnet auf 36. „ok“
+  gilt weiter ab 30 Fächern, falls die Zeit abläuft.

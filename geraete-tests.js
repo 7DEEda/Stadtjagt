@@ -248,8 +248,12 @@
       async lauf(ctx) {
         const s = ctx.sensor; s.faecher.clear();
         const t0 = jetzt();
-        while (s.faecher.size < 30 && jetzt() - t0 < 45000) { ctx.status(`${s.faecher.size} von 36`); await ctx.warte(150); }
-        const n = s.faecher.size, mess = { "Richtungen gesehen": `${n} von 36`, "Quelle": s.quelle || "keine", "Dauer in s": rund((jetzt() - t0) / 1000, 1) };
+        // bis der Kreis voll ist (alle 36 Fächer), höchstens 45 s; dann kurz auf 100 % stehen bleiben, damit man es sieht
+        while (s.faecher.size < 36 && jetzt() - t0 < 45000) { ctx.status(`${s.faecher.size} von 36`); await ctx.warte(150); }
+        const n = s.faecher.size;
+        ctx.status(`${n} von 36`);
+        if (n >= 36) await ctx.warte(700);
+        const mess = { "Richtungen gesehen": `${n} von 36`, "Quelle": s.quelle || "keine", "Dauer in s": rund((jetzt() - t0) / 1000, 1) };
         if (s.quelle === "relativ" || !s.quelle) return { art: "err", wert: "kein Nordbezug", mess };
         return { art: n >= 30 ? "ok" : n >= 12 ? "warn" : "err", wert: `${n} von 36`, mess };
       }

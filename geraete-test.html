@@ -341,7 +341,7 @@ function kreisMalen() {
   // Orange erst, wenn der Schritt läuft: vorher zeigt die Kugel nur, dass sie mitgeht
   k.querySelectorAll("line").forEach(l => l.classList.toggle("an", laeuft && sensor.faecher.has(+l.dataset.f)));
   const n = laeuft ? sensor.faecher.size : 0, zahl = k.querySelector("#kreiszahl");
-  zahl.textContent = laeuft ? Math.min(100, Math.round(n / 30 * 100)) + " %" : "";
+  zahl.textContent = laeuft ? Math.min(100, Math.round(n / 36 * 100)) + " %" : "";
   // Die Zahl bleibt zur Person am Tisch ausgerichtet: dreht sich das Handy seit "Los" um w Grad, dreht sie sich um w zurück
   if (laeuft && r != null && sensor.quelle !== "relativ") {
     if (S.kreisNull == null) S.kreisNull = r;
