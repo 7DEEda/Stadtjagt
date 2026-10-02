@@ -1561,3 +1561,6 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
 - Hintergrund scrollt nicht mehr mit (Spiel und Testseite, 02.10.): die
   scroll-gebundene Animation (`animation-timeline`, `--px-hub`) ist raus, die
   Karte bewegt sich nur noch mit der Neigung (`--nx`/`--ny`).
+- „Handy einmal drehen“: die Prozentzahl in der Kreismitte dreht sich gegen
+  das Handy (Bezug: Richtung beim Tipp auf „Los“, `S.kreisNull`) und bleibt so
+  zur Person am Tisch ausgerichtet.
