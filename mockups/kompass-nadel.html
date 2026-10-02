@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Kompass-Nadel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Mockup: wie die Kompass-Nadel zeigt, ob sie dem Kompass folgt oder nur der Laufrichtung.
+   Zustände nebeneinander, zwei Varianten für "Kompass unzuverlässig". Die Nadel dreht sich zum Ansehen. */
+:root{--paper:#F1F5EE;--card:#FFFFFF;--ink:#17302A;--muted:#5B6F68;--line:#D3DECF;--feld:#7D9189;--flag:#EE5F1B;--warn:#8A5A00;--warn-bg:#FBF0D9;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;--body:"Barlow",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:#2b2f2d;font:17px/1.5 var(--body);color:var(--ink);padding:24px 16px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+.reihe{display:flex;flex-wrap:wrap;gap:18px;justify-content:center}
+.karte{background:var(--card);border-radius:14px;padding:16px;width:290px}
+.karte h3{font-size:19px;margin-bottom:2px}
+.karte .unter{font-size:13px;color:var(--muted);min-height:38px}
+.compass{display:flex;gap:12px;align-items:center;margin-top:10px}
+.compass svg{width:120px;height:120px;flex:none}
+.dist{font:700 34px var(--head);line-height:1}
+.small{font-size:14px}.muted{color:var(--muted)}
+.ring{fill:none;stroke:var(--line);stroke-width:4}
+.ring.strich{stroke-dasharray:5 5}
+.nadel{transform-origin:39px 39px;animation:pendeln 6s ease-in-out infinite}
+@keyframes pendeln{0%,100%{transform:rotate(28deg)}50%{transform:rotate(52deg)}}
+@media (prefers-reduced-motion:reduce){.nadel{animation:none;transform:rotate(35deg)}}
+.voll{fill:var(--flag)}
+.leer{fill:none;stroke:var(--flag);stroke-width:2.5;stroke-dasharray:4 3;stroke-linejoin:round}
+.schraff{fill:url(#schraff);stroke:var(--flag);stroke-width:2;stroke-linejoin:round}
+.laeufer{fill:var(--ink)}
+.status{display:inline-flex;align-items:center;gap:6px;font:600 13px var(--body);border-radius:99px;padding:2px 10px;margin-top:6px;white-space:nowrap}
+.status.ok{background:#E3F1E7;color:#25683F}
+.status.warn{background:var(--warn-bg);color:var(--warn)}
+.erkl{max-width:1240px;margin:18px auto 0;background:#fff;border-radius:12px;padding:14px 18px;font-size:15px}
+.erkl ul{margin:4px 0;padding-left:18px}
+.titel{color:#fff;text-align:center;margin-bottom:14px;font:700 22px var(--head)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <pattern id="schraff" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="5" fill="#EE5F1B"/></pattern>
+</defs></svg>
+<div class="titel">Die Nadel zeigt, worauf sie sich verlässt</div>
+<div class="reihe">
+  <div class="karte"><h3>Kompass in Ordnung</h3><div class="unter">wie heute: volle Nadel, Ring durchgezogen</div>
+    <div class="compass"><svg viewBox="0 0 78 78"><circle class="ring" cx="39" cy="39" r="35"/><polygon class="nadel voll" points="39,8 47,42 39,36 31,42"/></svg>
+      <div><div class="muted small">Entfernung</div><div class="dist">245 m</div><span class="status ok">Kompass</span></div></div></div>
+
+  <div class="karte"><h3>A: Laufrichtung, gestrichelt</h3><div class="unter">Kompass unzuverlässig: nur die Umrisslinie der Nadel, gestrichelt, Ring gestrichelt</div>
+    <div class="compass"><svg viewBox="0 0 78 78"><circle class="ring strich" cx="39" cy="39" r="35"/><polygon class="nadel leer" points="39,8 47,42 39,36 31,42"/></svg>
+      <div><div class="muted small">Entfernung</div><div class="dist">245 m</div><span class="status warn">nach Laufrichtung</span></div></div></div>
+
+  <div class="karte"><h3>B: Laufrichtung, schraffiert mit Läufer</h3><div class="unter">Kompass unzuverlässig: schraffierte Nadel, kleines Läufer-Zeichen in der Mitte</div>
+    <div class="compass"><svg viewBox="0 0 78 78"><circle class="ring strich" cx="39" cy="39" r="35"/><polygon class="nadel schraff" points="39,8 47,42 39,36 31,42"/>
+      <g transform="translate(31 52) scale(.7)"><circle class="laeufer" cx="13" cy="3" r="3"/><path d="M8 9l5-2 4 4 4 1M12 8l-2 8-5 5M11 15l5 3 1 6" fill="none" stroke="#17302A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+      <div><div class="muted small">Entfernung</div><div class="dist">245 m</div><span class="status warn">nach Laufrichtung</span></div></div></div>
+
+  <div class="karte"><h3>Noch keine Richtung</h3><div class="unter">Kompass unzuverlässig und noch nicht gegangen: Fragezeichen wie heute ohne Kompass</div>
+    <div class="compass"><svg viewBox="0 0 78 78"><circle class="ring strich" cx="39" cy="39" r="35"/><text x="39" y="48" text-anchor="middle" style="font:700 26px Barlow Semi Condensed;fill:#5B6F68">?</text></svg>
+      <div><div class="muted small">Entfernung</div><div class="dist">245 m</div><span class="status warn">erst ein paar Schritte</span></div></div></div>
+</div>
+<div class="erkl"><b>Wofür</b>
+  <ul>
+    <li>Volle Nadel heißt: der Kompass führt. Gestrichelt (A) oder schraffiert (B) heißt: der Pfeil folgt nur eurer Laufrichtung, im Stehen bleibt er stehen.</li>
+    <li>Der Ring wird in beiden Fällen gestrichelt, dazu die Plakette „nach Laufrichtung“ statt „Kompass“. Farbe allein trägt die Aussage nicht.</li>
+    <li>Gilt auch heute schon für Handys ohne Kompass und für den Zustand „Kompass ungenau“ auf dem iPhone.</li>
+  </ul></div>
+</body>
+</html>
