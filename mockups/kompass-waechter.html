@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Kompass-Wächter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Mockup: was Spieler und Spielleitung sehen, wenn der Kompass-Wächter einen schlechten Kompass erkennt.
+   Aussehen wie index.html (Team-Ansicht, Kompass-Block, Meldung, Teamzeile der Spielleitung). */
+:root{--paper:#F1F5EE;--card:#FFFFFF;--ink:#17302A;--muted:#5B6F68;--line:#D3DECF;--feld:#7D9189;--flag:#EE5F1B;--flag-ink:#0F1B18;
+  --info-bg:#E6EEF4;--warn:#8A5A00;--warn-bg:#FBF0D9;--ok:#25683F;--ok-bg:#E3F1E7;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;--body:"Barlow",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:#2b2f2d;font:17px/1.5 var(--body);color:var(--ink);display:flex;flex-wrap:wrap;gap:24px;justify-content:center;align-items:flex-start;padding:24px 16px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+.spalte{display:flex;flex-direction:column;align-items:center;gap:10px}
+.spalte > b{color:#fff;font:700 18px var(--head)}
+.handy{width:390px;height:800px;border-radius:36px;border:10px solid #111;background:var(--paper);overflow:hidden;padding:18px 16px}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:12px}.top h1{font-size:26px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.muted{color:var(--muted)}.small{font-size:15px}
+.name{font:700 24px var(--head);margin:4px 0 10px}
+.compass{display:flex;gap:16px;align-items:center}
+.compass svg{width:120px;height:120px;flex:none}
+.ring{fill:none;stroke:var(--line);stroke-width:4}
+.needle{fill:var(--flag)}
+.lauf .needle{fill:var(--flag);opacity:.9}
+.dist{font:700 38px var(--head);line-height:1}
+.msg{border-radius:10px;padding:12px;margin-top:12px;font-size:15px}
+.msg.warn{background:var(--warn-bg);color:var(--warn)}
+.msg.info{background:var(--info-bg);color:var(--ink)}
+.msg b{display:block;font:700 17px var(--head);margin-bottom:2px}
+.btn{display:block;width:100%;min-height:48px;border:0;border-radius:10px;font:700 19px var(--head);background:var(--flag);color:var(--flag-ink);margin-top:12px}
+.btn.alt{background:var(--card);color:var(--ink);border:1.5px solid var(--feld);font-size:17px;min-height:44px}
+.btn.weit{background:var(--card);color:var(--ink);border:1.5px solid var(--feld)}
+.zeichen{display:inline-flex;align-items:center;gap:6px;font:600 13px var(--body);color:var(--warn);background:var(--warn-bg);border-radius:99px;padding:2px 10px;white-space:nowrap}
+.zeichen svg{width:14px;height:14px}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+td,th{text-align:left;padding:8px 6px;border-top:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted)}
+.regeln{background:#fff;border-radius:14px;padding:18px;max-width:380px;font-size:15px}
+.regeln h2{font-size:22px;margin-bottom:6px}.regeln ul{padding-left:18px;margin:6px 0}
+</style>
+</head>
+<body>
+<div class="spalte"><b>1: erkannt, unterwegs</b>
+  <div class="handy"><div class="top"><h1>🦊 Team Fuchs</h1></div>
+    <div class="panel"><p class="muted small" style="margin:0">Station 1 von 1</p><div class="name">EDEKA Grenzallee</div>
+      <div class="compass lauf"><svg viewBox="0 0 78 78"><circle class="ring" cx="39" cy="39" r="35"/><polygon class="needle" points="39,8 47,42 39,36 31,42" transform="rotate(35 39 39)"/></svg>
+        <div><div class="muted small">Entfernung</div><div class="dist">180 m</div>
+          <div class="muted small">GPS ±8 m<br>Pfeil nach Laufrichtung</div></div></div>
+      <div class="msg warn"><b>Der Kompass dieses Handys zeigt gerade falsch</b>
+        Der Pfeil richtet sich jetzt nach eurer Laufrichtung. Haltet das Handy beim Gehen vor euch.
+        <button class="btn alt">Kompass einmessen</button></div>
+      <button class="btn weit">Noch 120 m bis zum Einchecken</button>
+    </div>
+  </div>
+</div>
+<div class="spalte"><b>2: erkannt, steht still</b>
+  <div class="handy"><div class="top"><h1>🦊 Team Fuchs</h1></div>
+    <div class="panel"><p class="muted small" style="margin:0">Station 1 von 1</p><div class="name">EDEKA Grenzallee</div>
+      <div class="compass"><svg viewBox="0 0 78 78"><circle class="ring" cx="39" cy="39" r="35" stroke-dasharray="4 5"/><text x="39" y="48" text-anchor="middle" style="font:700 26px Barlow Semi Condensed;fill:#5B6F68">?</text></svg>
+        <div><div class="muted small">Entfernung</div><div class="dist">180 m</div>
+          <div class="muted small">GPS ±8 m<br>Erst ein paar Schritte gehen</div></div></div>
+      <div class="msg warn"><b>Der Kompass dieses Handys zeigt gerade falsch</b>
+        Geht ein paar Schritte, dann zeigt der Pfeil eure Laufrichtung. Die Entfernung stimmt immer.
+        <button class="btn alt">Kompass einmessen</button></div>
+    </div>
+  </div>
+</div>
+<div class="spalte"><b>3: Spielleitung, Reiter Teams</b>
+  <div class="handy" style="width:560px;height:auto;padding-bottom:20px"><div class="top"><h1>Spielleitung</h1></div>
+    <div class="panel"><table>
+      <tr><th>Team</th><th>Stand</th></tr>
+      <tr><td><b>🦊 Fuchs</b><br><span class="muted">Leitung Anna Berger</span></td>
+        <td>unterwegs zu Station 1 seit 4 min<br><span class="muted">GPS vor 12 s</span><br>
+          <span class="zeichen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5" stroke-linecap="round"/></svg>Kompass falsch, Pfeil nach Laufrichtung</span></td></tr>
+      <tr><td><b>🐺 Wolf</b><br><span class="muted">Leitung Ute Müller</span></td>
+        <td>unterwegs zu Station 1 seit 4 min<br><span class="muted">GPS vor 8 s</span></td></tr>
+    </table></div>
+  </div>
+</div>
+<div class="regeln">
+  <h2>Kompass-Wächter</h2>
+  <ul>
+    <li><b>Hinweis</b> in Warnfarbe direkt unter dem Kompass, solange der Wächter den Kompass für unzuverlässig hält. Er verschwindet von selbst, wenn der Kompass wieder sauber folgt.</li>
+    <li><b>Pfeil</b> folgt der Laufrichtung (GPS), sobald man ein paar Meter gegangen ist; vorher Fragezeichen wie heute ohne Kompass.</li>
+    <li><b>Kompass einmessen</b> öffnet das bekannte Fenster mit der Acht; danach bekommt der Kompass eine neue Chance.</li>
+    <li><b>Statuszeile</b> unter der Entfernung: „Pfeil nach Laufrichtung“ bzw. „Erst ein paar Schritte gehen“.</li>
+    <li><b>Spielleitung</b> sieht in der Teamzeile den Vermerk „Kompass falsch, Pfeil nach Laufrichtung“.</li>
+  </ul>
+</div>
+</body>
+</html>
