@@ -1729,4 +1729,12 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   `tools/pruefstand/teststation.py`, Probelauf `teststation_db.py`.
 - Vor dem Event: Testmodus aus, Fortschritt zurücksetzen. Die Teststation
   darf liegen bleiben.
+- Startpunkt eintragbar (Nachtrag 29, 02.10.): je Route in game_state
+  (`start_*`, `test_start_*`), `admin_set_start`, `admin_state.start`/`testStart`.
+  Spielleitung, Reiter Stationen: Zeile „Start“ über der Stationsliste und im
+  Abschnitt Teststation (Name, Koordinaten, Paar einfügbar, „Meinen Standort
+  übernehmen“). Wirkt auf das Haus auf der Karte und die erste Etappe. Ohne
+  Wert gelten die alten Konstanten `START`/`TEST_START`. Probelauf
+  `tools/pruefstand/startpunkt_db.py`.
+- Kopf der Spielleitung mit mehr Abstand zwischen Titel, Chips und Meldung.
 

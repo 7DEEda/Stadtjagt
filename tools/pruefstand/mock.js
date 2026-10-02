@@ -345,6 +345,8 @@
         locationHint: s.locationHint, riddle: s.riddle, answer: s.answer, digit: s.digit, tip: s.tip,
         revealStartM: s.revealStartM, revealClearM: s.revealClearM, route: "echt" })),
       testStation: TESTSTATION, route: WELT.testMode && C.teststation ? "test" : "echt",
+      start: WELT.start || { name: "Mama Shelter Prague", lat: 50.102458, lng: 14.431681 },
+      testStart: WELT.testStart || { name: "TSE Berlin, Grenzallee 4", lat: 52.4698774, lng: 13.4627621 },
       aktiveStationen: (WELT.testMode && C.teststation ? [TESTSTATION] : STATIONEN).map(s => ({ id: s.id, position: s.position, name: s.name, lat: s.lat, lng: s.lng, radiusM: s.radiusM })),
       caseCode: CASE_CODE, selfieOn: WELT.selfieOn, photosDeleteOn: WELT.photosDeleteOn, photoCount: fotoListe().length,
       teams: teams.map(t => ({ id: t.id, name: t.name, code: t.code, readToken: t.readToken, leaderId: t.leaderId, leaderName: t.leaderName,
@@ -422,6 +424,7 @@
     team_photo: a => { const f = FOTOS[a.p_position]; return { data: f ? (a.p_full ? f.foto : f.thumb) : null }; },
     admin_save_station: a => { pin(a); const s = STATIONEN.concat([TESTSTATION]).find(x => x.id === a.p_id); window.__GESPEICHERT = a;
       Object.assign(s, { name: a.p_name, lat: a.p_lat, lng: a.p_lng, radiusM: a.p_radius, revealStartM: a.p_reveal_start, revealClearM: a.p_reveal_clear }); return adminState(); },
+    admin_set_start: a => { pin(a); window.__START = a; WELT[a.p_route === "test" ? "testStart" : "start"] = { name: a.p_name, lat: a.p_lat, lng: a.p_lng }; return adminState(); },
     admin_photos: a => { pin(a); return fotoListe(); },
     admin_photo: a => { pin(a); window.__FOTO_ROUTE = (window.__FOTO_ROUTE || []).concat([a.p_route || "echt"]); const t = TEAMS.find(x => x.id === a.p_team); return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full) }; },
     admin_set_selfie: a => { pin(a); WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },

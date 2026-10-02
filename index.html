@@ -199,6 +199,9 @@ ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line
 .tabs button{background:none;border:0;padding:10px 12px;font:600 var(--fs-m) var(--head);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
 .tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--flag)}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+/* Kopf der Spielleitung: Luft zwischen Titel, Zustands-Chips und der Meldung darunter */
+.kopfchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.bar + .msg{margin-top:16px}
 .chip{display:inline-block;padding:4px 10px;border-radius:99px;font:600 var(--fs-xs) var(--body);background:var(--paper);border:1px solid var(--line)}
 .chip.live{background:var(--flag);color:var(--flag-ink);border-color:var(--flag);font:700 var(--fs-s) var(--body)}
 .chip.test{background:var(--err-bg);color:var(--err);border-color:var(--err);margin-left:6px}
@@ -1504,8 +1507,30 @@ function koordPaar(la, lo) {
 }
 const ekZahl = id => { const v = parseInt(val(id), 10); return v > 0 ? v : null; };
 // Teststation (Nachtrag 28): echte Stationen und Teststation zum Bearbeiten; gespielt wird die aktive Route
+// Startpunkt je Route (Nachtrag 29), eintragbar im Reiter Stationen; ohne Wert die alten Konstanten
+const startFuer = (st, route) => {
+  const w = st && (route === "test" ? st.testStart : st.start), f = route === "test" ? TEST_START : START;
+  return w && w.lat != null && w.lng != null ? { name: w.name || f.name, lat: w.lat, lng: w.lng } : f;
+};
 const alleStationen = st => [...(st.testStation ? [st.testStation] : []), ...(st.stations || [])];
 const aktiv = st => st.aktiveStationen || st.stations || [];
+function startZeile(route, st) {
+  const sp = startFuer(st, route);
+  if (S.admin.startEdit === route) return `<div class="stack" style="border-top:1px solid var(--line);padding-top:12px;margin-top:12px">
+      <h3>Start</h3>
+      <div style="margin-top:8px"><label for="sp-name">Name</label><input id="sp-name" value="${esc(sp.name)}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div><label for="sp-lat">Breite</label><input id="sp-lat" inputmode="decimal" value="${sp.lat ?? ""}"></div>
+        <div><label for="sp-lng">Länge</label><input id="sp-lng" inputmode="decimal" value="${sp.lng ?? ""}"></div></div>
+      <div style="margin-top:10px"><button class="btn sm alt" data-act="a-startpkt-hier">Meinen Standort übernehmen</button> <span class="small muted" id="sp-here"></span></div>
+      <div style="margin-top:6px"><button class="btn sm" data-act="a-startpkt-save" data-route="${route}" data-wait="Wird gespeichert …">Speichern</button>
+        <button class="btn sm alt" data-act="a-startpkt-cancel">Abbrechen</button></div>${msgBox("start")}</div>`;
+  return `<div style="border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px;align-items:flex-start">
+      <b style="width:20px;display:grid;place-items:center">${HAUS}</b>
+      <div style="flex:1"><h3>Start: ${esc(sp.name)}</h3>
+        <p class="small muted">Von hier läuft die erste Etappe. Koordinaten: <span style="white-space:nowrap">${Number(sp.lat).toFixed(5)}, ${Number(sp.lng).toFixed(5)}</span></p></div>
+      <button class="btn sm alt" data-act="a-startpkt-edit" data-route="${route}">Bearbeiten</button></div>`;
+}
 function stationZeile(s, st) {
   return S.admin.edit === s.id ? `
         <div class="stack" style="border-top:1px solid var(--line);padding-top:12px;margin-top:12px">
@@ -1558,9 +1583,10 @@ function ekMitte() {
 }
 function ekVorgaenger() {
   const st = S.admin.state, s = alleStationen(st).find(x => x.id === S.admin.edit);
-  if (s && s.route === "test") return { name: TEST_START.name, nr: null, lat: TEST_START.lat, lng: TEST_START.lng };
+  if (s && s.route === "test") { const t = startFuer(st, "test"); return { name: t.name, nr: null, lat: t.lat, lng: t.lng }; }
   const v = s && (st.stations || []).find(x => x.position === s.position - 1 && x.lat != null);
-  return v ? { name: v.name, nr: v.position, lat: v.lat, lng: v.lng } : { name: START.name, nr: null, lat: START.lat, lng: START.lng };
+  const st0 = startFuer(st, "echt");
+  return v ? { name: v.name, nr: v.position, lat: v.lat, lng: v.lng } : { name: st0.name, nr: null, lat: st0.lat, lng: st0.lng };
 }
 const ekPunkt = (mitte, k, m) => { const w = EK[k].winkel * Math.PI / 180;
   return [mitte[0] + m * Math.cos(w) / 111320, mitte[1] + m * Math.sin(w) / (111320 * Math.cos(mitte[0] * Math.PI / 180))]; };
@@ -1569,7 +1595,7 @@ async function stationsKarte() {
   try { await loadLeaflet(); } catch (e) { el.innerHTML = `<p class="msg err">${esc(e.message)}</p>`; return; }
   if (!$("#emap") || $("#emap") !== el) return;   // inzwischen neu gezeichnet oder geschlossen
   if (ekarte && el.contains(ekarte.map.getContainer())) { ekZeichnen(); return; }
-  const mitte = ekMitte() || [START.lat, START.lng], vor = ekVorgaenger();
+  const vor = ekVorgaenger(), mitte = ekMitte() || [vor.lat, vor.lng];
   const map2 = L.map(el, { zoomControl: true, dragging: !matchMedia("(pointer: coarse)").matches }).setView(mitte, 16);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map2);
   const K = ekarte = { map: map2, kreise: {}, griffe: {}, schilder: {}, zieht: null };
@@ -1669,7 +1695,7 @@ function viewAdmin() {
   if (st.status === "running") actions += `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
   if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-resume" data-wait="Wird fortgesetzt …">Spiel fortsetzen</button>`;
 
-  let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div>${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}</div></div></div><div>${actions}${themaBtn()}</div></div>${msgBox()}`;
+  let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div class="kopfchips">${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}</div></div></div><div>${actions}${themaBtn()}</div></div>${msgBox()}`;
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
   if (missing.length) out += `<div class="msg err">Ohne Koordinaten kann dort niemand einchecken. Betroffen: Station ${missing.map(s => s.position).join(", ")}.</div>`;
 
@@ -1790,10 +1816,10 @@ function viewAdmin() {
       <p class="small ${st.route === "test" ? "" : "muted"}">${st.route === "test"
         ? "Testmodus an: alle Teams spielen nur die Teststation."
         : `Testmodus aus: es gilt die echte Route (${(st.stations || []).length} Stationen). Mit dem Testmodus spielen alle Teams nur die Teststation.`}</p>
-      ${stationZeile(st.testStation, st)}</div>`;
+      ${startZeile("test", st)}${stationZeile(st.testStation, st)}</div>`;
     out += `<div class="panel"><p class="small muted">Lauf die Route einmal ab und drück an jeder Station „Meinen Standort übernehmen“. Ein Paar wie 50.08750, 14.42806 kannst du auch ins Feld Breite einfügen.</p>
       ${st.route === "test" ? `<p class="small muted">Im Testmodus wird diese Route nicht gespielt.</p>` : ""}
-      ${(st.stations || []).map(s => stationZeile(s, st)).join("")}
+      ${startZeile("echt", st)}${(st.stations || []).map(s => stationZeile(s, st)).join("")}
       <p class="small" style="border-top:1px solid var(--line);padding-top:12px">Koffer-Code: <b style="white-space:nowrap">${esc(st.caseCode || "")}</b>, gilt für alle ${st.prizeCount ?? 3} Koffer.
         Die Reihenfolge der Koffer ergibt sich aus dem Platz in der App.</p></div>`;
   }
@@ -1956,7 +1982,7 @@ async function drawMap(first) {
   layers.stations.forEach(l => map.removeLayer(l));
   layers.stations = [];
   // Startpunkt als Haus, unter den Stationen; mit der Teststation der Start in Berlin
-  const start = st.route === "test" ? TEST_START : START;
+  const start = startFuer(st, st.route === "test" ? "test" : "echt");
   const pts = [[start.lat, start.lng]];
   const haus = L.marker([start.lat, start.lng], { zIndexOffset: 900,
     icon: L.divIcon({ html: `<div class="mapbadge start" title="Start">${HAUS}</div>`, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] }) })
@@ -2477,11 +2503,31 @@ const ACT = {
     catch { S.msg = { type: "info", ort: "t:" + d.id, text: "Kopieren ging nicht. Hier der Link zum Markieren: " + link }; }
   },
   "a-edit"(d) {
-    S.admin.edit = d.id;
+    S.admin.edit = d.id; S.admin.startEdit = null;
     const s = alleStationen(S.admin.state).find(x => x.id === d.id);
     S.admin.karte = { aus: !s || s.revealStartM == null, team: null };
   },
   "a-cancel"() { S.admin.edit = null; S.admin.karte = null; },
+  "a-startpkt-edit"(d) { S.admin.startEdit = d.route; S.admin.edit = null; S.admin.karte = null; S.msg = null; },
+  "a-startpkt-cancel"() { S.admin.startEdit = null; S.msg = null; },
+  "a-startpkt-hier"() {
+    const i = $("#sp-here"); if (i) i.textContent = "Suche Standort …";
+    navigator.geolocation.getCurrentPosition(p => {
+      $("#sp-lat").value = p.coords.latitude.toFixed(6); $("#sp-lng").value = p.coords.longitude.toFixed(6);
+      const j = $("#sp-here"); if (j) j.textContent = `übernommen (±${Math.round(p.coords.accuracy)} m), jetzt speichern`;
+    }, e => { const j = $("#sp-here"); if (j) j.textContent = e.code === 1 ? "Standortzugriff abgelehnt." : "Standort nicht verfügbar."; },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+    return false;
+  },
+  async "a-startpkt-save"(d) {
+    // ein eingefügtes Paar im Feld Breite gewinnt, auch wenn Länge noch den alten Wert hat
+    let [la, lo] = val("sp-lat").includes(",") ? koordPaar(val("sp-lat"), "") : [val("sp-lat"), val("sp-lng")];
+    if (!lo) lo = val("sp-lng");
+    const lat = parseFloat(String(la).replace(",", ".")), lng = parseFloat(String(lo).replace(",", "."));
+    if (isNaN(lat) || isNaN(lng)) { S.msg = { type: "err", ort: "start", text: "Bitte Breite und Länge eintragen, oder ein Paar wie 52.47010, 13.46280 ins Feld Breite einfügen." }; return; }
+    S.admin.state = await rpc("admin_set_start", { p_pin: S.admin.pin, p_route: d.route, p_name: val("sp-name"), p_lat: lat, p_lng: lng });
+    S.admin.startEdit = null; S.msg = { type: "ok", text: "Start gespeichert." };
+  },
   // Verschlüsseln für diese Station aus- oder einschalten; beim Einschalten ohne Werte kommt der Vorschlag.
   // Beide Knöpfe zeichnen die Seite nicht neu (return false): sonst gingen ungespeicherte Eingaben im Formular verloren.
   "a-geheim-aus"() {
