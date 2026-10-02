@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Im Testmodus spielen alle Teams nur eine eigene Teststation (anfangs EDEKA Grenzallee, Berlin); die fünf Prager Stationen bleiben unverändert.
+**Goal:** Im Testmodus spielen alle Teams nur eine eigene Teststation (anfangs EDEKA Grenzallee, Berlin); die fünf Prager Stationen bleiben unverändert. Im Testmodus lässt sich außerdem mit nur einer angemeldeten Person (also einem Team) auslosen und starten.
 
 **Architecture:** Die Tabelle `stations` heißt künftig `stations_alle` und bekommt die Spalte `route` (`echt` | `test`). Eine Sicht `stations` zeigt nur die aktive Route (`aktive_route()`: `test`, wenn Testmodus an und eine Teststation da ist). Alle Spielfunktionen lesen weiter `stations` und bekommen so automatisch die richtige Route; angepasst werden nur `admin_save_station` (schreibt in `stations_alle`), `admin_state` (echte Liste, Teststation, aktive Stationen) und vier Zählungen über `progress`, die heute ohne Stationsbezug zählen. Die Spielleitung bearbeitet die Teststation im Reiter „Stationen“ mit demselben Formular und derselben Karte wie die echten Stationen; Schloss und Texte rechnen mit der Stationszahl statt fest mit fünf.
 
@@ -122,6 +122,13 @@ AUFGABEN = [
     ("admin_state", "20260930200000_name_verschluesselt.sql",
      [(ADMIN_FELDER_ALT, ADMIN_FELDER_NEU, 1), (PR_SOLVED_ALT, PR_SOLVED_NEU, 1), (PR_LAST_ALT, PR_LAST_NEU, 1)]),
     ("admin_save_station", "20260930200000_name_verschluesselt.sql", [("  update stations set", "  update stations_alle set", 1)]),
+    # im Testmodus reicht eine Person (ein Team zum Ausprobieren), sonst wie bisher zwei
+    ("admin_draw", "20260919100000_bugjagd.sql",
+     [("  if v_count < 2 then raise exception 'Es sind noch zu wenige Personen angemeldet.' using errcode='P0001'; end if;",
+       "  if v_count < (case when (select test_mode from game_state where id = 1) then 1 else 2 end) then
+"
+       "    raise exception 'Es sind noch zu wenige Personen angemeldet.' using errcode='P0001';
+  end if;", 1)]),
 ]
 
 
@@ -238,6 +245,11 @@ begin
     then raise exception 'PROBE FEHLT E1: Teststation bei Testmodus aus nicht gespeichert'; end if;
   v_n := v_n + 1;
 
+  -- G: im Testmodus reicht eine Person zum Auslosen (die Prüfung steht im Quelltext, Auslosen selbst würde echte Teams verwerfen)
+  if position('case when (select test_mode from game_state where id = 1) then 1 else 2 end' in pg_get_functiondef('admin_draw'::regproc)) = 0
+    then raise exception 'PROBE FEHLT G1: admin_draw verlangt im Testmodus weiter zwei Personen'; end if;
+  v_n := v_n + 1;
+
   -- F: die Sicht ist ohne PIN nicht lesbar
   if has_table_privilege('anon', 'stations', 'select') or has_table_privilege('authenticated', 'stations', 'select')
     then raise exception 'PROBE FEHLT F1: anon darf die Sicht stations lesen'; end if;
@@ -273,7 +285,7 @@ if __name__ == "__main__":
 - [ ] **Step 4: Probelauf ausführen**
 
 Run: `timeout 120 python tools/pruefstand/teststation_db.py`
-Expected: `PROBELAUF_OK: 15 Prüfungen bestanden, alles zurückgenommen` (14, falls es kein Team gibt). Bei `PROBE FEHLT …`: Generator oder Migration korrigieren, Step 2 und 4 wiederholen.
+Expected: `PROBELAUF_OK: 16 Prüfungen bestanden, alles zurückgenommen` (12, falls es kein Team gibt). Bei `PROBE FEHLT …`: Generator oder Migration korrigieren, Step 2 und 4 wiederholen.
 
 - [ ] **Step 5: Danach die echte Datenbank prüfen (nichts verändert)**
 
@@ -456,6 +468,23 @@ ${st.route === "test" ? `<p class="small muted">Im Testmodus wird diese Route ni
 - [ ] **Step 5: Teams-Fortschritt und Karte nach der aktiven Route**
 
 Im Reiter Teams `(st.stations || []).length` (zweimal) ersetzen durch `aktiv(st).length`. In der Karte der Spielleitung `(st.stations || []).forEach(s => {` ersetzen durch `aktiv(st).forEach(s => {` und `const anker = (st.stations || []).find(` durch `const anker = aktiv(st).find(`.
+
+- [ ] **Step 5b: Auslosen mit einer Person im Testmodus**
+
+Im Reiter Teams (Panel „Teams auslosen“) die Bedingung `n < 2` an beiden Stellen (Knopf `disabled` und Hinweis) ersetzen durch `n < (st.testMode ? 1 : 2)`; in `drawArgs()` `if (n < 2 || !v || v < 1) return null;` ersetzen durch `if (n < (S.admin.state.testMode ? 1 : 2) || !v || v < 1) return null;`. Der Hinweis wird `` `Es müssen mindestens ${st.testMode ? "eine Person" : "zwei Personen"} angemeldet sein.` ``. Szenario in `mock.js`:
+
+```js
+    "admin-auslosen-allein": { welt: "registration", view: "admin", testMode: true, ss: { "sj.pin": "4711" }, nurEine: true },
+```
+
+(mit `nurEine` gibt `adminState()` nur die erste Person in `participants` zurück: `participants: (C.nurEine ? PERSONEN.slice(0, 1) : PERSONEN).map(…)`). In `teststation.py` vor `pruef(not err, …)`:
+
+```python
+    print("Auslosen mit einer Person im Testmodus")
+    pg.goto("http://127.0.0.1:8822/app.html?szenario=admin-auslosen-allein"); pg.wait_for_selector("[data-act=a-draw]")
+    pg.evaluate("S.admin.tab = 'teams'; render()"); pg.wait_for_selector("#dval")
+    pruef(not pg.locator(".panel [data-act=a-draw]").last.is_disabled(), "Auslosen-Knopf aktiv bei einer Person im Testmodus")
+```
 
 - [ ] **Step 6: Prüfskript grün**
 

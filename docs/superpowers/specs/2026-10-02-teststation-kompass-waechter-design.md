@@ -81,6 +81,12 @@ Mockups: `mockups/kompass-waechter.html`, `mockups/akku-warnung.html`.
 - Fortschritt und Karte bei der Spielleitung nehmen `aktiveStationen`
   statt `stations` (heute `solved / stations.length`).
 
+### Ein Team zum Testen
+
+- Im Testmodus reicht eine angemeldete Person zum Auslosen (`admin_draw`),
+  „Anzahl Teams 1“ geht wie bisher. Außerhalb des Testmodus bleibt es bei
+  mindestens zwei Personen.
+
 ### Umschalten
 
 - Testmodus aus und wieder an ändert nur `aktive_route()`. Fortschritt auf der
