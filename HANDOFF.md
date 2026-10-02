@@ -1533,3 +1533,28 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   Der Prüfstand löscht `sj.thema` beim Laden nicht.
 - Schriftgrößen nur noch als `var(--fs-*)` (9 Stufen, siehe MASTER.md);
   Ausnahme ist die Beschriftung der Hintergrundkarte `.topo`.
+
+## Geräte-Test einfach, Suite 8 (02.10.2026)
+
+- Die Testseite verrät nichts mehr vom Spiel: keine Begriffe wie Spiel,
+  Station, Prag, Stadtjagd; immer die klassische Hintergrundkarte (B trägt
+  Prager Ortsnamen, C nummerierte Posten). Die Adresse enthält weiter
+  `/Stadtjagt/`; ein eigenes, neutral benanntes Repo nur für die Testseite
+  wäre der Ausweg (noch nicht entschieden).
+- Aufbau nach Material 3 (Mockup `mockups/geraete-test-einfach.html`):
+  Start, automatische Prüfung als Häkchen-Liste, dann je ein Bildschirm pro
+  Hand-Schritt (Fortschritt oben, „Los“ unten, „Überspringen“ leise), am Ende
+  „Fertig, danke“ mit Laufkennung. Messwerte unter „Ergebnis ansehen“.
+  „Bericht kopieren“ und „Erneut senden“ nur, wenn das Speichern scheitert;
+  ein liegengebliebener Lauf geht beim nächsten Öffnen von selbst raus.
+- Suite 8: „Wach halten“ ohne Tipp fragt beim Laden der Seite
+  (`basis.wach.vorab`), „Wach halten, mit Tipp“ im Tipp auf „Test starten“
+  (`basis.wach.tippAnfrage`) und läuft damit von selbst; 7 statt 8
+  Hand-Schritte. Schritte haben `kopf` (Überschrift) und `hand` als Text oder
+  Liste.
+- „Handy einmal drehen“: Handy flach hinlegen und drehen; ein Kreis aus 36
+  Strichen, die Kugel läuft mit der Himmelsrichtung, überfahrene Striche
+  werden orange (`KREIS`, `kreisMalen()`), in der Mitte der Fortschritt.
+- Die Position im Standort-Schritt bleibt genau gespeichert (Entscheidung
+  02.10.: kein Abschneiden). Fotos werden nur zur Probe hochgeladen
+  (`device_test_echo`), nicht behalten.

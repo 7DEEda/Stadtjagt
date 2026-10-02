@@ -32,7 +32,7 @@ for strom in (sys.stdout, sys.stderr):
 REPO = pathlib.Path(__file__).resolve().parent.parent.parent
 PORT = 8792
 SELBST = ["umgebung", "speicher", "server", "uhr", "standort", "kompass", "neigung",
-          "wachhalten", "karte", "schrift", "teilen", "live", "offline"]
+          "wachhalten", "karte", "schrift", "teilen", "wachhalten-tipp", "live", "offline"]
 
 # Dreht das gespielte Handy stetig im Kreis, wie ein Android-Gerät es melden würde
 SENSOR = """
@@ -76,7 +76,7 @@ def main() -> int:
             page.add_init_script(SENSOR)
             page.goto(f"http://127.0.0.1:{PORT}/geraete-test.html")
             page.click("#start")
-            page.wait_for_selector("#speicher.ok")
+            page.wait_for_selector("#speicher.ok", state="attached")
 
             if not gespeichert:
                 fehler.append("device_test_save wurde nie aufgerufen")
@@ -104,7 +104,7 @@ def main() -> int:
             # Ein Hand-Schritt: Kompass drehen, der gespielte Sensor dreht ohnehin
             vorher = len(gespeichert)
             page.click("[data-was=los]")   # es ist immer nur ein Schritt offen
-            page.wait_for_function("['ok', 'warn', 'err'].includes(document.querySelector('#hand li').className)")
+            page.wait_for_function("S.i >= 1")
             page.wait_for_timeout(500)
             if len(gespeichert) <= vorher:
                 fehler.append("Nach dem Hand-Schritt wurde nicht erneut gespeichert")
@@ -117,7 +117,7 @@ def main() -> int:
                     fehler.append("Der Hand-Schritt hat einen anderen Schlüssel benutzt")
             if page.locator("[data-was=los]").count() != 1:
                 fehler.append("Es ist nicht genau ein Schritt offen")
-            page.click("[data-was=weg]")   # der nächste offene Schritt: Bildschirm aus und an
+            page.click("[data-was=weg]")   # der nächste Schritt: Handy sperren
             page.wait_for_timeout(500)
             if gespeichert[-1]["p_payload"]["tests"].get("bildschirm", {}).get("art") != "skip":
                 fehler.append("Überspringen wurde nicht gespeichert")

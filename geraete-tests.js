@@ -6,7 +6,8 @@
 //   bezug   wofür die App es braucht
 //   block   "auto" | "hand" | "neu": die Überschrift, unter der die Zeile steht
 //   selbst  true: läuft nach dem einen Tipp von allein (in "auto" immer)
-//   hand    Anweisung, wenn der Schritt eine Hand braucht
+//   hand    Anweisung, wenn der Schritt eine Hand braucht (Text oder Liste von Teilschritten)
+//   kopf    Überschrift des Schritt-Bildschirms (sonst titel)
 //   frage   Ja/Nein-Rückfrage nach dem Lauf; "Nein" macht aus ok ein "geht nicht"
 //   grenze  Zeitgrenze in Sekunden (Standard 30, mit hand 100)
 //   lauf    async (ctx) => { art: "ok" | "warn" | "err", wert: "kurz", mess: { ... } }
@@ -195,10 +196,13 @@
       id: "wachhalten", titel: "Wach halten", bezug: "damit das Handy unterwegs nicht sperrt", block: "auto",
       async lauf(ctx) {
         if (!navigator.wakeLock) return { art: "err", wert: "fehlt", mess: { "navigator.wakeLock": "nicht vorhanden" } };
-        const lage = { "Tipp gilt noch (userActivation)": navigator.userActivation ? (navigator.userActivation.isActive ? "ja" : "nein") : "keine Angabe", "Seite sichtbar": document.visibilityState };
-        try { ctx.wach.sperre = await navigator.wakeLock.request("screen"); ctx.wach.ohneTipp = "erteilt"; return { art: "ok", wert: "erteilt", mess: { "navigator.wakeLock": "ja", ...lage } }; }
-        catch (e) { ctx.wach.ohneTipp = "verweigert";
-          return { art: "warn", wert: "verweigert", mess: { "Fehler": e.name + ": " + e.message, ...lage, "Hinweis": "Mögliche Gründe: Stromsparmodus, oder das Gerät vergibt die Sperre nur direkt aus einem Fingertipp. Der Schritt „Wach halten, mit Tipp“ klärt das." } }; }
+        // Seit Suite 8 fragt die Seite beim Laden, vor jedem Fingertipp (ctx.wach.vorab). Ohne das: jetzt fragen.
+        const lage = ctx.wach.vorabLage || { "Tipp gilt noch (userActivation)": navigator.userActivation ? (navigator.userActivation.isActive ? "ja" : "nein") : "keine Angabe", "Seite sichtbar": document.visibilityState };
+        lage["Gefragt"] = ctx.wach.vorab ? "beim Laden der Seite" : "im automatischen Teil";
+        const v = ctx.wach.vorab ? await ctx.wach.vorab : await navigator.wakeLock.request("screen").then(l => ({ l }), e => ({ e }));
+        if (v.l) { ctx.wach.sperre = v.l; ctx.wach.ohneTipp = "erteilt"; return { art: "ok", wert: "erteilt", mess: { "navigator.wakeLock": "ja", ...lage } }; }
+        ctx.wach.ohneTipp = "verweigert";
+        return { art: "warn", wert: "verweigert", mess: { "Fehler": v.e.name + ": " + v.e.message, ...lage, "Hinweis": "Mögliche Gründe: Stromsparmodus, oder das Gerät vergibt die Sperre nur direkt aus einem Fingertipp. „Wach halten, mit Tipp“ klärt das." } };
       }
     },
     {
@@ -240,7 +244,7 @@
     /* ================= mit der Hand ================= */
     {
       id: "kompass-drehen", titel: "Kompass drehen", bezug: "läuft die Richtung mit?", block: "hand",
-      hand: "Dreh dich einmal langsam im Kreis.", grenze: 60,
+      kopf: "Handy einmal drehen", hand: "Leg das Handy flach vor dich und dreh es langsam einmal ganz herum. Die Kugel läuft mit, bis der Kreis orange ist.", grenze: 60,
       async lauf(ctx) {
         const s = ctx.sensor; s.faecher.clear();
         const t0 = jetzt();
@@ -252,7 +256,7 @@
     },
     {
       id: "bildschirm", titel: "Bildschirm aus und an", bezug: "kommt der Standort wieder?", block: "hand",
-      hand: "Sperr das Handy, zähl bis zehn und entsperr es wieder.", grenze: 180,
+      kopf: "Handy sperren", hand: "Sperr das Handy, zähl bis zehn und entsperr es wieder. Die Seite wartet, bis du zurück bist.", grenze: 180,
       async lauf(ctx) {
         ctx.status("Jetzt sperren");
         const weg = await bisSichtbarWechsel(ctx, 120000);
@@ -274,7 +278,7 @@
     },
     {
       id: "app-wechsel", titel: "App wechseln", bezug: "übersteht die Seite WhatsApp?", block: "hand",
-      hand: "Wechsel kurz in eine andere App und komm zurück.", grenze: 180,
+      kopf: "Kurz in eine andere App", hand: "Wechsel kurz in eine andere App, zum Beispiel WhatsApp, und komm wieder her.", grenze: 180,
       async lauf(ctx) {
         ctx.status("Jetzt wechseln");
         const weg = await bisSichtbarWechsel(ctx, 120000);
@@ -289,13 +293,13 @@
     {
       // Ein iPhone (iOS 18.7, kein Stromsparmodus) verweigerte die Sperre im automatischen Teil. Dieser Schritt
       // fragt sie direkt im Fingertipp an: klappt es so, braucht das Gerät den Tipp, und die App muss sie dort holen.
-      id: "wachhalten-tipp", titel: "Wach halten, mit Tipp", bezug: "braucht die Sperre einen Fingertipp?", block: "hand",
-      hand: "Nur auf Los tippen, mehr ist nicht zu tun.", grenze: 20,
+      // Seit Suite 8 läuft er von selbst: die Anfrage stellt der Tipp auf "Test starten" (ctx.wach.tippAnfrage).
+      id: "wachhalten-tipp", titel: "Wach halten, mit Tipp", bezug: "braucht die Sperre einen Fingertipp?", block: "auto", selbst: true, grenze: 20,
       lauf(ctx) {
         const ohne = ctx.wach.ohneTipp || "nicht gelaufen";
         if (!navigator.wakeLock) return { art: "err", wert: "fehlt", mess: { "navigator.wakeLock": "nicht vorhanden", "Ohne Tipp": ohne } };
-        const aktiv = navigator.userActivation ? (navigator.userActivation.isActive ? "ja" : "nein") : "keine Angabe";
-        const anfrage = navigator.wakeLock.request("screen");   // noch im Fingertipp, kein await davor
+        const aktiv = ctx.wach.tippAktiv || (navigator.userActivation ? (navigator.userActivation.isActive ? "ja" : "nein") : "keine Angabe");
+        const anfrage = ctx.wach.tippAnfrage || navigator.wakeLock.request("screen");
         return anfrage.then(l => {
           ctx.wach.sperre = l;
           const mess = { "Mit Tipp": "erteilt", "Ohne Tipp": ohne, "Tipp gilt noch (userActivation)": aktiv, "Seite sichtbar": document.visibilityState };
@@ -312,7 +316,8 @@
       // Der Schritt misst das: Richtung vor der Pause, dann stillhalten und zusehen, ob der Wert nachwandert.
       // Wandert er bei ruhigem Handy, war der erste Wert nach der Pause falsch.
       id: "kompass-pause", titel: "Kompass nach Pause", bezug: "stimmt die Richtung nach einem App-Wechsel?", block: "hand",
-      hand: "Tipp auf Los, wechsel in eine andere App, dreh dich dort eine Vierteldrehung, komm zurück und halt das Handy 20 Sekunden ganz still.", grenze: 200,
+      kopf: "Kompass nach einer Pause", grenze: 200,
+      hand: ["Tipp auf Los.", "Wechsel in eine andere App und dreh dich dort eine Vierteldrehung.", "Komm zurück und halt das Handy 20 Sekunden still."],
       async lauf(ctx) {
         const s = ctx.sensor;
         if (s.richtung == null || s.quelle === "relativ") return { art: "err", wert: "kein Kompass", mess: { "Quelle": s.quelle || "keine" } };
@@ -342,7 +347,7 @@
     /* ================= neue Funktionen ================= */
     {
       id: "kamera", titel: "Kamera und Foto", bezug: "für Fotos", block: "neu",
-      hand: "Mach ein Foto von irgendetwas.", grenze: 180,
+      kopf: "Ein Foto machen", hand: "Mach ein Foto von irgendetwas. Es geht nur darum, ob die Kamera aufgeht.", grenze: 180,
       lauf(ctx) {
         // Der Klick auf das Feld muss noch im Fingertipp passieren, darum kein async vor input.click()
         const input = document.createElement("input");
@@ -383,7 +388,7 @@
     },
     {
       id: "vibration", titel: "Vibration", bezug: "Rückmeldung per Vibration", block: "neu",
-      hand: "Das Handy vibriert zweimal kurz.", frage: "Hast du die Vibration gespürt?",
+      hand: "Das Handy vibriert gleich zweimal kurz.", frage: "Hast du es gespürt?",
       async lauf(ctx) {
         if (typeof navigator.vibrate !== "function") return { art: "err", wert: "fehlt", mess: { "navigator.vibrate": "nicht vorhanden, auf iPhones immer" } };
         const r = navigator.vibrate([200, 120, 200]);
@@ -393,7 +398,7 @@
     },
     {
       id: "benachrichtigung", titel: "Benachrichtigung", bezug: "Hinweis bei gesperrtem Handy", block: "neu",
-      hand: "Erlaube Mitteilungen, wenn das Handy fragt.",
+      kopf: "Mitteilungen", hand: "Erlaube Mitteilungen, wenn das Handy fragt. Es kommt nur eine einzige Test-Mitteilung.",
       async lauf() {
         const mess = { "Notification": janein("Notification" in window), "Push": janein("PushManager" in window), "Service Worker": janein("serviceWorker" in navigator) };
         if (!("Notification" in window)) { mess["Hinweis"] = "Auf iPhones nur, wenn die Seite zum Home-Bildschirm hinzugefügt ist."; return { art: "err", wert: "fehlt", mess }; }
@@ -440,5 +445,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 7, tests };
+  window.SJ_TESTS = { version: 8, tests };
 })();

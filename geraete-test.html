@@ -97,79 +97,75 @@ h1,h2{font-family:var(--head);margin:0;line-height:1.1}
 h1{font-size:32px;font-weight:700}h2{font-size:22px;font-weight:700}
 p{margin:.4em 0 0}
 .muted{color:var(--muted)}.small{font-size:14px}
-.brand{display:flex;gap:12px;align-items:center;margin-bottom:16px}
-.flag{width:32px;height:32px;flex:none}
+.flag{width:30px;height:30px;flex:none}
 /* Das Zeichen im Kopf ist ein Kompass. Liefert das Gerät eine Richtung, zeigt die orange Spitze wirklich nach Norden. */
 #nadel{transform-origin:12px 12px;transition:transform .16s linear}
 @media (prefers-reduced-motion:reduce){#nadel{transition:none}}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
-.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 19px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);min-height:48px;text-shadow:none}
+/* Aufbau nach Material 3: Kopf mit Fortschritt, ein Schritt pro Bildschirm, die Aktion unten im Daumenbereich */
+main{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;padding-bottom:0}
+.top{display:flex;align-items:center;gap:10px}
+.top h1{font-size:22px;flex:1}
+.zahl{font-size:15px;font-weight:600;color:var(--muted);white-space:nowrap}
+.fort{height:4px;border-radius:2px;background:var(--line);margin-top:12px;overflow:hidden}
+.fort i{display:block;height:100%;width:0;background:var(--flag);transition:width .3s cubic-bezier(.32,.72,.4,1)}
+.inhalt{flex:1;padding-top:28px;animation:ein .16s cubic-bezier(.32,.72,.4,1)}
+@keyframes ein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.bild{width:96px;height:96px;border-radius:24px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;margin:4px 0 20px;text-shadow:none}
+.bild svg{width:52px;height:52px}
+.bild.fertig{background:var(--ok-bg);border-color:transparent}
+.inhalt h2{font-size:32px;margin-bottom:10px}
+.inhalt p{margin:0 0 10px;font-size:19px}
+.inhalt p.klein{font-size:15px;color:var(--muted)}
+ol.teil{margin:4px 0 10px;padding-left:22px;font-size:19px}
+ol.teil li{margin-bottom:6px}
+.nb{white-space:nowrap}
+/* Handy drehen: Kugel läuft mit der Himmelsrichtung um den Kreis, jeder überfahrene Strich wird orange */
+#kreis{display:block;width:220px;height:220px;margin:0 auto 18px}
+#kreis line{stroke:var(--line);stroke-width:3.2;stroke-linecap:round;transition:stroke .16s}
+#kreis line.an{stroke:var(--flag)}
+#kreis .mitte{fill:var(--card);stroke:var(--line);stroke-width:1}
+#kreis #kugel{fill:var(--flag);stroke:var(--card);stroke-width:1.5}
+#kreis text{font:700 15px var(--head);fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.aktion{position:sticky;bottom:0;z-index:2;display:flex;flex-direction:column;gap:8px;padding:16px 0 calc(20px + env(safe-area-inset-bottom));
+  background:linear-gradient(to bottom,transparent,var(--paper) 24px)}
+.aktion:empty{display:none}
+.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 19px var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);min-height:52px;text-shadow:none}
 .btn.alt{background:var(--card);color:var(--ink);border:1.5px solid var(--feld)}
-.btn:disabled{background:var(--line);color:var(--muted);cursor:default}
+.btn:active{filter:brightness(.93)}
 :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
-.link{background:none;border:0;padding:12px 8px;min-height:48px;font:600 15px var(--body);color:var(--muted);text-decoration:underline;cursor:pointer}
-
-.balken{height:6px;border-radius:3px;background:var(--line);margin-top:12px;overflow:hidden}
-.balken i{display:block;height:100%;width:0;background:var(--flag);transition:width .3s}
-.bilanz{display:flex;gap:6px;margin-top:12px}
-.bilanz div{flex:1;border-radius:10px;padding:8px 4px;text-align:center;font-size:13px;line-height:1.2}
-.bilanz b{display:block;font:700 26px var(--head);line-height:1.1}
-.bilanz .ok{background:var(--ok-bg);color:var(--ok)}
-.bilanz .warn{background:var(--warn-bg);color:var(--warn)}
-.bilanz .err{background:var(--err-bg);color:var(--err)}
-.bilanz .offen{background:var(--paper);color:var(--muted);border:1px solid var(--line)}
-
-.kopf{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.kopf span{font-size:14px;color:var(--muted)}
-.liste{list-style:none;margin:10px 0 0;padding:0}
-.liste li{border-top:1px solid var(--line);padding:10px 0}
-.liste li:last-child{padding-bottom:0}
-.zeile{display:flex;gap:10px;align-items:flex-start;width:100%;background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;min-height:44px}
+.txt{min-height:48px;border:0;background:none;font:600 17px var(--body);color:var(--muted);cursor:pointer;text-shadow:none}
+.paar{display:flex;gap:8px}.paar .btn{flex:1}
+.frage{text-align:center;font:700 19px var(--head);margin:0}
+/* Liste des automatischen Teils und das Ergebnis am Ende */
+.liste{list-style:none;padding:0;margin:8px 0 0}
+.liste li{border-bottom:1px solid var(--line)}
+.zeile{display:flex;align-items:center;gap:12px;min-height:44px;width:100%;background:none;border:0;padding:4px 0;font:inherit;color:inherit;text-align:left}
 button.zeile{cursor:pointer}
-.t{flex:1;min-width:0}
-.t b{font-weight:600;display:block}
-.t span{display:block;font-size:14px;color:var(--muted)}
-.wert{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right;max-width:52%;overflow-wrap:anywhere;padding-top:1px}
-li.ok .wert{color:var(--ok)}li.warn .wert{color:var(--warn)}li.err .wert{color:var(--err)}li.skip .wert,li.wartet .wert{color:var(--muted);font-weight:500}
-/* lange Werte wie die Gerätebezeichnung stehen in eigener Zeile unter dem Titel */
-.t .wert.lang{display:block;max-width:none;text-align:left;margin-top:2px;font-size:15px}
-li.ok .t .wert.lang{color:var(--ok)}li.warn .t .wert.lang{color:var(--warn)}li.err .t .wert.lang{color:var(--err)}
-.pfeil{flex:none;width:10px;height:10px;margin:8px 2px 0 0;border-right:2px solid var(--feld);border-bottom:2px solid var(--feld);transform:rotate(45deg);transition:transform .16s}
-[aria-expanded="true"] .pfeil{transform:rotate(225deg);margin-top:12px}
-
-/* Status mit eigener Form, nicht nur Farbe: Haken, Ausrufezeichen im Quadrat, Kreuz, Strich */
-.z{flex:none;width:20px;height:20px;margin-top:3px;border-radius:50%;display:grid;place-items:center;font:700 13px/1 var(--body);color:var(--card);border:2px solid var(--feld)}
-li.ok .z{background:var(--ok);border-color:var(--ok)} li.ok .z::before{content:"\2713"}
-li.warn .z{background:var(--warn);border-color:var(--warn);border-radius:4px} li.warn .z::before{content:"!"}
-li.err .z{background:var(--err);border-color:var(--err)} li.err .z::before{content:"\2715"}
-li.skip .z::before{content:"";width:8px;height:2px;background:var(--feld)}
-li.dran .z,li.frage .z{background:var(--flag);border-color:var(--flag)}
-li.laeuft .z{border-color:var(--flag);border-top-color:transparent;animation:dreh .7s linear infinite}
+.zeile .t{flex:1;min-width:0}
+.zeile .w{font-size:15px;color:var(--muted);text-align:right;max-width:50%;overflow-wrap:anywhere}
+.ic{width:22px;height:22px;flex:none;display:grid;place-items:center}
+.dreh{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--flag);animation:dreh .8s linear infinite}
 @keyframes dreh{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){li.laeuft .z{animation:none;background:var(--flag)}.balken i,.pfeil{transition:none}}
-
-.mehr{margin:8px 0 0 30px;font-size:14px;display:grid;grid-template-columns:auto 1fr;gap:2px 12px}
-.mehr .grund{grid-column:1/-1;color:var(--ink);margin-bottom:4px}
+@media (prefers-reduced-motion:reduce){.dreh{animation:none;border-color:var(--flag)}.inhalt{animation:none}.fort i,#kreis line{transition:none}}
+.mehr{margin:0 0 10px 34px;font-size:14px;display:grid;grid-template-columns:auto 1fr;gap:2px 12px}
+.mehr .grund{grid-column:1/-1;margin-bottom:4px}
 .mehr dt{color:var(--muted)}.mehr dd{margin:0;text-align:right;overflow-wrap:anywhere}
-.nochmal{margin:8px 0 0 30px}
-.nochmal .btn{display:inline-block;width:auto;font-size:15px;padding:8px 14px}
-.feld{margin-left:30px}
-
-/* der eine offene Schritt */
-li.dran,li.laeuft.hand,li.frage{background:var(--dran-bg);margin:0 -16px;padding:12px 16px;border-top-color:transparent}
-.schritt{margin:8px 0 0 30px}
-.schritt p{margin:0 0 10px;font-size:16px}
-.schritt .live{font:700 26px var(--head);line-height:1.1;margin:0 0 10px;min-height:29px}
-.reihe{display:flex;gap:10px;align-items:center}
-.reihe .btn{flex:1}
-.unten{display:flex;gap:10px;margin-top:14px}
-/* Speicherstatus: fest am unteren Rand, damit man ihn bei jedem Schritt sieht */
-#speicher{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px 16px calc(10px + env(safe-area-inset-bottom));font-size:15px;
-  background:var(--ok-bg);color:var(--ok);border-top:1px solid var(--line);text-align:center}
-#speicher.info{background:var(--info-bg);color:var(--ink)}
-#speicher.err{background:var(--err-bg);color:var(--err);font-weight:600}
-#speicher .btn{background:var(--err);color:var(--card);margin-top:8px;padding:10px 16px}
-.kennung{font:600 15px ui-monospace,Menlo,Consolas,monospace;white-space:nowrap}
+/* Schritt läuft: Stand in einer Karte, damit man ihn beim Gehen liest */
+.lauf{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);border:1px solid var(--line);border-radius:14px;font-size:17px;text-shadow:none}
+.karte{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:12px;text-shadow:none}
+.karte.warn{background:var(--warn-bg);border-color:transparent;color:var(--warn)}
+.karte.err{background:var(--err-bg);border-color:transparent;color:var(--err)}
+.karte h3{font:700 19px var(--head);margin:0 0 4px}
+.karte p{font-size:15px!important;margin:0!important}
+.kennung{font:700 17px var(--head);letter-spacing:.04em;white-space:nowrap}
+details{margin-top:12px}
+summary{min-height:48px;display:flex;align-items:center;font:600 17px var(--body);color:var(--muted);cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"";width:8px;height:8px;border-right:2px solid;border-bottom:2px solid;transform:rotate(45deg);margin:-4px 0 0 10px}
+details[open] summary::after{transform:rotate(-135deg);margin-top:4px}
+#feld img{max-width:160px;border-radius:8px;margin-top:4px}
+/* Speicherstand für Screenreader und Prüfstand; zu sehen ist er am Ende */
+#speicher{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
@@ -214,34 +210,15 @@ li.dran,li.laeuft.hand,li.frage{background:var(--dran-bg);margin:0 -16px;padding
   <path class="p" d="M60 661L67 673L53 673Z"/>
 </svg></div>
 <main>
-  <div class="brand">
+  <div class="top">
     <svg class="flag" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><g id="nadel"><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></g></svg>
-    <div><h1>Geräte-Test</h1><div class="small muted" id="unter"></div></div>
+    <h1>Geräte-Test</h1><span class="zahl" id="zahl"></span>
   </div>
-  <p>Prüft, was eine Web-App auf diesem Gerät nutzen kann. Erlaube Standort und Bewegung, wenn das Handy fragt.</p>
-
-  <div class="panel">
-    <button class="btn" id="start">Alles testen</button>
-    <div class="balken" id="balken" hidden><i></i></div>
-    <div class="bilanz" id="bilanz" hidden>
-      <div class="ok"><b id="nOk">0</b>geht</div>
-      <div class="warn"><b id="nWarn">0</b>einge&shy;schränkt</div>
-      <div class="err"><b id="nErr">0</b>geht nicht</div>
-      <div class="offen"><b id="nOffen">0</b>offen</div>
-    </div>
-  </div>
-
-  <div class="panel"><div class="kopf"><h2>Von allein</h2><span id="k-auto"></span></div><ul class="liste" id="auto" hidden></ul></div>
-  <div class="panel"><div class="kopf"><h2>Mit deiner Hand</h2><span id="k-hand"></span></div><ul class="liste" id="hand" hidden></ul></div>
-  <div class="panel"><div class="kopf"><h2>Neue Funktionen</h2><span id="k-neu"></span></div>
-    <p class="small muted" id="neu-hinweis" hidden>Wird noch nicht gebraucht. Hier wird geklärt, ob es auf diesem Gerät gehen würde.</p><ul class="liste" id="neu" hidden></ul></div>
-
-  <div class="unten" id="unten" hidden>
-    <button class="btn alt" id="kopie">Bericht kopieren</button>
-    <button class="btn alt" id="neuLauf">Noch ein Lauf</button>
-  </div>
+  <div class="fort" aria-hidden="true"><i id="fort"></i></div>
+  <div class="inhalt" id="inhalt"></div>
+  <div class="aktion" id="aktion"></div>
 </main>
-<div id="speicher" role="status" aria-live="polite" hidden></div>
+<div id="speicher" role="status" aria-live="polite"></div>
 
 <script src="config.js"></script>
 <script src="geraete-tests.js"></script>
@@ -294,7 +271,7 @@ const sensor = {
       this.faecher.add(Math.floor(this.richtung / 10) % 36);
       // Nadel im Kopf nachführen, auf dem kürzesten Weg (von 359° auf 1° sind es 2°, nicht 358°)
       this.dreh += ((-this.richtung - this.dreh) % 360 + 540) % 360 - 180;
-      if (!this.nTick) { this.nTick = true; requestAnimationFrame(() => { this.nTick = false; $("#nadel").style.transform = `rotate(${this.dreh.toFixed(1)}deg)`; }); }
+      if (!this.nTick) { this.nTick = true; requestAnimationFrame(() => { this.nTick = false; $("#nadel").style.transform = `rotate(${this.dreh.toFixed(1)}deg)`; kreisMalen(); }); }
     }
     if (e.beta == null || e.gamma == null) return;
     this.beta = e.beta; this.gamma = e.gamma;
@@ -328,93 +305,141 @@ sensor.start();
 const zufall = n => { const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", z = crypto.getRandomValues(new Uint8Array(n)); return [...z].map(b => a[b % a.length]).join(""); };
 const lauf = { key: zufall(12), begonnen: null, autoFertig: false };
 const basis = { rpc, cfg, sensor, bewegung: "noch nicht gefragt", wach: { sperre: null }, warte: ms => new Promise(r => setTimeout(r, ms)) };
-const Z = SUITE.tests.map(t => ({ t, selbst: t.block === "auto" || !!t.selbst, st: "wartet", erg: null, vorl: null, auf: false, status: "", nr: 0 }));
-const HAND = Z.filter(z => !z.selbst);
-let aktiv = null;   // der Hand-Schritt, der gerade läuft oder auf Ja/Nein wartet; solange ist kein anderer startbar
+const Z = SUITE.tests.map(t => ({ t, selbst: t.block === "auto" || !!t.selbst, st: "wartet", erg: null, vorl: null, status: "", nr: 0, auf: false }));
+const SELBST = Z.filter(z => z.selbst), HAND = Z.filter(z => !z.selbst);
+// seite: start, auto, hand, ende. i: der Hand-Schritt, der gerade dran ist
+const S = { seite: "start", i: 0, sp: null };
 
-$("#unter").textContent = `Suite ${SUITE.version} · ${Z.length} Schritte`;
-
-// In jedem Block stehen die selbstlaufenden Schritte oben, die mit der Hand darunter
-for (const z of [...Z].sort((a, b) => b.selbst - a.selbst)) {
-  const li = document.createElement("li");
-  li.innerHTML = `<div class="oben"></div><div class="schritt" hidden></div><div class="feld"></div><div class="unter"></div>`;
-  $("#" + z.t.block).appendChild(li);
-  z.li = li; z.feld = li.querySelector(".feld");
-  li.onclick = e => klick(z, e.target.closest("[data-was]")?.dataset.was);
-  mal(z);
+// Wach halten ohne Tipp: schon beim Laden fragen, bevor irgendwer getippt hat. Das Ergebnis liest der Schritt "wachhalten".
+if (navigator.wakeLock) {
+  basis.wach.vorabLage = { "Tipp gilt noch (userActivation)": navigator.userActivation ? (navigator.userActivation.isActive ? "ja" : "nein") : "keine Angabe", "Seite sichtbar": document.visibilityState };
+  basis.wach.vorab = navigator.wakeLock.request("screen").then(l => ({ l }), e => ({ e }));
 }
-bilanz();
 
-function naechster() { return HAND.find(z => z.st === "wartet"); }
+const ICON = {
+  start: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 5h4M9.5 12.5l2 2 3.5-4"/></svg>',
+  bildschirm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.4" fill="var(--flag)" stroke="none"/></svg>',
+  "app-wechsel": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><path d="M14 17.25h6M17.5 14.5l2.75 2.75-2.75 2.75" stroke="var(--flag)"/></svg>',
+  "kompass-pause": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="12,5.5 14.2,12 12,11 9.8,12" fill="var(--flag)" stroke="none"/><path d="M12 15v3"/></svg>',
+  kamera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2.5h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/><circle cx="12" cy="13" r="1.2" fill="var(--flag)" stroke="none"/></svg>',
+  vibration: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3.5" width="8" height="17" rx="2"/><path d="M4.5 8v8M2 10v4M19.5 8v8M22 10v4" stroke="var(--flag)"/></svg>',
+  benachrichtigung: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><circle cx="17.5" cy="6.5" r="2.2" fill="var(--flag)" stroke="none"/></svg>',
+  allgemein: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 5h4"/><circle cx="12" cy="13" r="2" fill="var(--flag)" stroke="none"/></svg>',
+  fertig: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>'
+};
+// Handy drehen: 36 Striche, einer je 10°, wie die Fächer in sensor.faecher. Die Kugel steht dort, wohin das Handy zeigt.
+const KREIS = (() => {
+  let striche = "";
+  for (let k = 0; k < 36; k++) {
+    const w = (k * 10 + 5) * Math.PI / 180, sx = Math.sin(w), sy = -Math.cos(w);
+    striche += `<line data-f="${k}" x1="${(50 + 41 * sx).toFixed(1)}" y1="${(50 + 41 * sy).toFixed(1)}" x2="${(50 + 47 * sx).toFixed(1)}" y2="${(50 + 47 * sy).toFixed(1)}"/>`;
+  }
+  return `<svg id="kreis" viewBox="0 0 100 100" aria-hidden="true">${striche}<circle class="mitte" cx="50" cy="50" r="22"/><text id="kreiszahl" x="50" y="50"></text><circle id="kugel" cx="50" cy="15" r="5.5"/></svg>`;
+})();
+function kreisMalen() {
+  const k = $("#kreis"); if (!k) return;
+  const z = HAND[S.i], laeuft = z && z.st === "laeuft", r = sensor.richtung;
+  const kugel = k.querySelector("#kugel");
+  kugel.style.display = r == null || sensor.quelle === "relativ" ? "none" : "";
+  if (r != null) { const w = r * Math.PI / 180; kugel.setAttribute("cx", (50 + 34 * Math.sin(w)).toFixed(1)); kugel.setAttribute("cy", (50 - 34 * Math.cos(w)).toFixed(1)); }
+  // Orange erst, wenn der Schritt läuft: vorher zeigt die Kugel nur, dass sie mitgeht
+  k.querySelectorAll("line").forEach(l => l.classList.toggle("an", laeuft && sensor.faecher.has(+l.dataset.f)));
+  const n = laeuft ? sensor.faecher.size : 0;
+  k.querySelector("#kreiszahl").textContent = laeuft ? Math.min(100, Math.round(n / 30 * 100)) + " %" : "";
+}
+// Status mit eigener Form, nicht nur Farbe: Haken im Kreis, Ausrufezeichen im Quadrat, Kreuz, Strich
+const ZEICHEN = {
+  ok: '<svg viewBox="0 0 24 24" width="22" height="22" role="img" aria-label="geht"><circle cx="12" cy="12" r="10" fill="var(--ok)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="var(--card)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn: '<svg viewBox="0 0 24 24" width="22" height="22" role="img" aria-label="eingeschränkt"><rect x="2" y="2" width="20" height="20" rx="4" fill="var(--warn)"/><path d="M12 7v6M12 16.5v.5" stroke="var(--card)" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  err: '<svg viewBox="0 0 24 24" width="22" height="22" role="img" aria-label="geht nicht"><circle cx="12" cy="12" r="10" fill="var(--err)"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="var(--card)" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  skip: '<svg viewBox="0 0 24 24" width="22" height="22" role="img" aria-label="übersprungen"><circle cx="12" cy="12" r="9.5" fill="none" stroke="var(--feld)" stroke-width="2"/><path d="M8 12h8" stroke="var(--feld)" stroke-width="2" stroke-linecap="round"/></svg>'
+};
 const kommaZahl = v => typeof v === "number" ? String(v).replace(".", ",") : String(v);
-// Der Grund für Gelb oder Rot steht in den Messwerten unter einem dieser Namen; er kommt als Klartext nach oben
+// Zahl mit Einheit bricht nie um ("20 Sekunden")
+const nb = t => esc(t).replace(/(\d+) (Sekunden|Minuten|s|m)\b/g, '<span class="nb">$1 $2</span>');
+const anleitung = h => Array.isArray(h) ? `<ol class="teil">${h.map(x => `<li>${nb(x)}</li>`).join("")}</ol>` : h ? `<p>${nb(h)}</p>` : "";
+// Der Grund für Gelb oder Rot steht in den Messwerten unter einem dieser Namen
 const GRUND = ["Hinweis", "Häufiger Grund", "Brauchbar wäre", "Fehler", "Fehler im Test", "Zeitgrenze"];
 
-function mal(z) {
-  const li = z.li, fertigZ = z.st === "fertig";
-  const dran = lauf.autoFertig && !z.selbst && z.st === "wartet" && !aktiv && z === naechster();
-  li.className = fertigZ ? z.erg.art : z.st === "laeuft" ? "laeuft" + (z.selbst ? "" : " hand") : z.st === "frage" ? "frage" : dran ? "dran" : "wartet";
-  const wert = fertigZ ? z.erg.wert : z.st === "laeuft" && z.selbst ? (z.status || "prüft") : !z.selbst && lauf.autoFertig && z.st === "wartet" && !dran ? "offen" : "";
-  const lang = wert.length > 18, tag = fertigZ ? "button" : "div";
-  li.querySelector(".oben").innerHTML = `<${tag} class="zeile" ${fertigZ ? `aria-expanded="${z.auf}" data-was="auf"` : ""}><i class="z" aria-hidden="true"></i>
-    <span class="t"><b>${esc(z.t.titel)}</b><span>${esc(z.t.bezug)}</span>${lang ? `<span class="wert lang">${esc(wert)}</span>` : ""}</span>${lang ? "" : `<span class="wert">${esc(wert)}</span>`}${fertigZ ? '<i class="pfeil" aria-hidden="true"></i>' : ""}</${tag}>`;
-  const s = li.querySelector(".schritt");
-  s.hidden = !(dran || (z.st === "laeuft" && !z.selbst) || z.st === "frage");
-  if (s.hidden) s.innerHTML = '';
-  else if (dran) s.innerHTML = `<p>${esc(z.t.hand)}</p><div class="reihe"><button class="btn" data-was="los">Los</button><button class="link" data-was="weg">Überspringen</button></div>`;
-  else if (z.st === "laeuft" && !z.selbst) s.innerHTML = `<p>${esc(z.t.hand)}</p><div class="live" aria-live="polite">${esc(z.status)}</div><div class="reihe"><button class="btn alt" data-was="ab">Abbrechen</button></div>`;
-  else if (z.st === "frage") s.innerHTML = `<p>${esc(z.t.frage)}</p><div class="reihe"><button class="btn" data-was="ja">Ja</button><button class="btn alt" data-was="nein">Nein</button></div>`;
-  let u = "";
-  if (fertigZ && z.auf) {
-    const m = z.erg.mess || {}, g = GRUND.find(k => k in m);
-    u += `<dl class="mehr">${g ? `<div class="grund">${g === "Hinweis" ? "" : esc(g) + ": "}${esc(m[g])}</div>` : ""}`
-      + Object.keys(m).filter(k => k !== g).map(k => `<dt>${esc(k)}</dt><dd>${esc(kommaZahl(m[k]))}</dd>`).join("")
-      + (z.erg.dauerMs != null ? `<dt>Dauer</dt><dd>${(z.erg.dauerMs / 1000).toFixed(1).replace(".", ",")} s</dd>` : "") + `</dl>`;
+function kopf(zahl, anteil) {
+  $("#zahl").textContent = zahl;
+  $("#fort").style.width = Math.round(anteil * 100) + "%";
+}
+function zeichne() {
+  const inh = $("#inhalt"), akt = $("#aktion");
+  // die Einblendung nur bei einem neuen Bildschirm, nicht bei jeder Statusänderung
+  const schluessel = S.seite + (S.seite === "hand" ? S.i : "");
+  if (inh.dataset.s !== schluessel) { inh.dataset.s = schluessel; inh.style.animation = "none"; void inh.offsetWidth; inh.style.animation = ""; }
+  if (S.seite === "start") {
+    kopf("", 0);
+    inh.innerHTML = `<div class="bild">${ICON.start}</div><h2>Was kann dieses Handy?</h2>
+      <p>Geprüft wird, was eine Web-App auf diesem Handy nutzen kann. Dauer: etwa fünf Minuten.</p>
+      <p class="klein">Erlaube Standort, Bewegung und Kamera, wenn das Handy fragt. Fotos werden nicht gespeichert.</p>`;
+    akt.innerHTML = `<button class="btn" id="start" data-was="start">Test starten</button>`;
+  } else if (S.seite === "auto") {
+    const fertigN = SELBST.filter(z => z.st === "fertig").length;
+    kopf("Automatisch", 0.3 * fertigN / SELBST.length);
+    inh.innerHTML = `<h2>Prüfung läuft</h2><p class="klein">Einen Moment, dafür ist nichts zu tun.</p>
+      <ul class="liste">${SELBST.map(z => `<li><div class="zeile"><span class="ic">${z.st === "fertig" ? ZEICHEN[z.erg.art] : z.st === "laeuft" ? '<i class="dreh"></i>' : ""}</span><span class="t">${esc(z.t.titel)}</span></div></li>`).join("")}</ul>`;
+    akt.innerHTML = "";
+  } else if (S.seite === "hand") {
+    const z = HAND[S.i];
+    kopf(`Schritt ${S.i + 1} von ${HAND.length}`, 0.3 + 0.7 * S.i / HAND.length);
+    const bild = z.t.id === "kompass-drehen" ? KREIS : `<div class="bild">${ICON[z.t.id] || ICON.allgemein}</div>`;
+    inh.innerHTML = `${bild}<h2>${esc(z.t.kopf || z.t.titel)}</h2>${anleitung(z.t.hand)}`;
+    inh.appendChild(z.feld);   // Vorschau des Schritts (Foto) bleibt über das Neuzeichnen erhalten
+    akt.innerHTML = z.st === "laeuft"
+      ? `<div class="lauf"><i class="dreh"></i><span id="live" aria-live="polite">${esc(z.status || "Läuft …")}</span></div><button class="txt" data-was="ab">Abbrechen</button>`
+      : z.st === "frage"
+        ? `<p class="frage">${esc(z.t.frage)}</p><div class="paar"><button class="btn alt" data-was="nein">Nein</button><button class="btn" data-was="ja">Ja</button></div>`
+        : `<button class="btn" data-was="los">Los</button><button class="txt" data-was="weg">Überspringen</button>`;
+    kreisMalen();
+  } else {
+    kopf("Fertig", 1);
+    const weg = HAND.filter(z => z.erg && z.erg.art === "skip").length;
+    // Karten nur für das, was man selbst einstellen kann
+    const st = Z.find(z => z.t.id === "standort");
+    const selbstHilfe = st && st.erg && st.erg.wert === "nur ungefähr"
+      ? `<div class="karte warn"><h3>Eine Sache kannst du einstellen</h3><p>${esc(st.erg.mess["Hinweis"])}</p></div>` : "";
+    inh.innerHTML = `<div class="bild fertig">${ICON.fertig}</div><h2>Fertig, danke!</h2><div id="ende-sp"></div>${selbstHilfe}
+      ${weg ? `<p class="klein" style="margin-top:12px">${weg === 1 ? "Ein Schritt" : weg + " Schritte"} übersprungen. Kein Problem.</p>` : ""}
+      <details><summary>Ergebnis ansehen</summary><ul class="liste">${Z.map((z, k) => ergZeile(z, k)).join("")}</ul>
+        <button class="txt" data-was="neu">Neuer Lauf</button></details>`;
+    speicherZeigen();
   }
-  if (fertigZ && !z.selbst && (z.auf || z.erg.art === "err" || z.erg.art === "skip")) u += `<div class="nochmal"><button class="btn alt" data-was="nochmal">Noch mal</button></div>`;
-  li.querySelector(".unter").innerHTML = u;
 }
-function alle() { Z.forEach(mal); bilanz(); knopf(); }
-
-function bilanz() {
-  const n = a => Z.filter(z => z.erg && z.erg.art === a).length;
-  $("#nOk").textContent = n("ok"); $("#nWarn").textContent = n("warn"); $("#nErr").textContent = n("err");
-  $("#nOffen").textContent = Z.filter(z => !z.erg || z.erg.art === "skip").length;
-  const zahl = k => k === 1 ? "ein Schritt" : k + " Schritte";
-  for (const b of ["auto", "hand", "neu"]) {
-    const im = Z.filter(z => z.t.block === b), offen = im.filter(z => z.st !== "fertig").length;
-    $("#k-" + b).textContent = !lauf.begonnen ? zahl(im.length) + (b === "auto" ? "" : ", danach") : offen ? offen + " offen" : "fertig";
-  }
-  return { ok: n("ok"), warn: n("warn"), err: n("err"), skip: n("skip") };
+function ergZeile(z, k) {
+  const e = z.erg || { art: "skip", wert: "nicht gelaufen", mess: {} }, m = e.mess || {}, g = GRUND.find(x => x in m);
+  const mehr = z.auf ? `<dl class="mehr">${g ? `<div class="grund">${g === "Hinweis" ? "" : esc(g) + ": "}${esc(m[g])}</div>` : ""}`
+    + Object.keys(m).filter(x => x !== g).map(x => `<dt>${esc(x)}</dt><dd>${esc(kommaZahl(m[x]))}</dd>`).join("")
+    + (e.dauerMs != null ? `<dt>Dauer</dt><dd>${(e.dauerMs / 1000).toFixed(1).replace(".", ",")} s</dd>` : "") + `</dl>` : "";
+  return `<li><button class="zeile" data-was="auf" data-k="${k}" aria-expanded="${z.auf}"><span class="ic">${ZEICHEN[e.art] || ZEICHEN.skip}</span><span class="t">${esc(z.t.titel)}</span><span class="w">${esc(e.wert)}</span></button>${mehr}</li>`;
 }
 
-// Nach dem automatischen Teil führt der große Knopf zum nächsten offenen Schritt
-function knopf() {
-  if (!lauf.autoFertig) return;
-  const offen = HAND.filter(z => z.st !== "fertig").length, b = $("#start");
-  b.disabled = false;
-  b.textContent = offen ? `Weiter: ${offen === 1 ? "ein Schritt" : offen + " Schritte"} von Hand` : "Alles erledigt, Bericht kopieren";
-}
-
-function klick(z, was) {
-  if (was === "auf") { z.auf = !z.auf; mal(z); }
-  else if (was === "los") fuehre(z);          // ohne await davor: Kamera und Mitteilungen brauchen den Fingertipp
-  else if (was === "weg") fertig(z, { art: "skip", wert: "übersprungen", mess: {} });
-  else if (was === "ab") { z.nr++; fertig(z, { art: "skip", wert: "abgebrochen", mess: {} }); }
-  else if (was === "ja") fertig(z, z.vorl);
-  else if (was === "nein") fertig(z, { ...z.vorl, art: "err", wert: "nicht wahrgenommen" });
-  else if (was === "nochmal" && !aktiv) { z.st = "wartet"; z.erg = null; z.auf = false; HAND.splice(HAND.indexOf(z), 1); HAND.unshift(z); alle(); }
-}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-was]"); if (!b) return;
+  const was = b.dataset.was, z = HAND[S.i];
+  if (was === "start") return starten();
+  if (was === "los") return fuehre(z);              // ohne await davor: Kamera und Mitteilungen brauchen den Fingertipp
+  if (was === "weg") return fertig(z, { art: "skip", wert: "übersprungen", mess: {} });
+  if (was === "ab") { z.nr++; return fertig(z, { art: "skip", wert: "abgebrochen", mess: {} }); }
+  if (was === "ja") return fertig(z, z.vorl);
+  if (was === "nein") return fertig(z, { ...z.vorl, art: "err", wert: "nicht wahrgenommen" });
+  if (was === "auf") { const y = Z[+b.dataset.k]; y.auf = !y.auf; b.closest("li").outerHTML = ergZeile(y, +b.dataset.k); return; }
+  if (was === "senden") { kette = kette.then(allesSenden); return; }
+  if (was === "kopie") return kopieren(b, "Bericht kopieren");
+  if (was === "neu") location.reload();
+});
 
 function fuehre(z) {
   z.st = "laeuft"; z.status = ""; z.feld.innerHTML = "";
   const nr = ++z.nr;   // ein abgebrochener Lauf darf später kein Ergebnis mehr abliefern
-  if (!z.selbst) { aktiv = z; alle(); } else mal(z);
+  zeichne();
   const t0 = performance.now(), grenze = (z.t.grenze || (z.t.hand ? 100 : 30)) * 1000;
   const ctx = { ...basis, feld: z.feld, status: s => {
     if (z.st !== "laeuft" || z.nr !== nr) return;
     z.status = s;
-    const ziel = z.li.querySelector(z.selbst ? ".wert" : ".live"); if (ziel) ziel.textContent = s;
+    if (!z.selbst && HAND[S.i] === z) { const el = $("#live"); if (el) el.textContent = s; }
   } };
   let versprechen;
   try { versprechen = Promise.resolve(z.t.lauf(ctx)); } catch (e) { versprechen = Promise.reject(e); }
@@ -424,18 +449,48 @@ function fuehre(z) {
     .then(erg => {
       if (z.st !== "laeuft" || z.nr !== nr) return;
       erg.dauerMs = Math.round(performance.now() - t0);
-      if (z.t.frage && erg.art === "ok") { z.vorl = erg; z.st = "frage"; mal(z); }
+      if (z.t.frage && erg.art === "ok") { z.vorl = erg; z.st = "frage"; zeichne(); }
       else fertig(z, erg);
     });
 }
 
 function fertig(z, erg) {
-  z.erg = erg; z.st = "fertig"; z.auf = erg.art === "warn" || erg.art === "err";
-  if (aktiv === z) aktiv = null;
-  if (z.selbst && !lauf.autoFertig) { mal(z); bilanz(); return; }
-  alle(); speichern();
-  const n = naechster();
-  if (!z.selbst && n) n.li.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  z.erg = erg; z.st = "fertig";
+  if (z.selbst) { if (S.seite === "auto") zeichne(); return; }
+  if (S.i < HAND.length - 1) S.i++; else S.seite = "ende";
+  zeichne(); speichern();
+  window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+}
+
+function bilanz() {
+  const n = a => Z.filter(z => z.erg && z.erg.art === a).length;
+  return { ok: n("ok"), warn: n("warn"), err: n("err"), skip: n("skip") };
+}
+
+/* ---------- Start: alles, was einen Fingertipp braucht, steht vor dem ersten await ---------- */
+function starten() {
+  if (S.seite !== "start") return;
+  // Wach halten mit Tipp: die Anfrage noch im Tipp stellen, der Schritt "wachhalten-tipp" wertet sie aus
+  if (navigator.wakeLock) {
+    basis.wach.tippAktiv = navigator.userActivation ? (navigator.userActivation.isActive ? "ja" : "nein") : "keine Angabe";
+    basis.wach.tippAnfrage = navigator.wakeLock.request("screen");
+    basis.wach.tippAnfrage.catch(() => {});
+  }
+  // Die iOS-Nachfrage nach Bewegung braucht den Tipp ebenfalls
+  const bewegung = brauchtNachfrage ? DeviceOrientationEvent.requestPermission() : null;
+  S.seite = "auto"; zeichne();
+  automatisch(bewegung);
+}
+async function automatisch(bewegung) {
+  if (bewegung) { try { basis.bewegung = await bewegung; } catch (e) { basis.bewegung = "Fehler: " + e.message; } }
+  else basis.bewegung = window.DeviceOrientationEvent ? "nicht nötig" : "nicht vorhanden";
+  sensor.start(true);
+  lauf.begonnen = new Date().toISOString();
+  for (const z of SELBST) await fuehre(z);
+  lauf.autoFertig = true;
+  S.seite = HAND.length ? "hand" : "ende"; S.i = 0;
+  zeichne();
+  await speichern();
 }
 
 /* ---------- Speichern ---------- */
@@ -463,12 +518,27 @@ function offene() {
   } catch { /* privater Modus: nichts abgelegt */ }
   return aus;
 }
-function status(art, html) {
-  const s = $("#speicher");
-  s.hidden = false; s.className = art; s.innerHTML = html;
-  document.body.style.paddingBottom = s.offsetHeight + "px";
+// Stand des Speicherns: unsichtbar für Screenreader und Prüfstand in #speicher, zu sehen am Ende
+function status(art, text, sp) {
+  const el = $("#speicher"); el.className = art; el.textContent = text;
+  S.sp = { art, ...sp };
+  speicherZeigen();
 }
-const uhr = () => new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+function speicherZeigen() {
+  if (S.seite !== "ende") return;
+  const box = $("#ende-sp"), akt = $("#aktion"); if (!box) return;
+  const sp = S.sp || { art: "info" };
+  if (sp.art === "ok") {
+    box.innerHTML = `<p>Das Ergebnis ist gespeichert als Lauf <span class="kennung">${lauf.key.slice(0, 4)}</span>. Die Seite kann jetzt zu.</p>`;
+    akt.innerHTML = "";
+  } else if (sp.art === "err") {
+    box.innerHTML = `<div class="karte err"><h3>Noch nicht gespeichert</h3><p>${esc(sp.grund)}. Das Ergebnis bleibt auf dem Handy und geht beim nächsten Öffnen der Seite von selbst raus. Oder gleich erneut senden, sobald wieder Netz da ist.</p></div>`;
+    akt.innerHTML = `<button class="btn" data-was="senden">Erneut senden</button><button class="txt" data-was="kopie">Bericht kopieren</button>`;
+  } else {
+    box.innerHTML = `<p>Das Ergebnis wird gespeichert …</p>`;
+    akt.innerHTML = "";
+  }
+}
 let kette = Promise.resolve();
 function speichern() {
   LS.setItem(OFFEN + lauf.key, JSON.stringify(payload()));
@@ -480,61 +550,19 @@ async function allesSenden() {
   const liste = offene();
   if (!liste.length) return;
   status("info", "Sende …");
-  let fehler = null, gesendet = 0;
+  let fehler = null;
   for (const o of liste) {
     try {
       await rpc("device_test_save", { p_key: o.key, p_payload: o.payload });
       LS.removeItem(OFFEN + o.key);
       if (o.key !== lauf.key) LS.removeItem("sj.gt.offen");
-      gesendet++;
     } catch (e) { fehler = e; }
   }
-  if (!fehler) {
-    const frueher = liste.filter(o => o.key !== lauf.key).length;
-    const dieser = liste.some(o => o.key === lauf.key);
-    status("ok", (dieser ? `Gespeichert um ${uhr()} als Lauf <span class="kennung">${lauf.key.slice(0, 4)}</span>` : "Gespeichert")
-      + (frueher ? `, dazu ${frueher === 1 ? "ein früherer Lauf" : frueher + " frühere Läufe"}` : ""));
-  } else {
-    const n = liste.length - gesendet;
-    status("err", `Nicht gespeichert: ${esc(fehler.message)}. ${n === 1 ? "Der Lauf liegt" : n + " Läufe liegen"} auf diesem Gerät.<button class="btn" id="nochmal">Erneut senden</button>`);
-    $("#nochmal").onclick = () => { kette = kette.then(allesSenden); };
-  }
+  if (!fehler) status("ok", "Gespeichert als Lauf " + lauf.key.slice(0, 4));
+  else status("err", "Nicht gespeichert: " + fehler.message, { grund: fehler.message === "keine Verbindung" ? "Gerade keine Verbindung" : "Der Server hat nicht angenommen (" + fehler.message + ")" });
 }
 // Hängt von früher noch etwas auf dem Gerät, gleich nachsenden
 if (offene().length) kette = kette.then(allesSenden);
-
-/* ---------- der eine Knopf ---------- */
-$("#start").onclick = async () => {
-  const b = $("#start");
-  if (lauf.autoFertig) {   // führt zum nächsten offenen Schritt; ist keiner mehr offen, kopiert er den Bericht
-    const n = naechster();
-    if (n) n.li.scrollIntoView({ block: "center", behavior: "smooth" }); else if (!aktiv) kopieren(b, "Alles erledigt, Bericht kopieren");
-    return;
-  }
-  b.disabled = true; b.textContent = "Frage nach Bewegung …";
-  $("#balken").hidden = false; $("#bilanz").hidden = false; $("#auto").hidden = false;
-  // Die iOS-Nachfrage nach Bewegung muss als Erstes im Fingertipp stehen
-  if (brauchtNachfrage) {
-    try { basis.bewegung = await DeviceOrientationEvent.requestPermission(); } catch (e) { basis.bewegung = "Fehler: " + e.message; }
-  } else basis.bewegung = window.DeviceOrientationEvent ? "nicht nötig" : "nicht vorhanden";
-  sensor.start(true);
-  lauf.begonnen = new Date().toISOString();
-  const selbst = Z.filter(z => z.selbst);
-  for (const [i, z] of selbst.entries()) {
-    b.textContent = `${z.t.titel}, ${i + 1} von ${selbst.length}`;
-    if (z.t.block === "neu") { $("#neu").hidden = false; $("#neu-hinweis").hidden = false; }
-    await fuehre(z);
-    $("#balken i").style.width = ((i + 1) / selbst.length * 100) + "%";
-  }
-  lauf.autoFertig = true;
-  $("#hand").hidden = false; $("#neu").hidden = false; $("#neu-hinweis").hidden = false; $("#unten").hidden = false; $("#balken").hidden = true;
-  alle();
-  await speichern();
-};
-$("#neuLauf").onclick = () => {   // neuer Lauf, neuer Schlüssel
-  const offen = HAND.filter(z => z.st !== "fertig").length;
-  if (!offen || confirm(`Noch ${offen === 1 ? "ein Schritt" : offen + " Schritte"} offen. Trotzdem neu beginnen?`)) location.reload();
-};
 
 // Wake Lock gibt der Browser beim Wechsel in eine andere App frei; beim Zurückkommen neu holen wie die App
 document.addEventListener("visibilitychange", () => {
@@ -553,7 +581,9 @@ function kopieren(k, zurueck) {
     // ohne Zwischenablage (In-App-Browser) bleibt der Teilen-Dialog als Ausweg
     () => navigator.share ? navigator.share({ text }).catch(() => {}) : meld("Kopieren ging nicht"));
 }
-$("#kopie").onclick = () => kopieren($("#kopie"), "Bericht kopieren");
+
+for (const z of Z) z.feld = Object.assign(document.createElement("div"), { id: "feld" });
+zeichne();
 </script>
 </body>
 </html>
