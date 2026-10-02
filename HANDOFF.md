@@ -1564,3 +1564,5 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
 - „Handy einmal drehen“: die Prozentzahl in der Kreismitte dreht sich gegen
   das Handy (Bezug: Richtung beim Tipp auf „Los“, `S.kreisNull`) und bleibt so
   zur Person am Tisch ausgerichtet.
+- Suite 9 (02.10.): „Kompass nach Pause“ entfällt, sechs Hand-Schritte.
+  Ältere Läufe enthalten ihn noch.

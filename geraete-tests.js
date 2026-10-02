@@ -311,39 +311,6 @@
       }
     },
 
-    {
-      // Befund aus der App (Android): nach dem Wechsel in eine andere App zeigte der Kompass mit festem Versatz daneben.
-      // Der Schritt misst das: Richtung vor der Pause, dann stillhalten und zusehen, ob der Wert nachwandert.
-      // Wandert er bei ruhigem Handy, war der erste Wert nach der Pause falsch.
-      id: "kompass-pause", titel: "Kompass nach Pause", bezug: "stimmt die Richtung nach einem App-Wechsel?", block: "hand",
-      kopf: "Kompass nach einer Pause", grenze: 200,
-      hand: ["Tipp auf Los.", "Wechsel in eine andere App und dreh dich dort eine Vierteldrehung.", "Komm zurück und halt das Handy 20 Sekunden still."],
-      async lauf(ctx) {
-        const s = ctx.sensor;
-        if (s.richtung == null || s.quelle === "relativ") return { art: "err", wert: "kein Kompass", mess: { "Quelle": s.quelle || "keine" } };
-        const vorher = s.richtung, w = (a, b) => Math.abs(((a - b) % 360 + 540) % 360 - 180);
-        ctx.status("Jetzt wechseln und drehen");
-        const weg = await bisSichtbarWechsel(ctx, 120000);
-        const t0 = jetzt(), n0 = s.n, werte = {};
-        ctx.status("Still halten");
-        let erster = null;
-        for (const sek of [0.5, 2, 5, 10, 20]) {
-          while (jetzt() - t0 < sek * 1000) { ctx.status(`Still halten, noch ${Math.ceil(20 - (jetzt() - t0) / 1000)} s`); await ctx.warte(200); }
-          werte[sek] = s.richtung;
-          if (erster == null) erster = s.richtung;
-        }
-        const wandert = w(werte[20], erster), gedreht = w(erster, vorher);
-        const mess = { "Richtung vor der Pause": Math.round(vorher) + "°", "Weg für s": rund(weg / 1000, 1),
-          "Nach 0,5 / 2 / 5 / 10 / 20 s": [0.5, 2, 5, 10, 20].map(k => Math.round(werte[k]) + "°").join(" / "),
-          "Gegenüber vorher gedreht um": Math.round(gedreht) + "°", "Im Stillhalten nachgewandert um": Math.round(wandert) + "°",
-          "Ereignisse nach der Rückkehr": s.n - n0, "Quelle": s.quelle };
-        if (s.n === n0) return { art: "err", wert: "kommt nicht wieder", mess };
-        if (wandert > 25) { mess["Hinweis"] = "Der Kompass lag nach der Pause daneben und hat sich erst beim Stillhalten berichtigt. Nach einer Pause muss man deshalb neu einmessen."; return { art: "warn", wert: `wandert ${Math.round(wandert)}° nach`, mess }; }
-        if (gedreht < 30) { mess["Hinweis"] = "Die Richtung ist nach der Pause fast dieselbe wie vorher. Hast du dich eine Vierteldrehung gedreht? Falls ja, ist der Kompass stehen geblieben und hat sich in 20 Sekunden nicht gefangen."; return { art: "warn", wert: "unverändert", mess }; }
-        return { art: "ok", wert: "sofort richtig", mess };
-      }
-    },
-
     /* ================= neue Funktionen ================= */
     {
       id: "kamera", titel: "Kamera und Foto", bezug: "für Fotos", block: "neu",
@@ -445,5 +412,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 8, tests };
+  window.SJ_TESTS = { version: 9, tests };   // 9: ohne "Kompass nach Pause" (02.10.2026)
 })();
