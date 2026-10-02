@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Akku-Warnung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Mockup: Akku-Warnung bei 20 % und 10 % für die Teamleitung, mit direkter Übergabe der Leitung.
+   Fenster wie die übrigen Dialoge im Spiel (overlay > dialog), Aussehen wie index.html. */
+:root{--paper:#F1F5EE;--card:#FFFFFF;--ink:#17302A;--muted:#5B6F68;--line:#D3DECF;--feld:#7D9189;--flag:#EE5F1B;--flag-ink:#0F1B18;
+  --warn:#8A5A00;--warn-bg:#FBF0D9;--err:#B3261E;--err-bg:#FBE9E7;--err-btn:#B3261E;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;--body:"Barlow",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:#2b2f2d;font:17px/1.5 var(--body);color:var(--ink);display:flex;flex-wrap:wrap;gap:24px;justify-content:center;align-items:flex-start;padding:24px 16px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+.spalte{display:flex;flex-direction:column;align-items:center;gap:10px}
+.spalte > b{color:#fff;font:700 18px var(--head)}
+.handy{width:390px;height:800px;border-radius:36px;border:10px solid #111;background:var(--paper);overflow:hidden;position:relative;padding:18px 16px}
+.hinten{opacity:.35}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:12px}.top h1{font-size:26px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;height:300px}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:color-mix(in srgb,var(--paper) 70%,transparent)}
+.dialog{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;width:100%;box-shadow:0 12px 32px rgba(17,17,17,.14),0 2px 6px rgba(17,17,17,.06)}
+.akku{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.akku svg{width:56px;height:32px;flex:none}
+.akku b{font:700 32px var(--head);white-space:nowrap}
+.dialog h2{font-size:24px;margin-bottom:6px}
+.dialog p{margin:0 0 10px;font-size:16px}
+label{display:block;font-weight:600;font-size:15px;margin:8px 0 6px}
+.wahl{display:flex;flex-direction:column;gap:8px}
+.wahl button{min-height:48px;border-radius:10px;border:1.5px solid var(--feld);background:var(--card);font:600 17px var(--body);text-align:left;padding:8px 14px;display:flex;justify-content:space-between;align-items:center}
+.wahl button.an{border-color:var(--flag);box-shadow:0 0 0 3px rgba(238,95,27,.18)}
+.wahl small{color:var(--muted);font-weight:500;font-size:13px}
+.row2{display:flex;gap:8px;margin-top:14px}.row2 .btn{flex:1}
+.btn{min-height:48px;border:0;border-radius:10px;font:700 18px var(--head);background:var(--flag);color:var(--flag-ink)}
+.btn.alt{background:var(--card);color:var(--ink);border:1.5px solid var(--feld)}
+.zehn .akku b{color:var(--err)}
+.regeln{background:#fff;border-radius:14px;padding:18px;max-width:380px;font-size:15px}
+.regeln h2{font-size:22px;margin-bottom:6px}.regeln ul{padding-left:18px;margin:6px 0}
+.zeichen{display:inline-flex;align-items:center;gap:6px;font:600 13px var(--body);color:var(--warn);background:var(--warn-bg);border-radius:99px;padding:2px 10px;white-space:nowrap}
+</style>
+</head>
+<body>
+<template id="akku"><svg viewBox="0 0 56 32"><rect x="2" y="4" width="46" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><rect x="50" y="11" width="4" height="10" rx="1.5" fill="currentColor"/><rect class="stand" x="7" y="9" height="14" rx="2"/></svg></template>
+
+<div class="spalte"><b>20 %: Hinweis mit Übergabe</b>
+  <div class="handy"><div class="hinten"><div class="top"><h1>🦊 Team Fuchs</h1></div><div class="panel"></div></div>
+    <div class="overlay"><div class="dialog">
+      <div class="akku" style="color:var(--warn)" data-stand="20"><span data-akku></span><b>20 %</b></div>
+      <h2>Akku wird knapp</h2>
+      <p>Damit euer Team nicht hängen bleibt: Gebt die Leitung jetzt an jemanden mit vollerem Akku ab.</p>
+      <label>Neue Teamleitung</label>
+      <div class="wahl">
+        <button class="an">Jonas Keller <small>tippt dann auf „Teamleitung“</small></button>
+        <button>Julia Krüger</button>
+        <button>Lea Hoffmann</button>
+      </div>
+      <div class="row2"><button class="btn alt">Später</button><button class="btn">Übergeben</button></div>
+    </div></div>
+  </div>
+</div>
+<div class="spalte zehn"><b>10 %: noch einmal, dringender</b>
+  <div class="handy"><div class="hinten"><div class="top"><h1>🦊 Team Fuchs</h1></div><div class="panel"></div></div>
+    <div class="overlay"><div class="dialog">
+      <div class="akku" style="color:var(--err)" data-stand="10"><span data-akku></span><b>10 %</b></div>
+      <h2>Akku fast leer</h2>
+      <p>Bald geht dieses Handy aus. Jetzt abgeben, dann spielt euer Team ohne Pause weiter.</p>
+      <label>Neue Teamleitung</label>
+      <div class="wahl">
+        <button>Jonas Keller</button>
+        <button>Julia Krüger</button>
+        <button>Lea Hoffmann</button>
+      </div>
+      <div class="row2"><button class="btn alt">Später</button><button class="btn">Übergeben</button></div>
+    </div></div>
+  </div>
+</div>
+<div class="regeln">
+  <h2>Akku-Warnung</h2>
+  <ul>
+    <li>Nur auf dem Handy der <b>Teamleitung</b>, nur wenn es <b>nicht lädt</b>. Je einmal bei <b>20 %</b> und bei <b>10 %</b>.</li>
+    <li>Personen zum Antippen statt Auswahlliste; „Übergeben“ nutzt die bestehende Übergabe (die neue Leitung tippt auf ihrem Handy auf „Teamleitung“).</li>
+    <li>„Später“ schließt das Fenster; „Leitung abgeben“ unten auf der Seite bleibt wie bisher.</li>
+    <li>Die Spielleitung sieht in der Teamzeile den Akku der Teamleitung, ab 20 % als Vermerk: <span class="zeichen">Akku 18 %</span></li>
+    <li><b>iPhone:</b> Safari gibt den Akku nicht heraus, dort gibt es keine Warnung (das iPhone warnt selbst).</li>
+    <li><b>Geräte-Test:</b> neue Zeile „Akku“ zeigt, ob das Handy den Stand verrät (Android ja, iPhone nein).</li>
+  </ul>
+</div>
+<script>
+document.querySelectorAll("[data-akku]").forEach(s => {
+  s.replaceWith(document.getElementById("akku").content.cloneNode(true));
+});
+document.querySelectorAll(".akku").forEach(a => { const st = +a.dataset.stand; const r = a.querySelector(".stand"); r.setAttribute("width", Math.max(3, 36 * st / 100)); r.setAttribute("fill", "currentColor"); });
+</script>
+</body>
+</html>

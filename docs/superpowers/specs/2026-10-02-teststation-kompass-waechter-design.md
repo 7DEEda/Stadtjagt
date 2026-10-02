@@ -1,9 +1,14 @@
-# Teststation und Kompass-Wächter
+# Teststation, Kompass-Wächter, Rollen und Akku
 
-Stand 02.10.2026. Zwei zusammenhängende Neuerungen: eine eigene Teststation für
-Probeläufe vor Ort (Prag bleibt unberührt) und ein Kompass-Wächter, der einen
-schlechten Kompass im Spiel erkennt, dem Team zeigt und auf die Laufrichtung
-ausweicht. Mockup der Anzeige: `mockups/kompass-waechter.html`.
+Stand 02.10.2026. Drei Teile, in dieser Reihenfolge gebaut und einzeln geprüft:
+
+1. eine eigene Teststation für Probeläufe vor Ort (Prag bleibt unberührt),
+2. ein Kompass-Wächter, der einen schlechten Kompass im Spiel erkennt, dem Team
+   zeigt und auf die Laufrichtung ausweicht,
+3. eine Team-Ansicht, die sich der Rolle anpasst (Teamleitung oder Mitglied,
+   Wechsel ohne Tippen), mit Akku-Warnung und Übergabe der Leitung.
+
+Mockups: `mockups/kompass-waechter.html`, `mockups/akku-warnung.html`.
 
 ## Ziel und Erfolg
 
@@ -135,6 +140,20 @@ ausweicht. Mockup der Anzeige: `mockups/kompass-waechter.html`.
   paar Schritte gehen“.
 - Der Hinweis verschwindet von selbst, wenn das Urteil auf `ok` zurückgeht.
 - Mitlesende Handys messen ihren eigenen Kompass; jedes Handy urteilt für sich.
+  Der Hinweis nennt das: „Tipp: Schaut auf ein anderes Handy aus eurem Team.
+  Wer mitliest und den Standort freigibt, sieht dort den Pfeil mit dem eigenen
+  Kompass.“ Bei der Teamleitung zusätzlich: „Oder gebt die Leitung an jemanden
+  ab, dessen Handy richtig zeigt.“ mit dem Übergabe-Fenster aus Teil 3.
+
+### Gedächtnis des Handys
+
+- Wird ein Handy `unzuverlaessig`, merkt es sich das lokal (`sj.kompass` mit
+  Datum, ohne Namen). Beim nächsten Öffnen startet der Wächter dort gleich als
+  `unzuverlaessig` (Pfeil nach Laufrichtung, Hinweis), statt erst ein paar
+  Drehungen lang falsch zu zeigen.
+- Zurück auf `ok` braucht ein vorbelastetes Handy 5 gute Abschnitte in Folge
+  statt 3; dann vergisst es den Vermerk. Einmessen leert die Abschnitte, der
+  Vermerk bleibt aber, bis die 5 guten Abschnitte da sind.
 
 ### Anzeige für die Spielleitung (Mockup Bild 3)
 
@@ -143,6 +162,46 @@ ausweicht. Mockup der Anzeige: `mockups/kompass-waechter.html`.
   `kompass`. Gemeldet wird das Urteil des Teamleitungs-Handys.
 - `admin_state` liefert je Team `kompass`. In der Teamzeile erscheint bei
   `unzuverlaessig` der Vermerk „Kompass falsch, Pfeil nach Laufrichtung“.
+
+## Teil 3: Rollen und Akku
+
+### Eine Team-Ansicht, Rolle vom Server
+
+- Es gibt eine Team-Ansicht. Ob das Handy die Teamleitung ist, entscheidet der
+  Server: Ein Handy mit Personen-Kennung (`sj.token`) fragt bei jeder
+  Aktualisierung `member_state`; ist die Person laut Server die Teamleitung,
+  holt das Handy still `leader_code` und zeigt ab da Einchecken, Antworten und
+  Koffer. Ist sie es nicht mehr, wechselt es ebenso still zurück aufs Mitlesen
+  (statt sich wie heute abzumelden).
+- Übergabe: die alte Teamleitung wählt eine Person, „Übergeben“ nutzt
+  `team_set_leader`. Das Handy der neuen Leitung schaltet beim nächsten Abruf
+  (spätestens nach dem üblichen Takt) von selbst um und zeigt kurz „Du leitest
+  jetzt Team Fuchs“. Wer nur über den Mitlese-Link ohne eigene Anmeldung dabei
+  ist, kann nicht Teamleitung werden: die Liste zeigt nur angemeldete
+  Personen, mit Akku-Stand, wenn bekannt, und „Handy nicht verbunden“, wenn
+  die Person in den letzten 2 Minuten nicht abgerufen hat. Auch sie ist
+  wählbar; sie wird Teamleitung, sobald ihr Handy die Seite öffnet.
+- Die Spielleitung kann wie bisher im Reiter „Teams“ die Leitung setzen; das
+  Handy der Person schaltet ebenso von selbst um.
+
+### Akku
+
+- Jedes Handy liest den Akku (`navigator.getBattery()`, Android-Chrome; Safari
+  auf dem iPhone gibt ihn nicht heraus) und schickt Stand und „lädt“ mit:
+  Teamleitung über `report_position` (neu `p_akku int`, `p_laedt bool`),
+  Mitglieder über `member_state` (neu `p_akku`, `p_laedt`). Gespeichert je
+  Person (`participants.akku`, `akku_laedt`, `akku_at`).
+- `team_state` liefert je Teammitglied Akku und letzte Meldung; die
+  Team-Ansicht zeigt bei allen Handys des Teams einen Hinweis, wenn ein
+  Handy unter 20 % ist und nicht lädt: „Akku knapp: Julia 15 %“. Gilt das für
+  die Teamleitung, steht dort „Akku der Teamleitung knapp: … Gebt die Leitung
+  rechtzeitig ab.“
+- Auf dem Handy der Teamleitung springt bei 20 % und bei 10 % (nicht ladend,
+  je einmal pro Schwelle und Handy) das Fenster aus dem Mockup auf: Personen
+  zum Antippen mit ihrem Akku, „Übergeben“ oder „Später“.
+- Spielleitung: Akku der Teamleitung in der Teamzeile, ab 20 % als Vermerk.
+- Geräte-Test: eigene Zeile „Akku“ (ok mit Stand, „liest das Handy nicht
+  vor“ auf dem iPhone).
 
 ## Prüfen
 
@@ -154,6 +213,10 @@ ausweicht. Mockup der Anzeige: `mockups/kompass-waechter.html`.
   `devicemotion` = kein Urteil. Dazu `teststation_db.py` als Probelauf der
   Migration und ein Szenario „Teststation“ in `mock.js` mit einer Station
   (Schloss mit zwei Rädern, Texte, Spielleitung).
+- Prüfstand für Teil 3: Szenarien „Mitglied wird Teamleitung“ (Ansicht
+  schaltet ohne Tippen um), „Teamleitung gibt ab“ (wechselt aufs Mitlesen),
+  Akku-Fenster bei 20 % und 10 % (gespielter Akku), Hinweis bei knappem Akku
+  eines Mitglieds, kein Fenster beim Laden.
 - Bestehende Prüfungen (`kritik.py`, `name.py`, `selfie.py`, `ziffer.py`)
   laufen weiter durch.
 - Feldversuch: Teststation EDEKA, Testmodus an, schlechtes und gutes Xiaomi
