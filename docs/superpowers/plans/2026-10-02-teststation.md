@@ -125,21 +125,21 @@ AUFGABEN = [
     # im Testmodus reicht eine Person (ein Team zum Ausprobieren), sonst wie bisher zwei
     ("admin_draw", "20260919100000_bugjagd.sql",
      [("  if v_count < 2 then raise exception 'Es sind noch zu wenige Personen angemeldet.' using errcode='P0001'; end if;",
-       "  if v_count < (case when (select test_mode from game_state where id = 1) then 1 else 2 end) then
-"
-       "    raise exception 'Es sind noch zu wenige Personen angemeldet.' using errcode='P0001';
-  end if;", 1)]),
+       "  if v_count < (case when (select test_mode from game_state where id = 1) then 1 else 2 end) then "
+       "raise exception 'Es sind noch zu wenige Personen angemeldet.' using errcode='P0001'; end if;", 1)]),
 ]
 
 
 def fassung(name: str, datei: str) -> str:
     text = (MIG / datei).read_text(encoding="utf-8")
-    # die letzte Definition in der Datei, von "create or replace function name(" bis zum ersten "end $$;" danach
+    # die letzte Definition in der Datei: von "create or replace function name(" bis zum schließenden "$$;"
+    # (plpgsql endet mit "end $$;", language sql nur mit "$$;"); das öffnende "as $$" zählt nicht
     starts = [m.start() for m in re.finditer(rf"create or replace function {name}\(", text)]
     if not starts:
         sys.exit(f"{name} nicht in {datei}")
     a = starts[-1]
-    e = text.index("end $$;", a) + len("end $$;")
+    auf = text.index("$$", a) + 2
+    e = text.index("$$;", auf) + len("$$;")
     return text[a:e]
 
 
@@ -192,7 +192,7 @@ MIGRATION = sql.REPO / "supabase" / "migrations" / "20261002120000_teststation.s
 PROBE = r"""
 do $probe$
 declare
-  v_pin text; v_vorher text; v_nachher text; v_code text; t_id uuid; v_test stations_alle; st json; a json; v_n int := 0;
+  v_pin text; v_vorher text; v_nachher text; v_code text; t_id uuid; v_test record; st json; a json; v_n int := 0;
 begin
   select md5(string_agg(row(s.*)::text, '|' order by s.position)) into v_vorher from stations s;
   execute $mig$__MIGRATION__$mig$;

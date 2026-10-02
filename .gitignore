@@ -16,3 +16,6 @@ __pycache__/
 sicherungen/
 # Arbeitsordner für das neutrale Repo 7DEEda/geraetetest (tools/geraetetest_veroeffentlichen.py)
 .geraetetest-repo/
+
+# Arbeitsbereich der Umsetzungspläne
+.superpowers/
