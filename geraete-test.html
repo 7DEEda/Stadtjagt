@@ -3,12 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- WEITERLEITUNG -->
+<script>
+// Alte Adresse unter dem Repo des Spiels: auf die neutrale Adresse umleiten. tools/geraetetest_veroeffentlichen.py
+// entfernt diesen Block, bevor die Seite ins Repo geraetetest kommt.
+if (/^\/Stadtjagt\//i.test(location.pathname)) location.replace("https://7deeda.github.io/geraetetest/" + location.search);
+</script>
+<!-- /WEITERLEITUNG -->
 <title>Geräte-Test</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* Farben, Schrift, Karten und Hintergrund wie index.html, damit der Test die App so zeigt, wie das Gerät sie zeigen würde. */
+/* Farben, Schrift, Karten und Hintergrund wie in der App, damit der Test sie so zeigt, wie das Gerät sie zeigen würde. */
 :root{
   --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#445650; --line:#D3DECF;
   --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#0F1B18; --water:#2F6E9E;
@@ -126,7 +133,7 @@ ol.teil li{margin-bottom:6px}
 #kreis .mitte{fill:var(--card);stroke:var(--line);stroke-width:1}
 #kreis #kugel{fill:var(--flag);stroke:var(--card);stroke-width:1.5}
 #kreis text{font:700 15px var(--head);fill:var(--ink);text-anchor:middle;dominant-baseline:central}
-/* Einmessen: Handy fährt eine liegende Acht ab, wie im Spiel */
+/* Einmessen: Handy fährt eine liegende Acht ab */
 .acht{display:block;width:100%;max-width:260px;height:auto;margin:0 auto 18px}
 .acht .bahn{fill:none;stroke:var(--line);stroke-width:3;stroke-dasharray:6 6}
 .acht .handy{fill:var(--card);stroke:var(--ink);stroke-width:2.5}
@@ -278,10 +285,11 @@ details[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const SUITE = window.SJ_TESTS;
-const cfg = { url: (window.SJ_CONFIG || {}).url || "", key: (window.SJ_CONFIG || {}).key || "" };
+const SUITE = window.GT_TESTS;
+const KONF = window.GT_CONFIG || window.SJ_CONFIG || {};
+const cfg = { url: KONF.url || "", key: KONF.key || "" };
 // Privater Modus: schon der Zugriff auf localStorage kann werfen. Dann merkt sich die Seite nichts.
-const LS = (() => { try { localStorage.setItem("sj._", "1"); localStorage.removeItem("sj._"); return localStorage; } catch { return { getItem: () => null, setItem() {}, removeItem() {} }; } })();
+const LS = (() => { try { localStorage.setItem("gt._", "1"); localStorage.removeItem("gt._"); return localStorage; } catch { return { getItem: () => null, setItem() {}, removeItem() {} }; } })();
 
 async function rpc(fn, args) {
   if (!cfg.url || !cfg.key) throw new Error("config.js fehlt");
@@ -405,7 +413,7 @@ const sensor = {
       if (!this.nTick) { this.nTick = true; requestAnimationFrame(() => { this.nTick = false; $("#nadel").style.transform = `rotate(${this.dreh.toFixed(1)}deg)`; kreisMalen(); }); }
     }
     if (e.beta == null || e.gamma == null) return;
-    // Einmessen: Zeit zählen, in der das Handy schneller als 80°/s geschwenkt wird (wie kalSchritt im Spiel)
+    // Einmessen: Zeit zählen, in der das Handy schneller als 80°/s geschwenkt wird (wie beim Einmessen in der App)
     if (this.kal) {
       const t = e.timeStamp || performance.now(), k = this.kal;
       if (k.letzt) {
@@ -415,7 +423,7 @@ const sensor = {
       k.letzt = { t, b: e.beta, c: e.gamma };
     }
     this.beta = e.beta; this.gamma = e.gamma;
-    // Neigungs-Parallax wie neigungStart() in index.html
+    // Neigungs-Parallax wie in der App
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     // Fast senkrecht kippt gamma schlagartig um 180° (Eigenheit der Winkel bei beta um 90°): dann stillhalten statt springen
     if (Math.abs(e.beta) > 75) return;
@@ -468,10 +476,10 @@ const ICON = {
   kamera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2.5h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/><circle cx="12" cy="13" r="1.2" fill="var(--flag)" stroke="none"/></svg>',
   vibration: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3.5" width="8" height="17" rx="2"/><path d="M4.5 8v8M2 10v4M19.5 8v8M22 10v4" stroke="var(--flag)"/></svg>',
   benachrichtigung: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><circle cx="17.5" cy="6.5" r="2.2" fill="var(--flag)" stroke="none"/></svg>',
-  // liegende Acht wie beim Einmessen im Spiel (ACHT in index.html)
+  // liegende Acht wie beim Einmessen in der App
   "kompass-einmessen": `<svg class="acht" viewBox="0 0 200 100" aria-hidden="true">
     <path id="achtbahn" class="bahn" d="M100,50 C130,8 185,8 185,50 C185,92 130,92 100,50 C70,8 15,8 15,50 C15,92 70,92 100,50 Z"/>
-    <g><rect class="handy" x="-10" y="-17" width="20" height="34" rx="4"/><rect class="schirm" x="-6" y="-12" width="12" height="22" rx="1.5"/>
+    <g><g><rect class="handy" x="-10" y="-17" width="20" height="34" rx="4"/><rect class="schirm" x="-6" y="-12" width="12" height="22" rx="1.5"/><animateTransform attributeName="transform" type="scale" values="1 1;0.2 1;1 1;0.2 1;1 1" dur="2.4s" repeatCount="indefinite"/></g>
       <animateMotion dur="3.2s" repeatCount="indefinite"><mpath href="#achtbahn"/></animateMotion>
       <animateTransform attributeName="transform" type="rotate" additive="sum" values="-18;18;-18" dur="1.6s" repeatCount="indefinite"/></g></svg>`,
   allgemein: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 5h4"/><circle cx="12" cy="13" r="2" fill="var(--flag)" stroke="none"/></svg>',
@@ -759,13 +767,14 @@ function payload() {
 }
 // Jeder Lauf liegt unter eigenem Namen auf dem Gerät, bis der Server ihn bestätigt hat. So überschreibt
 // ein neuer Lauf keinen alten, der im Funkloch hängen geblieben ist.
-const OFFEN = "sj.gt.offen.";
+const OFFEN = "gt.offen.", OFFEN_ALT = "sj.gt.offen.";
 function offene() {
   const aus = [];
   try {
     for (const k of Object.keys(localStorage)) {
-      if (!k.startsWith(OFFEN)) continue;
-      try { aus.push({ key: k.slice(OFFEN.length), payload: JSON.parse(localStorage.getItem(k)) }); } catch { localStorage.removeItem(k); }
+      const pr = k.startsWith(OFFEN) ? OFFEN : k.startsWith(OFFEN_ALT) ? OFFEN_ALT : null;
+      if (!pr) continue;
+      try { aus.push({ key: k.slice(pr.length), payload: JSON.parse(localStorage.getItem(k)), pr }); } catch { localStorage.removeItem(k); }
     }
     const alt = JSON.parse(localStorage.getItem("sj.gt.offen") || "null");   // Ablage der ersten Fassung
     if (alt && alt.key && alt.payload && !aus.some(o => o.key === alt.key)) aus.push(alt);
@@ -808,7 +817,7 @@ async function allesSenden() {
   for (const o of liste) {
     try {
       await rpc("device_test_save", { p_key: o.key, p_payload: o.payload });
-      LS.removeItem(OFFEN + o.key);
+      LS.removeItem((o.pr || OFFEN) + o.key);
       if (o.key !== lauf.key) LS.removeItem("sj.gt.offen");
     } catch (e) { fehler = e; }
   }

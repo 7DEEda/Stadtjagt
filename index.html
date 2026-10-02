@@ -1051,7 +1051,7 @@ function kompassText() {
 }
 const ACHT = `<svg class="acht" viewBox="0 0 200 100" aria-hidden="true">
   <path id="achtbahn" class="bahn" d="M100,50 C130,8 185,8 185,50 C185,92 130,92 100,50 C70,8 15,8 15,50 C15,92 70,92 100,50 Z"/>
-  <g><rect class="handy" x="-10" y="-17" width="20" height="34" rx="4"/><rect class="schirm" x="-6" y="-12" width="12" height="22" rx="1.5"/>
+  <g><g><rect class="handy" x="-10" y="-17" width="20" height="34" rx="4"/><rect class="schirm" x="-6" y="-12" width="12" height="22" rx="1.5"/><animateTransform attributeName="transform" type="scale" values="1 1;0.2 1;1 1;0.2 1;1 1" dur="2.4s" repeatCount="indefinite"/></g>
     <animateMotion dur="3.2s" repeatCount="indefinite"><mpath href="#achtbahn"/></animateMotion>
     <animateTransform attributeName="transform" type="rotate" additive="sum" values="-18;18;-18" dur="1.6s" repeatCount="indefinite"/></g></svg>`;
 const kalText = f => f >= 1 ? "Fertig" : f > 0 ? "Bewegung erkannt, weiter so" : "Wartet auf Bewegung";
@@ -1060,7 +1060,7 @@ function kalHTML() {
   return `<div id="kal"><h2 id="kalt">Kompass einmessen</h2>
     ${g.nachPause ? `<p><b>Ihr wart kurz in einer anderen App.</b> Der Kompass hat in der Zeit nicht mitgezählt und kann jetzt danebenliegen.</p>` : ""}
     <p>Haltet das Handy flach vor euch und schwenkt es ein paar Mal in einer liegenden Acht, so wie hier.
-    Dreht dabei das Handgelenk mit.</p>${ACHT}
+    Dreht und kippt es dabei in alle Richtungen.</p>${ACHT}
     <div class="fort"><span id="kalfort" style="width:${Math.round(f * 100)}%"></span></div>
     <div class="werte"><span id="kaltext">${kalText(f)}</span>`
     + (g.kompassAcc != null ? `<span>Genauigkeit <b id="kalacc">${accText(g.kompassAcc)}</b></span>` : "")

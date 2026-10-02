@@ -17,7 +17,7 @@
 //
 // Neue Funktion: Baustein anhängen und version hochzählen.
 (function () {
-  const KOMPASS_GRENZE = 25;   // wie in index.html
+  const KOMPASS_GRENZE = 25;   // wie in der App
   const jetzt = () => performance.now();
   const rund = (x, n = 0) => x == null ? null : Math.round(x * 10 ** n) / 10 ** n;
   const komma = (x, n = 1) => x.toFixed(n).replace(".", ",");
@@ -90,7 +90,7 @@
     {
       id: "speicher", titel: "Speicher", bezug: "merkt sich Einstellungen", block: "auto",
       async lauf() {
-        const probe = name => { try { const s = window[name]; s.setItem("sj._t", "1"); const ok = s.getItem("sj._t") === "1"; s.removeItem("sj._t"); return ok; } catch { return false; } };
+        const probe = name => { try { const s = window[name]; s.setItem("gt._t", "1"); const ok = s.getItem("gt._t") === "1"; s.removeItem("gt._t"); return ok; } catch { return false; } };
         const ls = probe("localStorage"), ss = probe("sessionStorage");
         let platz = "keine Angabe";
         try { if (navigator.storage?.estimate) { const e = await navigator.storage.estimate(); platz = Math.round((e.quota || 0) / 1048576) + " MB"; } } catch { /* egal */ }
@@ -104,7 +104,8 @@
       id: "server", titel: "Server", bezug: "Verbindung zum Server", block: "auto",
       async lauf(ctx) {
         const zeiten = [];
-        for (let i = 0; i < 5; i++) { const t = jetzt(); await ctx.rpc("public_state"); zeiten.push(Math.round(jetzt() - t)); }
+        // neutrale Abfrage: gibt nur Größe und Serverzeit zurück
+        for (let i = 0; i < 5; i++) { const t = jetzt(); await ctx.rpc("device_test_echo", { p_data: "" }); zeiten.push(Math.round(jetzt() - t)); }
         const med = median(zeiten);
         const mess = { "5 Abfragen in ms": zeiten.join(", "), "Median in ms": med };
         return { art: med <= 800 ? "ok" : med <= 3000 ? "warn" : "err", wert: med + " ms", mess };
@@ -249,10 +250,10 @@
 
     /* ================= mit der Hand ================= */
     {
-      // Wie das Einmessen im Spiel (kalSchritt in index.html): gezählt wird nur Schwenken über 80°/s, 5 s zusammen.
+      // Wie das Einmessen in der App: gezählt wird nur Schwenken über 80°/s, 5 s zusammen.
       // Danach zeigt "Handy einmal drehen", wie gut der Kompass nach dem Einmessen ist.
       id: "kompass-einmessen", titel: "Kompass einmessen", bezug: "Acht schwenken vor dem Drehen", block: "hand",
-      kopf: "Kompass einmessen", hand: "Halt das Handy vor dich und schwenk es ein paar Mal in einer liegenden Acht. Dreh dabei das Handgelenk mit.", grenze: 40,
+      kopf: "Kompass einmessen", hand: "Halt das Handy vor dich und schwenk es ein paar Mal in einer liegenden Acht. Dreh und kipp es dabei in alle Richtungen.", grenze: 40,
       async lauf(ctx) {
         const s = ctx.sensor, t0 = jetzt(), vorher = s.genau;
         s.kal = { bewegt: 0, letzt: null };
@@ -365,7 +366,7 @@
         ctx.status("Jetzt wechseln");
         const weg = await bisSichtbarWechsel(ctx, 120000);
         const t = jetzt(); let netz = true;
-        try { await ctx.rpc("public_state"); } catch { netz = false; }
+        try { await ctx.rpc("device_test_echo", { p_data: "" }); } catch { netz = false; }
         const mess = { "Weg für s": rund(weg / 1000, 1), "Server gleich wieder erreichbar": janein(netz), "Antwort in ms": Math.round(jetzt() - t),
           "Hinweis": "Lädt die Seite beim Zurückkommen neu, fehlt dieser Eintrag im Lauf." };
         return { art: netz ? "ok" : "warn", wert: netz ? "bleibt" : "Netz hängt", mess };
@@ -481,10 +482,10 @@
         const sw = "serviceWorker" in navigator; let cache = false, grund = "";
         if ("caches" in window) {
           try {
-            const c = await caches.open("sj-geraetetest"), u = location.origin + location.pathname + "?cache-probe";
+            const c = await caches.open("gt-probe"), u = location.origin + location.pathname + "?cache-probe";
             await c.put(u, new Response("probe"));
             cache = (await (await c.match(u))?.text()) === "probe";
-            await caches.delete("sj-geraetetest");
+            await caches.delete("gt-probe");
           } catch (e) { grund = e.name + ": " + e.message; }
         }
         const mess = { "Service Worker": janein(sw), "Cache schreibt und liest": janein(cache), "Hinweis": "Es wurde nichts dauerhaft eingerichtet." };
@@ -494,5 +495,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 18, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen; 13: Gyro-Achse aus den Daten; 14: Abweichung Kompass gegen Gyroskop; 15: Drehung um die Senkrechte, auch schräg; 16: Einmessen vor dem Drehen; 17: Striche nur beim Drehen, Wandern ohne Drehung; 18: keine Position mehr (02.10.2026)
+  window.GT_TESTS = { version: 19, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen; 13: Gyro-Achse aus den Daten; 14: Abweichung Kompass gegen Gyroskop; 15: Drehung um die Senkrechte, auch schräg; 16: Einmessen vor dem Drehen; 17: Striche nur beim Drehen, Wandern ohne Drehung; 18: keine Position mehr; 19: neutrale Abfragen und Kennungen (02.10.2026)
 })();

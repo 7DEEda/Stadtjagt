@@ -1685,4 +1685,21 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
 - Neuer Ordner `sicherungen/` (nicht im Repo): Stationen und Spielstand vom
   02.10. vor dem Umbau auf eine Teststation.
 - Freigaben-Seite, Android: nach Foto vom 02.10. (Chrome, Android 16) ein Fenster mit Karten Genau/Ungefähr und drei Knöpfen untereinander; zwei Schritte (Standort, Kamera). Das Mockup `geraete-test-freigaben.html` zeigt noch die alte Android-Form.
+- Geräte-Test unter neutraler Adresse (02.10.): eigenes öffentliches Repo
+  `7DEEda/geraetetest`, https://7deeda.github.io/geraetetest/. Quelle bleibt
+  hier; `python tools/geraetetest_veroeffentlichen.py` kopiert
+  geraete-test.html als index.html, entfernt den Block WEITERLEITUNG, schreibt
+  eine eigene config.js (`GT_CONFIG`, nur Server und öffentlicher Schlüssel),
+  bricht bei verräterischen Wörtern ab (stadtj, Spiel, Prag, Station …) und
+  pusht aus `.geraetetest-repo/` (nicht im Repo). Nach jeder Änderung am
+  Geräte-Test dieses Skript laufen lassen. Die alte Adresse
+  /Stadtjagt/geraete-test.html leitet auf die neue um. QR-Code
+  `mockups/qr-geraete-test.png` zeigt die neue Adresse.
+- Suite 19: neutrale Abfragen (Server-Prüfung und App-Wechsel nutzen
+  `device_test_echo` statt `public_state`) und Kennungen (`GT_TESTS`,
+  `GT_CONFIG`, Präfix `gt.` im Speicher, alte `sj.gt.offen.`-Läufe werden noch
+  gelesen).
+- Einmessen (Spiel und Test): die Acht-Animation rollt das Handy jetzt auch um
+  die Längsachse, Text „Dreht und kippt es dabei in alle Richtungen“ (für den
+  Magnetsensor zählen möglichst viele Lagen, Schwenken allein reicht nicht).
 
