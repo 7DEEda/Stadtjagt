@@ -1071,9 +1071,11 @@ const accText = a => a != null && a >= 0 ? `±${Math.round(a)}°` : "unbekannt";
 const kompassFolgt = () => S.gps.heading != null && S.gps.kompass === "an";
 // Klasse des Kompasses, für render() und liveUpdate() gleich: "" Nadel nach Kompass, "lauf" gestrichelt, "unsicher" Fragezeichen
 const kompassKlasse = () => !richtungBekannt() ? "unsicher" : kompassFolgt() ? "" : "lauf";
+// Ohne Standort ein verborgener Platzhalter, damit liveUpdate() die Plakette zurückholen kann. Geschrieben so, wie der
+// Browser sie wieder ausgibt (hidden=""): liveUpdate() vergleicht mit outerHTML und ersetzt nur bei einer Änderung.
 function kompassChip() {
   const g = S.gps;
-  if (!g.on) return "";
+  if (!g.on) return `<span class="chip kchip" id="kchip" hidden=""></span>`;
   if (kompassFolgt()) return `<span class="chip kchip ok" id="kchip">Kompass</span>`;
   return `<span class="chip kchip warn" id="kchip">${g.gpsHeading != null ? "nach Laufrichtung" : "erst ein paar Schritte"}</span>`;
 }
@@ -2771,7 +2773,7 @@ function liveUpdate() {
   kalZeigen();
   const note = $("#gnote"); if (note && ziel) note.textContent = gpsNote() || "Standort noch nicht aktiv";
   const n = $("#needle"); if (n) { const c = n.closest(".compass"), k = kompassKlasse(); c.classList.toggle("unsicher", k === "unsicher"); c.classList.toggle("lauf", k === "lauf"); }
-  const kc = $("#kchip"); if (kc) kc.outerHTML = kompassChip();
+  const kc = $("#kchip"), kneu = kompassChip(); if (kc && kc.outerHTML !== kneu) kc.outerHTML = kneu;
   const gs = $("#gstat"); if (gs) gs.textContent = gpsNote();
   if (!g.pos || !ziel) return;
   geheimNachziehen(); checkNachziehen();
