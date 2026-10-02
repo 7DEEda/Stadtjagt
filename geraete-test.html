@@ -312,7 +312,9 @@ const sensor = {
         // Achsen wie in den Läufen vom 02.10. gemessen, auf Android-Chrome und iOS-Safari gleich:
         // alpha um x, beta um y, gamma um z (z zeigt aus dem Bildschirm)
         if (this.oben && typeof r.beta === "number" && typeof r.gamma === "number") {
-          this.gyroHoch += (r.alpha * this.oben[0] + r.beta * this.oben[1] + r.gamma * this.oben[2]) * dt; this.hochN++;
+          const v = r.alpha * this.oben[0] + r.beta * this.oben[1] + r.gamma * this.oben[2];
+          this.gyroHoch += v * dt; this.hochN++;
+          this.drehRate = Math.abs(v); this.drehRateT = t;   // °/s um die Senkrechte, für "dreht sich gerade" 
         }
       }
       this.gyroT = t; this.gyroN++;
@@ -353,13 +355,18 @@ const sensor = {
         const d = Math.abs(((neu - this.spur.letzte) % 360 + 540) % 360 - 180);
         if (d > this.spur.max) { this.spur.max = d; this.spur.maxBei = t; }
         if (d > 30) this.spur.ueber30++;
+        // Wandern: der Kompass ändert sich, obwohl das Gyroskop keine Drehung misst (nur mit Gyroskop-Daten)
+        if (this.drehRateT != null && !(performance.now() - this.drehRateT < 300 && this.drehRate > 8)) this.spur.wandert = (this.spur.wandert || 0) + d;
       }
       this.spur.letzte = neu;
       const y = this.gyroDreh();
       if (this.spur.w.length < 3000) this.spur.w.push([t, Math.round(neu * 10) / 10, y == null ? null : Math.round(y), this.genau == null ? null : Math.round(this.genau)]);
     }
     if (this.richtung != null && this.quelle !== "relativ") {
-      this.faecher.add(Math.floor(this.richtung / 10) % 36);
+      // Ein Strich zählt nur, wenn sich das Handy laut Gyroskop gerade dreht (über 8°/s): sonst färbt ein Kompass,
+      // der im Stillliegen wandert, den Kreis von allein (02.10., Xiaomi 22021211RG: 80° ohne Bewegung)
+      const dreht = this.drehRateT == null || (performance.now() - this.drehRateT < 300 && this.drehRate > 8);
+      if (dreht) this.faecher.add(Math.floor(this.richtung / 10) % 36);
       // Nadel im Kopf nachführen, auf dem kürzesten Weg (von 359° auf 1° sind es 2°, nicht 358°)
       this.dreh += ((-this.richtung - this.dreh) % 360 + 540) % 360 - 180;
       if (!this.nTick) { this.nTick = true; requestAnimationFrame(() => { this.nTick = false; $("#nadel").style.transform = `rotate(${this.dreh.toFixed(1)}deg)`; kreisMalen(); }); }

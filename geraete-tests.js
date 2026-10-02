@@ -289,9 +289,12 @@
         const achsen = [0, 1, 2].map(i => Math.round(s.gyroAchse[i] - sp.achse0[i]));
         // Weg des Kompasses: Summe der Änderungen auf dem kürzesten Weg, mit Vorzeichen (im Uhrzeigersinn positiv)
         // dazu an jeder Stelle: wie weit liegt der Kompass (seit Los) gegen das Gyroskop (seit Los) daneben
+        // Wandern ohne Drehung zählt sensor.bei mit (Gyroskop unter 8°/s), siehe geraete-test.html
         let kWeg = 0, abw = 0, abwBei = null, k0 = null;
+        const wandert = sp.wandert || 0;
         for (let i = 1; i < sp.w.length; i++) {
-          kWeg += ((sp.w[i][1] - sp.w[i - 1][1]) % 360 + 540) % 360 - 180;
+          const dk = ((sp.w[i][1] - sp.w[i - 1][1]) % 360 + 540) % 360 - 180;
+          kWeg += dk;
           const y = sp.w[i][2];
           if (y == null) continue;
           if (k0 == null) k0 = kWeg - y;   // Bezug beim ersten Wert mit Gyroskop
@@ -311,6 +314,7 @@
           "Kompass mitgedreht": Math.round(kWeg) + "°",
           "Kompass folgt zu": folgt != null ? Math.round(folgt * 100) + " %" : "–",
           "Größte Abweichung Kompass gegen Gyroskop": k0 != null ? Math.round(abw) + "°" + (abwBei != null ? ` nach ${rund(abwBei / 1000, 1)} s` : "") : "–",
+          "Kompass wandert ohne Drehung": gyroDa ? Math.round(wandert) + "°" : "–",
           "Neigung beim Drehen": sp.neigN ? `im Mittel ${Math.round(sp.neigSum / sp.neigN)}°, höchstens ${Math.round(sp.neigMax)}°` : "keine Daten" };
         // kompakt, damit 30 s bei voller Rate unter der Grenze des Servers (64 KB je Lauf) bleiben:
         // je Meldung "Abstand zur vorigen in ms,Richtung in 0,1°,Gyro-Drehung seit Los in °[,Genauigkeit in °]", getrennt durch ";"
@@ -324,8 +328,8 @@
         }
         // Alle Richtungen gesehen, aber falsch gemessen: Weg oder Abweichung passen nicht zum Gyroskop
         // ab einer halben Umdrehung laut Gyroskop: ein gestreckter Kompass sieht alle 36 Richtungen schon vor der vollen Drehung
-        if (folgt != null && Math.abs(gyroWeg) >= 180 && (Math.abs(folgt - 1) > 0.2 || abw > 30)) {
-          mess["Hinweis"] = `Der Kompass dreht nicht gleichmäßig mit: laut Gyroskop ${Math.round(Math.abs(gyroWeg))}°, laut Kompass ${Math.round(Math.abs(kWeg))}°, unterwegs bis zu ${Math.round(abw)}° daneben. Der Richtungspfeil zeigt dann um so viel falsch. Kompass einmessen (Handy in einer Acht schwenken), Magnete und Metall fernhalten.`;
+        if (folgt != null && Math.abs(gyroWeg) >= 180 && (Math.abs(folgt - 1) > 0.2 || abw > 30 || wandert > 30)) {
+          mess["Hinweis"] = `Der Kompass dreht nicht gleichmäßig mit: laut Gyroskop ${Math.round(Math.abs(gyroWeg))}°, laut Kompass ${Math.round(Math.abs(kWeg))}°, unterwegs bis zu ${Math.round(abw)}° daneben${wandert > 30 ? `, im Stillliegen ${Math.round(wandert)}° gewandert` : ""}. Der Richtungspfeil zeigt dann um so viel falsch. Kompass einmessen (Handy in einer Acht schwenken), Magnete und Metall fernhalten.`;
           return { art: abw > 60 || Math.abs(folgt - 1) > 0.4 ? "err" : "warn", wert: `bis ${Math.round(abw)}° daneben`, mess, roh };
         }
         return { art: n >= 30 ? "ok" : n >= 12 ? "warn" : "err", wert: `${n} von 36`, mess, roh };
@@ -489,5 +493,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 16, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen; 13: Gyro-Achse aus den Daten; 14: Abweichung Kompass gegen Gyroskop; 15: Drehung um die Senkrechte, auch schräg; 16: Einmessen vor dem Drehen (02.10.2026)
+  window.SJ_TESTS = { version: 17, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen; 13: Gyro-Achse aus den Daten; 14: Abweichung Kompass gegen Gyroskop; 15: Drehung um die Senkrechte, auch schräg; 16: Einmessen vor dem Drehen; 17: Striche nur beim Drehen, Wandern ohne Drehung (02.10.2026)
 })();

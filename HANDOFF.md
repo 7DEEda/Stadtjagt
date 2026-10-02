@@ -1661,4 +1661,14 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   Lageereignisse nur dem Kompass zu, nicht dem Neigungs-Effekt.
 - Lauf ASC3 (Xiaomi 23113RKC6G, Suite 16): eingemessen 5,1 s, danach
   Gyroskop −354°, Kompass −369° (104 %), höchstens 16° daneben.
+- Lauf UW6V (Xiaomi 22021211RG, Suite 16, nach dem Einmessen): still liegend
+  lief der Kompass von selbst 80° im Uhrzeigersinn (färbte 25 % des Kreises),
+  danach folgte er dem Drehen einige Sekunden (202° gegen 216°), sprang dann
+  zweimal um etwa +100° zurück; netto 13° bei 400° laut Gyroskop. Android
+  führt kurz mit dem Gyroskop und zieht ruckartig zum falschen Magnetwert
+  zurück. Einmessen half nicht: Kompass dieses Geräts unbrauchbar.
+- Suite 17 (02.10.): Striche im Drehkreis zählen nur, wenn das Handy laut
+  Gyroskop dreht (über 8°/s um die Senkrechte, `drehRate`). Neu „Kompass
+  wandert ohne Drehung“ (in `sensor.bei` gezählt); über 30° gehört zur
+  Bewertung „bis x° daneben“.
 
