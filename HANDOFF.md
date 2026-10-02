@@ -1642,4 +1642,15 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   Animation `#flach`, `flachPruefen()`): unter 8° Neigung für 0,7 s gibt
   „Los“ frei, über 15° sperrt wieder. Ohne Beschleunigungsdaten nach 1,5 s
   keine Sperre.
+- Flach-Sperre blieb am 02.10. auf einem Xiaomi bei 49° stehen, obwohl das
+  Handy flach lag: die Neigung kam aus der geglätteten Schwerkraft, und beim
+  Stillliegen kamen keine Meldungen mehr. Jetzt aus dem Lagesensor (beta,
+  gamma, ungeglättet, `neigung()`); die Schwerkraft für die Gyro-Rechnung
+  nur noch leicht geglättet (0,6).
+- Suite 16 (02.10.): neuer Hand-Schritt „Kompass einmessen“ direkt vor
+  „Handy einmal drehen“: liegende Acht wie im Spiel (gleiche Animation),
+  gezählt wird Schwenken über 80°/s, 5 s zusammen, höchstens 30 s; iOS
+  meldet die Genauigkeit vorher und nachher. Sieben Hand-Schritte. Der
+  Prüfstand legt sein gespieltes Handy jetzt flach (sonst sperrt der
+  Drehschritt) und überspringt das Einmessen.
 

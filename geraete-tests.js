@@ -248,6 +248,27 @@
 
     /* ================= mit der Hand ================= */
     {
+      // Wie das Einmessen im Spiel (kalSchritt in index.html): gezählt wird nur Schwenken über 80°/s, 5 s zusammen.
+      // Danach zeigt "Handy einmal drehen", wie gut der Kompass nach dem Einmessen ist.
+      id: "kompass-einmessen", titel: "Kompass einmessen", bezug: "Acht schwenken vor dem Drehen", block: "hand",
+      kopf: "Kompass einmessen", hand: "Halt das Handy vor dich und schwenk es ein paar Mal in einer liegenden Acht. Dreh dabei das Handgelenk mit.", grenze: 40,
+      async lauf(ctx) {
+        const s = ctx.sensor, t0 = jetzt(), vorher = s.genau;
+        s.kal = { bewegt: 0, letzt: null };
+        while (s.kal.bewegt < 5000 && jetzt() - t0 < 30000) {
+          ctx.status(s.kal.bewegt > 0 ? `Weiter so, ${Math.min(99, Math.round(s.kal.bewegt / 50))} %` : "Wartet auf Bewegung");
+          await ctx.warte(150);
+        }
+        const bewegt = s.kal.bewegt; s.kal = null;
+        ctx.status(bewegt >= 5000 ? "Fertig" : "Zu wenig geschwenkt");
+        const mess = { "Geschwenkt in s": rund(bewegt / 1000, 1), "Dauer in s": rund((jetzt() - t0) / 1000, 1),
+          "Genauigkeit vorher": vorher == null ? "meldet das Gerät nicht" : "±" + Math.round(vorher) + "°",
+          "Genauigkeit nachher": s.genau == null ? "meldet das Gerät nicht" : "±" + Math.round(s.genau) + "°" };
+        if (bewegt < 5000) return { art: "warn", wert: "zu wenig geschwenkt", mess };
+        return { art: "ok", wert: s.genau != null ? "±" + Math.round(s.genau) + "°" : "geschwenkt", mess };
+      }
+    },
+    {
       id: "kompass-drehen", titel: "Kompass drehen", bezug: "läuft die Richtung mit?", block: "hand",
       kopf: "Handy einmal drehen", hand: "Leg das Handy flach vor dich und dreh es langsam einmal ganz herum. Die Kugel läuft mit, bis der Kreis orange ist.", grenze: 40,
       async lauf(ctx) {
@@ -468,5 +489,5 @@
     }
   ];
 
-  window.SJ_TESTS = { version: 15, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen; 13: Gyro-Achse aus den Daten; 14: Abweichung Kompass gegen Gyroskop; 15: Drehung um die Senkrechte, auch schräg (02.10.2026)
+  window.SJ_TESTS = { version: 16, tests };   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen; 13: Gyro-Achse aus den Daten; 14: Abweichung Kompass gegen Gyroskop; 15: Drehung um die Senkrechte, auch schräg; 16: Einmessen vor dem Drehen (02.10.2026)
 })();

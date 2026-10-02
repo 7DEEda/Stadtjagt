@@ -126,6 +126,11 @@ ol.teil li{margin-bottom:6px}
 #kreis .mitte{fill:var(--card);stroke:var(--line);stroke-width:1}
 #kreis #kugel{fill:var(--flag);stroke:var(--card);stroke-width:1.5}
 #kreis text{font:700 15px var(--head);fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+/* Einmessen: Handy fährt eine liegende Acht ab, wie im Spiel */
+.acht{display:block;width:100%;max-width:260px;height:auto;margin:0 auto 18px}
+.acht .bahn{fill:none;stroke:var(--line);stroke-width:3;stroke-dasharray:6 6}
+.acht .handy{fill:var(--card);stroke:var(--ink);stroke-width:2.5}
+.acht .schirm{fill:var(--flag);opacity:.85}
 /* Sperre vor dem Drehen: erst wenn das Handy flach liegt, geht es los. Fenster wie die Dialoge, ohne Unschärfe dahinter. */
 #flach{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;background:color-mix(in srgb,var(--paper) 84%,transparent);
   transition:opacity .16s cubic-bezier(.32,.72,.4,1)}
@@ -319,8 +324,9 @@ const sensor = {
         // "oben" so wenden, dass es aus dem Bildschirm zeigt (z > 0): iOS meldet die Schwerkraft mit umgekehrtem Vorzeichen
         let o = [(g.x || 0) / b, (g.y || 0) / b, g.z / b];
         if (o[2] < 0) o = o.map(v => -v);
-        // leicht glätten, das Gehen und Zittern soll "oben" nicht verreißen
-        this.oben = this.oben ? this.oben.map((v, i) => v + (o[i] - v) * 0.2) : o;
+        this.obenRoh = o;
+        // nur leicht glätten: kommen beim Stillliegen keine Meldungen mehr, darf "oben" nicht auf einem Zwischenwert hängen
+        this.oben = this.oben ? this.oben.map((v, i) => v + (o[i] - v) * 0.6) : o;
       }
     }
     if (this.spur && g && typeof g.z === "number") {
@@ -359,6 +365,15 @@ const sensor = {
       if (!this.nTick) { this.nTick = true; requestAnimationFrame(() => { this.nTick = false; $("#nadel").style.transform = `rotate(${this.dreh.toFixed(1)}deg)`; kreisMalen(); }); }
     }
     if (e.beta == null || e.gamma == null) return;
+    // Einmessen: Zeit zählen, in der das Handy schneller als 80°/s geschwenkt wird (wie kalSchritt im Spiel)
+    if (this.kal) {
+      const t = e.timeStamp || performance.now(), k = this.kal;
+      if (k.letzt) {
+        const dt = t - k.letzt.t, w = (a, b) => Math.abs(((a - b) % 360 + 540) % 360 - 180);
+        if (dt > 0 && dt < 200 && (w(e.beta, k.letzt.b) + w(e.gamma, k.letzt.c)) / dt * 1000 > 80) k.bewegt += dt;
+      }
+      k.letzt = { t, b: e.beta, c: e.gamma };
+    }
     this.beta = e.beta; this.gamma = e.gamma;
     // Neigungs-Parallax wie neigungStart() in index.html
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -408,6 +423,12 @@ const ICON = {
   kamera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2.5h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/><circle cx="12" cy="13" r="1.2" fill="var(--flag)" stroke="none"/></svg>',
   vibration: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3.5" width="8" height="17" rx="2"/><path d="M4.5 8v8M2 10v4M19.5 8v8M22 10v4" stroke="var(--flag)"/></svg>',
   benachrichtigung: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><circle cx="17.5" cy="6.5" r="2.2" fill="var(--flag)" stroke="none"/></svg>',
+  // liegende Acht wie beim Einmessen im Spiel (ACHT in index.html)
+  "kompass-einmessen": `<svg class="acht" viewBox="0 0 200 100" aria-hidden="true">
+    <path id="achtbahn" class="bahn" d="M100,50 C130,8 185,8 185,50 C185,92 130,92 100,50 C70,8 15,8 15,50 C15,92 70,92 100,50 Z"/>
+    <g><rect class="handy" x="-10" y="-17" width="20" height="34" rx="4"/><rect class="schirm" x="-6" y="-12" width="12" height="22" rx="1.5"/>
+      <animateMotion dur="3.2s" repeatCount="indefinite"><mpath href="#achtbahn"/></animateMotion>
+      <animateTransform attributeName="transform" type="rotate" additive="sum" values="-18;18;-18" dur="1.6s" repeatCount="indefinite"/></g></svg>`,
   allgemein: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 5h4"/><circle cx="12" cy="13" r="2" fill="var(--flag)" stroke="none"/></svg>',
   fertig: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>'
 };
@@ -426,14 +447,23 @@ const GLATT = 0.12;
 const kurz = d => ((d % 360) + 540) % 360 - 180;
 let kreisLaeuft = false;
 // Flach heißt: weniger als 8° geneigt, 0,7 s lang. Hebt man es danach über 15° an, sperrt der Schritt wieder.
-// Ohne Beschleunigungsdaten (kein devicemotion nach 1,5 s) sperrt nichts.
+// Die Neigung kommt aus dem Lagesensor (beta, gamma), ungeglättet: liegt das Handy still, schicken manche Android-Handys
+// nichts mehr, der letzte Wert ist dann trotzdem der aktuelle (02.10.: mit geglätteter Schwerkraft blieb es bei 49° stehen).
+// Ohne Lagesensor die Schwerkraft, ohne beides nach 1,5 s keine Sperre.
+function neigung() {
+  if (sensor.beta != null && sensor.gamma != null) {
+    const r = Math.PI / 180;
+    return Math.acos(Math.min(1, Math.abs(Math.cos(sensor.beta * r) * Math.cos(sensor.gamma * r)))) / r;
+  }
+  const o = sensor.obenRoh;
+  return o ? Math.acos(Math.min(1, Math.abs(o[2]))) * 180 / Math.PI : null;
+}
 function flachPruefen() {
   const el = $("#flach"); if (!el) return;
-  const los = $("#aktion [data-was=los]"), t = performance.now(), o = sensor.oben, grad = $("#flachgrad");
-  if (!o) {
+  const los = $("#aktion [data-was=los]"), t = performance.now(), grad = $("#flachgrad"), neig = neigung();
+  if (neig == null) {
     if (t - S.flachAb > 1500) S.flachFrei = true;
   } else {
-    const neig = Math.acos(Math.min(1, Math.max(-1, o[2]))) * 180 / Math.PI;
     if (neig < 8) { if (S.flachSeit == null) S.flachSeit = t; if (t - S.flachSeit > 700) S.flachFrei = true; }
     else { S.flachSeit = null; if (neig > 15) S.flachFrei = false; }
     grad.textContent = neig < 8 ? "Liegt flach" : `Noch ${Math.round(neig)}° schräg`;
@@ -513,7 +543,7 @@ function zeichne() {
   } else if (S.seite === "hand") {
     const z = HAND[S.i];
     kopf(`Schritt ${S.i + 1} von ${HAND.length}`, 0.3 + 0.7 * S.i / HAND.length);
-    const bild = z.t.id === "kompass-drehen" ? KREIS : `<div class="bild">${ICON[z.t.id] || ICON.allgemein}</div>`;
+    const bild = z.t.id === "kompass-drehen" ? KREIS : z.t.id === "kompass-einmessen" ? ICON[z.t.id] : `<div class="bild">${ICON[z.t.id] || ICON.allgemein}</div>`;
     inh.innerHTML = `${bild}<h2>${esc(z.t.kopf || z.t.titel)}</h2>${anleitung(z.t.hand)}`;
     inh.appendChild(z.feld);   // Vorschau des Schritts (Foto) bleibt über das Neuzeichnen erhalten
     akt.innerHTML = z.st === "laeuft"

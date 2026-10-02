@@ -34,13 +34,13 @@ PORT = 8792
 SELBST = ["umgebung", "speicher", "server", "uhr", "standort", "kompass", "neigung",
           "wachhalten", "karte", "schrift", "teilen", "wachhalten-tipp", "live", "offline"]
 
-# Dreht das gespielte Handy stetig im Kreis, wie ein Android-Gerät es melden würde
+# Dreht das gespielte Handy stetig im Kreis, flach auf dem Tisch (sonst sperrt der Drehschritt), wie ein Android-Gerät es melden würde
 SENSOR = """
 let a = 0;
 setInterval(() => {
   a = (a + 7) % 360;
-  window.dispatchEvent(new DeviceOrientationEvent("deviceorientationabsolute", { alpha: a, beta: 40 + a % 5, gamma: 3, absolute: true }));
-  window.dispatchEvent(new DeviceOrientationEvent("deviceorientation", { alpha: a, beta: 40 + a % 5, gamma: 3, absolute: false }));
+  window.dispatchEvent(new DeviceOrientationEvent("deviceorientationabsolute", { alpha: a, beta: 1 + a % 3, gamma: 1, absolute: true }));
+  window.dispatchEvent(new DeviceOrientationEvent("deviceorientation", { alpha: a, beta: 1 + a % 3, gamma: 1, absolute: false }));
 }, 40);
 """
 
@@ -101,10 +101,11 @@ def main() -> int:
                 if len(json.dumps(pl)) > 60000:
                     fehler.append("Der Lauf ist größer als 60 KB")
 
-            # Ein Hand-Schritt: Kompass drehen, der gespielte Sensor dreht ohnehin
+            # Einmessen überspringen, dann ein Hand-Schritt: Kompass drehen, der gespielte Sensor dreht ohnehin
+            page.click("[data-was=weg]"); page.wait_for_function("S.i >= 1")
             vorher = len(gespeichert)
-            page.click("[data-was=los]")   # es ist immer nur ein Schritt offen
-            page.wait_for_function("S.i >= 1")
+            page.click("#aktion [data-was=los]")   # es ist immer nur ein Schritt offen
+            page.wait_for_function("S.i >= 2")
             page.wait_for_timeout(500)
             if len(gespeichert) <= vorher:
                 fehler.append("Nach dem Hand-Schritt wurde nicht erneut gespeichert")
@@ -117,7 +118,7 @@ def main() -> int:
                     fehler.append("Der Hand-Schritt hat einen anderen Schlüssel benutzt")
             if page.locator("[data-was=los]").count() != 1:
                 fehler.append("Es ist nicht genau ein Schritt offen")
-            page.click("[data-was=weg]")   # der nächste Schritt: Handy sperren
+            page.click("#aktion [data-was=weg]")   # der nächste Schritt: Handy sperren
             page.wait_for_timeout(500)
             if gespeichert[-1]["p_payload"]["tests"].get("bildschirm", {}).get("art") != "skip":
                 fehler.append("Überspringen wurde nicht gespeichert")
