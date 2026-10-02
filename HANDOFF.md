@@ -1558,3 +1558,6 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
 - Die Position im Standort-Schritt bleibt genau gespeichert (Entscheidung
   02.10.: kein Abschneiden). Fotos werden nur zur Probe hochgeladen
   (`device_test_echo`), nicht behalten.
+- Hintergrund scrollt nicht mehr mit (Spiel und Testseite, 02.10.): die
+  scroll-gebundene Animation (`animation-timeline`, `--px-hub`) ist raus, die
+  Karte bewegt sich nur noch mit der Neigung (`--nx`/`--ny`).

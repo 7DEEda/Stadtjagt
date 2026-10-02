@@ -54,15 +54,9 @@ body.fest{overflow:hidden}
 /* Der Rahmen ragt 18 px über das Fenster hinaus: so viel darf die Neigung ihn verschieben, ohne dass ein Rand entsteht */
 .topo{position:fixed;top:-18px;left:-18px;z-index:0;pointer-events:none;width:calc(100% + 36px);height:calc(100vh + 36px);height:calc(100lvh + 36px);overflow:hidden;
   transform:translate(var(--nx,0px),var(--ny,0px));will-change:transform}
-/* Parallax ohne Skript: die Karte ist um --px-hub höher als das Fenster; eine scroll-gebundene Animation
-   schiebt sie über die ganze Seitenlänge genau um diesen Überstand nach oben. Rechnet der Browser im
-   Compositor, darum ruckelfrei. Browser ohne animation-timeline zeigen die Karte still. */
-:root{--px-hub:40lvh}
-.topo svg{display:block;width:100%;height:calc(100lvh + 36px + var(--px-hub));will-change:transform;
-  animation:parallax linear both;animation-timeline:scroll(root)}
-@keyframes parallax{from{transform:translateY(0)}to{transform:translateY(calc(-1 * var(--px-hub)))}}
-@supports not (animation-timeline:scroll()){.topo svg{animation:none;height:calc(100lvh + 36px)}}
-@media (prefers-reduced-motion:reduce){.topo svg{animation:none;height:calc(100lvh + 36px)}.topo{transform:none}}
+/* Die Karte steht beim Scrollen still (Entscheidung 02.10.2026), sie bewegt sich nur mit der Neigung */
+.topo svg{display:block;width:100%;height:calc(100lvh + 36px)}
+@media (prefers-reduced-motion:reduce){.topo{transform:none}}
 .topo *{vector-effect:non-scaling-stroke}
 .topo text{vector-effect:none}
 @media (min-width:700px){.topo text{display:none}}   /* Beschriftungen wären am Laptop riesig */

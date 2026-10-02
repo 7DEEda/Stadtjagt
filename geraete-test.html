@@ -18,7 +18,6 @@
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
   --park:#DFEAD6; --baum:#C3D5B8; --strasse:#CBD7C4; --strasse-haupt:#B5C5AE;
   --ol-braun:#E0CCB3; --ol-gelb:#F3EDD6; --ol-gruen:#DCEAD3; --ol-dicht:#C9DEBD; --ol-schwarz:#A3AFA9;
-  --px-hub:40lvh;
 }
 @media (prefers-color-scheme:dark){:root{
   --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38;
@@ -32,11 +31,9 @@ html,body{margin:0}
 body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);min-height:100vh}
 .topo{position:fixed;top:-18px;left:-18px;z-index:0;pointer-events:none;width:calc(100% + 36px);height:calc(100vh + 36px);height:calc(100lvh + 36px);overflow:hidden;
   transform:translate(var(--nx,0px),var(--ny,0px));will-change:transform}
-.topo svg{display:block;width:100%;height:calc(100lvh + 36px + var(--px-hub));will-change:transform;
-  animation:parallax linear both;animation-timeline:scroll(root)}
-@keyframes parallax{from{transform:translateY(0)}to{transform:translateY(calc(-1 * var(--px-hub)))}}
-@supports not (animation-timeline:scroll()){.topo svg{animation:none;height:calc(100lvh + 36px)}}
-@media (prefers-reduced-motion:reduce){.topo svg{animation:none;height:calc(100lvh + 36px)}.topo{transform:none}}
+/* Die Karte steht beim Scrollen still (Entscheidung 02.10.2026), sie bewegt sich nur mit der Neigung */
+.topo svg{display:block;width:100%;height:calc(100lvh + 36px)}
+@media (prefers-reduced-motion:reduce){.topo{transform:none}}
 .topo *{vector-effect:non-scaling-stroke}
 .topo text{vector-effect:none}
 @media (min-width:700px){.topo text{display:none}}   /* Beschriftungen wären am Laptop riesig */
