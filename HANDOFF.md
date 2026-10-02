@@ -1684,4 +1684,5 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   `mockups/qr-geraete-test.png`.
 - Neuer Ordner `sicherungen/` (nicht im Repo): Stationen und Spielstand vom
   02.10. vor dem Umbau auf eine Teststation.
+- Freigaben-Seite, Android: nach Foto vom 02.10. (Chrome, Android 16) ein Fenster mit Karten Genau/Ungefähr und drei Knöpfen untereinander; zwei Schritte (Standort, Kamera). Das Mockup `geraete-test-freigaben.html` zeigt noch die alte Android-Form.
 
