@@ -137,6 +137,13 @@ Mockups: `mockups/kompass-waechter.html`, `mockups/akku-warnung.html`.
 
 ### Anzeige für das Team (Mockup Bild 1 und 2)
 
+- Nadel (Entscheidung 02.10., Variante A aus `mockups/kompass-nadel.html`):
+  folgt der Pfeil nicht dem Kompass, sondern der Laufrichtung, zeigt die
+  Nadel nur ihren Umriss, gestrichelt, und der Ring ist gestrichelt; dazu die
+  Plakette „nach Laufrichtung“ statt „Kompass“. Ohne Richtung: gestrichelter
+  Ring mit Fragezeichen, Plakette „erst ein paar Schritte“. Gilt für alle
+  Fälle ohne verlässlichen Kompass (Wächter, kein Kompass, iPhone ungenau).
+
 - Unter dem Kompass ein Hinweis in Warnfarbe: „Der Kompass dieses Handys
   zeigt gerade falsch“, darunter je nach Lage „Der Pfeil richtet sich jetzt
   nach eurer Laufrichtung. Haltet das Handy beim Gehen vor euch.“ oder
