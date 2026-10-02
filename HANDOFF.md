@@ -1577,6 +1577,11 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   drehen 36 von 36 in 13 s, Wach halten schon ohne Tipp erteilt, Standort
   nach dem Entsperren in 1,9 s zurück, Kamera ok, Lauf etwa 70 s. Vibration
   zweimal nicht gespürt (wie am 30.09.), Mitteilungen nur mit Service Worker.
-  Unklar: Lauf Z95K, Handy drehen nur 1 von 36 in 45 s und Kompass nach Pause
-  starr auf 90°, der Kompass stand in diesem Lauf vermutlich.
+  Lauf Z95K (Handy drehen 1 von 36): das Handy wurde nicht gedreht, kein
+  Befund.
+- Kompass-Genauigkeit: nur Safari auf dem iPhone meldet sie
+  (`webkitCompassAccuracy`, am 30.09. ±18°); Chrome und Edge auf Android
+  geben sie nicht an Webseiten weiter. Messbar wäre sie nur über einen
+  Geh-Schritt (GPS-Laufrichtung gegen Kompass). Entscheidung 02.10.: die
+  Tests laufen vorerst drinnen, ohne Gehen; kein solcher Schritt.
 
