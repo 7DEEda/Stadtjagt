@@ -1952,11 +1952,12 @@ async function drawMap(first) {
   }
   layers.stations.forEach(l => map.removeLayer(l));
   layers.stations = [];
-  const pts = [[START.lat, START.lng]];
-  // Startpunkt als Haus, unter den Stationen
-  const haus = L.marker([START.lat, START.lng], { zIndexOffset: 900,
+  // Startpunkt als Haus, unter den Stationen; mit der Teststation der Start in Berlin
+  const start = st.route === "test" ? TEST_START : START;
+  const pts = [[start.lat, start.lng]];
+  const haus = L.marker([start.lat, start.lng], { zIndexOffset: 900,
     icon: L.divIcon({ html: `<div class="mapbadge start" title="Start">${HAUS}</div>`, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] }) })
-    .bindPopup(`<b>Start</b><br>${esc(START.name)}`);
+    .bindPopup(`<b>Start</b><br>${esc(start.name)}`);
   haus.addTo(map); layers.stations.push(haus);
   aktiv(st).forEach(s => {
     if (s.lat == null || s.lng == null) return;
@@ -2021,7 +2022,7 @@ async function drawMap(first) {
     const solved = cur != null
       ? ((tr && tr.stations) || []).filter(s => s.solvedAt && new Date(s.solvedAt).getTime() <= cur).length
       : t.solved;
-    const popup = `<b>${esc(t.name)}</b><br>${esc(t.code)}<br>${solved} von ${(st.stations || []).length} gelöst<br>`
+    const popup = `<b>${esc(t.name)}</b><br>${esc(t.code)}<br>${solved} von ${aktiv(st).length} gelöst<br>`
       + (stale ? "keine aktuelle Position" : "Position " + fmtClock(when) + " Uhr");
     const icon = L.divIcon({ html, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] });
     if (layers.teams[t.id]) {
@@ -2067,7 +2068,7 @@ async function syncTracks(full) {
 
 /* ---------- Zeitachse ---------- */
 function timelineRows() {
-  const A = S.admin, st = A.state, total = (st.stations || []).length;
+  const A = S.admin, st = A.state, total = aktiv(st).length;
   const list = (st.teams || []).map((t, i) => {
     const tr = A.tracks && A.tracks[t.id];
     const sts = (((tr && tr.stations) || [])).map(s => ({
@@ -2097,7 +2098,7 @@ function renderTimeline() {
     return;
   }
   if (slider) slider.disabled = false;
-  const start = W.start, end = Math.max(W.end, start + 60000), total = (st.stations || []).length;
+  const start = W.start, end = Math.max(W.end, start + 60000), total = aktiv(st).length;
   const pct = ms => (Math.min(Math.max(ms, start), end) - start) / (end - start) * 100;
   let html = '<div class="tl-cursor" id="tlcursor"></div>';
   timelineRows().forEach(r => {

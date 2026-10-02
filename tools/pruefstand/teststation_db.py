@@ -77,6 +77,24 @@ begin
     then raise exception 'PROBE FEHLT G1: admin_draw verlangt im Testmodus weiter zwei Personen'; end if;
   v_n := v_n + 1;
 
+  -- H: eine spätere Spalte an stations_alle darf current_station nicht zerbrechen (Review I-1):
+  -- current_station liefert den Typ der Sicht, und nach "create or replace view" läuft alles weiter
+  if (select prorettype from pg_proc where proname = 'current_station') <> 'stations'::regtype
+    then raise exception 'PROBE FEHLT H1: current_station liefert % statt der Sicht stations', (select prorettype::regtype from pg_proc where proname = 'current_station'); end if;
+  alter table stations_alle add column probe_spalte int;
+  create or replace view stations as select * from stations_alle where route = aktive_route();
+  if v_code is not null then st := team_state(v_code); end if;
+  alter table stations_alle drop column probe_spalte cascade;
+  create or replace view stations as select * from stations_alle where route = aktive_route();
+  revoke all on stations from anon, authenticated;   -- neu angelegt: Supabase vergibt Rechte von selbst
+  v_n := v_n + 1;
+
+  -- I: Fotos der echten Route bleiben im Testmodus bei der Spielleitung (Review M-3)
+  if position('route = ''echt''' in pg_get_functiondef('admin_photos'::regproc)) = 0
+     or position('route = ''echt''' in pg_get_functiondef('admin_photo'::regproc)) = 0
+    then raise exception 'PROBE FEHLT I1: admin_photos/admin_photo folgen der aktiven Route'; end if;
+  v_n := v_n + 1;
+
   -- F: die Sicht ist ohne PIN nicht lesbar
   if has_table_privilege('anon', 'stations', 'select') or has_table_privilege('authenticated', 'stations', 'select')
     then raise exception 'PROBE FEHLT F1: anon darf die Sicht stations lesen'; end if;

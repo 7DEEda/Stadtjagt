@@ -57,6 +57,11 @@ with sync_playwright() as pw:
     g = pg.evaluate("window.__GESPEICHERT")
     pruef(g["p_id"] == "st" and g["p_radius"] == 40, f"Speichern mit id der Teststation ({g['p_id']}, {g['p_radius']})")
     pruef(len(pg.evaluate("S.admin.state.stations")) == 5, "Prager Liste unverändert fünf Stationen")
+    print("Karte der Spielleitung im Testmodus")
+    pg.click("[data-act=a-tab][data-tab=map]"); pg.wait_for_selector(".leaflet-marker-icon", timeout=25000); pg.wait_for_timeout(800)
+    # die gespielten Teams stehen im Prüfstand in Prag; geprüft wird, wo Start-Haus und Station liegen
+    orte = pg.evaluate("layers.stations.map(l => l.getLatLng ? [l.getLatLng().lat, l.getLatLng().lng] : null).filter(Boolean)")
+    pruef(orte and all(abs(o[0] - 52.47) < 0.05 for o in orte), f"Start-Haus und Teststation in Berlin ({orte})")
     print("Auslosen mit einer Person im Testmodus")
     pg.goto("http://127.0.0.1:8822/app.html?szenario=admin-auslosen-allein"); pg.wait_for_selector(".tabs")
     pg.click("[data-act=a-tab][data-tab=teams]"); pg.wait_for_selector("#dval")

@@ -18,8 +18,14 @@ ZIEL = MIG / "20261002120000_teststation.sql"
 
 KOPF = """-- Nachtrag 28: Teststation. Spec: docs/superpowers/specs/2026-10-02-teststation-kompass-waechter-design.md, Teil 1.
 -- stations heißt jetzt stations_alle (echte Route und Teststation). Die Sicht stations zeigt nur die aktive
--- Route; alle Spielfunktionen lesen weiter stations. Achtung für spätere Migrationen: die Sicht ist
--- "select *" zum Zeitpunkt des Anlegens. Neue Spalten an stations_alle erst nach drop view/create view sichtbar.
+-- Route; alle Spielfunktionen lesen weiter stations.
+-- ACHTUNG für spätere Migrationen: die Sicht ist "select *" zum Zeitpunkt des Anlegens. Wer eine Spalte an
+-- stations_alle anfügt, MUSS danach
+--   create or replace view stations as select * from stations_alle where route = aktive_route();
+-- ausführen, sonst passt current_station (liefert den Typ der Sicht) nicht mehr und das Spiel steht.
+-- Wird die Sicht einmal gelöscht und neu angelegt (statt "or replace"), danach unbedingt
+--   revoke all on stations from anon, authenticated;
+-- Supabase gibt neuen Objekten Leserechte, dann wären Rätsel und Lösungen ohne PIN lesbar.
 
 alter table stations rename to stations_alle;
 alter table stations_alle add column route text not null default 'echt';
@@ -37,7 +43,19 @@ $$;
 create view stations as select * from stations_alle where route = aktive_route();
 -- Sichten haben keine Zeilenrechte: ohne das hier könnte jede und jeder Rätsel und Lösungen lesen
 revoke all on stations from anon, authenticated;
-revoke all on function aktive_route() from anon, authenticated;
+revoke all on function aktive_route() from public, anon, authenticated;
+
+-- current_station lieferte den Zeilentyp der Tabelle (jetzt stations_alle); neu mit dem Typ der Sicht,
+-- damit Tabelle und Sicht nicht auseinanderlaufen. Aufrufer sind plpgsql und hängen nicht daran.
+drop function current_station(uuid);
+create function current_station(p_team uuid) returns stations
+language sql security definer set search_path = public as $$
+  select s.* from stations s
+  left join progress pr on pr.station_id = s.id and pr.team_id = p_team
+  where pr.solved_at is null
+  order by s.position
+  limit 1;
+$$;
 
 insert into stations_alle (route, position, name, lat, lng, radius_m, location_hint, riddle, answer, digit, tip)
 values ('test', 1, 'EDEKA Grenzallee', 52.470116, 13.462131, 50, 'Ortshinweis folgt', 'Rätsel folgt', '', 1, '');
@@ -74,6 +92,11 @@ AUFGABEN = [
     ("admin_state", "20260930200000_name_verschluesselt.sql",
      [(ADMIN_FELDER_ALT, ADMIN_FELDER_NEU, 1), (PR_SOLVED_ALT, PR_SOLVED_NEU, 1), (PR_LAST_ALT, PR_LAST_NEU, 1)]),
     ("admin_save_station", "20260930200000_name_verschluesselt.sql", [("  update stations set", "  update stations_alle set", 1)]),
+    # Fotos der Spielleitung immer von der echten Route: Event-Fotos verschwinden im Testmodus nicht (Review M-3)
+    ("admin_photos", "20260930180000_gruppenselfie.sql",
+     [("join stations s on s.id = ph.station_id", "join stations_alle s on s.id = ph.station_id and s.route = 'echt'", 1)]),
+    ("admin_photo", "20260930180000_gruppenselfie.sql",
+     [("join stations s on s.id = ph.station_id", "join stations_alle s on s.id = ph.station_id and s.route = 'echt'", 1)]),
     # im Testmodus reicht eine Person (ein Team zum Ausprobieren), sonst wie bisher zwei
     ("admin_draw", "20260919100000_bugjagd.sql",
      [("  if v_count < 2 then raise exception 'Es sind noch zu wenige Personen angemeldet.' using errcode='P0001'; end if;",
