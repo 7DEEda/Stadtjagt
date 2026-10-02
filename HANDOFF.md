@@ -1703,3 +1703,30 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
   die Längsachse, Text „Dreht und kippt es dabei in alle Richtungen“ (für den
   Magnetsensor zählen möglichst viele Lagen, Schwenken allein reicht nicht).
 
+## Teststation (Nachtrag 28, 02.10.2026)
+
+- Ist der Testmodus an, spielen alle Teams nur die Teststation (anfangs EDEKA
+  Grenzallee, Berlin, Start der Etappe TSE Grenzallee 4); die fünf Prager
+  Stationen bleiben unverändert und gelten, sobald der Testmodus aus ist.
+- Bearbeiten: Spielleitung, Reiter Stationen, Abschnitt „Teststation“ (Karte
+  mit ziehbaren Kreisen wie bei den echten Stationen).
+- Im Testmodus reicht eine Person zum Auslosen (ein Team zum Ausprobieren).
+  Schloss, Koffer-Feld und Texte rechnen mit der Stationszahl (Teststation:
+  zwei Ziffern).
+- Fortschritt je Route getrennt (progress hängt an der Station). Test-Fotos
+  zeigt die Galerie der Spielleitung als eigene Kachel „Teststation“, auch im
+  ZIP.
+- Datenbank: Tabelle `stations_alle` (Spalte `route` echt/test), Sicht
+  `stations` = aktive Route (`aktive_route()`), `current_station` liefert den
+  Typ der Sicht. **Wer eine Spalte an `stations_alle` anfügt, muss danach
+  `create or replace view stations as select * from stations_alle where route
+  = aktive_route();` ausführen**, sonst steht das Spiel; wird die Sicht neu
+  angelegt, danach `revoke all on stations from anon, authenticated`.
+- 02.10.: Teams und Fortschritt des Probebetriebs gelöscht (Friedrich), die
+  zwei Personen bleiben angemeldet, Status Anmeldung, Testmodus an.
+  Sicherung vorher: `sicherungen/` (nicht im Repo).
+- Plan: `docs/superpowers/plans/2026-10-02-teststation.md`; Prüfen:
+  `tools/pruefstand/teststation.py`, Probelauf `teststation_db.py`.
+- Vor dem Event: Testmodus aus, Fortschritt zurücksetzen. Die Teststation
+  darf liegen bleiben.
+

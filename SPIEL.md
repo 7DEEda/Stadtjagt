@@ -620,4 +620,12 @@ Probedaten weg, Löschdatum für Fotos).
   Getippte hält `confirm.felder`, `a-dlg-cancel` schreibt es über
   `S.felderZurueck` nach dem Neuzeichnen zurück. Test:
   `python tools/pruefstand/ziffer.py`.
+- **Teststation (Nachtrag 28):** `stations_alle` mit `route`, Sicht `stations`
+  (aktive Route über `aktive_route()`); alle Spielfunktionen lesen die Sicht.
+  `admin_state` liefert `stations` (immer echt, zum Bearbeiten), `testStation`,
+  `route`, `aktiveStationen`; `admin_photos` beide Routen mit `route`,
+  `admin_photo(…, p_route)`. Client: `alleStationen(st)`, `aktiv(st)`,
+  `stationZeile(s, st)`, `TEST_START`, `ANZ(st)` für Schloss und Texte.
+  Neue Spalten an `stations_alle`: danach die Sicht mit `create or replace`
+  neu anlegen (siehe Kopf der Migration 20261002120000).
 
