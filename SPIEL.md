@@ -628,4 +628,16 @@ Probedaten weg, Löschdatum für Fotos).
   `stationZeile(s, st)`, `TEST_START`, `ANZ(st)` für Schloss und Texte.
   Neue Spalten an `stations_alle`: danach die Sicht mit `create or replace`
   neu anlegen (siehe Kopf der Migration 20261002120000).
-
+- **Kompass-Wächter (Nachtrag 30, 03.10.):** `kompass-waechter.js`
+  (`KompassWaechter(opt)` mit `gyro`, `kompass`, `pause`, `einmessen`; Getter
+  `urteil`, `versuche`, `prueft`, `vorbelastet`; `onWechsel` nur bei Änderung).
+  In `index.html`: `S.gps.waechter`, `waechterGrund`, `waechterSchlecht()`,
+  `waechterRuht()` (senkrecht, Bildschirm unten, iOS `kompassRoh`
+  „kalibrieren“, `nachPause`), `motionH` (Drehung um die Senkrechte),
+  Gedächtnis `sj.kompass`. Anzeige: `kompassFolgt()`, `kompassKlasse()`,
+  `kompassChip()`, `waechterHinweisHTML()`, `laufrichtung()` (Anker > 8 m und
+  > Genauigkeit, gilt 30 s). Wirkung nur bei `testMode`. Meldung:
+  `maybeReport` schickt `p_kompass`, eine Meldung zur Zeit (`g.meldet`),
+  Wiederholung ohne `p_kompass` nur bei PGRST202. Spielleitung:
+  `zustandHTML` zeigt den Vermerk bei Position < 3 min. Prüfen:
+  `python tools/pruefstand/waechter.py`, Probelauf `waechter_db.py`.

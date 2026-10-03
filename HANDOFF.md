@@ -24,9 +24,11 @@ dieser Datei:
   Hochformat-Hinweis
 - ohne Migration (01.10.): Design System (`design-system/`), Schalter
   hell/dunkel, Schriftstufen `--fs-*`
+- Nachtrag 28 bis 30 (02./03.10.): Teststation, Startpunkt je Route,
+  Kompass-Wächter (Abschnitt „Kompass-Wächter (Nachtrag 30)“ am Ende)
 
-**Die Datenbank ist gerade im Probebetrieb, nicht leer:** Status „running“,
-Testmodus an, zwei Teams (Fuchs, Wolf) aus Friedrichs Durchgang am 30.09.,
+**Die Datenbank ist gerade im Probebetrieb, nicht leer** (Stand 03.10.: Status
+„Anmeldung“, Testmodus an; die Angaben hier stammen vom 30.09.): zwei Teams (Fuchs, Wolf) aus Friedrichs Durchgang am 30.09.,
 Gruppenselfie eingeschaltet, alle fünf Stationen mit Kreisen fürs Entschlüsseln
 (Vorschlag 60 % und 30 % der Etappe, von Claude am 30.09. eingetragen). Vor dem
 Event: Fortschritt zurücksetzen, Testdaten entfernen, **Testmodus aus**,
@@ -1745,58 +1747,78 @@ in `.ui-design/reviews/stadtjagd_20261001.md` (nicht im Repo). Umgesetzt:
 - Kopf der Spielleitung mit mehr Abstand zwischen Titel, Chips und Meldung.
 - Geräte-Test Suite 20 (02.10.): eigener Schritt „Akku“ mit Stand und „lädt“; ohne `navigator.getBattery` (Safari, Firefox) Warnung „nicht lesbar“.
 
-## Stand zum Fortsetzen (02.10.2026, abends)
+## Kompass-Wächter (Nachtrag 30, 02./03.10.2026)
 
-**Live (gepusht und eingespielt):** Teststation (Nachtrag 28), Startpunkt je
-Route (Nachtrag 29), Geräte-Test bis Suite 20 unter
-https://7deeda.github.io/geraetetest/ (Akku-Schritt ist dort schon live, das
-Veröffentlichungsskript pusht ins Repo `7DEEda/geraetetest`).
+Live seit 03.10.2026 (Migration `20261002160000_kompass_waechter.sql`
+eingespielt, Client gepusht). Spezifikation:
+`docs/superpowers/specs/2026-10-02-teststation-kompass-waechter-design.md`
+Teil 2, Plan `docs/superpowers/plans/2026-10-02-kompass-waechter.md`.
 
-**Nur lokal auf master, NICHT gepusht (5 Commits vor origin):** Kompass-Wächter
-Teil 2, Aufgabe 1 und 2, plus der Akku-Commit für dieses Repo. Bewusst nicht
-veröffentlicht, weil der Wächter halbfertig ist: Aufgabe 2 wirkt im Testmodus
-schon (Kompass gilt als ungenau), aber Anzeige (Aufgabe 3) und Meldung an die
-Spielleitung (Aufgabe 4) fehlen, und der Testmodus ist live an.
+- **Was er tut:** `kompass-waechter.js` vergleicht den Kompass mit dem Gyroskop
+  (Drehabschnitte, Wandern im Stillstand) und urteilt `null` / `ok` /
+  `unzuverlaessig`. Gemessen und an die Spielleitung gemeldet wird immer;
+  **wirken** (Kompass gilt als ungenau, gestrichelte Nadel nach Laufrichtung,
+  Plakette, Hinweis mit Einmessen und „Leitung abgeben“) nur im **Testmodus**.
+- **Gedächtnis:** `localStorage` `sj.kompass` (`vorbelastet`, `versuche`,
+  `datum` als lokales Datum). Gilt am selben Kalendertag; das Datum wird nur
+  beim Entstehen oder bei neuem Versuch geschrieben. Vorbelastet braucht 5 gute
+  Abschnitte zurück, sonst 3; das Prüfen nach dem Einmessen dauert genauso lange.
+- **Wann er nicht misst:** Handy nahe senkrecht (|oben z| < 0,4), Bildschirm
+  nach unten (|beta| > 90°), iOS meldet selbst schlechte Genauigkeit
+  (`kompassRoh` „kalibrieren“), Android nach einer Pause (`nachPause`), ohne
+  Gyroskop. Dann bleibt das Urteil, wie es ist.
+- **Laufrichtung** (Ersatz ohne verlässlichen Kompass, gilt auch bei Testmodus
+  aus): vom Ankerpunkt aus, sobald ein neuer Punkt mehr als 8 m und mehr als
+  seine GPS-Genauigkeit entfernt ist; gilt 30 s. Ohne Laufrichtung zeigt der
+  Kompass „?“ und „erst ein paar Schritte“. Das gilt für jeden unsicheren
+  Kompass, also auch für ein ungenaues iPhone in Prag.
+- **iOS-Freigaben:** im selben Tipp erst Kompass, dann Bewegung, beide vor dem
+  ersten `await`; lehnt die Bewegung ab, läuft der Kompass trotzdem.
+- **Datenbank:** `team_positions.kompass`, `report_position(p_code, p_lat,
+  p_lng, p_acc, p_kompass default null)` (alte 4-Parameter-Fassung gelöscht,
+  alte Clients gehen weiter), `admin_state.teams[].position.kompass`. Der Client
+  wiederholt eine Meldung ohne `p_kompass` nur bei PGRST202 (Funktion fehlt).
+  Die Spielleitung sieht „Kompass falsch, Pfeil nach Laufrichtung“ (Testmodus
+  aus: „Kompass falsch“), nur bei einer Position jünger als 3 min.
+- **Prüfen:** `python tools/pruefstand/waechter.py` (Logik mit erfundenen
+  Sensorfolgen, Anzeige, Spielleitung, Freigaben); Probelauf
+  `tools/pruefstand/waechter_db.py`.
+- **Code-Reviews:** Gesamt-Review 02.10. und `/code-review` 03.10., alle
+  Befunde behoben. Bewusst offen: bei Serverfehlern (5xx) meldet eine
+  Teamleitung bis zu einmal pro Sekunde, bis eine Meldung gelingt; `rpc()` hat
+  keinen eigenen Timeout; ein schlechter erster GPS-Punkt kann für bis zu 30 s
+  eine falsche Laufrichtung ergeben.
+- **Vor dem Event klären:** Der Wächter wirkt nur im Testmodus. Im EDEKA-Test
+  ein gesundes Handy in der Tasche mit Bildschirm an und eins senkrecht vor dem
+  Gesicht drehen; `sj.kompass` muss leer bleiben.
 
-**Kompass-Wächter fortsetzen:**
-- Spezifikation: `docs/superpowers/specs/2026-10-02-teststation-kompass-waechter-design.md` (Teil 2; Nadel Variante A)
-- Plan: `docs/superpowers/plans/2026-10-02-kompass-waechter.md` (Aufgaben 1 bis 5)
-- Ledger mit allen Entscheidungen und Befunden (lokal, nicht im Repo):
-  `.superpowers/sdd/2026-10-02-kompass-waechter/progress.md`, dazu Aufträge,
-  Berichte und Reviews der Agenten im selben Ordner (`task-2-review.md`).
-- Aufgabe 1 (`kompass-waechter.js`, Logik, 13 Prüfungen in
-  `tools/pruefstand/waechter.py`): fertig und geprüft. Entscheidungen:
-  Stillstand zählt nur als schlecht; Wandern = Nettoverschiebung; 5 gute
-  Abschnitte nur bei Vermerk aus früherer Sitzung, sonst 3.
-- Aufgabe 2 (Anbindung in `index.html`: devicemotion, Drehung um die
-  Senkrechte, Wirkung im Testmodus, Gedächtnis `sj.kompass`, iOS-Freigabe im
-  selben Tipp): umgesetzt (Commit d9dc55d), Review „Nachbessern“. **Als
-  Nächstes Fix-Runde 1** mit zwei wichtigen Befunden:
-  1. iOS: die Genauigkeits-Hysterese (20° bis 25°) hält ein vom Wächter
-     gesetztes `kalibrieren` fest, `waechterGrund` springt beim nächsten
-     Ereignis zurück auf false; Hinweis flackert, und nach Testmodus aus bleibt
-     `kalibrieren` hängen. Hysterese auf den Rohzustand anwenden
-     (`index.html` um Zeile 2773 und 2794).
-  2. Test „iPhone meldet schlechte Genauigkeit“ in `waechter.py` (um Zeile
-     391) prüft nichts: ersetzt den vorbelasteten Wächter vor der Prüfung.
-  Kleinere Befunde (aufgeschoben): ohne `DeviceMotionEvent.requestPermission`
-  wird `addMotion` im Tipp-Zweig nicht aufgerufen; „oben“ kippt nahe der
-  Senkrechten; `Date.parse("YYYY-MM-DD")` ist UTC (Vermerk verfällt früher);
-  Prüfstand treibt das Gyroskop im Spiel nie mit Drehung (Vorzeichen ohne
-  Regressionstest).
-- Danach Aufgabe 3 (Anzeige: gestrichelte Nadel, Plakette, Hinweis mit
-  Einmessen und Leitung abgeben), Aufgabe 4 (Migration Nachtrag 30:
-  `report_position` mit `p_kompass`, Vermerk in der Teamzeile), Aufgabe 5
-  (einspielen, pushen, Doku). Ausführung mit Agenten: je Aufgabe ein
-  Umsetzer und ein Prüfer (superpowers:subagent-driven-development), am Ende
-  ein Gesamt-Review.
+## Stand zum Fortsetzen (03.10.2026)
+
+**Live:** alles bis Nachtrag 30, Geräte-Test bis Suite 20
+(https://7deeda.github.io/geraetetest/).
+
+**Design-Varianten (03.10., nicht entschieden):** klickbarer Vergleich der
+heutigen App mit vier Varianten (Weiterentwicklung, Leitstand, Spielbrett,
+Signal), Teams am Handy und Spielleitung am Tablet/PC:
+`mockups/design-varianten/index.html` (lokal, nicht im Repo) und als Artifact
+https://claude.ai/artifact/V2vfdrW3YhwzNh2TEQZ1iM. Friedrich entscheidet später.
+
+**Stresstest mit 100 Handys (Konzept 03.10., nicht gebaut):** Last heute ohne
+Realtime: jedes Handy fragt alle 10 s (Teamleitung `team_state`, Mitlesende
+`public_state` + `member_state`), Teamleitungen melden die Position; zusammen
+etwa 20 Anfragen/s. Risiken: Datenmenge (`public_state` an alle, alle 10 s),
+CPU der JSON-Funktionen, Spitzen bei Anmeldung und Auslosung. Vorgehen:
+(1) Antwortgröße und Laufzeit der vier häufigen Abfragen messen und
+hochrechnen, (2) Lastskript mit 100 gespielten Handys nach Drehbuch gegen ein
+**eigenes** Supabase-Projekt (nicht die Live-Datenbank; `tools/sql.py` braucht
+dafür einen Schalter fürs Zielprojekt), (3) 10 bis 20 echte Browser per
+Playwright plus Skript-Handys, dann Feldtest mit 3 bis 5 Handys.
 
 **Danach (Teil 3, Spezifikation fertig, kein Plan):** Rollen ohne Tippen
 (Teamleitung übergeben, Handy schaltet von selbst um), Akku-Warnung bei 20 %
 und 10 % mit Übergabe, Akku aller Teammitglieder, Mockups
 `mockups/rollen-akku-kompass.html`, `mockups/akku-warnung.html`.
 
-**Weitere offene Punkte:** Stresstest mit 100 Geräten (siehe oben); Positionen
-aus 4 älteren Geräte-Test-Läufen löschen (Frage an Friedrich offen);
-iPhone-Lauf des Kollegen auswerten (`python tools/testlaeufe.py`).
-
+**Weitere offene Punkte:** Positionen aus 4 älteren Geräte-Test-Läufen löschen
+(Frage an Friedrich offen); iPhone-Lauf des Kollegen auswerten
+(`python tools/testlaeufe.py`).
