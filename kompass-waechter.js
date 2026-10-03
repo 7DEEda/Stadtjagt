@@ -21,7 +21,7 @@
       if (nachEinmessen >= 0) {
         nachEinmessen++;
         if (e === "schlecht" && urteil === "unzuverlaessig") { versuche++; nachEinmessen = -1; }
-        else if (nachEinmessen >= 3) nachEinmessen = -1;
+        else if (nachEinmessen >= (streng ? 5 : 3)) nachEinmessen = -1;   // so viele Abschnitte, wie die Rückkehr braucht
       }
       if (e === "gut") {
         gutInFolge++;
