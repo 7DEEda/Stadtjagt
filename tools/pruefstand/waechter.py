@@ -106,8 +106,21 @@ with sync_playwright() as pw:
       lauf(w, [].concat(...Array.from({length: 3}, () => drehung(0.4)))); return z; }""")
     pruef("unzuverlaessig/true" in r, f"onWechsel meldet Urteil und Vermerk ({r})")
     r = pg.evaluate("""() => { const z = []; const w = KompassWaechter({ vorbelastet: true, onWechsel: x => z.push(x.prueft) }); w.einmessen();
-      lauf(w, [].concat(...Array.from({length: 3}, () => drehung(1)))); return [z, w.prueft, w.urteil]; }""")
-    pruef(r == [[True, False], False, "unzuverlaessig"], f"onWechsel meldet Beginn und Ende des Prüfens nach dem Einmessen ({r})")
+      lauf(w, [].concat(...Array.from({length: 5}, () => drehung(1)))); return [z, w.prueft, w.urteil]; }""")
+    pruef(r == [[True, False], False, "ok"], f"onWechsel meldet Beginn und Ende des Prüfens nach dem Einmessen ({r})")
+    # Review 2, Befund 5: vorbelastet braucht 5 gute Abschnitte für die Rückkehr, so lange dauert auch das Prüfen
+    r = pg.evaluate("""() => { const w = KompassWaechter({ vorbelastet: true }); w.einmessen(); const p = [];
+      for (let i = 0; i < 5; i++) { lauf(w, drehung(1)); p.push(w.prueft); } return [p, w.urteil]; }""")
+    pruef(r == [[True, True, True, True, False], "ok"], f"vorbelastet, eingemessen: prüft über alle 5 nötigen Abschnitte, dann ok ({r})")
+    r = pg.evaluate("""() => { const w = KompassWaechter({ vorbelastet: true }); w.einmessen();
+      lauf(w, [].concat(...Array.from({length: 3}, () => drehung(1)))); const p = w.prueft; lauf(w, drehung(0.4)); return [p, w.prueft, w.versuche, w.urteil]; }""")
+    pruef(r == [True, False, 1, "unzuverlaessig"], f"vorbelastet, eingemessen: schlecht im vierten Abschnitt zählt einen Versuch ({r})")
+    # Review 2, Befund 10: onWechsel nur, wenn sich Urteil, Versuche, Prüfen oder Vermerk ändern
+    r = pg.evaluate("""() => { const z = []; const w = KompassWaechter({ onWechsel: x => z.push(x.urteil) });
+      lauf(w, [].concat(...Array.from({length: 6}, () => [{ ms: 3200, rate: 0, wandern: 15 }]))); return [z, w.ergebnisse.join(",")]; }""")
+    pruef(r == [["ok", "unzuverlaessig"], "schlecht,schlecht,schlecht,schlecht"], f"Stillstand mit lauter schlechten Ergebnissen: onWechsel nur beim Wechsel ({r})")
+    r = pg.evaluate("""() => { const z = []; const w = KompassWaechter({ vorbelastet: true, onWechsel: x => z.push(x.prueft) }); w.einmessen(); w.einmessen(); return z; }""")
+    pruef(r == [True], f"zweimal Einmessen ohne Wechsel: onWechsel einmal ({r})")
 
     print("Spiel")
     pg2 = b.new_page(viewport={"width": 390, "height": 844}); pg2.set_default_timeout(15000)
@@ -149,7 +162,8 @@ with sync_playwright() as pw:
         t += 20; const rate = i < 100 ? 60 : 0; k = (k + rate * 0.02) % 360;
         const zz = z + (i % 2 ? 0.05 : -0.05), y = Math.sqrt(Math.max(0, 1 - zz * zz));   // Hand wackelt ein wenig
         motionH({ accelerationIncludingGravity: { x: 0, y: 9.8 * y, z: 9.8 * zz }, rotationRate: { alpha: 0, beta: -rate * y, gamma: -rate * zz }, timeStamp: t });
-        window.__zustellen({ alpha: (360 - k) % 360, beta: 35, gamma: 0, absolute: true, timeStamp: t });
+        // beta passend zur Lage: oben = (0, sin beta, cos beta) im Handy, über 90° liegt der Bildschirm unten
+        window.__zustellen({ alpha: (360 - k) % 360, beta: Math.atan2(y, zz) * 180 / Math.PI, gamma: 0, absolute: true, timeStamp: t });
       }
       return [w.urteil, w.ergebnisse.join(",")]; }"""
     for z, grad in ((0.8, 37), (0.5, 60)):
@@ -158,6 +172,44 @@ with sync_playwright() as pw:
     for z, grad in ((-0.1, 84), (-0.3, 73)):
         r = pg2.evaluate(KIPP, z)
         pruef(r[0] != "unzuverlaessig" and "schlecht" not in r[1], f"gesund, über die Senkrechte gekippt (oben z {z}, {grad}°): kein schlecht ({r})")
+    # Review 2, Befund 6: Bildschirm nach unten (beta 143°), gesund gedreht: das Wenden auf z > 0 rät "oben" falsch, also ruhen
+    r = pg2.evaluate(KIPP, -0.8)
+    pruef(r[0] != "unzuverlaessig" and "schlecht" not in r[1], f"gesund, Bildschirm nach unten (oben z -0.8, 143°): kein schlecht ({r})")
+    # Review 2, Befund 4: hält das System selbst den Kompass für ungenau, misst der Wächter nicht (kein Urteil, kein Vermerk).
+    # Kompass folgt nur zu 40 %; Gegenprobe mit genauem Kompass zeigt, dass die Folge sonst "unzuverlässig" ergäbe.
+    SYSTEM = """([art, acc, np]) => { localStorage.removeItem('sj.kompass'); const w = waechterNeu(); S.gps.waechter = w; S.gps.nachPause = np;
+      let t = performance.now() + 1000, k = 100;
+      for (let d = 0; d < 4; d++) for (let i = 0; i < 175; i++) {
+        t += 20; const rate = i < 100 ? 60 : 0; k = (k + 0.4 * rate * 0.02) % 360;
+        motionH({ accelerationIncludingGravity: { x: 0, y: 0, z: 9.8 }, rotationRate: { alpha: 0, beta: 0, gamma: -rate }, timeStamp: t });
+        window.__zustellen(art === "ios" ? { alpha: 0, beta: 0, gamma: 0, absolute: false, webkitCompassHeading: k, webkitCompassAccuracy: acc, timeStamp: t }
+          : { alpha: (360 - k) % 360, beta: 0, gamma: 0, absolute: true, timeStamp: t });
+      }
+      S.gps.nachPause = false; S.gps.nachPauseOffen = false;
+      return [w.urteil, w.ergebnisse.join(","), !!JSON.parse(localStorage.getItem('sj.kompass') || '{}').vorbelastet]; }"""
+    r = pg2.evaluate(SYSTEM, ["ios", 60, False])
+    pruef(r[0] != "unzuverlaessig" and "schlecht" not in r[1] and r[2] is False, f"iPhone meldet ±60°, schlechte Drehungen: kein Urteil, kein Vermerk ({r})")
+    r = pg2.evaluate(SYSTEM, ["ios", 10, False])
+    pruef(r[0] == "unzuverlaessig" and r[2] is True, f"Gegenprobe iPhone ±10°, schlechte Drehungen: unzuverlässig mit Vermerk ({r})")
+    r = pg2.evaluate(SYSTEM, ["android", None, True])
+    pruef(r[0] != "unzuverlaessig" and "schlecht" not in r[1] and r[2] is False, f"Android nach Pause, schlechte Drehungen: kein Urteil, kein Vermerk ({r})")
+    r = pg2.evaluate(SYSTEM, ["android", None, False])
+    pruef(r[0] == "unzuverlaessig" and r[2] is True, f"Gegenprobe Android ohne Pause: unzuverlässig mit Vermerk ({r})")
+    # Review 2, Befund 9: Vermerk mit lokalem Datum; gestern verfallen, heute gültig; wiederholtes schlecht schreibt das Datum nicht neu
+    r = pg2.evaluate("""() => { const tag = ms => new Date(ms).toDateString(), r = [];
+      for (const d of [tag(Date.now() - 86400000), tag(Date.now())]) {
+        localStorage.setItem('sj.kompass', JSON.stringify({ vorbelastet: true, versuche: 1, datum: d })); const w = waechterNeu(); r.push([w.vorbelastet, w.versuche]); }
+      return r; }""")
+    pruef(r == [[False, 0], [True, 1]], f"Vermerk von gestern verfallen, von heute gültig ({r})")
+    pg2.add_script_tag(content=FOLGEN)
+    r = pg2.evaluate("""() => { localStorage.removeItem('sj.kompass'); const w = waechterNeu(); S.gps.waechter = w;
+      lauf(w, [].concat(...Array.from({length: 3}, () => drehung(0.4)))); const m1 = JSON.parse(localStorage.getItem('sj.kompass') || '{}');
+      localStorage.setItem('sj.kompass', JSON.stringify(Object.assign({}, m1, { datum: 'Marke' })));
+      lauf(w, [].concat(...Array.from({length: 3}, () => drehung(0.4)))); lauf(w, [].concat(...Array.from({length: 3}, () => [{ ms: 3200, rate: 0, wandern: 15 }])));
+      const m2 = JSON.parse(localStorage.getItem('sj.kompass') || '{}');
+      w.einmessen(); lauf(w, drehung(0.4)); const m3 = JSON.parse(localStorage.getItem('sj.kompass') || '{}');
+      return [w.urteil, m1.vorbelastet, m1.datum === new Date().toDateString(), m2.datum, m3.versuche, m3.datum === new Date().toDateString()]; }""")
+    pruef(r == ["unzuverlaessig", True, True, "Marke", 1, True], f"Datum entsteht mit dem Vermerk, bleibt bei weiterem schlecht, neu bei neuem Versuch ({r})")
     pg2.wait_for_timeout(200)
     # Chrome mit DeviceOrientationEvent.requestPermission, aber ohne DeviceMotionEvent.requestPermission: Gyroskop trotzdem an
     pg4 = b.new_page(viewport={"width": 390, "height": 844}); pg4.set_default_timeout(15000)
@@ -168,6 +220,20 @@ with sync_playwright() as pw:
     z = pg4.evaluate("[typeof DeviceOrientationEvent.requestPermission, typeof DeviceMotionEvent.requestPermission, motionH !== null]")
     pruef(z == ["function", "undefined", True], f"Fingertipp ohne Bewegungs-Freigabe: Gyroskop hört trotzdem zu ({z})")
     pg4.close()
+    # Review 2, Befund 3: iOS-Freigaben gespielt. Erst der Kompass, gleich danach (vor jedem await) die Bewegung;
+    # lehnt die Bewegung ab oder wirft sie, bleibt der Kompass an.
+    for art in ("granted", "abgelehnt", "wirft"):
+        pg6 = b.new_page(viewport={"width": 390, "height": 844}); pg6.set_default_timeout(15000)
+        pg6.on("pageerror", lambda e: err.append(str(e)))
+        pg6.add_init_script("""window.__perm = []; const art = %r;
+          Object.defineProperty(DeviceOrientationEvent, 'requestPermission', { configurable: true, value: () => { window.__perm.push('orient'); return Promise.resolve('granted'); } });
+          Object.defineProperty(DeviceMotionEvent, 'requestPermission', { configurable: true, value: () => { window.__perm.push('motion');
+            if (art === 'wirft') throw new Error('nein'); return art === 'abgelehnt' ? Promise.resolve('denied') : Promise.resolve('granted'); } });""" % art)
+        pg6.goto("http://127.0.0.1:8826/app.html?szenario=waechter-schlecht"); pg6.wait_for_function("window.__fertig === true")
+        z = pg6.evaluate("[window.__perm, S.gps.kompass, S.gps.heading != null, motionH !== null]")
+        pruef(z[0] == ["orient", "motion"] and z[1] not in ("abgelehnt", "tippen", "fehlt") and z[2] and z[3] == (art == "granted"),
+              f"iOS-Freigaben, Bewegung {art}: erst Kompass, dann Bewegung, Kompass an ({z})")
+        pg6.close()
     print("Anzeige")
     pg2.goto("http://127.0.0.1:8826/app.html?szenario=waechter-schlecht"); pg2.wait_for_function("typeof S !== 'undefined' && S.gps.on")
     pg2.evaluate("window.__orient('gut'); window.__motion(0)"); pg2.wait_for_timeout(800)
@@ -203,7 +269,7 @@ with sync_playwright() as pw:
     # alle drei Hinweise richten sich nach der Lage
     r = pg2.evaluate("""() => { const g = S.gps, alt = [g.waechter, g.gpsHeading], r = [];
       for (const v of [0, 1, 2]) for (const gh of [null, 40]) {
-        g.waechter = KompassWaechter({ vorbelastet: true, versuche: v }); g.gpsHeading = gh; const h = waechterHinweisHTML(S.team.state, false);
+        g.waechter = KompassWaechter({ vorbelastet: true, versuche: v }); g.gpsHeading = gh; g.gpsHeadingAt = Date.now(); const h = waechterHinweisHTML(S.team.state, false);
         r.push([v, gh, h.includes(%r), /Der Pfeil (richtet sich nach eurer|folgt solange eurer|bleibt bei der) Laufrichtung/.test(h)]); }
       [g.waechter, g.gpsHeading] = alt; return r; }""" % OHNE)
     pruef(all(x[2] == (x[1] is None) and x[3] == (x[1] is not None) for x in r), f"Hinweis nach Versuchen 0, 1, 2: Satz je nach Laufrichtung ({r})")
@@ -240,8 +306,41 @@ with sync_playwright() as pw:
     UEB = "() => { const c = document.querySelector('#needle').closest('.compass'); return [c.className, richtung()]; }"
     z = pg2.evaluate(UEB)
     pruef("unsicher" in z[0] and "lauf" not in z[0] and z[1] is None, f"Übungskompass, Kompass ungenau ohne Laufrichtung: Fragezeichen ({z})")
-    z = pg2.evaluate("() => { S.gps.gpsHeading = 40; render(); return (" + UEB + ")(); }")
+    z = pg2.evaluate("() => { S.gps.gpsHeading = 40; S.gps.gpsHeadingAt = Date.now(); render(); return (" + UEB + ")(); }")
     pruef("lauf" in z[0] and "unsicher" not in z[0] and z[1] == 40, f"Übungskompass mit Laufrichtung: schon render() zeichnet gestrichelt ({z})")
+    # Review 2, Befunde 1 und 2: Laufrichtung vom Ankerpunkt, immer mitgerechnet, nach 30 s verfallen. Eigene Seite mit
+    # Playwright-Uhr, damit die 30 s nicht echt gewartet werden müssen.
+    ctx5 = b.new_context(viewport={"width": 390, "height": 844}); pg5 = ctx5.new_page(); pg5.set_default_timeout(15000)
+    pg5.on("pageerror", lambda e: err.append(str(e)))
+    pg5.clock.install()
+    pg5.goto("http://127.0.0.1:8826/app.html?szenario=waechter-schlecht"); pg5.wait_for_function("window.__fertig === true")
+    M = 1 / 111320   # Grad Breite je Meter
+    SPUR = """([punkte, acc]) => { for (const [lat, lng] of punkte) window.__gps(lat, lng, acc); return [S.gps.gpsHeading, richtung()]; }"""
+    LAT, LNG = 50.10495, 14.42290
+    z = pg5.evaluate(SPUR, [[[LAT + (3 if i % 2 else -3) * M, LNG] for i in range(12)], 5])
+    pruef(z == [None, None], f"Zittern ±3 m um einen Punkt: keine Laufrichtung ({z})")
+    z = pg5.evaluate(SPUR, [[[LAT + 10 * M, LNG]], 20])
+    pruef(z == [None, None], f"10 m Sprung bei ±20 m Genauigkeit: keine Laufrichtung ({z})")
+    z = pg5.evaluate(SPUR, [[[LAT + 1.4 * i * M, LNG] for i in range(1, 6)], 5])
+    pruef(z == [None, None], f"1,4 m je Fix, 7 m vom Anker: noch keine Laufrichtung ({z})")
+    z = pg5.evaluate(SPUR, [[[LAT + 1.4 * i * M, LNG] for i in range(6, 8)], 5])
+    pruef(z[0] is not None and min(z[0], 360 - z[0]) < 2 and z[1] == z[0], f"1,4 m je Fix nach Norden, über 8 m: Laufrichtung Norden ({z})")
+    pg5.wait_for_timeout(300)
+    pruef("lauf" in (pg5.locator(".compass.gross").get_attribute("class") or ""), "Laufrichtung da: Nadel gestrichelt")
+    # Kompass gilt als gut (Testmodus aus, Wächter wirkt nicht): die Laufrichtung läuft trotzdem mit. Der Anker liegt bei 8,4 m.
+    z = pg5.evaluate("""() => { S.team.state.testMode = false; window.__orient('gut'); const k = S.gps.kompass, lat = 50.10495 + 8.4 / 111320, m = 1 / (111320 * Math.cos(lat * Math.PI / 180));
+      for (let i = 1; i <= 7; i++) window.__gps(lat, 14.42290 + 1.4 * i * m, 5);
+      const r = [k, S.gps.gpsHeading]; S.team.state.testMode = true; window.__orient('gut'); return r; }""")
+    pruef(z[0] == "an" and z[1] is not None and abs(z[1] - 90) < 2, f"Kompass an: Laufrichtung wird trotzdem mitgerechnet, jetzt Osten ({z})")
+    pg5.wait_for_timeout(300)
+    # 31 s ohne neue Laufrichtung: sie verfällt, der Kompass zeigt wieder das Fragezeichen, der Hinweis sagt "erst ein paar Schritte"
+    pg5.clock.fast_forward(31000); pg5.wait_for_timeout(400)
+    z = pg5.evaluate(ANZ)
+    pruef("unsicher" in z[0] and "lauf" not in z[0] and z[1] == "none" and z[3] == "erst ein paar Schritte" and z[4] is None,
+          f"Laufrichtung älter als 30 s: Fragezeichen, Plakette erst ein paar Schritte ({z})")
+    t = pg5.inner_text("#app")
+    pruef(OHNE in t and MIT not in t and "Erst ein paar Schritte gehen" in t, "Laufrichtung verfallen: Hinweis und Text neu gezeichnet")
+    ctx5.close()
     print("Spielleitung")
     pg2.goto("http://127.0.0.1:8826/app.html?szenario=waechter-schlecht"); pg2.wait_for_function("typeof S !== 'undefined' && S.gps.on")
     pg2.evaluate("window.__orient('gut'); window.__motion(0)"); pg2.wait_for_timeout(600)
@@ -255,6 +354,15 @@ with sync_playwright() as pw:
     z = pg2.evaluate("window.__POSITION")
     pruef(z == [52.473, 13.466], f"alte Datenbank lehnt p_kompass ab: Position kommt ohne an ({z})")
     pg2.evaluate("window.__ALTE_DB = false")
+    # Review 2, Befund 7: Netzfehler ist kein Grund für einen Aufruf ohne p_kompass; das Urteil geht beim nächsten Melden mit
+    pg2.evaluate("""() => { window.__RV = []; const f = window.fetch; window.fetch = function (u, i) {
+      if (String(u).includes('/rpc/report_position')) window.__RV.push(JSON.parse(i.body)); return f.apply(this, arguments); }; }""")
+    pg2.evaluate("window.__funkloch = true; S.gps.waechter = KompassWaechter({}); window.__gps(52.4760, 13.4700, 8)"); pg2.wait_for_timeout(800)
+    z = pg2.evaluate("window.__RV.map(a => 'p_kompass' in a)")
+    pruef(z == [True], f"Netzfehler: kein zweiter Aufruf ohne p_kompass ({z})")
+    pg2.evaluate("window.__funkloch = false; window.__RV = []; window.__KOMPASS = 'nichts'; window.__gps(52.47605, 13.4700, 8)"); pg2.wait_for_timeout(800)
+    z = pg2.evaluate("[window.__RV.length, window.__KOMPASS]")
+    pruef(z == [1, None], f"nach dem Netzfehler: nächstes Melden schickt das neue Urteil ({z})")
     pg3 = b.new_page(viewport={"width": 1180, "height": 820}); pg3.set_default_timeout(15000)
     pg3.on("pageerror", lambda e: err.append(str(e)))
     pg3.goto("http://127.0.0.1:8826/app.html?szenario=admin-teststation"); pg3.wait_for_selector(".tabs")
@@ -268,6 +376,11 @@ with sync_playwright() as pw:
     pruef(z == ["Kompass falsch"], f"Testmodus aus: Vermerk nur Kompass falsch ({z})")
     z = pg3.evaluate("() => { S.admin.state.testMode = true; render(); return " + VERMERK + "; }")
     pruef(z == ["Kompass falsch, Pfeil nach Laufrichtung"], f"Testmodus an: Kompass falsch, Pfeil nach Laufrichtung ({z})")
+    # Review 2, Befund 8: der Vermerk gilt nur zu einer Position, die jünger als 3 min ist
+    ALT = """(min) => { const t = S.admin.state.teams.find(x => x.name === 'Fuchs'); t.position.updatedAt = new Date(Date.now() - min * 60000).toISOString();
+      render(); return %s; }""" % VERMERK
+    z = [pg3.evaluate(ALT, 2), pg3.evaluate(ALT, 4)]
+    pruef(z == [["Kompass falsch, Pfeil nach Laufrichtung"], []], f"Position 2 min alt: Vermerk, 4 min alt: kein Vermerk ({z})")
     pruef(not err, f"keine Skriptfehler {err[:2]}")
     b.close()
 print("FEHLER: " + str(len(fehler)) if fehler else "OK")
