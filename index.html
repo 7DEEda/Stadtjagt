@@ -2845,10 +2845,12 @@ function addOrient(neu) {
       const so = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
       g.heading = (hd + so + 360) % 360;
     }
-    // Wächter füttern (nicht beim Einmessen, nicht im Hintergrund) und seine Wirkung anwenden
+    // Bildschirm nach unten: beta über 90° (beta und gamma bedeuten auf iOS und Android dasselbe, siehe waechterRuht)
+    if (typeof e.beta === "number") g.unten = Math.abs(e.beta) > 90;
+    // Wächter füttern (nicht, solange er ruht) und seine Wirkung anwenden
     const w = g.waechter;
     if (w) {
-      if (g.kal || document.hidden) w.pause();
+      if (waechterRuht()) w.pause();
       else if (hd != null) w.kompass(hd, e.timeStamp || performance.now());
       g.waechterGrund = false;
       if (waechterSchlecht() && g.kompass === "an") { g.kompass = "kalibrieren"; g.waechterGrund = true; }
@@ -2874,6 +2876,11 @@ function addOrient(neu) {
 // Gyroskop für den Kompass-Wächter: Drehung um die Senkrechte (Drehrate auf "oben" projiziert, oben aus der Schwerkraft,
 // auf z > 0 gewendet; alpha um x, beta um y, gamma um z, so auf Android-Chrome und iOS-Safari gemessen)
 let motionH = null, motionOben = null;
+// Wann der Wächter nicht misst (pausiert, Kompass und Gyroskop gleichermaßen): beim Einmessen, im Hintergrund, mit dem
+// Bildschirm nach unten (das Wenden von "oben" auf z > 0 rät dort das Vorzeichen falsch, ein gesunder Kompass sähe aus
+// wie ein schlechter) und solange das System den Kompass selbst für ungenau hält: iOS meldet schlechte Genauigkeit
+// (kompassRoh), Android nach einer Pause im Hintergrund (nachPause). Dort zeigt der Pfeil ohnehin nicht nach dem Kompass.
+const waechterRuht = () => { const g = S.gps; return !!g.kal || document.hidden || !!g.unten || !!g.nachPause || g.kompassRoh === "kalibrieren"; };
 function addMotion(neu) {
   if (!window.DeviceMotionEvent || (motionH && !neu)) return;
   if (motionH) window.removeEventListener("devicemotion", motionH);
@@ -2885,7 +2892,7 @@ function addMotion(neu) {
         motionOben = motionOben ? motionOben.map((v, i) => v + (o[i] - v) * 0.6) : o; }
     }
     if (!w || !r || typeof r.alpha !== "number" || !motionOben || document.hidden) return;
-    if (S.gps.kal) { w.pause(); return; }
+    if (waechterRuht()) { w.pause(); return; }
     // Handy nahe senkrecht oder darüber hinaus (Tasche, über dem Kopf): das Wenden auf z > 0 rät dort das Vorzeichen von
     // "oben" falsch, ein gesunder Kompass sähe aus wie ein schlechter. Dann nichts beurteilen (Gesamt-Review I2).
     if (Math.abs(motionOben[2]) < 0.4) { w.pause(); return; }
