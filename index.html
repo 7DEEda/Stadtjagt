@@ -539,7 +539,7 @@ async function rpc(fn, args) {
   const text = await res.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-  if (!res.ok) throw new Error((data && data.message) || "Fehler " + res.status);
+  if (!res.ok) { const e = new Error((data && data.message) || "Fehler " + res.status); e.code = data && data.code; throw e; }
   if (typeof data === "string") throw new Error("Unerwartete Antwort vom Server.");
   return data;
 }
@@ -3041,16 +3041,22 @@ async function maybeReport() {
   const oldEnough = Date.now() - g.lastSent > 60000;
   const urteil = g.waechter ? g.waechter.urteil : null;
   const neuUrteil = urteil !== g.lastSentUrteil;
-  if (!moved && !oldEnough && !neuUrteil) return;
-  g.lastSentUrteil = urteil;
+  // eine Meldung zur Zeit: im Funkloch hängt eine Anfrage sonst lange, und jede neue Position stieße die nächste an
+  if (g.meldet || (!moved && !oldEnough && !neuUrteil)) return;
+  g.meldet = true;
   g.lastSent = Date.now(); g.lastSentPos = { ...g.pos };
   const pos = { p_code: S.team.code, p_lat: g.pos.lat, p_lng: g.pos.lng, p_acc: g.acc };
+  // Eine Datenbank ohne Nachtrag 30 kennt p_kompass nicht (PostgREST findet die Funktion nicht, PGRST202): nur dann
+  // einmal ohne, die Position ist wichtiger als das Urteil. Bei jedem anderen Fehler (Funkloch, Server) kein zweiter Aufruf.
+  const ohneFunktion = e => e && (e.code === "PGRST202" || /Could not find the function/i.test(e.message || ""));
   try {
-    // Eine Datenbank ohne Nachtrag 30 kennt p_kompass nicht (PostgREST findet die Funktion nicht): dann einmal ohne,
-    // die Position ist wichtiger als das Urteil
-    try { await rpc("report_position", { ...pos, p_kompass: urteil }); } catch { await rpc("report_position", pos); }
+    try { await rpc("report_position", { ...pos, p_kompass: urteil }); }
+    catch (e) { if (!ohneFunktion(e)) throw e; await rpc("report_position", pos); }
+    // erst nach dem Senden: scheitert es, geht das Urteil beim nächsten Melden wieder mit
+    g.lastSentUrteil = urteil;
     g.sentAt = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   } catch { /* Funkloch: beim nächsten Mal erneut */ }
+  finally { g.meldet = false; }
 }
 
 /* ---------- Laden und Rendern ---------- */
