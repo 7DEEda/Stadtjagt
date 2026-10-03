@@ -14,10 +14,14 @@
     let kompassAlt = null, kompassWeg = 0;
     let dreh = null, still = null;
 
-    const melden = () => { if (opt.onWechsel) opt.onWechsel({ urteil, vorbelastet, versuche, prueft: nachEinmessen >= 0 }); };
+    // onWechsel nur, wenn sich etwas ändert, das der Hinweis zeigt oder das Gedächtnis hält (ein stehender schlechter
+    // Kompass liefert alle 3 s "schlecht", ohne dass sich etwas ändert)
+    const stand = () => [urteil, versuche, nachEinmessen >= 0, vorbelastet].join("/");
+    let gemeldet = stand();
+    const melden = () => { const s = stand(); if (s === gemeldet) return; gemeldet = s;
+      if (opt.onWechsel) opt.onWechsel({ urteil, vorbelastet, versuche, prueft: nachEinmessen >= 0 }); };
     function ergebnis(e) {
       ergebnisse.push(e); if (ergebnisse.length > 4) ergebnisse.shift();
-      const vorher = urteil, prueftVorher = nachEinmessen >= 0;
       if (nachEinmessen >= 0) {
         nachEinmessen++;
         if (e === "schlecht" && urteil === "unzuverlaessig") { versuche++; nachEinmessen = -1; }
@@ -32,7 +36,7 @@
         if (ergebnisse.filter(x => x === "schlecht").length >= 3 && urteil !== "unzuverlaessig") { urteil = "unzuverlaessig"; vorbelastet = true; }
         else if (urteil == null) urteil = "ok";
       }
-      if (urteil !== vorher || e === "schlecht" || (nachEinmessen >= 0) !== prueftVorher) melden();
+      melden();
     }
     function schritt(t) {
       if (!gyroDa) return;

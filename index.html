@@ -564,14 +564,11 @@ function waechterNeu() {
   let m = {}; try { m = JSON.parse(LS.getItem("sj.kompass") || "{}"); } catch { /* defekt: neu anfangen */ }
   const frisch = m.datum && (Date.now() - Date.parse(m.datum)) < 86400000;
   if (!window.KompassWaechter) return null;
-  // Neu zeichnen nur, wenn sich ändert, was der Hinweis zeigt (Urteil, Versuche, Prüfen). Ein stehender schlechter Kompass
-  // meldet alle 3 s "schlecht"; jedes Mal neu gezeichnet, setzte das die Auswahl bei "Leitung abgeben" zurück.
-  const zeigt = z => [z.urteil, z.versuche, z.prueft].join("/");
-  const w = KompassWaechter({ vorbelastet: frisch && !!m.vorbelastet, versuche: frisch ? m.versuche || 0 : 0,
+  // onWechsel kommt nur bei einer Änderung (Urteil, Versuche, Prüfen, Vermerk), also neu zeichnen. Ein stehender schlechter
+  // Kompass, der alle 3 s "schlecht" liefert, löst nichts aus (sonst setzte das die Auswahl bei "Leitung abgeben" zurück).
+  return KompassWaechter({ vorbelastet: frisch && !!m.vorbelastet, versuche: frisch ? m.versuche || 0 : 0,
     onWechsel: z => { try { LS.setItem("sj.kompass", JSON.stringify({ vorbelastet: z.vorbelastet, versuche: z.versuche, datum: new Date().toISOString().slice(0, 10) })); } catch { /* egal */ }
-      if (zeigt(z) !== gezeigt) { gezeigt = zeigt(z); kompassNeu = true; } } });
-  let gezeigt = zeigt(w);
-  return w;
+      kompassNeu = true; } });
 }
 S.gps.waechter = waechterNeu();
 const waechterSchlecht = () => { const st = aktiverStand(); return !!(st && st.testMode && S.gps.waechter && S.gps.waechter.urteil === "unzuverlaessig"); };
