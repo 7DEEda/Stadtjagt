@@ -2915,11 +2915,16 @@ async function startGps(auto) {
       // lässt sich iOS also nicht erkennen: zuhören, und nur wenn nichts kommt, um den Tipp bitten.
       g.kompass = "wartet"; tippNoetig = true; addOrient(); addMotion();
     } else if (typeof DOE.requestPermission === "function") {
-      // iOS: muss aus einem Fingertipp kommen, sonst wird abgelehnt. Die Bewegungs-Freigabe (Gyroskop für den
-      // Kompass-Wächter) im selben Tipp anstoßen, vor dem ersten await
+      // iOS: muss aus einem Fingertipp kommen, sonst wird abgelehnt. Erst der Kompass, gleich danach (noch vor jedem
+      // await, also im selben Tipp) die Bewegungs-Freigabe für das Gyroskop des Wächters. Der Kompass hängt nie an der
+      // Bewegung: lehnt sie ab oder wirft sie, bleibt es beim Kompass ohne Wächter-Gyroskop.
       const DME = window.DeviceMotionEvent;
-      const mot = DME && typeof DME.requestPermission === "function" ? DME.requestPermission().catch(() => "denied") : null;
-      const r = await DOE.requestPermission();
+      const ori = DOE.requestPermission();
+      let mot = null;
+      if (DME && typeof DME.requestPermission === "function") {
+        try { mot = Promise.resolve(DME.requestPermission()).catch(() => "denied"); } catch { mot = Promise.resolve("denied"); }
+      }
+      const r = await ori;
       if (r === "granted") { g.kompass = "wartet"; addOrient(true); neigungStart(); logoStart(true); }
       else g.kompass = "abgelehnt";
       // Chrome kennt teils nur DeviceOrientationEvent.requestPermission: dann ist die Bewegung ohne Nachfrage frei
