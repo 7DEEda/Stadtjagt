@@ -559,15 +559,21 @@ const S = {
            tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false, confirm: null,
            draw: { mode: "size", value: 10 } }
 };
-// Kompass-Wächter (Nachtrag 30): Gedächtnis je Handy, ohne Namen; Datum, damit ein alter Vermerk nach einem Tag verfällt
+// lokaler Kalendertag (nicht UTC): für das Einmessen einmal am Tag und für den Vermerk des Wächters
+const heute = () => new Date().toDateString();
+// Kompass-Wächter (Nachtrag 30): Gedächtnis je Handy, ohne Namen. Der Vermerk gilt am selben Kalendertag (lokal), an
+// einem anderen Tag ist er verfallen. Das Datum entsteht mit dem Vermerk oder einem neuen Versuch, nicht bei jeder Meldung.
 function waechterNeu() {
-  let m = {}; try { m = JSON.parse(LS.getItem("sj.kompass") || "{}"); } catch { /* defekt: neu anfangen */ }
-  const frisch = m.datum && (Date.now() - Date.parse(m.datum)) < 86400000;
+  let m = {}; try { m = JSON.parse(LS.getItem("sj.kompass") || "{}") || {}; } catch { /* defekt: neu anfangen */ }
+  if (m.datum !== heute()) m = {};
   if (!window.KompassWaechter) return null;
   // onWechsel kommt nur bei einer Änderung (Urteil, Versuche, Prüfen, Vermerk), also neu zeichnen. Ein stehender schlechter
   // Kompass, der alle 3 s "schlecht" liefert, löst nichts aus (sonst setzte das die Auswahl bei "Leitung abgeben" zurück).
-  return KompassWaechter({ vorbelastet: frisch && !!m.vorbelastet, versuche: frisch ? m.versuche || 0 : 0,
-    onWechsel: z => { try { LS.setItem("sj.kompass", JSON.stringify({ vorbelastet: z.vorbelastet, versuche: z.versuche, datum: new Date().toISOString().slice(0, 10) })); } catch { /* egal */ }
+  return KompassWaechter({ vorbelastet: !!m.vorbelastet, versuche: m.versuche || 0,
+    onWechsel: z => {
+      const neu = (z.vorbelastet && !m.vorbelastet) || z.versuche !== (m.versuche || 0);
+      m = { vorbelastet: z.vorbelastet, versuche: z.versuche, datum: neu ? heute() : m.datum };
+      try { LS.setItem("sj.kompass", JSON.stringify(m)); } catch { /* egal */ }
       kompassNeu = true; } });
 }
 S.gps.waechter = waechterNeu();
@@ -2677,7 +2683,6 @@ const KAL_MS = 5000;          // so lange muss geschwenkt werden
 const KAL_MS_IOS = 2000;      // iOS: früher fertig, sobald die Genauigkeit stimmt
 const KAL_GUT = 15;           // Grad, ab da gilt der iOS-Kompass als eingemessen
 const KAL_SCHWENK = 80;       // Grad pro Sekunde, darunter ist es nur Zittern
-const heute = () => new Date().toDateString();
 const kalHeute = () => LS.getItem(KAL_KEY) === heute();
 function kalStart() { S.gps.kal = { bewegt: 0, letzt: null }; S.gps.kalOk = null; }
 function kalEnde(fertig) {
