@@ -1964,7 +1964,8 @@ function zustandHTML(t, st) {
     : alt > 5 * 60000 ? `<span class="chip test" style="margin:0;white-space:nowrap">GPS ${ago(upd)}</span>`
       : `<span class="small muted" style="white-space:nowrap">GPS ${ago(upd)}</span>`;
   // Nach Laufrichtung zeigt der Pfeil nur im Testmodus; sonst folgt er weiter dem Kompass, also nur der Vermerk
-  const kompass = t.position && t.position.kompass === "unzuverlaessig"
+  // Der Vermerk gilt nur zu einer frischen Position (jünger als 3 min); danach weiß niemand, ob er noch stimmt
+  const kompass = t.position && t.position.kompass === "unzuverlaessig" && alt != null && alt < 3 * 60000
     ? ` <span class="chip test" style="margin:0;white-space:nowrap">${st.testMode ? "Kompass falsch, Pfeil nach Laufrichtung" : "Kompass falsch"}</span>` : "";
   return `<br><b class="small">${wo}</b><br>${gps}${kompass}`;
 }
