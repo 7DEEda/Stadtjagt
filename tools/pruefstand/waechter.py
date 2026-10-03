@@ -333,8 +333,9 @@ with sync_playwright() as pw:
       const r = [k, S.gps.gpsHeading]; S.team.state.testMode = true; window.__orient('gut'); return r; }""")
     pruef(z[0] == "an" and z[1] is not None and abs(z[1] - 90) < 2, f"Kompass an: Laufrichtung wird trotzdem mitgerechnet, jetzt Osten ({z})")
     pg5.wait_for_timeout(300)
-    # 31 s ohne neue Laufrichtung: sie verfällt, der Kompass zeigt wieder das Fragezeichen, der Hinweis sagt "erst ein paar Schritte"
-    pg5.clock.fast_forward(31000); pg5.wait_for_timeout(400)
+    # 31 s ohne neue Laufrichtung: sie verfällt, der Kompass zeigt wieder das Fragezeichen, der Hinweis sagt "erst ein paar Schritte".
+    # Im Funkloch, damit nicht die Abfrage alle 10 s das Neuzeichnen übernimmt: das muss die Laufrichtung selbst auslösen.
+    pg5.evaluate("window.__funkloch = true"); pg5.clock.fast_forward(31000); pg5.wait_for_timeout(400)
     z = pg5.evaluate(ANZ)
     pruef("unsicher" in z[0] and "lauf" not in z[0] and z[1] == "none" and z[3] == "erst ein paar Schritte" and z[4] is None,
           f"Laufrichtung älter als 30 s: Fragezeichen, Plakette erst ein paar Schritte ({z})")

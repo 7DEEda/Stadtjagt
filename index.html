@@ -551,7 +551,7 @@ const S = {
   pub: null, myName: LS.getItem("sj.name") || null, lookup: null,
   team: { code: LS.getItem("sj.code") || null, state: null },
   // kompass: "unbekannt" | "wartet" | "an" | "kalibrieren" | "relativ" | "abgelehnt" | "fehlt"
-  gps: { pos: null, acc: null, heading: null, gpsHeading: null, needle: 0, on: false, err: null, kompass: "unbekannt", lastSent: 0, lastSentPos: null, sentAt: null,
+  gps: { pos: null, acc: null, heading: null, gpsHeading: null, gpsHeadingAt: null, needle: 0, on: false, err: null, kompass: "unbekannt", lastSent: 0, lastSentPos: null, sentAt: null,
          // kompassAcc: Genauigkeit in Grad (nur iOS), kal: laufendes Einmessen, kalOk: Ergebnis für den Hinweis danach
          kompassAcc: null, kal: null, kalOk: null },
   admin: { pin: SS.getItem("sj.pin") || null, state: null, tab: "map", edit: null, full: false,
@@ -1072,6 +1072,9 @@ function routeHTML(st) {
 const accText = a => a != null && a >= 0 ? `±${Math.round(a)}°` : "unbekannt";
 // Folgt der Pfeil dem Kompass? Sonst Laufrichtung (gestrichelte Nadel) oder noch keine Richtung (Fragezeichen)
 const kompassFolgt = () => S.gps.heading != null && S.gps.kompass === "an";
+// Laufrichtung aus dem GPS; älter als 30 s gilt sie als unbekannt (wer steht, hat keine). Alle Stellen lesen sie hierüber.
+const LAUF_MS = 30000;
+const laufrichtung = () => S.gps.gpsHeading != null && Date.now() - (S.gps.gpsHeadingAt || 0) < LAUF_MS ? S.gps.gpsHeading : null;
 // Klasse des Kompasses, für render() und liveUpdate() gleich: "" Nadel nach Kompass, "lauf" gestrichelt, "unsicher" Fragezeichen
 const kompassKlasse = () => !richtungBekannt() ? "unsicher" : kompassFolgt() ? "" : "lauf";
 // Ohne Standort ein verborgener Platzhalter, damit liveUpdate() die Plakette zurückholen kann. Geschrieben so, wie der
@@ -1080,7 +1083,7 @@ function kompassChip() {
   const g = S.gps;
   if (!g.on) return `<span class="chip kchip" id="kchip" hidden=""></span>`;
   if (kompassFolgt()) return `<span class="chip kchip ok" id="kchip">Kompass</span>`;
-  return `<span class="chip kchip warn" id="kchip">${g.gpsHeading != null ? "nach Laufrichtung" : "erst ein paar Schritte"}</span>`;
+  return `<span class="chip kchip warn" id="kchip">${laufrichtung() != null ? "nach Laufrichtung" : "erst ein paar Schritte"}</span>`;
 }
 // Gibt es jemanden, an den die Teamleitung (nicht ein Mitleser) die Leitung abgeben kann?
 const leitungAbgebbar = (st, lesen) => !lesen && (st.team.members || []).some(m => m !== st.team.leaderName);
@@ -1091,7 +1094,7 @@ function waechterHinweisHTML(st, lesen) {
   const leitung = leitungAbgebbar(st, lesen);
   const tipp = `Tipp: Schaut auf ein anderes Handy aus eurem Team. Wer mitliest und den Standort freigibt, sieht dort den Pfeil mit dem eigenen Kompass.${leitung ? " Oder gebt die Leitung an jemanden ab, dessen Handy richtig zeigt." : ""}`;
   // je nach Lage: mit Laufrichtung folgt der Pfeil ihr, sonst erst ein paar Schritte (Spezifikation Teil 2, Anzeige)
-  const ohne = g.gpsHeading == null ? "Geht ein paar Schritte, dann zeigt der Pfeil eure Laufrichtung. Die Entfernung stimmt immer." : "";
+  const ohne = laufrichtung() == null ? "Geht ein paar Schritte, dann zeigt der Pfeil eure Laufrichtung. Die Entfernung stimmt immer." : "";
   const abgeben = leitung ? `<button class="btn alt" data-act="t-abgeben-frage">Leitung abgeben</button>` : "";
   if (w.prueft) return `<div class="msg info"><b>Kompass wird geprüft …</b> Dreht euch einmal um, dann sieht das Handy, ob der Kompass jetzt mitgeht.</div>`;
   if (w.versuche === 0) return `<div class="msg warn"><b>Der Kompass dieses Handys zeigt gerade falsch</b><br>${ohne || "Der Pfeil richtet sich nach eurer Laufrichtung."} ${tipp}
@@ -1102,7 +1105,7 @@ function waechterHinweisHTML(st, lesen) {
     ${abgeben}<button class="link" data-act="t-kal">Trotzdem noch einmal einmessen</button></div>`;
 }
 function kompassText() {
-  const g = S.gps, lauf = g.gpsHeading != null;
+  const g = S.gps, lauf = laufrichtung() != null;
   if (g.waechterGrund) return lauf ? "Pfeil nach Laufrichtung" : "Erst ein paar Schritte gehen, dann zeigt der Pfeil eure Laufrichtung";
   if (g.heading != null) {
     if (g.kompass !== "kalibrieren")
@@ -1292,7 +1295,7 @@ function teamAnsicht(st, lesen) {
       ${kalOk}
       ${g.on && g.kompass === "tippen" ? `<div class="msg info">Der Kompass ist nach dem Neuladen aus. Einmal tippen, dann zeigt der Pfeil wieder zur Station.
         <button class="btn alt" data-act="t-gps">Kompass wieder einschalten</button></div>` : ""}
-      ${g.on && ["fehlt", "relativ"].includes(g.kompass) && g.gpsHeading == null ? `<div class="msg info">Dieses Handy hat keinen Kompass.
+      ${g.on && ["fehlt", "relativ"].includes(g.kompass) && laufrichtung() == null ? `<div class="msg info">Dieses Handy hat keinen Kompass.
         Kein Problem: Der Pfeil richtet sich nach eurer Laufrichtung. Geht ein paar Schritte geradeaus
         und haltet das Handy dabei vor euch. Die Entfernung stimmt immer.</div>` : ""}
       ${g.on && g.kompass === "abgelehnt" ? `<div class="msg info">Der Kompass ist nicht freigegeben.
@@ -2670,7 +2673,7 @@ async function stationSpeichern(daten) {
 /* ---------- GPS und Kompass ---------- */
 let watchId = null, orientOn = false, orientH = null, raf = 0, kompassNeu = false;
 // Ein Kompass, dem nicht zu trauen ist (Wächter, iPhone ungenau, nach Pause), gibt keine Richtung: dann nur die Laufrichtung
-const richtungBekannt = () => kompassFolgt() || S.gps.gpsHeading != null;
+const richtungBekannt = () => kompassFolgt() || laufrichtung() != null;
 const kompassDa = () => S.gps.kompass === "an" || S.gps.kompass === "kalibrieren";
 // nur neu zeichnen, solange Kompass oder Einmessen zu sehen sind, sonst ginge
 // eine halb getippte Rätselantwort verloren
@@ -2739,7 +2742,7 @@ function setNeedle(target) {
 function richtung() {
   const g = S.gps;
   if (g.heading != null && g.kompass === "an") return g.heading;
-  if (g.gpsHeading != null) return g.gpsHeading;
+  const l = laufrichtung(); if (l != null) return l;
   return null;   // keine Richtung: Fragezeichen statt Nadel (siehe richtungBekannt)
 }
 // Wohin der Pfeil zeigt: unterwegs die Station, vor dem Start das Übungsziel
@@ -2902,6 +2905,12 @@ function addMotion(neu) {
   };
   window.addEventListener("devicemotion", motionH, { passive: true });
 }
+// Verfällt die Laufrichtung (30 s ohne neue), neu zeichnen, sofern sie gerade etwas zeigt: Nadel, Plakette, Hinweis
+let laufTimer = 0;
+function laufVerfallPlanen() {
+  clearTimeout(laufTimer);
+  laufTimer = setTimeout(() => { if (laufrichtung() == null && !kompassFolgt() && kompassSichtbar()) render(); }, LAUF_MS + 50);
+}
 async function startGps(auto) {
   const g = S.gps;
   if (!navigator.geolocation) { g.err = "Dieses Gerät liefert keinen Standort."; render(); return; }
@@ -2942,7 +2951,7 @@ async function startGps(auto) {
   }, 3000);
   g.on = true; g.err = null;
   if (watchId != null) navigator.geolocation.clearWatch(watchId);   // kein zweiter Beobachter
-  let last = null;
+  let anker = null;
   watchId = navigator.geolocation.watchPosition(p => {
     if (!brauchbar(p.coords)) {
       // Nur der ungefähre Standort (iPhone: "Genauer Standort" aus, Android: nur ungefähr erlaubt), gemessen
@@ -2952,13 +2961,17 @@ async function startGps(auto) {
     }
     S.gps.grob = null;
     const next = { lat: p.coords.latitude, lng: p.coords.longitude };
-    // Laufrichtung auch dann mitrechnen, wenn der Kompass zwar etwas liefert,
-    // aber zu ungenau ist. Sonst gibt es keinen Ersatz, wenn er ausfällt.
-    // Die erste Laufrichtung ändert Nadel und Hinweise ("erst ein paar Schritte"): dann neu zeichnen, nicht nur nachziehen
-    const ersteLauf = S.gps.gpsHeading == null;
-    if (last && haversine(last, next) > 6 && S.gps.kompass !== "an") S.gps.gpsHeading = bearingTo(last, next);
-    const lageNeu = ersteLauf && S.gps.gpsHeading != null && kompassSichtbar();
-    last = next;
+    // Laufrichtung immer mitrechnen, auch bei gutem Kompass: sonst fehlt der Ersatz, wenn er ausfällt. Gerechnet vom
+    // Ankerpunkt aus, nicht von Fix zu Fix (beim Gehen nur gut 1 m): erst wenn der neue Punkt mehr als 8 m und mehr als
+    // seine GPS-Genauigkeit vom Anker weg ist, sonst ergäbe Zittern eine Richtung. Dann wird er zum neuen Anker.
+    // Kommt oder geht die Laufrichtung, ändern sich Nadel und Hinweise ("erst ein paar Schritte"): neu zeichnen
+    const vorher = laufrichtung() != null, genau = p.coords.accuracy ?? 999;
+    if (!anker) anker = next;
+    else {
+      const d = haversine(anker, next);
+      if (d > 8 && d > genau) { S.gps.gpsHeading = bearingTo(anker, next); S.gps.gpsHeadingAt = Date.now(); anker = next; laufVerfallPlanen(); }
+    }
+    const lageNeu = vorher !== (laufrichtung() != null) && kompassSichtbar();
     const firstFix = !S.gps.pos;
     S.gps.pos = next; S.gps.acc = p.coords.accuracy ?? 999; S.gps.err = null; S.gps.posAt = Date.now();
     maybeReport();
