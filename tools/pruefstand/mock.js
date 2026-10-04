@@ -452,6 +452,11 @@
     admin_set_selfie: a => { pin(a); WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
     admin_delete_photos: a => { pin(a); ANDERE_FOTOS.length = 0; Object.keys(FOTOS).forEach(k => delete FOTOS[k]); return adminState(); },
     admin_state: a => { pin(a); return adminState(); },
+    // Nachtrag 32: Ausschalten im laufenden Spiel nur ohne Plätze
+    admin_set_test_mode: a => { pin(a);
+      if (!a.p_on && WELT.testMode && WELT.status === "running" && TEAMS.some(t => t.place))
+        fehler("Im Testlauf gibt es schon Plätze. Erst im Reiter Daten löschen „Fortschritt zurücksetzen“, dann den Testmodus ausschalten.");
+      WELT.testMode = !!a.p_on; return adminState(); },
     admin_tracks: a => { pin(a); return adminTracks(); },
     admin_delete_test_participants: a => { pin(a); return { deleted: 0, state: adminState() }; },
     admin_add_participants: a => { pin(a); return { added: 0, duplicates: 0, invalid: 0, state: adminState() }; },

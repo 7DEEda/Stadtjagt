@@ -264,6 +264,16 @@ with sync_playwright() as pw:
               "Testmodus: leeres Feld zählt weiter als richtig")
         pg.close()
 
+    if an(14):
+        print("Fund 14: Testmodus ausschalten mit Plätzen")
+        pg = neu(b, "admin-teststation", breit=True)
+        pg.click("[data-act=a-tab][data-tab=stations]"); pg.wait_for_selector("[data-act=a-test]")
+        pg.click("[data-act=a-test]"); pg.wait_for_timeout(600)
+        t = pg.inner_text("[data-act=a-test] >> xpath=..")
+        pruef("Im Testlauf gibt es schon Plätze" in t, f"Meldung des Servers steht beim Knopf ({t[-120:]!r})")
+        pruef(pg.evaluate("S.admin.state.testMode") is True, "Testmodus bleibt an")
+        pg.close()
+
     if an(11, 13):
         print("Fund 11 und 13: Geräte-Test")
         for ua, soll, text in ((shoot.UA_IPAD, "Tablet", "iPad mit mobiler Kennung ist ein Tablet"), (shoot.UA_IPHONE, "Telefon", "iPhone bleibt ein Telefon")):

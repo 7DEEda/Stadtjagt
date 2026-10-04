@@ -1894,7 +1894,7 @@ function viewAdmin() {
     out += `<div class="panel ${st.testMode ? "danger" : ""}"><h3>Testmodus</h3>
       <p class="small muted">Zum Durchklicken ohne hinzulaufen: Check-in ohne Entfernungsprüfung, auch ohne GPS,
       und jede Antwort zählt. Den Koffer-Code prüft die App weiter. Vor dem Event unbedingt ausschalten.</p>
-      <button class="btn ${st.testMode ? "warn" : "alt"}" data-act="a-test" data-on="${st.testMode ? "0" : "1"}">${st.testMode ? "Testmodus ausschalten" : "Testmodus einschalten"}</button></div>`;
+      <button class="btn ${st.testMode ? "warn" : "alt"}" data-act="a-test" data-on="${st.testMode ? "0" : "1"}" data-ort="test">${st.testMode ? "Testmodus ausschalten" : "Testmodus einschalten"}</button>${msgBox("test")}</div>`;
     const unfertig = (st.stations || []).filter(s => offen(s.locationHint) || offen(s.riddle) || offen(s.answer) || s.lat == null);
     if (unfertig.length) out += `<div class="msg err">Noch nicht fertig: Station ${unfertig.map(s => s.position).join(", ")}. Dort fehlt Ortshinweis, Rätsel, Lösung oder Standort.</div>`;
     if (st.testStation) out += `<div class="panel" id="teststation"><h3>Teststation</h3>
