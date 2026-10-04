@@ -248,7 +248,10 @@ mit dem Team-Code.
   direkter Tabellenzugriff.
 - Alles läuft über `security definer`-Funktionen, `anon` hat nur
   Ausführungsrecht. Hilfsfunktionen (`norm`, `dist_m`, `team_by_code`,
-  `current_station`, `require_admin`) sind für `anon` gesperrt.
+  `current_station`, `require_admin`, `answer_ok`, `aktive_route`) sind für
+  `anon` und `authenticated` gesperrt. Prüfen: `tools/pruefstand/rechte_db.py`
+  (Nachtrag 31: Nachtrag 28 hatte `current_station` neu angelegt und die Sperre
+  verloren).
 - Admin-Funktionen prüfen die PIN serverseitig (`require_admin`).
 - Team-Codes: Tiername plus vier Ziffern. `team_by_code` vergleicht nur
   Buchstaben und Ziffern (`EULE 8765` = `eule-8765`).
@@ -427,7 +430,16 @@ anon, authenticated`, am Ende `notify pgrst, 'reload schema';`.
   mehrfach ausführbar, ohne Datenverlust.
 - Wird eine bestehende Funktion geändert, die neueste Fassung als Vorlage
   nehmen (manche wurden mehrfach ersetzt, z. B. `team_state` zuletzt in
-  Nachtrag 7, `register_participant` in Nachtrag 12).
+  Nachtrag 7, `register_participant` in Nachtrag 32). Die letzte Definition
+  findet `tools/migration_bugjagd2.py` (`neueste()`) über alle Migrationen.
+- **Nach jedem `drop` + `create` einer Funktion die Rechte ausdrücklich
+  setzen**: `revoke all ... from public, anon, authenticated` für
+  Hilfsfunktionen, `grant execute ... to anon, authenticated` für
+  Spielfunktionen. Supabase gibt neuen Funktionen von selbst Ausführungsrechte
+  für `anon`; eine neu angelegte Hilfsfunktion ist sonst offen (so geschehen mit
+  `current_station` in Nachtrag 28, behoben in Nachtrag 31). `create or
+  replace` mit gleicher Signatur behält die Rechte. Der Probelauf zum Nachtrag
+  prüft die Rechte mit (Muster: `tools/pruefstand/rechte_db.py`).
 - Einspielen: `python tools/sql.py supabase/migrations/<datei>.sql`. Token in
   `%USERPROFILE%\.supabase\stadtjagt.token`. Das Skript bremst zerstörerische
   Anweisungen außerhalb von Funktionskörpern.

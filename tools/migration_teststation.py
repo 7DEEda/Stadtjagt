@@ -58,6 +58,9 @@ language sql security definer set search_path = public as $$
   order by s.position
   limit 1;
 $$;
+-- neu angelegt: Supabase gibt neuen Funktionen Ausführungsrechte für anon. current_station liefert Lösung, Ziffer,
+-- Rätsel und Tipp, also wieder sperren (fehlte hier, nachgeholt in Nachtrag 31, Bugjagd 03.10.2026)
+revoke all on function current_station(uuid) from public, anon, authenticated;
 
 insert into stations_alle (route, position, name, lat, lng, radius_m, location_hint, riddle, answer, digit, tip)
 values ('test', 1, 'EDEKA Grenzallee', 52.470116, 13.462131, 50, 'Ortshinweis folgt', 'Rätsel folgt', '', 1, '');
