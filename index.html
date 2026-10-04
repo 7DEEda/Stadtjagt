@@ -3393,8 +3393,10 @@ document.addEventListener("click", async e => {
     const r = await fn(a.dataset);
     S.busy = false; S.wartetAuf = null;
     // Geklappt: Felder leeren (render rettet sonst das Getippte). Abgelehnt oder Rückfrage: stehen lassen.
-    S.felderFrisch = !(S.msg && (S.msg.type === "err" || S.msg.type === "info"));
-    if (r !== false) render(); else a.disabled = false;
+    // Der Merker nur, wenn jetzt auch neu gezeichnet wird: sonst verwürfe das nächste Neuzeichnen (10-s-Abruf,
+    // Rückkehr aus einer anderen App) alles Getippte (Bugjagd 03.10.2026, Fund 4).
+    if (r !== false) { S.felderFrisch = !(S.msg && (S.msg.type === "err" || S.msg.type === "info")); render(); }
+    else a.disabled = false;
   } catch (err) {
     S.busy = false; S.wartetAuf = null;
     S.msg = { type: "err", text: err.message || "Etwas ist schiefgelaufen.", ort: a.dataset.ort };
