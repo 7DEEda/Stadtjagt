@@ -1183,6 +1183,9 @@ function viewTeam() {
         <p class="muted">Und zwar auf dem Handy, mit dem sie sich angemeldet hat. Auf diesem Handy hat sich niemand angemeldet.</p>`
       : ab ? `<h2>Du hast dich abgemeldet</h2><p class="muted">Dieses Handy gibt gerade nichts ein.</p>
         <button class="btn" data-act="t-ohne-code" data-wait="Wird geprüft …">Wieder als Teamleitung einloggen</button>`
+      : S.team.ohneNetz ? `<h2>Teamleitung wird geprüft</h2>
+        <p class="muted">Gerade kommt keine Antwort. Wir fragen alle 10 Sekunden von selbst noch einmal.</p>
+        <button class="btn alt" data-act="t-ohne-code" data-wait="Wird geprüft …">Noch einmal prüfen</button>`
       : `<h2>Du leitest gerade kein Team</h2>
         <p class="muted">Eingeben kann nur die Teamleitung, auf ihrem eigenen Handy. Station und Rätsel siehst du auf der Anmeldeseite mit.</p>
         <button class="btn alt" data-act="t-ohne-code" data-wait="Wird geprüft …">Noch einmal prüfen</button>`;
@@ -2331,7 +2334,7 @@ const ACT = {
   async "t-ohne-code"() {
     LS.removeItem("sj.abgemeldet");
     if (await leitungOhneCode()) { S.msg = null; await refresh(); return false; }
-    S.msg = { type: "err", text: S.team.ohneGrund || "Du leitest gerade kein Team." };
+    if (!S.team.ohneNetz) S.msg = { type: "err", text: S.team.ohneGrund || "Du leitest gerade kein Team." };   // Funkloch: die Meldung steht schon
   },
   "t-codefeld"() { S.team.codeFeld = true; S.msg = null; },
   async "t-login"() {
@@ -3198,9 +3201,14 @@ async function leitungOhneCode() {
   try {
     const r = await rpc("leader_code", { p_token: tok });
     S.team.code = r.code; LS.setItem("sj.code", r.code);   // der Kopf zeigt dann Team und Code
+    S.team.ohneNetz = false; netzOk();
     return true;
   } catch (e) {
-    // keine Leitung, unbekanntes Gerät oder Funkloch: der Grund steht auf der Seite
+    // Funkloch: als Meldung zeigen und im 10-s-Takt neu fragen, statt zu behaupten, das Handy leite kein Team
+    // (Bugjagd 03.10.2026, Fund 5). Keine Leitung oder unbekanntes Gerät: der Grund steht auf der Seite.
+    S.team.ohneNetz = !!e.netz;
+    if (e.netz) { S.msg = { type: "err", kind: "netz", text: e.message }; S.team.ohneGrund = e.message; return false; }
+    netzOk();
     S.team.ohneGrund = /keine Teamleitung|kein Team/.test(String(e.message)) ? "Du leitest gerade kein Team."
       : String(e.message).includes("Unbekanntes Gerät") ? "Dieses Handy ist nicht mehr angemeldet." : e.message;
     return false;
@@ -3475,6 +3483,8 @@ setInterval(() => {
     return;
   }
   if (busyTyping) return;
+  // Teamleitung ohne Code, die letzte Frage ging im Funkloch verloren: neu fragen, bis eine Antwort kommt (Fund 5)
+  if (S.view === "team" && !S.team.code && S.team.ohneNetz) leitungOhneCode().then(ok => ok ? refresh() : render());
   if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(async s => { netzOk(); teamStandSetzen(s); await leitungNochDa(s); await ranglisteHolen(); render(); })
     .catch(e => { if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); render(); } });
   // Beim Hochhalten nicht neu zeichnen: die Vollbild-Ansicht würde jedes Mal neu einblenden und flackern.
