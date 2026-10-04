@@ -2990,13 +2990,16 @@ async function startGps(auto) {
     maybeReport();
     if (firstFix || lageNeu) render(); else liveUpdate();
   }, e => {
-    if (e.code === 3) {
+    // Kurz kein Standort (Code 2, etwa in einer Unterführung) nach einem ersten Fix: Beobachter behalten, die letzte
+    // Position bleibt stehen und altert sichtbar (Bugjagd 03.10.2026, Fund 10). Ohne je einen Fix wie bisher beenden,
+    // sonst käme der Knopf zum Freigeben nie wieder (Nachtrag 21).
+    if (e.code === 3 || (e.code === 2 && S.gps.pos)) {
       // Ohne je einen Standort liegt es meist an der Erlaubnis, nicht am Signal
       S.gps.err = S.gps.pos ? "GPS-Signal ist schwach, die App sucht weiter."
         : "Noch kein Standort. Hat das Handy nach der Erlaubnis gefragt? Dann „Erlauben“ tippen. Die App sucht weiter.";
       if (kompassSichtbar()) render(); return;
     }
-    // Abgelehnt oder kein Standort: Beobachter beenden, damit der Knopf zum Freigeben wiederkommt
+    // Abgelehnt oder nie ein Standort: Beobachter beenden, damit der Knopf zum Freigeben wiederkommt
     if (watchId != null) navigator.geolocation.clearWatch(watchId);
     watchId = null; S.gps.on = false; S.gps.pos = null;
     S.gps.err = e.code === 1 ? STANDORT_BLOCKIERT : "Dieses Handy findet gerade keinen Standort. Geht ein paar Schritte ins Freie und tippt noch mal auf „Standort und Kompass freigeben“.";
