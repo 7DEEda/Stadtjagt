@@ -212,6 +212,11 @@ with sync_playwright() as pw:
         pruef("schon angemeldet" in pg.inner_text("#app"), "fremder Name: weiter abgelehnt")
         pruef(pg.evaluate("localStorage.getItem('sj.token')") is None, "abgelehnt: kein Schlüssel bleibt liegen")
         pg.close()
+        pg = neu(b, "anmeldung-leer", vorher="window.__ALTE_DB = true")
+        pg.fill("#pname", "Alte Datenbank"); pg.click("[data-act=pub-reg]"); pg.wait_for_timeout(700)
+        pruef(pg.evaluate("[localStorage.getItem('sj.name'), localStorage.getItem('sj.token')]") == ["Alte Datenbank", "tok-neu"],
+              "Datenbank ohne Nachtrag 32: zweiter Aufruf ohne p_token, Schlüssel vom Server")
+        pg.close()
 
     if an(10):
         print("Fund 10: watchPosition Code 2")

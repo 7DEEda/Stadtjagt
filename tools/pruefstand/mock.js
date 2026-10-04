@@ -376,7 +376,7 @@
   }
   const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9ß]/g, "");
   // angemeldete Namen (norm) mit ihrem Geräte-Schlüssel, für die wiederholbare Anmeldung
-  const ANGEMELDET = {};
+  const ANGEMELDET = {}, NEU = {};
   PERSONEN.forEach(p => { ANGEMELDET[norm(p.name)] = p.token; });
   const fehler = msg => { const e = new Error(msg); e.rpc = true; throw e; };
   const pin = a => { if (a.p_pin !== "4711") fehler("Falsche PIN."); };
@@ -385,7 +385,9 @@
   const RPC = {
     public_state: () => publicState(),
     team_state: a => teamState(fuchsByCode(a.p_code)),
-    member_state: a => { const p = PERSONEN.find(x => x.token === a.p_token); if (!p) fehler("Unbekanntes Gerät.");
+    member_state: a => { const p = PERSONEN.find(x => x.token === a.p_token);
+      if (!p && NEU[a.p_token]) return { name: NEU[a.p_token], team: null };   // eben angemeldet, noch ohne Team
+      if (!p) fehler("Unbekanntes Gerät.");
       return mitTeams() ? memberState(teamOf(p), p.name) : { name: p.name, team: null }; },
     member_state_by_team: a => { const t = TEAMS.find(x => x.readToken === a.p_read_token); if (!t) fehler("Unbekannter Mitlese-Link."); return memberState(t, null); },
     lookup_participant: a => {
@@ -401,10 +403,11 @@
       const t = teamOf(p); if (t.leaderId !== p.id) fehler("Du leitest gerade kein Team."); return { code: t.code }; },
     // Nachtrag 32: mit p_token wiederholbar (gleicher Name, gleicher Schlüssel = Erfolg wie beim ersten Mal)
     register_participant: a => { const name = String(a.p_name || "").trim(); if (name.length < 2) fehler("Bitte den vollen Namen eintragen.");
+      if (window.__ALTE_DB && "p_token" in a) fehler("Could not find the function public.register_participant(p_name, p_token) in the schema cache");
       const k = norm(name), da = ANGEMELDET[k];
       if (da && (!a.p_token || da !== a.p_token)) fehler("Dieser Name ist schon angemeldet. Hast du dich schon eingetragen? Dann bist du dabei.");
-      const token = a.p_token || "tok-neu"; ANGEMELDET[k] = token; window.__REG = (window.__REG || []).concat([a]);
-      return { name, token, count: PERSONEN.length + Object.keys(ANGEMELDET).length }; },
+      const token = a.p_token || "tok-neu"; ANGEMELDET[k] = token; NEU[token] = name; window.__REG = (window.__REG || []).concat([a]);
+      return { name, token, count: Object.keys(ANGEMELDET).length }; },
     check_in: a => {
       const t = fuchsByCode(a.p_code), s = STATIONEN[FU.solved];
       if (!s) return { ok: false, message: "Alle Stationen sind gelöst.", state: teamState(t) };

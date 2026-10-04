@@ -527,6 +527,10 @@ function ago(ts) {
 const RPC_FOTO = new Set(["team_photo", "team_selfie", "admin_photo", "admin_photos"]);
 // Fehler ohne Verbindung tragen netz: true, damit die Seite die Meldung wieder abräumen kann, sobald es wieder geht
 const keineVerbindung = () => Object.assign(new Error("Keine Verbindung. Wartet kurz und tippt noch mal."), { netz: true });
+// Die Datenbank kennt die Funktion mit diesen Parametern nicht (älterer Nachtrag eingespielt, PostgREST PGRST202)
+const ohneFunktion = e => !!e && (e.code === "PGRST202" || /Could not find the function/i.test(e.message || ""));
+// Geräte-Schlüssel wie register_participant ihn ausgibt: 64 Hex-Zeichen, hier aus 32 Zufallsbytes
+const neuerSchluessel = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), x => x.toString(16).padStart(2, "0")).join("");
 async function rpc(fn, args) {
   if (!cfg.url || !cfg.key) throw new Error("Die App ist noch nicht mit Supabase verbunden.");
   const abbruch = new AbortController(), uhr = setTimeout(() => abbruch.abort(), RPC_FOTO.has(fn) ? 60000 : 15000);
@@ -2290,11 +2294,23 @@ const ACT = {
     S.msg = null; await refresh();
   },
   async "pub-reg"() {
+    // Den Geräte-Schlüssel erzeugt das Handy selbst und legt ihn VOR dem Aufruf ab. Geht die Antwort im Funkloch
+    // verloren, schickt der nächste Versuch denselben, und der Server antwortet wie beim ersten Mal (Bugjagd
+    // 03.10.2026, Fund 9). Bisher hieß es dann "schon angemeldet", und das Handy blieb ohne Schlüssel.
+    let tok = LS.getItem("sj.token");
+    if (!/^[0-9a-f]{64}$/.test(tok || "")) { tok = neuerSchluessel(); LS.setItem("sj.token", tok); }
+    const name = val("pname");
     let r;
-    try { r = await rpc("register_participant", { p_name: val("pname") }); }
-    catch (e) { S.msg = { type: "err", text: e.message, ort: "anm" }; return; }
+    try {
+      try { r = await rpc("register_participant", { p_name: name, p_token: tok }); }
+      catch (e) { if (!ohneFunktion(e)) throw e; r = await rpc("register_participant", { p_name: name }); }   // Datenbank ohne Nachtrag 32
+    } catch (e) {
+      // Abgelehnt: der Schlüssel gehört zu niemandem. Funkloch: liegen lassen für den nächsten Versuch.
+      if (!e.netz) LS.removeItem("sj.token");
+      S.msg = { type: "err", text: e.message, ort: "anm" }; return;
+    }
     S.myName = r.name; LS.setItem("sj.name", r.name); S.msg = null;
-    if (r.token) LS.setItem("sj.token", r.token);   // damit dieses Handy später mitlesen kann
+    LS.setItem("sj.token", r.token || tok);   // damit dieses Handy später mitlesen kann
     // nach dem Auslosen kommt das Team gleich mit: große Karte sofort zeigen
     if (r.team) { S.lookup = r.team; S.lookupName = r.name; S.lookupEigen = true; S.autoLook = true; }
     await refresh();
@@ -3084,7 +3100,6 @@ async function maybeReport() {
   const pos = { p_code: S.team.code, p_lat: g.pos.lat, p_lng: g.pos.lng, p_acc: g.acc };
   // Eine Datenbank ohne Nachtrag 30 kennt p_kompass nicht (PostgREST findet die Funktion nicht, PGRST202): nur dann
   // einmal ohne, die Position ist wichtiger als das Urteil. Bei jedem anderen Fehler (Funkloch, Server) kein zweiter Aufruf.
-  const ohneFunktion = e => e && (e.code === "PGRST202" || /Could not find the function/i.test(e.message || ""));
   try {
     try { await rpc("report_position", { ...pos, p_kompass: urteil }); }
     catch (e) { if (!ohneFunktion(e)) throw e; await rpc("report_position", pos); }
