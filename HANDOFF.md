@@ -1792,9 +1792,42 @@ Teil 2, Plan `docs/superpowers/plans/2026-10-02-kompass-waechter.md`.
   ein gesundes Handy in der Tasche mit Bildschirm an und eins senkrecht vor dem
   Gesicht drehen; `sj.kompass` muss leer bleiben.
 
-## Stand zum Fortsetzen (03.10.2026)
+## Bugjagd 03.10.2026 (Nachtrag 31 und 32, live seit 04.10.2026)
 
-**Live:** alles bis Nachtrag 30, Geräte-Test bis Suite 20
+Multi-Agent-Bugjagd über das ganze Spiel (57 Agenten, 16 bestätigte Funde, keiner verworfen), alle behoben.
+Funde mit Szenario und Belegen lagen in `.superpowers/sdd/bugjagd-2026-10-03/` (lokal).
+
+- **Critical, Nachtrag 31:** `current_station(uuid)` war seit Nachtrag 28 für anon ausführbar (Lösung und
+  Ziffer jeder Station per RPC mit der Team-ID aus `public_state`). Wieder gesperrt; Probelauf
+  `tools/pruefstand/rechte_db.py` prüft alle internen Hilfsfunktionen. **Regel (SPIEL.md §9): nach jedem
+  drop + create einer Funktion die Rechte ausdrücklich setzen.**
+- **Nachtrag 32** (`20261004100000_bugjagd2.sql`, Generator `tools/migration_bugjagd2.py`, Probelauf
+  `tools/pruefstand/bugjagd2_db.py`):
+  - `register_participant(p_name, p_token default null)`: das Handy erzeugt seinen Geräte-Schlüssel selbst
+    und legt ihn vor dem Aufruf ab; ein bekannter Schlüssel gibt die vorhandene Anmeldung zurück (Antwort im
+    Funkloch verloren, auch nach Umbenennen). Für einen vorhandenen Namen gibt es nie einen neuen Schlüssel.
+  - `admin_set_test_mode`: im laufenden Spiel mit Plätzen kein Umschalten, weder aus noch an
+    (Ausweg: „Fortschritt zurücksetzen“). Ohne Platz frei.
+  - `submit_answer`: leere Antwort außerhalb des Testmodus kein Fehlversuch.
+  - `device_test_save`: nimmt nur Läufe in der erwarteten Form; `tools/testlaeufe.py` überspringt kaputte Zeilen.
+- **Client:** Koordinatenpaar im Feld Breite wird immer zerlegt (`koordAusFeldern`), Enter speichert
+  (`data-enter-ziel`), Getipptes bleibt nach Aktionen ohne Neuzeichnen, `rpc()` bricht nach 15 s ab
+  (Fotos 60 s), Netzmeldungen (`kind:"netz"`) verschwinden nach der nächsten guten Antwort, Teamleitung
+  ohne Code versucht es bei Netzfehler alle 10 s neu, Standortausfall Code 2 nach einem ersten Fix beendet
+  die Ortung nicht mehr, Merker für Entschlüsselung und Fotos hängen an Route und Spielbeginn
+  (`merkerTeil`).
+- **Geräte-Test Suite 21:** laufender Lauf wird auch bei gesperrtem Speicher gesendet, iPad mit mobiler
+  Kennung ist „Tablet“.
+- **Prüfen:** `python tools/pruefstand/bugjagd2.py` (53 Prüfungen), Probeläufe `bugjagd2_db.py`,
+  `rechte_db.py`.
+- **Bewusst offen (klein):** gescheiterte Anmeldung löscht `sj.token` auch, wenn er vorher gültig war (nur
+  bei Handy ohne `sj.name`); Neuversuch der Teamleitung ohne Code kann sich bei 15-s-Abbruch überlappen
+  (höchstens ein Neuzeichnen je 10 s); lehnt der Server „Testmodus einschalten“ ab, bleibt der Dialog offen
+  und die Meldung steht oben.
+
+## Stand zum Fortsetzen (04.10.2026)
+
+**Live:** alles bis Nachtrag 32, Geräte-Test bis Suite 21
 (https://7deeda.github.io/geraetetest/).
 
 **Design-Varianten (03.10., nicht entschieden):** klickbarer Vergleich der
