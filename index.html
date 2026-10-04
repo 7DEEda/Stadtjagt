@@ -2398,6 +2398,8 @@ const ACT = {
   },
   async "t-answer"() {
     const pos = S.team.state && S.team.state.station && S.team.state.station.position;
+    // Leeres Feld zählt nicht als Fehlversuch (Bugjagd 03.10.2026, Fund 16); im Testmodus zählt es als richtig
+    if (!val("tans") && !(S.team.state && S.team.state.testMode)) { S.msg = { type: "err", text: "Bitte gebt eine Antwort ein." }; return; }
     const r = await rpc("submit_answer", { p_code: S.team.code, p_answer: val("tans") });
     S.team.state = r.state;
     // Richtig: den Moment benennen, mit der Ziffer, und das neue Rad im Schloss kurz markieren
