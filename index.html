@@ -1592,7 +1592,7 @@ function startZeile(route, st) {
         <div><label for="sp-lat">Breite</label><input id="sp-lat" inputmode="decimal" value="${sp.lat ?? ""}"></div>
         <div><label for="sp-lng">Länge</label><input id="sp-lng" inputmode="decimal" value="${sp.lng ?? ""}"></div></div>
       <div style="margin-top:10px"><button class="btn sm alt" data-act="a-startpkt-hier">Meinen Standort übernehmen</button> <span class="small muted" id="sp-here"></span></div>
-      <div style="margin-top:6px"><button class="btn sm" data-act="a-startpkt-save" data-route="${route}" data-wait="Wird gespeichert …">Speichern</button>
+      <div style="margin-top:6px"><button class="btn sm" data-act="a-startpkt-save" data-route="${route}" data-wait="Wird gespeichert …" data-enter-ziel>Speichern</button>
         <button class="btn sm alt" data-act="a-startpkt-cancel">Abbrechen</button></div>${msgBox("start")}</div>`;
   return `<div style="border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px;align-items:flex-start">
       <b style="width:20px;display:grid;place-items:center">${HAUS}</b>
@@ -1631,7 +1631,7 @@ function stationZeile(s, st) {
               <button class="btn sm alt" data-act="a-geheim-vorschlag">Vorschlag aus der Etappe (60 % und 30 %)</button></div>
             <div class="evorschau"><div class="small muted" id="e-wo"></div><div class="geheim" id="e-vorschau" style="margin-top:6px"></div></div>
           </div>
-          <div style="margin-top:6px"><button class="btn sm" data-act="a-save" data-wait="Wird gespeichert …" data-id="${s.id}">Speichern</button>
+          <div style="margin-top:6px"><button class="btn sm" data-act="a-save" data-wait="Wird gespeichert …" data-id="${s.id}" data-enter-ziel>Speichern</button>
             <button class="btn sm alt" data-act="a-cancel">Abbrechen</button></div>
         </div>` : `
         <div style="border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px;align-items:flex-start">
@@ -3415,11 +3415,14 @@ document.addEventListener("keydown", e => {
   if (e.target.id === "dlgword") { const ok = $("#dlgok"); if (ok && !ok.disabled) ok.click(); return; }
   // Enter löst den Knopf aus, der zum Feld gehört: erst in der eigenen Zeile, dann in der Karte,
   // dort lieber den Hauptknopf (orange) als einen Nebenknopf. Nie einen Lösch-Knopf (a-danger):
-  // der steht in der Karte "Teilnehmende" vor dem Hinzufügen.
+  // der steht in der Karte "Teilnehmende" vor dem Hinzufügen. Hat ein Formular einen ausgewiesenen Hauptknopf
+  // (data-enter-ziel, Station und Startpunkt), gilt der: dort steht etwa "Verschlüsseln einschalten" ohne alt
+  // vor "Speichern" (Bugjagd 03.10.2026, Fund 3).
   if (e.target.dataset.enter === "none") return;
   const zeile = e.target.parentElement, box = e.target.closest(".stack") || e.target.closest(".panel");
   const finde = (el, sel) => el && el.querySelector(sel + ':not([data-act="a-danger"])');
-  const btn = finde(zeile, ".btn[data-act]") || finde(box, ".btn[data-act]:not(.alt)") || finde(box, ".btn[data-act]");
+  const btn = finde(e.target.closest(".stack"), ".btn[data-act][data-enter-ziel]")
+    || finde(zeile, ".btn[data-act]") || finde(box, ".btn[data-act]:not(.alt)") || finde(box, ".btn[data-act]");
   if (btn && !btn.disabled) btn.click();
 });
 window.addEventListener("hashchange", () => {
