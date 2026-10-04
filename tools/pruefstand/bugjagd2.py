@@ -266,13 +266,14 @@ with sync_playwright() as pw:
 
     if an(11, 13):
         print("Fund 11 und 13: Geräte-Test")
-        ctx = b.new_context(viewport={"width": 820, "height": 1180}, user_agent=shoot.UA_IPAD)
-        ctx.add_init_script("Object.defineProperty(Navigator.prototype, 'userAgentData', { get: () => undefined })")
-        pg = ctx.new_page(); pg.on("pageerror", lambda e: err.append(f"geraete-test iPad: {e}"))
-        pg.goto("http://127.0.0.1:8833/geraete-test.html")
-        r = pg.evaluate("GT_TESTS.tests.find(t => t.id === 'umgebung').lauf().then(x => x.mess['Geräteart'])")
-        pruef(r == "Tablet", f"iPad mit mobiler Kennung ist ein Tablet ({r})")
-        ctx.close()
+        for ua, soll, text in ((shoot.UA_IPAD, "Tablet", "iPad mit mobiler Kennung ist ein Tablet"), (shoot.UA_IPHONE, "Telefon", "iPhone bleibt ein Telefon")):
+            ctx = b.new_context(viewport={"width": 820, "height": 1180}, user_agent=ua)
+            ctx.add_init_script("Object.defineProperty(Navigator.prototype, 'userAgentData', { get: () => undefined })")
+            pg = ctx.new_page(); pg.on("pageerror", lambda e: err.append(f"geraete-test {soll}: {e}"))
+            pg.goto("http://127.0.0.1:8833/geraete-test.html")
+            r = pg.evaluate("GT_TESTS.tests.find(t => t.id === 'umgebung').lauf().then(x => x.mess['Geräteart'])")
+            pruef(r == soll, f"{text} ({r})")
+            ctx.close()
         ctx = b.new_context(viewport={"width": 390, "height": 844})
         ctx.add_init_script("Object.defineProperty(window, 'localStorage', { get() { throw new DOMException('gesperrt', 'SecurityError'); } })")
         pg = ctx.new_page(); pg.on("pageerror", lambda e: err.append(f"geraete-test gesperrt: {e}"))
