@@ -40,6 +40,29 @@ def suite_titel() -> dict:
     return dict(re.findall(r'id: "([^"]+)", titel: "([^"]+)"', text))
 
 
+def kaputt(lauf: dict):
+    """Grund, warum eine Zeile nicht die Form eines Laufs hat, sonst None. device_test_save prüft die Form erst seit
+    Nachtrag 32; vorher konnte jeder mit dem öffentlichen Schlüssel etwa {"tests": "x"} ablegen (Bugjagd 03.10.2026,
+    Fund 12), und die Übersicht brach dann ab."""
+    p = lauf.get("payload")
+    if isinstance(p, str):
+        try:
+            p = lauf["payload"] = json.loads(p)
+        except ValueError:
+            return "payload ist kein JSON"
+    if not isinstance(p, dict):
+        return "payload ist kein Objekt"
+    for feld in ("tests", "bilanz"):
+        if not isinstance(p.get(feld, {}), dict):
+            return f"{feld} ist kein Objekt"
+    for i, t in p.get("tests", {}).items():
+        if not isinstance(t, dict) or not isinstance(t.get("mess") or {}, dict):
+            return f"Test {i} hat nicht die Form eines Ergebnisses"
+    if not isinstance(lauf.get("run_key"), str) or not isinstance(lauf.get("created_at"), str):
+        return "run_key oder created_at fehlt"
+    return None
+
+
 def uebersicht(laeufe: list) -> str:
     titel = suite_titel()
     ids = list(titel)
@@ -74,19 +97,26 @@ def uebersicht(laeufe: list) -> str:
 
 
 def main() -> None:
-    laeufe = sql.ausfuehren(ABFRAGE, read_only=True) or []
+    alle = sql.ausfuehren(ABFRAGE, read_only=True) or []
+    # kaputte Zeilen überspringen und melden, damit eine einzige nicht die ganze Übersicht verhindert
+    laeufe = []
+    for lauf in alle:
+        grund = kaputt(lauf)
+        if grund:
+            print(f"Übersprungen: Lauf {lauf.get('run_key')} ({grund}). Löschen per SQL: "
+                  f"delete from device_test_runs where run_key = '{lauf.get('run_key')}';")
+        else:
+            laeufe.append(lauf)
     ZIEL.mkdir(exist_ok=True)
     neu = 0
     for lauf in laeufe:
-        if isinstance(lauf["payload"], str):
-            lauf["payload"] = json.loads(lauf["payload"])
         ziel = ZIEL / dateiname(lauf)
         inhalt = json.dumps(lauf, ensure_ascii=False, indent=2) + "\n"
         if not ziel.exists() or ziel.read_text(encoding="utf-8") != inhalt:
             ziel.write_text(inhalt, encoding="utf-8")
             neu += 1
     (ZIEL / "UEBERSICHT.md").write_text(uebersicht(laeufe), encoding="utf-8")
-    print(f"{len(laeufe)} Läufe in der Datenbank, {neu} neu oder geändert. Übersicht: {ZIEL / 'UEBERSICHT.md'}")
+    print(f"{len(laeufe)} Läufe in der Datenbank ({len(alle) - len(laeufe)} übersprungen), {neu} neu oder geändert. Übersicht: {ZIEL / 'UEBERSICHT.md'}")
 
 
 if __name__ == "__main__":
