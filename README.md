@@ -29,33 +29,8 @@ update game_state set admin_pin = 'vier lange Wörter hier' where id = 1;
 ## Schnellstart
 
 1. Supabase-Projekt anlegen, Region Frankfurt.
-2. SQL einspielen, in dieser Reihenfolge, per `tools/sql.py` oder im
-   SQL-Editor:
-
-   ```
-   supabase/migrations/20260918120000_init.sql
-   supabase/migrations/20260918150000_where_clauses.sql
-   supabase/migrations/20260918160000_routes.sql
-   supabase/migrations/20260918170000_draw_size.sql
-   supabase/migrations/20260918180000_tiernamen.sql
-   supabase/migrations/20260918190000_anmeldung_leeren.sql
-   supabase/migrations/20260918200000_drei_koffer.sql
-   supabase/migrations/20260918210000_testmodus.sql
-   supabase/migrations/20260918220000_durchsicht.sql
-   supabase/migrations/20260918230000_viele_namen.sql
-   supabase/migrations/20260919000000_nachmelden.sql
-   supabase/migrations/20260919010000_mitlesen.sql
-   supabase/migrations/20260919020000_anmeldung_bis_auslosen.sql
-   supabase/migrations/20260919030000_wasserdicht.sql
-   supabase/migrations/20260919040000_leitung_und_mitlesen.sql
-   supabase/migrations/20260919050000_review.sql
-   supabase/migrations/20260919060000_start_im_testmodus.sql
-   supabase/migrations/20260919070000_koffer_hinweis_spieldauer.sql
-   supabase/migrations/20260919080000_leitung_ohne_code.sql
-   supabase/migrations/20260919090000_hintergrund.sql
-   supabase/migrations/20260919100000_bugjagd.sql
-   supabase/migrations/20260919110000_team_zustand.sql
-   ```
+2. SQL einspielen: alle Dateien in `supabase/migrations` in
+   Dateinamen-Reihenfolge, per `tools/sql.py` oder im SQL-Editor.
 
    Die Init-Datei beginnt mit `drop table ... cascade`. Auf einer Datenbank mit
    echten Daten niemals erneut ausführen.
