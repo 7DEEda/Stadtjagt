@@ -522,21 +522,27 @@ function ago(ts) {
   return "vor " + Math.round(s / 3600) + " h";
 }
 
+// Zeitlimit je Aufruf: ohne Antwort hinge eine Anfrage draußen minutenlang, mit gesperrtem Knopf (Bugjagd 03.10.2026,
+// Fund 6). Fotos tragen einige hundert KB und dürfen länger dauern.
+const RPC_FOTO = new Set(["team_photo", "team_selfie", "admin_photo", "admin_photos"]);
+// Fehler ohne Verbindung tragen netz: true, damit die Seite die Meldung wieder abräumen kann, sobald es wieder geht
+const keineVerbindung = () => Object.assign(new Error("Keine Verbindung. Wartet kurz und tippt noch mal."), { netz: true });
 async function rpc(fn, args) {
   if (!cfg.url || !cfg.key) throw new Error("Die App ist noch nicht mit Supabase verbunden.");
-  let res;
+  const abbruch = new AbortController(), uhr = setTimeout(() => abbruch.abort(), RPC_FOTO.has(fn) ? 60000 : 15000);
+  let res, text;
   try {
     res = await fetch(cfg.url.replace(/\/$/, "") + "/rest/v1/rpc/" + fn, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: cfg.key, Authorization: "Bearer " + cfg.key },
-      body: JSON.stringify(args || {})
+      body: JSON.stringify(args || {}), signal: abbruch.signal
     });
+    text = await res.text();
   } catch {
-    // "Failed to fetch" oder "Load failed": draußen heißt das fast immer Funkloch
-    throw new Error("Keine Verbindung. Wartet kurz und tippt noch mal.");
-  }
+    // "Failed to fetch", "Load failed" oder das Zeitlimit: draußen heißt das fast immer Funkloch
+    throw keineVerbindung();
+  } finally { clearTimeout(uhr); }
   S.zuletzt = Date.now();
-  const text = await res.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = text; }
   if (!res.ok) { const e = new Error((data && data.message) || "Fehler " + res.status); e.code = data && data.code; throw e; }
