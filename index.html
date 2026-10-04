@@ -3235,18 +3235,24 @@ function codeUngueltig() {
   if (!LS.getItem("sj.token")) S.team.codeFeld = true;   // Tablet der Spielleitung: das Feld mit der Meldung zeigen
   if (LS.getItem("sj.token")) setTimeout(refresh, 0);
 }
+// Die Meldung "Keine Verbindung" aus einem Abruf (kind "netz") gilt nur, bis wieder eine Antwort kommt. Bisher blieb
+// sie stehen, obwohl der 10-s-Abruf längst wieder lief (Bugjagd 03.10.2026, Fund 8). true, wenn sie weg ist.
+function netzOk() {
+  if (!S.msg || S.msg.kind !== "netz") return false;
+  S.msg = null; return true;
+}
 async function refresh() {
   if (!cfg.url || !cfg.key) return render();
   try {
-    if (S.view === "public") { S.pub = await rpc("public_state", {}); await nameNochDa(); teamNachziehen(); await eigenesTeam(); await mitlesen(); }
+    if (S.view === "public") { S.pub = await rpc("public_state", {}); netzOk(); await nameNochDa(); teamNachziehen(); await eigenesTeam(); await mitlesen(); }
     if (S.view === "team" && !S.team.code) await leitungOhneCode();
-    if (S.view === "team" && S.team.code) { teamStandSetzen(await rpc("team_state", { p_code: S.team.code })); await leitungNochDa(S.team.state); await ranglisteHolen(); }
-    if (S.view === "admin" && S.admin.pin) S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin });
+    if (S.view === "team" && S.team.code) { const s = await rpc("team_state", { p_code: S.team.code }); netzOk(); teamStandSetzen(s); await leitungNochDa(S.team.state); await ranglisteHolen(); }
+    if (S.view === "admin" && S.admin.pin) { S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin }); netzOk(); }
     await gpsWiederStarten();
   } catch (e) {
     if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); return render(); }
     if (String(e.message).includes("Falsche PIN")) { S.admin.pin = null; SS.removeItem("sj.pin"); }
-    S.msg = { type: "err", text: e.message };
+    S.msg = e.netz ? { type: "err", kind: "netz", text: e.message } : { type: "err", text: e.message };
   }
   render();
 }
@@ -3461,24 +3467,26 @@ setInterval(() => {
   if (S.view === "admin" && S.admin.pin) {
     rpc("admin_state", { p_pin: S.admin.pin }).then(s => {
       S.admin.state = s;
+      const netzWeg = netzOk();
       if (S.admin.tab === "fotos" && (s.photoCount || 0) !== (S.admin.fotos || []).length) fotosLaden();
-      if (S.admin.tab === "map") syncTracks().then(() => { drawMap(false); renderTimeline(); }).catch(() => { });
+      if (S.admin.tab === "map") { syncTracks().then(() => { drawMap(false); renderTimeline(); }).catch(() => { }); if (netzWeg && !busyTyping) render(); }
       else if (!busyTyping && !S.admin.edit && !S.admin.confirm && !S.gross) render();
     }).catch(() => { });
     return;
   }
   if (busyTyping) return;
-  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(async s => { teamStandSetzen(s); await leitungNochDa(s); await ranglisteHolen(); render(); })
+  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(async s => { netzOk(); teamStandSetzen(s); await leitungNochDa(s); await ranglisteHolen(); render(); })
     .catch(e => { if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); render(); } });
   // Beim Hochhalten nicht neu zeichnen: die Vollbild-Ansicht würde jedes Mal neu einblenden und flackern.
   // Die Daten kommen trotzdem, beim Schließen ist alles aktuell.
   // Hat sich das Team geändert (neu ausgelost), trotzdem neu zeichnen.
   if (S.view === "public") rpc("public_state", {}).then(async s => {
     S.pub = s;
+    const netzWeg = netzOk();
     const neu = (await nameNochDa()) | teamNachziehen();
     await eigenesTeam();
     await mitlesen();
-    if (!S.hoch || neu) render();
+    if (!S.hoch || neu || netzWeg) render();
   }).catch(() => { });
 }, 10000);
 let fingerSeit = 0;
