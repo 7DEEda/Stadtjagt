@@ -958,12 +958,16 @@ function geheimFolge(zeichen) {
   for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(z() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
   return idx;
 }
+// Merker je Station im Speicher (Entschlüsseln, nachzureichendes Foto) gelten für ein Team auf einer Route in einem
+// Spieldurchgang: Testlauf und echtes Spiel teilen sich Team und Position, aber nicht Route und Spielbeginn
+// (Bugjagd 03.10.2026, Fund 15). Merker im alten Format bleiben einfach liegen.
+const merkerTeil = st => `${st.team.id}.${st.testMode ? "test" : "echt"}.${st.startedAt || "-"}`;
 // Wie viele Buchstaben dieses Handy schon entschlüsselt hat. Schloss: es zählt der weiteste Stand, der an dieser
 // Station je erreicht wurde, auch über ein Neuladen hinweg. Wer wieder wegläuft, verliert nichts.
 function geheimStand(st, s) {
   if (!s || s.revealStartM == null || s.revealClearM == null) return null;
   const zeichen = [...String(s.name || "")], folge = geheimFolge(zeichen), n = folge.length;
-  const k = `sj.geheim.${st.team.id}.${s.position}`;
+  const k = `sj.geheim.${merkerTeil(st)}.${s.position}`;
   let offen = Math.min(n, parseInt(LS.getItem(k), 10) || 0);
   if (S.gps.pos && s.lat != null && s.lng != null) {
     const d = haversine(S.gps.pos, { lat: s.lat, lng: s.lng });
@@ -1444,7 +1448,7 @@ function selfieKamera(pos) {
   input.click();
 }
 // Kam das Foto im Funkloch nicht durch, bleibt es auf dem Handy und wird beim nächsten Abruf nachgereicht
-const fotoSchluessel = (st, pos) => `sj.foto.${st.team.id}.${pos}`;
+const fotoSchluessel = (st, pos) => `sj.foto.${merkerTeil(st)}.${pos}`;
 function fotoMerken(st, sf) { try { LS.setItem(fotoSchluessel(st, sf.pos), JSON.stringify({ foto: sf.foto, thumb: sf.thumb })); } catch { /* Speicher voll: dann eben nicht */ } }
 let fotoNachreichZeit = 0;
 async function fotoNachreichen(s) {
