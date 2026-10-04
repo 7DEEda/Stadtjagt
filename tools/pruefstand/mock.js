@@ -169,6 +169,8 @@
     "waechter-versuche-2": { welt: "running", view: "team", testMode: true, teststation: true, gps: GPS_UNTERWEGS, steps: kompassAn,
       ls: Object.assign({ "sj.kompass": JSON.stringify({ vorbelastet: true, versuche: 2, datum: new Date().toDateString() }) }, IM_TEAM) },
     "teststation-koffer": { welt: "running", view: "team", ls: IM_TEAM, testMode: true, teststation: true, fuchs: { solved: 1 } },
+    // Bugjagd 03.10.2026, Fund 16: im Testmodus zählt auch ein leeres Feld
+    "testmodus-raetsel": { welt: "running", view: "team", ls: IM_TEAM, testMode: true, fuchs: { solved: 1, checkedIn: true } },
     "admin-testfotos": { welt: "running", view: "admin", testMode: true, teststation: true, testfoto: true, fuchs: { solved: 2 }, ss: { "sj.pin": "4711" },
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { wait: 600 }] },
     "admin-teststation": { welt: "running", view: "admin", testMode: true, teststation: true, kompassFalsch: true, ss: { "sj.pin": "4711" } },
@@ -373,6 +375,9 @@
         stations: t.events.map(e => ({ position: e.position, checkedInAt: iso(e.checkedInAt), solvedAt: iso(e.solvedAt) })) })) };
   }
   const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9ß]/g, "");
+  // angemeldete Namen (norm) mit ihrem Geräte-Schlüssel, für die wiederholbare Anmeldung
+  const ANGEMELDET = {};
+  PERSONEN.forEach(p => { ANGEMELDET[norm(p.name)] = p.token; });
   const fehler = msg => { const e = new Error(msg); e.rpc = true; throw e; };
   const pin = a => { if (a.p_pin !== "4711") fehler("Falsche PIN."); };
   const fuchsByCode = code => { const t = TEAMS.find(x => x.code === String(code || "").trim().toUpperCase()); if (!t || !mitTeams()) fehler("Unbekannter Team-Code."); return t; };
@@ -394,8 +399,12 @@
     },
     leader_code: a => { const p = PERSONEN.find(x => x.token === a.p_token); if (!p || !mitTeams()) fehler("Unbekanntes Gerät.");
       const t = teamOf(p); if (t.leaderId !== p.id) fehler("Du leitest gerade kein Team."); return { code: t.code }; },
+    // Nachtrag 32: mit p_token wiederholbar (gleicher Name, gleicher Schlüssel = Erfolg wie beim ersten Mal)
     register_participant: a => { const name = String(a.p_name || "").trim(); if (name.length < 2) fehler("Bitte den vollen Namen eintragen.");
-      return { name, token: "tok-neu", count: PERSONEN.length + 1 }; },
+      const k = norm(name), da = ANGEMELDET[k];
+      if (da && (!a.p_token || da !== a.p_token)) fehler("Dieser Name ist schon angemeldet. Hast du dich schon eingetragen? Dann bist du dabei.");
+      const token = a.p_token || "tok-neu"; ANGEMELDET[k] = token; window.__REG = (window.__REG || []).concat([a]);
+      return { name, token, count: PERSONEN.length + Object.keys(ANGEMELDET).length }; },
     check_in: a => {
       const t = fuchsByCode(a.p_code), s = STATIONEN[FU.solved];
       if (!s) return { ok: false, message: "Alle Stationen sind gelöst.", state: teamState(t) };
@@ -406,10 +415,12 @@
     },
     submit_answer: a => {
       const t = fuchsByCode(a.p_code), s = STATIONEN[FU.solved];
-      if (WELT.testMode || s.answer.split("|").some(x => norm(x) === norm(a.p_answer))) {
+      if (WELT.testMode || s.answer.split("|").some(x => norm(x) && norm(x) === norm(a.p_answer))) {
         FU.solved++; FU.checkedIn = false; FU.failedAttempts = 0; FU.lockedUntil = null; FU.pauses = 0; FU.tipShown = false;
         return { ok: true, message: WELT.testMode ? "Testmodus: jede Antwort zählt. Eine Ziffer ist frei." : "Richtig. Eine Ziffer ist frei.", state: teamState(t) };
       }
+      // Nachtrag 32: leere Antwort zählt nicht als Fehlversuch
+      if (!norm(a.p_answer)) return { ok: false, message: "Bitte gebt eine Antwort ein.", state: teamState(t) };
       const n = FU.failedAttempts + 1;
       if (n >= 3) { FU.failedAttempts = 0; FU.lockedUntil = Date.now() + 120000; FU.pauses++;
         return { ok: false, message: "Dreimal falsch. Zwei Minuten Denkpause für euer Team.", state: teamState(t) }; }
@@ -458,13 +469,21 @@
     const fn = m[1];
     if (window.__funkloch === true || (window.__funkloch === "nur-foto" && fn === "team_selfie")) throw new TypeError("Prüfstand: Funkloch");
     LOG.push(fn);
+    // __haengt: Verbindung steht, aber es kommt keine Antwort (nur ein Abbruch über das Signal beendet die Anfrage)
+    const passt = w => w === true || (Array.isArray(w) && w.includes(fn));
+    if (passt(window.__haengt)) await new Promise((_, nein) => { const s = init && init.signal;
+      if (s) s.addEventListener("abort", () => nein(new DOMException("Abgebrochen", "AbortError"))); });
     const antwort = (status, data) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
     try {
       // unbekannte Admin-Aufrufe: nichts tun, Stand zurückgeben
       const h = RPC[fn] || (fn.startsWith("admin_") ? (a => { pin(a); return adminState(); }) : null);
       if (!h) return antwort(404, { message: "Prüfstand kennt " + fn + " nicht." });
-      return antwort(200, h(args));
+      const daten = h(args);
+      // __verlieren: der Server hat es getan, die Antwort geht aber im Funkloch verloren
+      if (passt(window.__verlieren)) throw Object.assign(new TypeError("Prüfstand: Antwort verloren"), { verloren: true });
+      return antwort(200, daten);
     } catch (e) {
+      if (e.verloren) throw e;
       return antwort(400, { message: e.message });
     }
   };
@@ -483,13 +502,15 @@
 
   /* ---------- Standort ---------- */
   const GPS = C.gps ? Object.assign({}, C.gps) : null;
-  const geoHoerer = [];
+  const geoHoerer = [], geoFehler = [];
+  // Fehler der Standortbeobachtung von außen auslösen (1 abgelehnt, 2 nicht verfügbar, 3 Zeitüberschreitung)
+  window.__gpsFehler = code => geoFehler.forEach(f => f({ code, message: "" }));
   window.__gps = (lat, lng, acc) => { Object.assign(GPS, { lat, lng, acc: acc || GPS.acc }); geoHoerer.forEach(ok => ok(posObj())); };
   const posObj = () => ({ coords: { latitude: GPS.lat, longitude: GPS.lng, accuracy: GPS.acc, altitude: null, altitudeAccuracy: null,
     heading: null, speed: null }, timestamp: Date.now() });
   const geo = {
     getCurrentPosition(ok, err) { setTimeout(() => GPS ? ok(posObj()) : err && err({ code: 3, message: "Zeitüberschreitung" }), 250); },
-    watchPosition(ok) { const id = Math.floor(rnd() * 1e6) + 1; geoHoerer.push(ok); if (GPS) setTimeout(() => ok(posObj()), 150); return id; },
+    watchPosition(ok, err) { const id = Math.floor(rnd() * 1e6) + 1; geoHoerer.push(ok); if (err) geoFehler.push(err); if (GPS) setTimeout(() => ok(posObj()), 150); return id; },
     clearWatch() { }
   };
   try { Object.defineProperty(navigator, "geolocation", { configurable: true, get: () => geo }); } catch (e) { console.warn(e); }

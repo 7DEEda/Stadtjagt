@@ -1567,6 +1567,13 @@ function koordPaar(la, lo) {
   if (p.length === 4) return [p[0] + "." + p[1], p[2] + "." + p[3]];   // "50,08750, 14,42806"
   return [la, lo];
 }
+// Breite und Länge aus zwei Feldern: ein Paar im Feld Breite gewinnt, auch wenn Länge noch den alten Wert hat
+// (Bugjagd 03.10.2026, Fund 2). Eine einzelne deutsche Zahl wie "50,0875" bleibt Breite, die Länge kommt aus dem Feld.
+function koordAusFeldern(idLat, idLng) {
+  let [la, lo] = val(idLat).includes(",") ? koordPaar(val(idLat), "") : [val(idLat), val(idLng)];
+  if (!lo) lo = val(idLng);
+  return [String(la), String(lo)];
+}
 const ekZahl = id => { const v = parseInt(val(id), 10); return v > 0 ? v : null; };
 // Teststation (Nachtrag 28): echte Stationen und Teststation zum Bearbeiten; gespielt wird die aktive Route
 // Startpunkt je Route (Nachtrag 29), eintragbar im Reiter Stationen; ohne Wert die alten Konstanten
@@ -1638,8 +1645,7 @@ function stationZeile(s, st) {
         </div>`;
 }
 function ekMitte() {
-  let la = val("e-lat"), lo = val("e-lng");
-  [la, lo] = koordPaar(la, lo);
+  const [la, lo] = koordAusFeldern("e-lat", "e-lng");
   const lat = parseFloat(la.replace(",", ".")), lng = parseFloat(lo.replace(",", "."));
   return isNaN(lat) || isNaN(lng) ? null : [lat, lng];
 }
@@ -2591,8 +2597,7 @@ const ACT = {
   },
   async "a-startpkt-save"(d) {
     // ein eingefügtes Paar im Feld Breite gewinnt, auch wenn Länge noch den alten Wert hat
-    let [la, lo] = val("sp-lat").includes(",") ? koordPaar(val("sp-lat"), "") : [val("sp-lat"), val("sp-lng")];
-    if (!lo) lo = val("sp-lng");
+    const [la, lo] = koordAusFeldern("sp-lat", "sp-lng");
     const lat = parseFloat(String(la).replace(",", ".")), lng = parseFloat(String(lo).replace(",", "."));
     if (isNaN(lat) || isNaN(lng)) { S.msg = { type: "err", ort: "start", text: "Bitte Breite und Länge eintragen, oder ein Paar wie 52.47010, 13.46280 ins Feld Breite einfügen." }; return; }
     S.admin.state = await rpc("admin_set_start", { p_pin: S.admin.pin, p_route: d.route, p_name: val("sp-name"), p_lat: lat, p_lng: lng });
@@ -2632,8 +2637,7 @@ const ACT = {
     return false;
   },
   async "a-save"(d) {
-    let la = val("e-lat"), lo = val("e-lng");
-    [la, lo] = koordPaar(la, lo);
+    const [la, lo] = koordAusFeldern("e-lat", "e-lng");
     const lat = parseFloat(la.replace(",", ".")), lng = parseFloat(lo.replace(",", "."));
     // Eine leere Ziffer würde still zur 0: lieber nachfragen
     const ziffer = val("e-digit").trim();
