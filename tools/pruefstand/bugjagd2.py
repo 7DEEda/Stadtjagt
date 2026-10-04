@@ -273,6 +273,14 @@ with sync_playwright() as pw:
         pruef("Im Testlauf gibt es schon Plätze" in t, f"Meldung des Servers steht beim Knopf ({t[-120:]!r})")
         pruef(pg.evaluate("S.admin.state.testMode") is True, "Testmodus bleibt an")
         pg.close()
+        # Entscheidung 04.10.2026: im laufenden Spiel mit Plätzen auch nicht einschalten (Adler hat Platz 1)
+        pg = neu(b, "admin-stationen", breit=True)
+        pg.click("[data-act=a-tab][data-tab=stations]"); pg.wait_for_selector("[data-act=a-test]")
+        pg.click("[data-act=a-test]"); pg.wait_for_selector("#dlgok"); pg.click("#dlgok"); pg.wait_for_timeout(600)
+        t = pg.inner_text("#app")
+        pruef("Im laufenden Spiel gibt es schon Plätze" in t, "Einschalten mit Plätzen: Meldung des Servers steht da")
+        pruef(pg.evaluate("S.admin.state.testMode") is False, "Testmodus bleibt aus")
+        pg.close()
 
     if an(11, 13):
         print("Fund 11 und 13: Geräte-Test")

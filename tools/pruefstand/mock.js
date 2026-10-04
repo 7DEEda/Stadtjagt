@@ -177,6 +177,9 @@
     "admin-auslosen-allein": { welt: "registration", view: "admin", testMode: true, ss: { "sj.pin": "4711" }, nurEine: true },
     "admin-stationen": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=stations]" }, { wait: 300 }] },
+    // Nachtrag 32: ohne Platz lässt sich der Testmodus im laufenden Spiel einschalten (mit Platz nicht)
+    "admin-stationen-ohne-platz": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, fertig: [],
+      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=stations]" }, { wait: 300 }] },
     "admin-teilnehmende": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=people]" }, { wait: 300 }] },
     "admin-loeschen": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
@@ -452,10 +455,11 @@
     admin_set_selfie: a => { pin(a); WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
     admin_delete_photos: a => { pin(a); ANDERE_FOTOS.length = 0; Object.keys(FOTOS).forEach(k => delete FOTOS[k]); return adminState(); },
     admin_state: a => { pin(a); return adminState(); },
-    // Nachtrag 32: Ausschalten im laufenden Spiel nur ohne Plätze
+    // Nachtrag 32: im laufenden Spiel mit Plätzen kein Umschalten, weder aus noch an
     admin_set_test_mode: a => { pin(a);
-      if (!a.p_on && WELT.testMode && WELT.status === "running" && TEAMS.some(t => t.place))
-        fehler("Im Testlauf gibt es schon Plätze. Erst im Reiter Daten löschen „Fortschritt zurücksetzen“, dann den Testmodus ausschalten.");
+      if (!!a.p_on !== WELT.testMode && WELT.status === "running" && TEAMS.some(t => t.place))
+        fehler(a.p_on ? "Im laufenden Spiel gibt es schon Plätze. Den Testmodus jetzt einzuschalten würde die Rangliste durcheinanderbringen."
+          : "Im Testlauf gibt es schon Plätze. Erst im Reiter Daten löschen „Fortschritt zurücksetzen“, dann den Testmodus ausschalten.");
       WELT.testMode = !!a.p_on; return adminState(); },
     admin_tracks: a => { pin(a); return adminTracks(); },
     admin_delete_test_participants: a => { pin(a); return { deleted: 0, state: adminState() }; },

@@ -1,10 +1,10 @@
 -- Nachtrag 32: Bugjagd 03.10.2026, Funde 9, 12, 14 und 16. Erzeugt von tools/migration_bugjagd2.py, nicht von Hand
 -- ändern. Probelauf: tools/pruefstand/bugjagd2_db.py. Mehrfach ausführbar, löscht keine Daten.
---   Fund 9   register_participant nimmt den Geräte-Schlüssel des Handys (p_token). Gleicher Name und gleicher
---            Schlüssel: Erfolg wie beim ersten Mal (Antwort im Funkloch verloren). Nie einen neuen Schlüssel für
+--   Fund 9   register_participant nimmt den Geräte-Schlüssel des Handys (p_token). Gehört der Schlüssel schon
+--            einer Person: Erfolg wie beim ersten Mal (Antwort im Funkloch verloren, auch nach Umbenennen). Nie einen neuen Schlüssel für
 --            einen vorhandenen Namen. Ohne p_token wie bisher (alte Clients).
 --   Fund 12  device_test_save nimmt nur Läufe in der Form, die tools/testlaeufe.py erwartet.
---   Fund 14  admin_set_test_mode: Ausschalten im laufenden Spiel erst, wenn der Testlauf keine Plätze hinterlässt.
+--   Fund 14  admin_set_test_mode: im laufenden Spiel mit Plätzen kein Umschalten, weder aus noch an.
 --   Fund 16  submit_answer: leere Antwort ist außerhalb des Testmodus kein Fehlversuch.
 -- Regel (SPIEL.md §9): nach jedem drop + create einer Funktion die Rechte ausdrücklich setzen.
 
@@ -35,11 +35,14 @@ begin
   -- Läuft gerade das Auslosen, warten wir, bis es durch ist; die Statusabfrage
   -- danach sieht dann schon 'drawn'. Anmeldungen untereinander warten nicht.
   perform 1 from game_state where id = 1 for share;
-  -- Wiederholung derselben Anmeldung (Antwort ging verloren): gleicher Name, gleicher Schlüssel, also Erfolg wie
-  -- beim ersten Mal, auch wenn inzwischen ausgelost ist. Ein anderer Schlüssel bekommt weiter den Fehler unten.
-  select * into v_da from participants where name_key = norm(v_name);
-  if p_token is not null and v_da.token = p_token then
-    return json_build_object('name', v_da.name, 'token', v_da.token, 'count', (select count(*) from participants));
+  -- Wiederholung derselben Anmeldung (Antwort ging verloren): der Schlüssel gehört schon einer Person, also Erfolg
+  -- wie beim ersten Mal, auch wenn inzwischen ausgelost ist oder die Spielleitung den Namen berichtigt hat (dann mit
+  -- dem neuen Namen). Wer den Schlüssel nicht kennt, bekommt für einen vorhandenen Namen weiter den Fehler unten.
+  if p_token is not null then
+    select * into v_da from participants where token = p_token;
+    if found then
+      return json_build_object('name', v_da.name, 'token', v_da.token, 'count', (select count(*) from participants));
+    end if;
   end if;
   if (select status from game_state where id = 1) <> 'registration' then
     raise exception 'Die Anmeldung ist geschlossen. Melde dich über den Hilfe-Knopf bei der Spielleitung, sie trägt dich nach.'
@@ -49,7 +52,17 @@ begin
     raise exception 'Dieser Name ist schon angemeldet. Hast du dich schon eingetragen? Dann bist du dabei.'
       using errcode='P0001';
   end if;
-  insert into participants(name, name_key, token) values (v_name, norm(v_name), v_token);
+  begin
+    insert into participants(name, name_key, token) values (v_name, norm(v_name), v_token);
+  exception when unique_violation then
+    -- Nachtrag 32: gleichzeitig angemeldet. Gehört der Schlüssel inzwischen einer Person, ist es dieselbe Anmeldung.
+    select * into v_da from participants where token = v_token;
+    if found then
+      return json_build_object('name', v_da.name, 'token', v_da.token, 'count', (select count(*) from participants));
+    end if;
+    raise exception 'Dieser Name ist schon angemeldet. Hast du dich schon eingetragen? Dann bist du dabei.'
+      using errcode='P0001';
+  end;
   return json_build_object('name', v_name, 'token', v_token, 'count', (select count(*) from participants));
 end $$;
 grant execute on function register_participant(text, text) to anon, authenticated;
@@ -97,11 +110,15 @@ create or replace function admin_set_test_mode(p_pin text, p_on boolean) returns
 language plpgsql security definer set search_path = public as $$
 begin
   perform require_admin(p_pin);
-  -- Nachtrag 32: Plätze aus dem Testlauf überlebten das Ausschalten und standen dann in der echten Rangliste.
-  -- Einschalten bleibt frei; Ausschalten im laufenden Spiel erst, wenn niemand einen Platz hat.
-  if not coalesce(p_on, false)
-     and exists (select 1 from game_state where id = 1 and test_mode and status = 'running')
+  -- Nachtrag 32: Plätze aus dem Testlauf überlebten das Ausschalten und standen dann in der echten Rangliste. Im
+  -- laufenden Spiel mit Plätzen darum in keine Richtung umschalten (Entscheidung 04.10.2026: auch nicht einschalten,
+  -- sonst käme die Spielleitung nur über „Fortschritt zurücksetzen“ wieder heraus). Ohne Platz ist beides frei.
+  if exists (select 1 from game_state where id = 1 and status = 'running' and test_mode is distinct from coalesce(p_on, false))
      and exists (select 1 from finishes) then
+    if coalesce(p_on, false) then
+      raise exception 'Im laufenden Spiel gibt es schon Plätze. Den Testmodus jetzt einzuschalten würde die Rangliste durcheinanderbringen.'
+        using errcode='P0001';
+    end if;
     raise exception 'Im Testlauf gibt es schon Plätze. Erst im Reiter Daten löschen „Fortschritt zurücksetzen“, dann den Testmodus ausschalten.'
       using errcode='P0001';
   end if;

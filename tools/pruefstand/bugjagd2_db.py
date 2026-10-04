@@ -60,7 +60,16 @@ begin
   if r->>'token' is distinct from v_tok then raise exception 'PROBE FEHLT 9I: Wiederholung nach dem Auslosen %', r; end if;
   begin perform register_participant(v_name || 'vier', md5('a') || md5('b')); v_err := null; exception when others then v_err := sqlerrm; end;
   if v_err is null or v_err not like 'Die Anmeldung ist geschlossen%' then raise exception 'PROBE FEHLT 9J: nach dem Auslosen neu: %', coalesce(v_err, 'angenommen'); end if;
-  v_n := v_n + 12;
+  -- Spielleitung berichtigt den Namen zwischen zwei Versuchen: die Wiederholung bekommt den Erfolg der Person
+  -- (mit dem neuen Namen), statt an der Eindeutigkeit des Schlüssels zu scheitern
+  update game_state set status = 'registration' where id = 1;
+  update participants set name = v_name || ' Neu', name_key = norm(v_name || ' Neu') where token = v_tok;
+  begin r := register_participant(v_name, v_tok); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is not null then raise exception 'PROBE FEHLT 9K: nach Umbenennen: %', v_err; end if;
+  if r->>'token' is distinct from v_tok or r->>'name' is distinct from v_name || ' Neu' then raise exception 'PROBE FEHLT 9L: nach Umbenennen %', r; end if;
+  if (select count(*) from participants where token = v_tok) <> 1 or exists (select 1 from participants where name_key = norm(v_name))
+    then raise exception 'PROBE FEHLT 9M: nach Umbenennen doppelt angelegt'; end if;
+  v_n := v_n + 15;
 
   -- ---------- Fund 12: device_test_save prüft die Form ----------
   perform device_test_save('PROBEAAAAAA1', '{"suite": 21, "label": "Probe", "tests": {"umgebung": {"art": "ok"}}, "bilanz": {"ok": 1}}'::jsonb);
@@ -74,7 +83,7 @@ begin
   end loop;
   v_n := v_n + 1;
 
-  -- ---------- Fund 14: Testmodus ausschalten mit Plätzen ----------
+  -- ---------- Fund 14: Testmodus umschalten mit Plätzen ----------
   update game_state set status = 'running', test_mode = true, started_at = coalesce(started_at, now()) where id = 1;
   insert into teams (name, code, read_token) values ('Probelauf', v_code, md5(random()::text)) returning id into v_id;
   delete from finishes where true;
@@ -87,14 +96,21 @@ begin
   if v_err is distinct from 'Im Testlauf gibt es schon Plätze. Erst im Reiter Daten löschen „Fortschritt zurücksetzen“, dann den Testmodus ausschalten.'
     then raise exception 'PROBE FEHLT 14C: Ausschalten mit Plätzen: %', coalesce(v_err, 'erlaubt'); end if;
   if not (select test_mode from game_state where id = 1) then raise exception 'PROBE FEHLT 14D: Testmodus trotzdem aus'; end if;
-  perform admin_set_test_mode(v_pin, true);   -- einschalten bleibt frei, auch mit Plätzen
+  perform admin_set_test_mode(v_pin, true);   -- an bleibt an: kein Umschalten, kein Fehler
   update game_state set status = 'finished' where id = 1;
   perform admin_set_test_mode(v_pin, false);
   if (select test_mode from game_state where id = 1) then raise exception 'PROBE FEHLT 14E: nach dem Ende nicht ausgeschaltet'; end if;
+  -- Entscheidung 04.10.2026: im laufenden Spiel mit Plätzen auch nicht einschalten
   update game_state set status = 'running' where id = 1;
+  begin perform admin_set_test_mode(v_pin, true); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is distinct from 'Im laufenden Spiel gibt es schon Plätze. Den Testmodus jetzt einzuschalten würde die Rangliste durcheinanderbringen.'
+    then raise exception 'PROBE FEHLT 14F: Einschalten mit Plätzen: %', coalesce(v_err, 'erlaubt'); end if;
+  if (select test_mode from game_state where id = 1) then raise exception 'PROBE FEHLT 14G: Testmodus trotzdem an'; end if;
+  perform admin_set_test_mode(v_pin, false);   -- aus bleibt aus: kein Fehler
+  delete from finishes where true;
   perform admin_set_test_mode(v_pin, true);
-  if not (select test_mode from game_state where id = 1) then raise exception 'PROBE FEHLT 14F: Einschalten mit Plätzen'; end if;
-  v_n := v_n + 6;
+  if not (select test_mode from game_state where id = 1) then raise exception 'PROBE FEHLT 14H: Einschalten ohne Platz'; end if;
+  v_n := v_n + 8;
 
   -- ---------- Fund 16: leere Antwort ----------
   update game_state set status = 'running', test_mode = false where id = 1;

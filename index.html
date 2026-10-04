@@ -738,7 +738,7 @@ const DANGER = {
     when: () => false, wort: false,
     title: "Testmodus im laufenden Spiel einschalten",
     lead: "Solange er an ist, prüft die App bei keinem Team mehr Entfernung und Antworten. Jedes Team kann überall einchecken und mit jeder Antwort weiterkommen.",
-    keeps: "Fortschritt, Ziffern und Plätze bleiben. Ausschalten geht jederzeit ohne Rückfrage.",
+    keeps: "Fortschritt, Ziffern und Plätze bleiben. Kommt im Testlauf ein Team ins Ziel, geht Ausschalten erst nach „Fortschritt zurücksetzen“. Gibt es schon Plätze, lehnt die App das Einschalten ab.",
     btn: "Testmodus einschalten",
     async run() { await ACT["a-test"]({ on: "1", bestaetigt: true }); return "Testmodus ist an."; }
   },

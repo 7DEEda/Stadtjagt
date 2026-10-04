@@ -95,7 +95,8 @@ with sync_playwright() as pw:
 
     print("Testmodus im laufenden Spiel")
     pg.set_viewport_size({"width": 1180, "height": 820})
-    pg.goto(url("admin-stationen")); pg.wait_for_selector("[data-act=a-test]")
+    # ohne Platz: mit Platz lehnt der Server das Einschalten ab (Nachtrag 32, geprüft in bugjagd2.py)
+    pg.goto(url("admin-stationen-ohne-platz")); pg.wait_for_selector("[data-act=a-test]")
     pg.click("[data-act=a-test]"); pg.wait_for_selector(".dialog")
     pruef("laufenden Spiel" in pg.inner_text(".dialog") and not pg.evaluate("S.admin.state.testMode"), "Rückfrage statt sofort einschalten")
     pg.click("#dlgok"); pg.wait_for_function("!S.admin.confirm")
