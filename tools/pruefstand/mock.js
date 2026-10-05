@@ -165,6 +165,8 @@
     "fremd-beendet": { welt: "finished", view: "public", fuchs: { solved: 4 } },
     "admin-login": { welt: "running", view: "admin" },
     "admin-karte": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, fertig: ["Adler"], settle: 3500 },
+    // Weiterentwicklung Task 7: Delfin ohne Standort (Standardstand), Igel mit 7 min altem GPS, Otter mit 2 Fehlversuchen (aus dem Standardstand)
+    "admin-probleme": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, fertig: ["Adler"], settle: 3500 },
     "admin-teams": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=live]" }, { wait: 300 }] },
     "teststation": { welt: "running", view: "team", ls: IM_TEAM, testMode: true, teststation: true, fuchs: { solved: 0 } },

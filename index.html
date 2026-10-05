@@ -274,6 +274,30 @@ th{font:600 var(--fs-s) var(--body);color:var(--muted)}
 .nw{white-space:nowrap}
 .teamfeld{margin-top:0;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding:0}
 @media (max-width:1023px){.lv{grid-template-columns:minmax(0,1fr)}.lv .kartefeld #map{height:56vh}.teamfeld{position:static;max-height:none}}
+/* Teamliste der Spielleitung */
+#teamfeld .list-kopf{display:flex;align-items:baseline;gap:10px;padding:12px 16px 10px;border-bottom:1px solid var(--line)}
+#teamfeld .list-kopf h3{margin:0}
+#teamfeld .tliste{list-style:none;margin:0;padding:0}
+#teamfeld .grp{position:sticky;top:0;z-index:1;padding:8px 16px;font:700 var(--fs-s)/1.3 var(--body);color:var(--muted);background:var(--paper);border-bottom:1px solid var(--line)}
+#teamfeld .grp.err{color:var(--err);background:var(--err-bg)}
+#teamfeld .row{border-bottom:1px solid var(--line);background:var(--card);transition:background-color .16s cubic-bezier(.32,.72,.4,1)}
+#teamfeld .row.p-fehler{box-shadow:inset 4px 0 0 var(--err)}
+#teamfeld .row.p-warn{box-shadow:inset 4px 0 0 var(--warn)}
+#teamfeld .row.sel{background:color-mix(in srgb,var(--flag) 8%,var(--card))}
+#teamfeld .row-top{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 8px}
+#teamfeld .row-top .btn{margin:0;flex:none}
+#teamfeld .row-main{flex:1;min-width:0;display:flex;align-items:center;gap:12px;min-height:60px;padding:4px 8px;border:0;background:none;text-align:left;border-radius:10px;color:var(--ink);font:inherit;cursor:pointer}
+#teamfeld .tier{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:21px;line-height:1;flex:none;background:color-mix(in srgb,var(--tc) 16%,var(--card));border:2px solid var(--tc)}
+#teamfeld .row-txt{min-width:0;display:flex;flex-direction:column;gap:2px}
+#teamfeld .l2{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;font-size:var(--fs-s);color:var(--muted);line-height:1.35}
+#teamfeld .chip.err{background:var(--err-bg);color:var(--err);border-color:var(--err)}
+#teamfeld .chip.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+#teamfeld .detail{padding:0 16px 14px 68px;display:grid;gap:10px;justify-items:start}
+#teamfeld .detail p,#teamfeld .detail .msg{margin:0}
+#teamfeld .detail .msg{justify-self:stretch}
+.ohnepos{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ohnepos .btn{margin:0}
+.mapbadge.team.sel{box-shadow:0 0 0 4px var(--ink),0 2px 8px rgba(0,0,0,.5);transform:scale(1.2)}
 .tabs .loesch{margin-left:auto;color:var(--err)}
 .kartezu{position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;z-index:1001;margin:0!important;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 /* Lücke in der Route: wie lange das Team kein GPS-Signal gemeldet hat */
@@ -617,7 +641,7 @@ const S = {
   gps: { pos: null, acc: null, heading: null, gpsHeading: null, gpsHeadingAt: null, needle: 0, on: false, err: null, kompass: "unbekannt", lastSent: 0, lastSentPos: null, sentAt: null,
          // kompassAcc: Genauigkeit in Grad (nur iOS), kal: laufendes Einmessen, kalOk: Ergebnis für den Hinweis danach
          kompassAcc: null, kal: null, kalOk: null },
-  admin: { pin: SS.getItem("sj.pin") || null, state: null, tab: "live", edit: null, full: false,
+  admin: { pin: SS.getItem("sj.pin") || null, state: null, tab: "live", edit: null, full: false, sel: null, zuSel: false,
            // Routen: tracks[teamId] = {name, points:[[lat,lng,ms]], stations:[...]}
            tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false, confirm: null,
            draw: { mode: "size", value: 10 } }
@@ -1881,32 +1905,46 @@ function ekVorschau() {
     : f >= 1 ? "Name lesbar, Ortshinweis sichtbar" : f > 0 ? `${offen} von ${folge.length} Buchstaben` : "alles verschlüsselt");
 }
 
-/* Zwischenfassung bis Task 7: die bisherige Tabelle mit Leitung, Code, Stand und Eingriffen */
+// Wann braucht ein Team die Spielleitung? Nur im laufenden Spiel und nicht im Ziel.
+const GPS_ALT_MS = 5 * 60000;
+function problemVon(t, st) {
+  if (st.status !== "running" || t.place) return null;
+  const upd = t.position && t.position.updatedAt, alt = upd ? Date.now() - new Date(upd).getTime() : null;
+  if (alt == null) return { stufe: "fehler", kurz: "kein GPS", text: `${t.name} sendet keinen Standort. Ruf die Teamleitung an; ist das Team an der Station, schalte sie frei.` };
+  if (alt > GPS_ALT_MS) return { stufe: "fehler", kurz: `GPS ${ago(upd)}`, text: `Der letzte Standort ist ${ago(upd)} alt. Vielleicht ist das Handy gesperrt.` };
+  if ((t.failedAttempts || 0) >= 2) return { stufe: "warn", kurz: `${t.failedAttempts} Fehlversuche`, text: `${t.failedAttempts} von 3 Fehlversuchen an Station ${t.currentPosition}. Klemmt das Rätsel, kannst du es als gelöst werten.` };
+  return null;
+}
+// Die Probleme in der Reihenfolge der Liste (Fehler vor Warnung, dann Name): der Zähler springt zum obersten
+const problemListe = st => (st.teams || []).map(t => ({ t, p: problemVon(t, st) })).filter(x => x.p)
+  .sort((a, b) => (a.p.stufe === b.p.stufe ? 0 : a.p.stufe === "fehler" ? -1 : 1) || a.t.name.localeCompare(b.t.name, "de")).map(x => x.t);
+function teamZeile(t, i, st) {
+  const p = problemVon(t, st), sel = S.admin.sel === t.id, gesamt = aktiv(st).length;
+  const wo = t.place ? `im Ziel, Platz ${t.place}` : t.checkedInAt ? `an Station ${t.currentPosition}` : t.currentPosition ? `zu Station ${t.currentPosition}` : `${t.memberCount} Pers.`;
+  const knopf = st.status !== "running" || t.place || !t.currentPosition ? ""
+    : !t.checkedInAt ? `<button class="btn sm alt" data-act="a-danger" data-key="unlock" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Freischalten</button>`
+      : `<button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Rätsel werten</button>`;
+  const detail = !sel ? "" : `<div class="detail">${p ? `<p class="msg ${p.stufe === "fehler" ? "err" : "warn"}">${esc(p.text)}</p>` : ""}
+      <label for="lt-${t.id}">Teamleitung</label>
+      <select class="sm" id="lt-${t.id}" data-chg="a-leader" data-id="${t.id}" data-ort="t:${t.id}">${!t.leaderId ? `<option value="" selected>offen</option>` : ""}
+        ${(st.participants || []).filter(x => x.teamId === t.id).map(x => `<option value="${esc(x.id)}" ${x.id === t.leaderId ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
+      <p class="small">Code <b class="nw">${esc(t.code)}</b></p>
+      ${t.readToken ? `<button class="btn sm alt" data-act="a-mit" data-id="${t.id}" data-ort="t:${t.id}" data-token="${esc(t.readToken)}" data-name="${esc(t.name)}">Mitlese-Link kopieren</button>` : ""}
+      ${msgBox("t:" + t.id)}</div>`;
+  return `<li class="row ${p ? "p-" + p.stufe : ""} ${sel ? "sel" : ""}" data-row="${t.id}">
+    <div class="row-top"><button class="row-main" data-act="a-sel" data-id="${t.id}" aria-expanded="${sel}">
+      <span class="tier" style="--tc:${teamColor(i)}" aria-hidden="true">${teamEmoji(t.name)}</span>
+      <span class="row-txt"><span><b>${esc(t.name)}</b> <span class="small muted nw">${t.solved}/${gesamt}</span></span>
+        <span class="l2"><span class="nw">${wo}</span>${p ? ` <span class="chip ${p.stufe === "fehler" ? "err" : "warn"} nw">${esc(p.kurz)}</span>` : ""}${kompassVermerk(t, st)}</span></span></button>${knopf}</div>${detail}</li>`;
+}
 function teamlisteHTML(st) {
-  const laeuft = st.status === "running" || st.status === "finished";
-    // im Spiel nach Platz und Fortschritt, sonst alphabetisch
-    const reihe = laeuft ? [...(st.teams || [])].sort((a, b) => (a.place || 99) - (b.place || 99)
-      || b.solved - a.solved || a.name.localeCompare(b.name, "de")) : (st.teams || []);
-    const spaeter = laeuft ? `<p class="small muted" style="margin-top:12px">Neu auslosen geht erst wieder nach „Fortschritt zurücksetzen“ im Reiter Daten löschen.
-        Solange das Spiel ${st.status === "running" ? "läuft" : "beendet ist"}, wäre sonst der Fortschritt der Teams verloren.</p>` : "";
-    return `<div style="padding:16px"><table><tr><th>Team</th><th>Code</th><th>Stand</th><th></th></tr>
-      ${reihe.map(t => `<tr><td><b>${teamEmoji(t.name)} ${esc(t.name)}</b><br><span class="small muted">${t.memberCount} Pers., Leitung</span><br>
-          <select class="sm" data-chg="a-leader" data-id="${t.id}" data-ort="t:${t.id}" aria-label="Teamleitung von Team ${esc(t.name)}">
-            ${!t.leaderId ? `<option value="" selected>offen</option>` : ""}
-            ${(st.participants || []).filter(p => p.teamId === t.id).map(p => `<option value="${esc(p.id)}" ${p.id === t.leaderId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}
-          </select></td>
-        <td class="small" style="white-space:nowrap">${esc(t.code)}<br>${t.readToken ? `<button class="btn sm alt" style="margin-top:6px" data-act="a-mit" data-id="${t.id}" data-ort="t:${t.id}" data-token="${esc(t.readToken)}" data-name="${esc(t.name)}">Mitlese-Link</button>` : ""}</td>
-        <td><div class="prog"><span style="width:${(t.solved / Math.max(1, aktiv(st).length)) * 100}%"></span></div>
-          <span class="small muted">${t.solved} / ${aktiv(st).length} gelöst</span>${zustandHTML(t, st)}
-          ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}
-          ${msgBox("t:" + t.id)}</td>
-        <td>${st.status === "running" && t.currentPosition && !t.place ? `<div style="display:flex;flex-direction:column;gap:6px">
-          ${"checkedInAt" in t && t.checkedInAt ? "" : `<button class="btn sm alt" data-act="a-danger" data-key="unlock" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Freischalten</button>`}
-          ${"checkedInAt" in t && !t.checkedInAt ? "" : `<button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Rätsel werten</button>`}</div>` : ""}</td></tr>`).join("")}
-      </table><p class="small muted">„Freischalten“ steht da, solange ein Team unterwegs ist, und ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.
-        „Rätsel werten“ steht da, sobald es eingecheckt hat, und zählt die Station als gelöst, wenn ein Rätsel klemmt.
-        Die Teamleitung wechselst du über das Auswahlfeld; die neue Leitung ist auf ihrem eigenen Handy gleich drin. Den Code brauchst du nur, wenn du selbst am Tablet für ein Team eingibst.
-        „Mitlese-Link“ kopiert den Link, mit dem Nachzügler bei ihrem Team mitlesen.</p>${spaeter}</div>`;
+  const alle = (st.teams || []).map((t, i) => ({ t, i, p: problemVon(t, st) }));
+  // Probleme zuerst (Fehler vor Warnung, dann Name), danach wie bisher Platz, gelöst absteigend, Name
+  const proben = problemListe(st).map(t => alle.find(x => x.t === t));
+  const rest = alle.filter(x => !x.p).sort((a, b) => (a.t.place || 99) - (b.t.place || 99) || b.t.solved - a.t.solved || a.t.name.localeCompare(b.t.name, "de"));
+  const zeilen = l => l.map(x => teamZeile(x.t, x.i, st)).join("");
+  return `<div class="list-kopf"><h3>Teams</h3></div><ol class="tliste">
+    ${proben.length ? `<li class="grp err">Braucht dich · ${proben.length}</li>${zeilen(proben)}<li class="grp">Alle anderen · ${rest.length}</li>` : `<li class="grp">Alle Teams · ${rest.length}</li>`}${zeilen(rest)}</ol>`;
 }
 function zuletztZeichnen() { }   // Task 8
 /* ---------- Spielleitung ---------- */
@@ -1916,6 +1954,7 @@ function viewAdmin() {
     <div style="margin-top:12px"><label for="apin">PIN</label><input id="apin" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"></div>
     <button class="btn" data-act="a-login" data-wait="Wird geprüft …" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox()}</div>` + nav();
   const st = A.state;
+  if (st && A.sel && !(st.teams || []).some(t => t.id === A.sel)) A.sel = null;   // Team verschwunden (etwa Daten zurückgesetzt)
   if (!st) return brand("Spielleitung") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
 
   const status = st.status === "finished" ? '<span class="chip">Beendet</span>'
@@ -1925,7 +1964,11 @@ function viewAdmin() {
   // Alles, was Daten löscht, steht nicht hier oben, sondern im Reiter "Daten löschen".
   if (st.status === "registration") actions += `<button class="btn sm alt" data-act="a-draw" data-wait="Wird ausgelost …">Teams auslosen</button>`;
   if (st.status === "drawn") actions += `<button class="btn sm" data-act="a-start">Spiel starten</button>`;
-  if (st.status === "running") actions += `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
+  if (st.status === "running") {
+    const pn = (st.teams || []).filter(t => problemVon(t, st)).length;
+    actions += `<button class="btn sm ${pn ? "warn" : "alt"}" data-act="a-probleme">${pn ? `${pn} ${pn === 1 ? "Team braucht" : "Teams brauchen"} dich` : "Alle Teams laufen"}</button>`
+      + `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
+  }
   if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-resume" data-wait="Wird fortgesetzt …">Spiel fortsetzen</button>`;
 
   let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div class="kopfchips">${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}</div></div></div><div>${actions}${themaBtn()}</div></div>${msgBox()}`;
@@ -1941,12 +1984,14 @@ function viewAdmin() {
   const inhaltAb = out.length;
   if (A.tab === "live") {
     const withPos = (st.teams || []).filter(t => t.position);
+    const ohnePos = st.status === "running" ? (st.teams || []).filter(t => !t.position && !t.place) : [];
     out += `<div class="lv"><section class="kartefeld">
         <div id="map" class="${A.full ? "full" : ""}"></div>
         <button class="btn sm kartezu" data-act="a-full" ${A.full ? "" : "hidden"}>Vollbild beenden</button>
         <div class="bar kartefuss"><span class="small muted"><b class="nw">${withPos.length} von ${(st.teams || []).length}</b> Teams mit Standort, alle 10 s. Gestrichelt: Strecke ohne GPS-Signal.</span>
           <span><button class="btn sm alt" data-act="a-alle">Alle zeigen</button><button class="btn sm alt" data-act="a-full">Vollbild</button></span></div>
         <div class="legend" id="legend">${(st.teams || []).map((t, i) => `<button class="tchip ${A.hidden[t.id] ? "off" : ""}" style="--c:${teamColor(i)}" data-act="a-team" data-id="${t.id}"><i></i>${teamEmoji(t.name)} ${esc(t.name)}</button>`).join("")}</div>
+        ${ohnePos.length ? `<div class="ohnepos">${ohnePos.map(t => `<button class="btn sm alt" data-act="a-sel" data-id="${t.id}">${teamEmoji(t.name)} ${esc(t.name)}: kein Standort</button>`).join("")}</div>` : ""}
         <div class="panel" id="zuletzt"></div>
       </section><section class="teamfeld panel" id="teamfeld">${teamlisteHTML(st)}</section></div>`;
   }
@@ -2108,25 +2153,12 @@ function viewAdmin() {
   return out + nav();
 }
 
-// Wo steht ein Team gerade, seit wann, und meldet sein GPS noch? Hängt ein Team, sieht man es hier.
-function zustandHTML(t, st) {
-  if (st.status !== "running" || t.place || !t.currentPosition)
-    return t.lastActivity ? `<br><span class="small muted">zuletzt ${ago(t.lastActivity)}</span>` : "";
-  if (!("checkedInAt" in t))   // Datenbank ohne Nachtrag 21: wie bisher
-    return `<br><span class="small muted">bei Station ${t.currentPosition}${t.lastActivity ? ", zuletzt " + ago(t.lastActivity) : ""}</span>`;
-  const seit = ts => { if (!ts) return ""; const m = Math.max(0, Math.round((Date.now() - new Date(ts).getTime()) / 60000));
-    return " seit " + (m < 60 ? m + " min" : Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0") + " h"); };
-  const wo = t.checkedInAt ? `an Station ${t.currentPosition}${seit(t.checkedInAt)}`
-    : `unterwegs zu Station ${t.currentPosition}${seit(t.lastSolvedAt || st.startedAt)}`;
+// Vermerk "Kompass falsch" aus der Position des Teams. Nach Laufrichtung zeigt der Pfeil nur im Testmodus; sonst folgt er
+// weiter dem Kompass, also nur der Vermerk. Er gilt nur zu einer frischen Position (jünger als 3 min); danach weiß niemand, ob er noch stimmt.
+function kompassVermerk(t, st) {
   const upd = t.position && t.position.updatedAt, alt = upd ? Date.now() - new Date(upd).getTime() : null;
-  const gps = alt == null ? `<span class="chip test" style="margin:0">kein GPS</span>`
-    : alt > 5 * 60000 ? `<span class="chip test" style="margin:0;white-space:nowrap">GPS ${ago(upd)}</span>`
-      : `<span class="small muted" style="white-space:nowrap">GPS ${ago(upd)}</span>`;
-  // Nach Laufrichtung zeigt der Pfeil nur im Testmodus; sonst folgt er weiter dem Kompass, also nur der Vermerk
-  // Der Vermerk gilt nur zu einer frischen Position (jünger als 3 min); danach weiß niemand, ob er noch stimmt
-  const kompass = t.position && t.position.kompass === "unzuverlaessig" && alt != null && alt < 3 * 60000
-    ? ` <span class="chip test" style="margin:0;white-space:nowrap">${st.testMode ? "Kompass falsch, Pfeil nach Laufrichtung" : "Kompass falsch"}</span>` : "";
-  return `<br><b class="small">${wo}</b><br>${gps}${kompass}`;
+  return st.status === "running" && !t.place && t.position && t.position.kompass === "unzuverlaessig" && alt != null && alt < 3 * 60000
+    ? ` <span class="chip test nw" style="margin:0">${st.testMode ? "Kompass falsch, Pfeil nach Laufrichtung" : "Kompass falsch"}</span>` : "";
 }
 // leer oder noch der Platzhalter aus der Seed-Datei
 const offen = v => !v || !String(v).trim() || /^(Ortshinweis|Rätsel) folgt$/.test(String(v).trim());
@@ -2269,7 +2301,8 @@ async function drawMap(first) {
     const ref = cur != null ? cur : Date.now();
     const stale = ref - when > 180000;
     pts.push(at);
-    const html = `<div class="mapbadge team ${stale ? "stale" : ""}" ${stale ? "" : `style="background:${color}"`}>${teamEmoji(t.name)}</div>`;
+    const gewaehlt = A.sel === t.id;
+    const html = `<div class="mapbadge team ${stale ? "stale" : ""} ${gewaehlt ? "sel" : ""}" ${stale ? "" : `style="background:${color}"`}>${teamEmoji(t.name)}</div>`;
     const solved = cur != null
       ? ((tr && tr.stations) || []).filter(s => s.solvedAt && new Date(s.solvedAt).getTime() <= cur).length
       : t.solved;
@@ -2278,8 +2311,10 @@ async function drawMap(first) {
     const icon = L.divIcon({ html, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] });
     if (layers.teams[t.id]) {
       layers.teams[t.id].setLatLng(at); layers.teams[t.id].setIcon(icon); layers.teams[t.id].setPopupContent(popup);
+      layers.teams[t.id].setZIndexOffset(gewaehlt ? 800 : 500);
     } else {
-      layers.teams[t.id] = L.marker(at, { icon, zIndexOffset: 500 }).bindPopup(popup).addTo(map);
+      layers.teams[t.id] = L.marker(at, { icon, zIndexOffset: gewaehlt ? 800 : 500 }).bindPopup(popup).addTo(map);
+      layers.teams[t.id].on("click", () => { S.admin.sel = t.id; S.admin.zuSel = true; render(); });   // nur beim Anlegen, sonst doppelt
     }
   });
   kartenPunkte = pts;
@@ -2656,6 +2691,11 @@ const ACT = {
     setTimeout(() => map && map.invalidateSize(), 80);
     return false;
   },
+  "a-sel"(d) { S.admin.sel = S.admin.sel === d.id ? null : d.id; },
+  "a-probleme"() {
+    const erst = problemListe(S.admin.state)[0];
+    if (erst) { S.admin.tab = "live"; S.admin.sel = erst.id; S.admin.zuSel = true; }
+  },
   "a-alle"() { if (map && kartenPunkte.length) map.fitBounds(L.latLngBounds(kartenPunkte).pad(0.2)); return false; },
   "a-team"(d) {
     const A = S.admin;
@@ -2742,7 +2782,7 @@ const ACT = {
   // Teamleitung im Reiter Teams per Auswahlfeld setzen
   "a-leader"(d) {
     const st = S.admin.state, team = (st.teams || []).find(x => x.id === d.id), p = (st.participants || []).find(x => x.id === d.value);
-    if (!team || !p) return;
+    if (!team || !p || team.leaderId === d.value) return false;   // gleiche Leitung (etwa nach dem Neuzeichnen): kein Dialog
     S.admin.confirm = { key: "leader", id: d.id, value: d.value, name: p.name, team: team.name, alt: team.leaderName, code: team.code };
     S.msg = null;
   },
@@ -3501,6 +3541,8 @@ function render() {
   document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross));
   // Der Inhalt der Hülle scrollt selbst und entsteht mit jedem Neuzeichnen neu: Stand merken, im selben Tab zurücksetzen
   const inh = $("#inhalt");
+  // Teamliste der Spielleitung: Scrollstand merken, sonst springt sie alle 10 s nach oben
+  const tf = $("#teamfeld"), tfScroll = tf ? tf.scrollTop : 0;
   // gezeichnet = Tab, der gerade im DOM steht (nach einem Tabwechsel ist S.team.tab schon der neue)
   S.team.scroll = inh ? inh.scrollTop : 0; S.team.scrollTab = S.team.gezeichnet;
   document.body.classList.remove("spiel");
@@ -3510,6 +3552,11 @@ function render() {
   const inh2 = $("#inhalt");
   if (inh2 && S.team.scroll && S.team.scrollTab === S.team.tab) inh2.scrollTop = S.team.scroll;
   S.team.gezeichnet = inh2 ? S.team.tab : null;
+  const tf2 = $("#teamfeld");
+  if (tf2) {
+    tf2.scrollTop = tfScroll;
+    if (S.admin.zuSel) { S.admin.zuSel = false; const z = tf2.querySelector(".row.sel"); if (z) z.scrollIntoView({ block: "nearest" }); }
+  }
   app.insertAdjacentHTML("beforeend", fotoGrossHTML() + kalFensterHTML());
   document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross || $("#kal")));
   S.feldKontext = feldKontext();
