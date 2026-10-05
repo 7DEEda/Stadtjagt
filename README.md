@@ -10,6 +10,11 @@ Vollständiger Kontext, Architektur, Datenschutz und offene Punkte:
 
 Wie Spiel und Code funktionieren (Regeln, Zustände, Abläufe, Aufbau): **[SPIEL.md](SPIEL.md)**
 
+Nächster Schritt (Stand 05.10.2026): Umbau nach der Design-Variante
+"Weiterentwicklung", Plan in
+[docs/superpowers/plans/2026-10-05-weiterentwicklung.md](docs/superpowers/plans/2026-10-05-weiterentwicklung.md),
+noch nicht begonnen. Einzelheiten im HANDOFF unter "Stand zum Fortsetzen".
+
 ## Ansichten
 
 | Pfad | Für wen |

@@ -1889,8 +1889,20 @@ Funde mit Szenario und Belegen lagen in `.superpowers/sdd/bugjagd-2026-10-03/` (
 https://claude.ai/artifact/V2vfdrW3YhwzNh2TEQZ1iM). Gleicher Look, neuer
 Aufbau: Handy mit Ziffern im Kopf, fester Aktionsleiste unten und Nebensachen
 in Tabs statt unter dem Kompass; Spielleitung in voller Breite mit Karte und
-Teamliste nebeneinander, Zeitachse und Verwaltung in Reitern. Noch nicht
-gebaut, Plan steht aus.
+Teamliste nebeneinander, Zeitachse und Verwaltung in Reitern. Detailvergleich
+der Spielleitung (heute gegen geplant, klickbar, mit "Was sich ändert" und "Was
+bleibt"): `mockups/design-varianten/admin-karte.html`, von Friedrich am
+05.10. bestätigt.
+
+**NÄCHSTER SCHRITT: Umbau nach Plan** `docs/superpowers/plans/2026-10-05-weiterentwicklung.md`
+(9 Tasks, nichts davon gebaut). Zuerst mit Friedrich klären: ausführen mit
+Subagenten je Task plus Review (empfohlen, weil die Tasks aufeinander aufbauen
+und alles in index.html landet) oder direkt in der Sitzung. Dann Task 1
+(Migration `admin_state` mit `failedAttempts`/`lockedUntil`, Probelauf, live
+einspielen) und weiter der Reihe nach; jeder Task wird mit dem neuen
+Prüfskript `tools/pruefstand/umbau.py` geprüft. Push erst nach Task 9 und
+Friedrichs Okay. Die Mockups liegen nur lokal in `mockups/design-varianten/`
+(nicht im Repo); ohne sie fehlt dem Plan die Vorlage.
 
 **Stresstest mit 100 Handys (Konzept 03.10., nicht gebaut):** Last heute ohne
 Realtime: jedes Handy fragt alle 10 s (Teamleitung `team_state`, Mitlesende
