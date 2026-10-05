@@ -1265,19 +1265,19 @@ function leisteHTML(st, s, lesen) {
     const left = st.prizesLeft ?? 0;
     return `<label for="tfin">Koffer-Code, <span style="white-space:nowrap">${ANZ(st) + 1} Stellen</span></label>
       <div class="reihe"><input id="tfin" inputmode="numeric" pattern="[0-9]*" maxlength="${ANZ(st) + 1}" autocomplete="off" enterkeyhint="go">
-      <button class="btn" data-act="t-final" data-wait="Standort wird bestimmt …" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Code eingeben"}</button></div>${msgBox("leiste")}`;
+      <button class="btn" data-act="t-final" data-ort="leiste" data-wait="Standort wird bestimmt …" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Code eingeben"}</button></div>${msgBox("leiste")}`;
   }
   if (!s) return "";
   if (st.checkedIn) {
     const pause = !st.testMode && st.lockedUntil && new Date(st.lockedUntil).getTime() > Date.now();
     return `<label for="tans">Eure Antwort</label>
       <div class="reihe"><input id="tans" ${s.numeric ? 'inputmode="numeric" pattern="[0-9]*"' : ""} autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" ${pause ? "disabled" : ""}>
-      <button class="btn" data-act="t-answer" data-wait="Wird geprüft …" ${S.busy || pause ? "disabled" : ""}>Prüfen</button></div>
-      ${pause ? "" : `<p class="small muted" style="margin:6px 0 0;white-space:nowrap">${st.testMode ? "Testmodus: jede Antwort zählt" : `Fehlversuche: ${st.failedAttempts} von 3`}</p>`}${msgBox("leiste")}`;
+      <button class="btn" data-act="t-answer" data-ort="leiste" data-wait="Wird geprüft …" ${S.busy || pause ? "disabled" : ""}>Prüfen</button></div>
+      ${pause ? "" : `<p class="small muted" style="margin:6px 0 0;white-space:nowrap">${st.testMode ? "Testmodus: jede Antwort zählt" : `Fehlversuche: ${st.failedAttempts} von 3, dann 2 Minuten Pause`}</p>`}${msgBox("leiste")}`;
   }
   const g = S.gps, hasTarget = s.lat != null && s.lng != null;
   if (!g.on && !st.testMode) return `<button class="btn" data-act="t-gps">Standort und Kompass freigeben</button>`;
-  return `<button class="btn ${checkWeit(st, s) ? "weit" : ""}" id="tcheck" data-act="t-check" data-wait="Standort wird bestimmt …" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>${checkText(st, s)}</button>${msgBox("leiste")}`;
+  return `<button class="btn ${checkWeit(st, s) ? "weit" : ""}" id="tcheck" data-act="t-check" data-ort="leiste" data-wait="Standort wird bestimmt …" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>${checkText(st, s)}</button>${msgBox("leiste")}`;
 }
 function teamTabHTML(st, lesen) { return `<div class="panel"><ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>`; }
 // Die Hülle fürs laufende Spiel: je nach Tab Weg (der lange Teil), Ziffern oder Team
