@@ -199,6 +199,26 @@ with sync_playwright() as pw:
     pg.click("[data-act=a-probleme]")
     pruef(pg.locator("#teamfeld .row.sel").inner_text().find("kein GPS") >= 0, "Zähler springt zum ersten Problem")
     pruef(pg.locator(".ohnepos [data-act=a-sel]").count() == 1 and "kein Standort" in pg.inner_text(".ohnepos"), "Knopf kein Standort unter der Karte")
+    # Fix 1: wechselt die Leitung, während die Zeile offen ist, öffnet das nächste Neuzeichnen keinen Dialog
+    pg.goto(f"{BASIS}/app.html?szenario=admin-probleme"); pg.wait_for_selector("#teamfeld .row"); pg.wait_for_selector("#map .leaflet-marker-icon", timeout=25000)
+    pg.click("#teamfeld .row:has-text('Igel') .row-main"); pg.wait_for_selector("#teamfeld .row.sel select[data-chg=a-leader]")
+    pg.evaluate("""() => { const st = S.admin.state, t = st.teams.find(x => x.name === 'Igel'), p = st.participants.find(x => x.teamId === t.id && x.id !== t.leaderId);
+      t.leaderId = p.id; t.leaderName = p.name; render(); }""")
+    pg.wait_for_timeout(300)
+    pruef(pg.evaluate("S.admin.confirm") is None and pg.locator(".overlay").count() == 0, "Leitungswechsel bei offener Zeile öffnet keinen Dialog")
+    # Fix 2: Auswahl lässt Zoom und Ausschnitt der Karte stehen
+    pg.evaluate("map.setView(map.getCenter(), map.getZoom() + 2, { animate: false })"); pg.wait_for_timeout(300)
+    z0, c0 = pg.evaluate("[map.getZoom(), map.getCenter().lat]")
+    pg.click("#teamfeld .row:has-text('Otter') .row-main"); pg.wait_for_timeout(1500)
+    z1, c1 = pg.evaluate("[map.getZoom(), map.getCenter().lat]")
+    pruef(z1 == z0 and abs(c1 - c0) < 1e-6, f"Auswahl in der Liste lässt Zoom und Mitte stehen ({z0}/{z1})")
+    pg.evaluate("layers.teams[S.admin.state.teams.find(x => x.name === 'Igel').id].fire('click')"); pg.wait_for_timeout(1500)
+    pruef(pg.evaluate("map.getZoom()") == z0 and pg.locator(".leaflet-popup").count() == 1, "Marker-Klick: Zoom bleibt, Popup bleibt offen")
+    # Fix 3: Rückmeldung zu Freischalten erscheint auch an der zugeklappten Zeile
+    pg.click("#teamfeld .row:has-text('Delfin') .btn[data-key=unlock]"); pg.wait_for_selector("#dlgok")
+    pg.click("#dlgok"); pg.wait_for_timeout(800)
+    zeile = pg.locator("#teamfeld .row:has-text('Delfin')")
+    pruef("eingecheckt" in zeile.inner_text() and zeile.locator(".detail").count() == 0, "Freischalten an zugeklappter Zeile: Meldung steht in der Zeile")
     pg.goto(f"{BASIS}/app.html?szenario=admin-karte"); pg.wait_for_selector("#teamfeld .row")
     pruef(pg.locator("#teamfeld .row .btn[data-key=solve], #teamfeld .row .btn[data-key=unlock]").count() >= 3, "Freischalten und Rätsel werten als Zeilenknopf")
 

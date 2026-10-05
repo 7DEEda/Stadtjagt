@@ -490,6 +490,7 @@
     admin_tracks: a => { pin(a); return adminTracks(); },
     admin_delete_test_participants: a => { pin(a); return { deleted: 0, state: adminState() }; },
     admin_add_participants: a => { pin(a); return { added: 0, duplicates: 0, invalid: 0, state: adminState() }; },
+    admin_unlock_station: a => { pin(a); window.__UNLOCK = a; return adminState(); },
     admin_start: a => { pin(a); return { state: adminState() }; }
   };
 

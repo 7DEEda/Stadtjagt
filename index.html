@@ -1911,7 +1911,7 @@ function problemVon(t, st) {
   if (st.status !== "running" || t.place) return null;
   const upd = t.position && t.position.updatedAt, alt = upd ? Date.now() - new Date(upd).getTime() : null;
   if (alt == null) return { stufe: "fehler", kurz: "kein GPS", text: `${t.name} sendet keinen Standort. Ruf die Teamleitung an; ist das Team an der Station, schalte sie frei.` };
-  if (alt > GPS_ALT_MS) return { stufe: "fehler", kurz: `GPS ${ago(upd)}`, text: `Der letzte Standort ist ${ago(upd)} alt. Vielleicht ist das Handy gesperrt.` };
+  if (alt > GPS_ALT_MS) return { stufe: "fehler", kurz: `GPS ${ago(upd)}`, text: `Letzter Standort ${ago(upd)}. Vielleicht ist das Handy gesperrt.` };
   if ((t.failedAttempts || 0) >= 2) return { stufe: "warn", kurz: `${t.failedAttempts} Fehlversuche`, text: `${t.failedAttempts} von 3 Fehlversuchen an Station ${t.currentPosition}. Klemmt das Rätsel, kannst du es als gelöst werten.` };
   return null;
 }
@@ -1930,12 +1930,12 @@ function teamZeile(t, i, st) {
         ${(st.participants || []).filter(x => x.teamId === t.id).map(x => `<option value="${esc(x.id)}" ${x.id === t.leaderId ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
       <p class="small">Code <b class="nw">${esc(t.code)}</b></p>
       ${t.readToken ? `<button class="btn sm alt" data-act="a-mit" data-id="${t.id}" data-ort="t:${t.id}" data-token="${esc(t.readToken)}" data-name="${esc(t.name)}">Mitlese-Link kopieren</button>` : ""}
-      ${msgBox("t:" + t.id)}</div>`;
+      </div>`;
   return `<li class="row ${p ? "p-" + p.stufe : ""} ${sel ? "sel" : ""}" data-row="${t.id}">
     <div class="row-top"><button class="row-main" data-act="a-sel" data-id="${t.id}" aria-expanded="${sel}">
       <span class="tier" style="--tc:${teamColor(i)}" aria-hidden="true">${teamEmoji(t.name)}</span>
       <span class="row-txt"><span><b>${esc(t.name)}</b> <span class="small muted nw">${t.solved}/${gesamt}</span></span>
-        <span class="l2"><span class="nw">${wo}</span>${p ? ` <span class="chip ${p.stufe === "fehler" ? "err" : "warn"} nw">${esc(p.kurz)}</span>` : ""}${kompassVermerk(t, st)}</span></span></button>${knopf}</div>${detail}</li>`;
+        <span class="l2"><span class="nw">${wo}</span>${p ? ` <span class="chip ${p.stufe === "fehler" ? "err" : "warn"} nw">${esc(p.kurz)}</span>` : ""}${kompassVermerk(t, st)}</span></span></button>${knopf}</div>${msgBox("t:" + t.id)}${detail}</li>`;
 }
 function teamlisteHTML(st) {
   const alle = (st.teams || []).map((t, i) => ({ t, i, p: problemVon(t, st) }));
@@ -2206,6 +2206,7 @@ function drawPreview() {
 }
 
 /* ---------- Karte ---------- */
+let kartenSicht = null;   // Ausschnitt der Karte der Spielleitung: überlebt das Neuzeichnen von #app
 let map = null, layers = { stations: [], teams: {} }, leafletReady = null;
 function loadLeaflet() {
   if (leafletReady) return leafletReady;
@@ -2227,11 +2228,11 @@ async function drawMap(first) {
   try { await loadLeaflet(); } catch (e) { el.innerHTML = `<p class="msg err">${esc(e.message)}</p>`; return; }
   const st = S.admin.state, A = S.admin, cur = A.cursor;
   if (!map || !el.contains(map.getContainer())) {
-    map = L.map(el, { zoomControl: true }).setView([50.0875, 14.4180], 14);   // Prag, Altstadt
+    map = L.map(el, { zoomControl: true }).setView(kartenSicht ? kartenSicht.c : [50.0875, 14.4180], kartenSicht ? kartenSicht.z : 14);   // Prag, Altstadt
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
     layers = { stations: [], teams: {}, tracks: {}, luecken: {}, marken: {} };
-    first = true;
+    first = !kartenSicht;   // mit gemerktem Ausschnitt bleibt er stehen; nur beim ersten Anlegen passt fitBounds ein
   }
   layers.stations.forEach(l => map.removeLayer(l));
   layers.stations = [];
@@ -2314,8 +2315,10 @@ async function drawMap(first) {
       layers.teams[t.id].setZIndexOffset(gewaehlt ? 800 : 500);
     } else {
       layers.teams[t.id] = L.marker(at, { icon, zIndexOffset: gewaehlt ? 800 : 500 }).bindPopup(popup).addTo(map);
-      layers.teams[t.id].on("click", () => { S.admin.sel = t.id; S.admin.zuSel = true; render(); });   // nur beim Anlegen, sonst doppelt
+      layers.teams[t.id].on("click", () => { S.admin.sel = t.id; S.admin.zuSel = true; A.popupAuf = t.id; render(); });   // nur beim Anlegen, sonst doppelt
+      layers.teams[t.id].on("popupclose", () => { if (A.popupAuf === t.id) A.popupAuf = null; });
     }
+    if (A.popupAuf === t.id && !layers.teams[t.id].isPopupOpen()) layers.teams[t.id].openPopup();   // nach dem Neuzeichnen wieder offen
   });
   kartenPunkte = pts;
   if (first && pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.2));
@@ -2691,7 +2694,7 @@ const ACT = {
     setTimeout(() => map && map.invalidateSize(), 80);
     return false;
   },
-  "a-sel"(d) { S.admin.sel = S.admin.sel === d.id ? null : d.id; },
+  "a-sel"(d) { S.admin.popupAuf = null; S.admin.sel = S.admin.sel === d.id ? null : d.id; },
   "a-probleme"() {
     const erst = problemListe(S.admin.state)[0];
     if (erst) { S.admin.tab = "live"; S.admin.sel = erst.id; S.admin.zuSel = true; }
@@ -3532,7 +3535,7 @@ function render() {
   const fokus = document.activeElement && app.contains(document.activeElement) ? document.activeElement : null;
   const fokusId = fokus && fokus.id, auswahl = fokus && typeof fokus.selectionStart === "number" ? [fokus.selectionStart, fokus.selectionEnd] : null;
   if (!S.felderFrisch && S.feldKontext === kontext)
-    app.querySelectorAll("input[id]:not([type=range]):not([type=password]), textarea[id], select[id]").forEach(el => { getippt[el.id] = el.value; });
+    app.querySelectorAll("input[id]:not([type=range]):not([type=password]), textarea[id], select[id]:not([data-chg])").forEach(el => { getippt[el.id] = el.value; });
   S.felderFrisch = false;
   app.className = S.view === "admin" && S.admin.pin ? "voll" : "";
   const stand = S.view === "admin" ? S.admin.state : S.view === "team" ? S.team.state : S.pub;
@@ -3542,6 +3545,7 @@ function render() {
   // Der Inhalt der Hülle scrollt selbst und entsteht mit jedem Neuzeichnen neu: Stand merken, im selben Tab zurücksetzen
   const inh = $("#inhalt");
   // Teamliste der Spielleitung: Scrollstand merken, sonst springt sie alle 10 s nach oben
+  if (map && map.getContainer().isConnected) kartenSicht = { c: map.getCenter(), z: map.getZoom() };
   const tf = $("#teamfeld"), tfScroll = tf ? tf.scrollTop : 0;
   // gezeichnet = Tab, der gerade im DOM steht (nach einem Tabwechsel ist S.team.tab schon der neue)
   S.team.scroll = inh ? inh.scrollTop : 0; S.team.scrollTab = S.team.gezeichnet;
