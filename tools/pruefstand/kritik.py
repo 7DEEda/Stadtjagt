@@ -83,6 +83,7 @@ with sync_playwright() as pw:
     pg.screenshot(path=SHOTS + "nah.png", full_page=True)
 
     print("Ziffern und Route")
+    pg.click(".ftabs [data-tab=ziffern]")   # Umbau: Schloss liegt im Tab Ziffern
     pruef(pg.locator(".lock .wheel.schluss").count() == 1 and "Schlussziffer" in pg.inner_text("#app"), "sechste Ziffer abgesetzt und erklärt")
     pg.goto(url("selfie-offen")); pg.wait_for_selector("[data-act=t-selfie]")
     done = pg.locator(".route b.done").count(); fest = pg.evaluate("S.team.state.digits.filter(d => d != null).length")
