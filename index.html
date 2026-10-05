@@ -271,6 +271,7 @@ th{font:600 var(--fs-s) var(--body);color:var(--muted)}
 .kartefuss{margin-top:8px}
 .inhalt900{max-width:900px}
 #zuletzt:empty{display:none}
+.ticker{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px}.ticker button{display:flex;gap:10px;align-items:baseline;width:100%;min-height:42px;border:0;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}.ticker time{color:var(--muted);font-variant-numeric:tabular-nums}.ticker .ok time{color:var(--ok)}.ticker .err time{color:var(--err)}
 .nw{white-space:nowrap}
 .teamfeld{margin-top:0;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding:0}
 @media (max-width:1023px){.lv{grid-template-columns:minmax(0,1fr)}.lv .kartefeld #map{height:56vh}.teamfeld{position:static;max-height:none}}
@@ -1946,7 +1947,29 @@ function teamlisteHTML(st) {
   return `<div class="list-kopf"><h3>Teams</h3></div><ol class="tliste">
     ${proben.length ? `<li class="grp err">Braucht dich · ${proben.length}</li>${zeilen(proben)}<li class="grp">Alle anderen · ${rest.length}</li>` : `<li class="grp">Alle Teams · ${rest.length}</li>`}${zeilen(rest)}</ol>`;
 }
-function zuletztZeichnen() { }   // Task 8
+// Die letzten Ereignisse aller Teams, aus den Routen-Daten (Check-in, Ziffer) und dem Standort (seit 5 min weg)
+function ereignisse(st) {
+  const A = S.admin, liste = [];
+  (st.teams || []).forEach(t => {
+    const tr = A.tracks && A.tracks[t.id];
+    ((tr && tr.stations) || []).forEach(s => {
+      if (s.checkedInAt) liste.push({ at: new Date(s.checkedInAt).getTime(), teamId: t.id, text: `eingecheckt an Station ${s.position}`, art: "" });
+      if (s.solvedAt) liste.push({ at: new Date(s.solvedAt).getTime(), teamId: t.id, text: `Ziffer von Station ${s.position}`, art: "ok" });
+    });
+    const p = problemVon(t, st), upd = t.position && t.position.updatedAt;
+    if (p && p.stufe === "fehler" && upd) liste.push({ at: new Date(upd).getTime() + GPS_ALT_MS, teamId: t.id, text: "kein Standort mehr", art: "err" });
+    if (t.place && t.finishedAt) liste.push({ at: new Date(t.finishedAt).getTime(), teamId: t.id, text: `im Ziel, Platz ${t.place}`, art: "ok" });
+  });
+  return liste.filter(e => e.at <= Date.now()).sort((a, b) => b.at - a.at).slice(0, 8);
+}
+function zuletztZeichnen() {
+  const el = $("#zuletzt"), st = S.admin.state; if (!el || !st) return;
+  const ev = ereignisse(st).filter(e => (st.teams || []).some(t => t.id === e.teamId));
+  el.innerHTML = `<h3>Zuletzt</h3>${ev.length ? `<ol class="ticker">${ev.map(e => { const t = st.teams.find(x => x.id === e.teamId);
+    return `<li><button data-act="a-sel" data-id="${e.teamId}" data-zu="1" class="${e.art}"><time class="nw">${fmtClock(e.at)}</time>
+      <span><b>${teamEmoji(t.name)} ${esc(t.name)}</b> ${esc(e.text)}</span></button></li>`; }).join("")}</ol>`
+    : `<p class="small muted">Noch nichts passiert.</p>`}`;
+}
 /* ---------- Spielleitung ---------- */
 function viewAdmin() {
   const A = S.admin;
@@ -2206,6 +2229,7 @@ function drawPreview() {
 }
 
 /* ---------- Karte ---------- */
+let kartenRoute = null;   // Route (test/echt) der zuletzt gezeichneten Karte; bei Wechsel passt die Karte neu ein
 let kartenSicht = null;   // Ausschnitt der Karte der Spielleitung: überlebt das Neuzeichnen von #app
 let map = null, layers = { stations: [], teams: {} }, leafletReady = null;
 function loadLeaflet() {
@@ -2226,7 +2250,9 @@ const LUECKE_M = 50, LUECKE_MS = 90000;   // ab hier gilt ein Stück der Route a
 async function drawMap(first) {
   const el = $("#map"); if (!el || !S.admin.state) return;
   try { await loadLeaflet(); } catch (e) { el.innerHTML = `<p class="msg err">${esc(e.message)}</p>`; return; }
-  const st = S.admin.state, A = S.admin, cur = A.cursor;
+  const st = S.admin.state, A = S.admin, cur = A.cursor, route = st.route === "test" ? "test" : "echt";
+  if (kartenRoute && kartenRoute !== route) { kartenSicht = null; first = true; }   // andere Stadt: Ausschnitt verwerfen, neu einpassen
+  kartenRoute = route;
   if (!map || !el.contains(map.getContainer())) {
     map = L.map(el, { zoomControl: true }).setView(kartenSicht ? kartenSicht.c : [50.0875, 14.4180], kartenSicht ? kartenSicht.z : 14);   // Prag, Altstadt
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -2681,7 +2707,7 @@ const ACT = {
   async "a-login"() {
     const pin = val("apin");
     S.admin.state = await rpc("admin_state", { p_pin: pin });
-    S.admin.pin = pin; SS.setItem("sj.pin", pin); S.msg = null;
+    S.admin.pin = pin; SS.setItem("sj.pin", pin); S.msg = null; kartenSicht = null;
   },
   "a-tab"(d) { S.admin.tab = d.tab; S.admin.edit = null; S.admin.full = false; S.msg = null; if (d.tab === "fotos") fotosLaden(); },
   // Vollbild steht im Zustand und wird mitgezeichnet, sonst geht es beim nächsten Neuzeichnen verloren
@@ -2694,7 +2720,7 @@ const ACT = {
     setTimeout(() => map && map.invalidateSize(), 80);
     return false;
   },
-  "a-sel"(d) { S.admin.popupAuf = null; S.admin.sel = S.admin.sel === d.id ? null : d.id; },
+  "a-sel"(d) { S.admin.popupAuf = null; if (d.zu) { S.admin.sel = d.id; S.admin.zuSel = true; } else S.admin.sel = S.admin.sel === d.id ? null : d.id; },   // aus "Zuletzt": immer wählen und die Zeile ins Bild holen
   "a-probleme"() {
     const erst = problemListe(S.admin.state)[0];
     if (erst) { S.admin.tab = "live"; S.admin.sel = erst.id; S.admin.zuSel = true; }
@@ -3468,7 +3494,7 @@ async function refresh() {
     await gpsWiederStarten();
   } catch (e) {
     if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); return render(); }
-    if (String(e.message).includes("Falsche PIN")) { S.admin.pin = null; SS.removeItem("sj.pin"); }
+    if (String(e.message).includes("Falsche PIN")) { S.admin.pin = null; SS.removeItem("sj.pin"); kartenSicht = null; }
     S.msg = e.netz ? { type: "err", kind: "netz", text: e.message } : { type: "err", text: e.message };
   }
   render();
@@ -3583,7 +3609,7 @@ function render() {
   }
   wachHaltenPruefen();
   if (S.view === "admin" && S.admin.pin && (S.admin.tab === "live" || S.admin.tab === "zeit")) {
-    if (S.admin.tab === "live") drawMap(true); else renderTimeline();
+    if (S.admin.tab === "live") { drawMap(true); zuletztZeichnen(); } else renderTimeline();
     syncTracks().then(() => { if (S.admin.tab === "live") { drawMap(false); zuletztZeichnen(); } else renderTimeline(); }).catch(() => { });
   }
   if (S.view === "team" || (S.view === "public" && S.mit)) liveUpdate();

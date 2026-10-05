@@ -222,6 +222,23 @@ with sync_playwright() as pw:
     pg.goto(f"{BASIS}/app.html?szenario=admin-karte"); pg.wait_for_selector("#teamfeld .row")
     pruef(pg.locator("#teamfeld .row .btn[data-key=solve], #teamfeld .row .btn[data-key=unlock]").count() >= 3, "Freischalten und Rätsel werten als Zeilenknopf")
 
+    print("Zuletzt")
+    pg.goto(f"{BASIS}/app.html?szenario=admin-probleme"); pg.wait_for_selector("#zuletzt li", timeout=20000)
+    li = pg.locator("#zuletzt li").all_inner_texts()
+    pruef(1 <= len(li) <= 8, f"zwischen 1 und 8 Ereignisse: {len(li)}")
+    pruef(any("eingecheckt" in x or "Ziffer" in x for x in li), "Check-in oder Ziffer als Ereignis")
+    pruef(all(__import__("re").match(r"\d\d:\d\d$", x.split(chr(10))[0].strip()) for x in li), f"Uhrzeit HH:MM vorn: {[x[:8] for x in li]}")
+    pg.locator("#zuletzt li button").first.click()
+    pruef(pg.evaluate("S.admin.sel") is not None, "Antippen wählt das Team")
+    pg.locator("#zuletzt li button").first.click()
+    pruef(pg.evaluate("S.admin.sel") is not None and pg.locator("#teamfeld .row.sel").count() == 1, "zweites Antippen derselben Zeile wählt wieder, kein Abwählen")
+    # Karte: andere Route (Teststation) passt neu ein, der gemerkte Ausschnitt gilt nur für dieselbe Route
+    pg.goto(f"{BASIS}/app.html?szenario=admin-probleme"); pg.wait_for_selector("#map .leaflet-marker-icon", timeout=25000)
+    lat0 = pg.evaluate("map.getCenter().lat")
+    pg.evaluate("S.admin.state.route = 'test'; render()"); pg.wait_for_timeout(2500)
+    lat1 = pg.evaluate("map.getCenter().lat")
+    pruef(abs(lat1 - lat0) > 0.5, f"Routenwechsel echt zu test passt die Karte neu ein ({lat0:.2f} zu {lat1:.2f})")
+
     pruef(not err, f"keine Seitenfehler {err[:2]}")
     b.close()
 
