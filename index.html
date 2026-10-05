@@ -457,7 +457,7 @@ input[type=date]{min-height:50px}
         <path class="pfeil" d="M51 27l4 6 4-6" fill="none" stroke="var(--flag)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
   <h2 id="quert">Bitte hochkant halten</h2>
-  <p>Die Stadtjagd ist fürs Hochformat gemacht. Dreh das Handy einfach zurück.</p>
+  <p>Dreh das Handy zurück ins Hochformat.</p>
 </div></div>
 
 <script src="config.js"></script>
@@ -1522,7 +1522,7 @@ function albumHTML(st) {
     k += `<button class="bild" data-act="foto-gross" data-pos="${pos}" aria-label="Foto von Station ${pos} groß zeigen">${u ? `<img src="${u}" alt="">` : "…"}</button>`;
   }
   return `<div class="panel"><h3>Euer Album</h3><div class="album">${k}</div>
-    <p class="small muted">${(sf.photos || []).length ? "Tippt auf ein Foto, um es groß zu sehen und zu speichern." : "Hier sammeln sich eure Gruppenfotos, eines je Station."}
+    <p class="small muted">${(sf.photos || []).length ? "Tippt auf ein Foto, um es groß zu sehen und zu speichern." : "Noch kein Foto."}
     ${sf.deleteOn ? ` Am ${fotoDatum(sf.deleteOn)} löschen wir alle Fotos.` : ""}</p></div>`;
 }
 // Ein Foto groß, über der Seite. S.gross = { pos, team } (team nur bei der Spielleitung)
@@ -1812,7 +1812,7 @@ function viewAdmin() {
     const laeuft = st.status === "running" || st.status === "finished";
     // Nach dem Auslosen ist Starten der nächste Schritt, nicht Neu auslosen
     if (st.status === "drawn") out += `<div class="panel"><h3>Bereit zum Start</h3>
-        <p class="small muted">Die Teamleitungen sind auf ihrem eigenen Handy unter „Teamleitung“ gleich drin, einen Code braucht niemand. Mitlese-Links in den Gruppen? Dann kann es losgehen. Vorher fragt die App noch einmal nach.</p>
+        <p class="small muted">Die Teamleitungen sind auf ihrem eigenen Handy unter „Teamleitung“ gleich drin, einen Code braucht niemand. Vorher die Mitlese-Links in die Gruppen schicken. Die App fragt vor dem Start noch einmal nach.</p>
         ${st.testMode ? `<div class="msg err">Der Testmodus ist noch an: Entfernung und Antworten werden nicht geprüft. Ausschalten im Reiter Stationen.</div>` : ""}
         <button class="btn" data-act="a-start">Spiel starten</button></div>`;
     if (laeuft) {
@@ -1889,10 +1889,10 @@ function viewAdmin() {
       <div style="margin-top:8px"><label for="a-koffer">Hinweis auf dem Koffer-Bildschirm</label><textarea id="a-koffer">${esc(st.caseHint || "")}</textarea></div>
       <button class="btn sm" data-act="a-settings" data-wait="Wird gespeichert …">Speichern</button>${msgBox("settings")}</div>`;
     out += `<div class="panel"><h3>Hintergrund</h3>
-      <p class="small muted">Gilt für alle Handys und dieses Tablet, hell und dunkel. Die Entwürfe zum Vergleich liegen in mockups/hintergrund-varianten.html.</p>
+      <p class="small muted">Gilt für alle Handys und dieses Tablet, hell und dunkel.</p>
       <div class="wahl">${Object.entries(HINTERGRUENDE).map(([k, v]) => `<button class="btn sm ${st.background === k ? "" : "alt"}" data-act="a-bg" data-bg="${k}" aria-pressed="${st.background === k}">${v}</button>`).join("")}</div>${msgBox("bg")}</div>`;
     out += `<div class="panel ${st.testMode ? "danger" : ""}"><h3>Testmodus</h3>
-      <p class="small muted">Zum Durchklicken ohne hinzulaufen: Check-in ohne Entfernungsprüfung, auch ohne GPS,
+      <p class="small muted">Check-in ohne Entfernungsprüfung, auch ohne GPS,
       und jede Antwort zählt. Den Koffer-Code prüft die App weiter. Vor dem Event unbedingt ausschalten.</p>
       <button class="btn ${st.testMode ? "warn" : "alt"}" data-act="a-test" data-on="${st.testMode ? "0" : "1"}" data-ort="test">${st.testMode ? "Testmodus ausschalten" : "Testmodus einschalten"}</button>${msgBox("test")}</div>`;
     const unfertig = (st.stations || []).filter(s => offen(s.locationHint) || offen(s.riddle) || offen(s.answer) || s.lat == null);
@@ -1950,7 +1950,7 @@ function viewAdmin() {
           <p class="small">${esc(typeof DANGER[k].lead === "function" ? DANGER[k].lead(st) : DANGER[k].lead)}</p>
           <p class="small muted">${esc(typeof DANGER[k].keeps === "function" ? DANGER[k].keeps(st) : DANGER[k].keeps)}</p>
           <button class="btn warn" data-act="a-danger" data-key="${k}">${esc(DANGER[k].btn)}</button></div>`).join("")
-      : `<div class="panel"><p class="muted">Im Moment gibt es nichts zu löschen. Sobald Teams ausgelost sind, stehen hier die Möglichkeiten.</p></div>`;
+      : `<div class="panel"><p class="muted">Erst nach dem Auslosen gibt es hier etwas zu löschen.</p></div>`;
     out += `<p class="small muted" style="margin-top:12px">Einzelne Personen löschst du im Reiter Teilnehmende über das ×, neu auslosen im Reiter Teams. Beides fragt ebenfalls nach.</p>`;
   }
   if (A.confirm) {
