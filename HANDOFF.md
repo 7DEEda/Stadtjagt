@@ -1838,16 +1838,49 @@ Funde mit Szenario und Belegen lagen in `.superpowers/sdd/bugjagd-2026-10-03/` (
   (höchstens ein Neuzeichnen je 10 s); lehnt der Server „Testmodus einschalten“ ab, bleibt der Dialog offen
   und die Meldung steht oben.
 
-## Stand zum Fortsetzen (04.10.2026)
+## Fülltext raus, Spielende ruhig, iPhone-Lauf (05.10.2026, live)
 
-**Live:** alles bis Nachtrag 32, Geräte-Test bis Suite 21
+- **Regel "Kein Füll-Text in Oberflächen"** (TSE-CLAUDE.md, 05.10.) auf App und
+  Geräte-Test angewandt: Hochformat-Hinweis nur noch "Dreh das Handy zurück ins
+  Hochformat.", leeres Fotoalbum "Noch kein Foto.", Spielleitung ohne
+  Mockup-Pfad beim Hintergrund und ohne "Zum Durchklicken ..." beim Testmodus,
+  Daten löschen "Erst nach dem Auslosen gibt es hier etwas zu löschen.";
+  Geräte-Test ohne Untertitel auf der Startseite, "Du musst nichts tun.",
+  "Mach ein Foto, egal wovon.", Karte "Genauen Standort einschalten".
+- **Teamsuche mit Platzhalter:** "Dein Name", bei bekanntem eigenem Team "Name
+  einer Person aus dem Team". Die Suche geht nur nach Personennamen
+  (`lookup_participant`: genauer Treffer über `norm()`, sonst Teilstring ab 3
+  Zeichen, bis 8 Kandidaten); Tippfehler findet sie nicht.
+- **Nach Spielende** (`status = finished`) zeigt die Startseite nur Rangliste
+  bzw. die eigene Teamkarte: keine Teamsuche, keine Hilfe-Knöpfe (WhatsApp,
+  Anrufen), keine Links Anmeldung/Teamleitung. Die Teamleitung kommt nach dem
+  Ende nur noch über eine offene Teamleitungs-Seite ans Album. Eingaben lehnt
+  der Server ohnehin ab (`status <> 'running'`).
+- **Prüfstand:** neues Szenario `fremd-beendet` (Spiel beendet, Handy ohne
+  Namen). Beim ersten Bild jedes Laufs meldet der Bericht eine 404 (vermutlich
+  Favicon), unabhängig von den Änderungen.
+- **Geräte-Test:** Vibration beim Tipp aufs Startzeichen ausprobiert und wieder
+  entfernt (iPhone hat kein `navigator.vibrate`, auf einem der zwei
+  Android-Handys nicht spürbar). Vibration und Push bleiben aus dem Spiel
+  draußen: iPhone-Push nur als Home-Bildschirm-App, Vibration nur Android.
+- **iPhone-Lauf 05.10.** (iOS 27.0, Chrome, Suite 21, `SQQR`): Standort ±13 m
+  nach 2,5 s, Kompass ±12°, Drehen 36 von 36, Einmessen ±17°, Kamera und
+  Upload 0,4 s, App-Wechsel bleibt; Wach halten nur mit Tipp; Vibration,
+  Benachrichtigung und Akku fehlen wie erwartet.
+
+## Stand zum Fortsetzen (05.10.2026)
+
+**Live:** alles bis Nachtrag 32 und die Änderungen vom 05.10., Geräte-Test bis Suite 21
 (https://7deeda.github.io/geraetetest/).
 
-**Design-Varianten (03.10., nicht entschieden):** klickbarer Vergleich der
-heutigen App mit vier Varianten (Weiterentwicklung, Leitstand, Spielbrett,
-Signal), Teams am Handy und Spielleitung am Tablet/PC:
-`mockups/design-varianten/index.html` (lokal, nicht im Repo) und als Artifact
-https://claude.ai/artifact/V2vfdrW3YhwzNh2TEQZ1iM. Friedrich entscheidet später.
+**Design-Varianten: entschieden am 05.10.2026 für "Weiterentwicklung"**
+(`mockups/design-varianten/v-weiter.html`, lokal, nicht im Repo; Vergleich
+`mockups/design-varianten/index.html` und Artifact
+https://claude.ai/artifact/V2vfdrW3YhwzNh2TEQZ1iM). Gleicher Look, neuer
+Aufbau: Handy mit Ziffern im Kopf, fester Aktionsleiste unten und Nebensachen
+in Tabs statt unter dem Kompass; Spielleitung in voller Breite mit Karte und
+Teamliste nebeneinander, Zeitachse und Verwaltung in Reitern. Noch nicht
+gebaut, Plan steht aus.
 
 **Stresstest mit 100 Handys (Konzept 03.10., nicht gebaut):** Last heute ohne
 Realtime: jedes Handy fragt alle 10 s (Teamleitung `team_state`, Mitlesende
@@ -1866,5 +1899,6 @@ und 10 % mit Übergabe, Akku aller Teammitglieder, Mockups
 `mockups/rollen-akku-kompass.html`, `mockups/akku-warnung.html`.
 
 **Weitere offene Punkte:** Positionen aus 4 älteren Geräte-Test-Läufen löschen
-(Frage an Friedrich offen); iPhone-Lauf des Kollegen auswerten
-(`python tools/testlaeufe.py`).
+(Frage an Friedrich offen); Namenssuche fehlertolerant machen (Vorschlag
+05.10.: ähnliche Namen per `pg_trgm` anbieten, Treffer am Wortanfang zuerst);
+404 beim ersten Prüfstand-Bild abstellen.
