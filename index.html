@@ -945,7 +945,7 @@ function viewPublic() {
       <p class="small muted">Die Teams stehen schon. Melde dich bei der Spielleitung, sie trägt dich nach und sagt dir dein Team.</p>
       ${hilfe || `<p class="small">Sprich die Spielleitung direkt an.</p>`}</div>`;
   } else if (!mit && !vorbei) out += helpBtn("Stadtjagd: Ich finde mein Team nicht.");
-  return out + nav();
+  return out + (vorbei ? "" : nav());
 }
 
 /* ---------- Stationsname verschlüsselt (Nachtrag 26) ---------- */
