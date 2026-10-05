@@ -2451,7 +2451,7 @@ const ACT = {
     } catch (e) { S.msg = { type: "err", ort: "abgeben", text: e.message || "Etwas ist schiefgelaufen." }; }
   },
   "t-gps"() { startGps(); },
-  "t-tab"(d) { S.team.tab = d.tab; const i = $("#inhalt"); if (i) i.scrollTop = 0; },
+  "t-tab"(d) { S.team.tab = d.tab; S.team.scroll = 0; },
   "t-kal"() { kalStart(); },
   "t-kal-skip"() { kalEnde(false); },
   async "t-check"() {
@@ -3407,10 +3407,15 @@ function render() {
   if (stand && stand.background) hintergrundSetzen(stand.background);
   // Liegt ein Dialog oder die Hochhalten-Ansicht darüber, scrollt die Seite dahinter nicht mit
   document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross));
+  // Der Inhalt der Hülle scrollt selbst und entsteht mit jedem Neuzeichnen neu: Stand merken, im selben Tab zurücksetzen
+  const inh = $("#inhalt");
+  if (inh) { S.team.scroll = inh.scrollTop; S.team.scrollTab = S.team.tab; }
   document.body.classList.remove("spiel");
   app.innerHTML = (!cfg.url || !cfg.key) ? viewSetup()
     : S.view === "team" ? viewTeam()
       : S.view === "admin" ? viewAdmin() : viewPublic();
+  const inh2 = $("#inhalt");
+  if (inh2 && S.team.scroll && S.team.scrollTab === S.team.tab) inh2.scrollTop = S.team.scroll;
   app.insertAdjacentHTML("beforeend", fotoGrossHTML() + kalFensterHTML());
   document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross || $("#kal")));
   S.feldKontext = feldKontext();

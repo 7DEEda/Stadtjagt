@@ -61,6 +61,17 @@ with sync_playwright() as pw:
     pg.goto(f"{BASIS}/app.html?szenario=leitung-raetsel"); pg.wait_for_selector(".ph")
     pruef(pg.inner_text(".ftabs [data-tab=weg]").startswith("Rätsel"), "erster Tab heißt im Rätsel 'Rätsel'")
 
+    print("Scrollstand im Inhalt")
+    pg.set_viewport_size({"width": 390, "height": 420})
+    pg.goto(f"{BASIS}/app.html?szenario=leitung-raetsel"); pg.wait_for_selector(".ph")
+    pg.evaluate("document.querySelector('#inhalt').scrollTop = 60")
+    h0 = pg.evaluate("document.querySelector('#inhalt').scrollTop")
+    pruef(h0 > 0, f"Inhalt lässt sich scrollen ({h0})")
+    pg.evaluate("render()")
+    pruef(pg.evaluate("document.querySelector('#inhalt').scrollTop") == h0, "Scrollstand bleibt nach render()")
+    pg.click(".ftabs [data-tab=ziffern]"); pg.click(".ftabs [data-tab=weg]")
+    pruef(pg.evaluate("document.querySelector('#inhalt').scrollTop") == 0, "nach Tabwechsel beginnt der Inhalt oben")
+
     pruef(not err, f"keine Seitenfehler {err[:2]}")
     b.close()
 
