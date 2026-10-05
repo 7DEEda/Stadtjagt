@@ -219,6 +219,24 @@ body.spiel main{max-width:none;padding:0}
 .ph > .leiste .reihe input{flex:1;min-width:0;min-height:52px}
 .ph > .leiste .reihe .btn{width:auto;flex:none;min-width:120px}
 .ph > .leiste .msg{margin:8px 0 0}
+.ph > .kopf .k1{display:flex;align-items:center;gap:10px}
+.ph > .kopf .flag{width:28px;height:28px}
+.ph > .kopf .tiertop{font-size:30px;line-height:1;flex:none}
+.ph > .kopf .tn{flex:1;min-width:0}
+.ph > .kopf .tn h1{font-size:var(--fs-xl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ph > .kopf .tn .sub{display:block;font-size:var(--fs-xs);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ph > .kopf .hilfe-btn{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border-radius:10px;border:1.5px solid var(--feld);background:var(--card);color:var(--ink);font:700 var(--fs-m) var(--head);flex:none;cursor:pointer}
+.ph > .kopf .k2{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.ph > .kopf .k2 .chip.uhr{margin-left:0}
+.ph > .kopf .minilock{display:flex;align-items:center;gap:4px;min-height:44px;padding:0 4px;margin-right:-4px;border:0;border-radius:10px;background:none;cursor:pointer}
+.ph > .kopf .minilock .lbl{font:600 var(--fs-xs) var(--body);color:var(--muted);margin-right:4px}
+.ph > .kopf .minilock .lock{margin:0;gap:3px}
+.ph > .kopf .minilock .wheel.klein{width:18px;height:22px;font-size:var(--fs-s);border-radius:4px}
+.ph > .kopf .minilock .lock .wheel.schluss{margin-left:6px;outline-offset:1px}
+@keyframes ein{from{opacity:0;transform:translateY(8px)}}
+.ueber{position:fixed;inset:0;z-index:50;background:rgba(15,27,24,.45);display:flex;align-items:flex-end;justify-content:center;animation:ein .16s cubic-bezier(.32,.72,.4,1)}
+.blatt{width:100%;max-width:560px;background:var(--card);border-radius:14px 14px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom))}
+.blatt .hilfe{margin-top:10px}
 .ftabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 .ftabs button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:58px;border:0;background:none;color:var(--muted);font:600 var(--fs-xs)/1.2 var(--body);cursor:pointer}
 .ftabs button svg{width:24px;height:24px}
@@ -1251,10 +1269,26 @@ function tabsHTML(st) {
 }
 function huelleHTML(teile) {
   return `<div class="ph"><header class="kopf">${teile.kopf}</header><div class="inhalt" id="inhalt">${teile.inhalt}</div>
-    <div class="leiste" id="leiste">${teile.leiste || ""}</div>${teile.tabs}</div>`;
+    <div class="leiste" id="leiste">${teile.leiste || ""}</div>${teile.tabs}${teile.blatt || ""}</div>`;
 }
-// Zwischenfassungen, Task 3 bis 5 ersetzen sie
-function kopfHTML(st, lesen) { return `<h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>`; }
+// Kopf der Hülle: Team und Leitung, Hilfe, Restzeit, die Ziffern klein (Antippen öffnet den Tab Ziffern)
+function kopfHTML(st, lesen) {
+  const leitung = st.team.leaderName === S.myName && !lesen ? "Du leitest das Team" : `Teamleitung: ${esc(st.team.leaderName || "offen")}`;
+  return `<div class="k1">${logo()}<span class="tiertop" aria-hidden="true">${teamEmoji(st.team.name)}</span>
+      <div class="tn"><h1>Team ${esc(st.team.name)}</h1><span class="sub">${leitung}</span></div>
+      ${helpHref("") ? `<button class="hilfe-btn" data-act="t-hilfe">Hilfe</button>` : ""}${themaBtn()}</div>
+    <div class="k2">${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span>
+      <button class="minilock" data-act="t-tab" data-tab="ziffern" aria-label="Eure Ziffern: ${st.solvedCount} von ${st.totalStations}. Antippen zeigt alle.">
+        <span class="lbl">Ziffern</span>${lockHTML(st, true)}</button></div>
+    ${testHinweis(st)}`;
+}
+const testHinweis = st => st.testMode ? `<div class="msg warn" style="margin:8px 0 0">Testmodus: Entfernung und Antworten werden nicht geprüft.</div>` : "";
+// Das Hilfe-Blatt: liegt über der Hülle, schließt per Schließen, Escape oder Tipp daneben
+function hilfeBlattHTML(text) {
+  if (!S.team.hilfe) return "";
+  return `<div class="ueber" data-act="t-hilfe-zu"><div class="blatt" role="dialog" aria-modal="true" aria-labelledby="hilfe-t">
+    <h2 id="hilfe-t">Hilfe von der Spielleitung</h2>${helpBtn(text)}<button class="link" data-act="t-hilfe-zu">Schließen</button></div></div>`;
+}
 // Die eine Handlung, die gerade dran ist, steht immer unten. Mitlesende sehen dort, wer sie macht.
 function leisteHTML(st, s, lesen) {
   const leitung = vorname(st.team.leaderName) || "eure Teamleitung";
@@ -1281,14 +1315,14 @@ function leisteHTML(st, s, lesen) {
 }
 function teamTabHTML(st, lesen) { return `<div class="panel"><ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>`; }
 // Die Hülle fürs laufende Spiel: je nach Tab Weg (der lange Teil), Ziffern oder Team
-function spielHuelle(st, s, lesen, weg) {
+function spielHuelle(st, s, lesen, weg, hilfeText) {
   const zifferTab = `<div class="panel ziffern"><div class="bar"><h3>Eure Ziffern</h3>
     <span class="small muted nw">${st.solvedCount} von ${st.totalStations}</span></div>${lockHTML(st)}${routeHTML(st)}
     <p class="small muted" style="margin-top:6px">Die abgesetzte letzte Ziffer ist die Schlussziffer: die Einerstelle der Summe ${summeText(st)}.</p></div>`;
   const tab = S.team.tab || "weg";
   const inhalt = tab === "ziffern" ? zifferTab : tab === "team" ? teamTabHTML(st, lesen) : weg;
   document.body.classList.add("spiel");
-  return huelleHTML({ kopf: kopfHTML(st, lesen), inhalt, leiste: leisteHTML(st, s, lesen), tabs: tabsHTML(st) });
+  return huelleHTML({ kopf: kopfHTML(st, lesen), inhalt, leiste: leisteHTML(st, s, lesen), tabs: tabsHTML(st), blatt: hilfeBlattHTML(hilfeText) });
 }
 // Was ein Team sieht. lesen = Mitglied: sieht alles wie die Teamleitung, gibt aber nichts ein.
 // Ohne lesen = Teamleitung (Code kommt vom eigenen Handy): checkt ein, beantwortet Rätsel, gibt den Koffer-Code ein.
@@ -1298,19 +1332,20 @@ function teamAnsicht(st, lesen) {
   const ichSelbst = lesen && st.name && st.name === st.team.leaderName;
   const kennung = lesen ? `Team ${st.team.name}` : `Team ${st.team.name} (${st.team.code})`;
   const ende = albumHTML(st) + (lesen ? "" : (st.status === "finished" ? "" : leitungHTML(st)) + abmeldenHTML() + nav());
-  const kopf0 = `<div class="bar"><div>${logo()}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
+  // Kopf für die Phasen ohne Hülle; die Hülle hat ihren eigenen (kopfHTML)
+  const kopfAlt = `<div class="bar"><div>${logo()}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
     <div class="muted small">${lesen ? `Teamleitung: ${esc(st.team.leaderName || "offen")}`
       : st.team.leaderName === S.myName ? "Du leitest das Team" : `Teamleitung: ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div>${themaBtn()}</div>`;
-  let out = kopf0;
+    + testHinweis(st);
+  let out = "";
 
-  if (st.testMode) out += `<div class="msg warn">Testmodus: Entfernung und Antworten werden nicht geprüft.</div>`;
   // Liest die Teamleitung selbst nur mit, fehlt ihr der Einstieg zur Eingabe
   if (lesen && st.name && st.name === st.team.leaderName && st.status !== "finished")
     out += `<div class="panel"><h3>Du bist Teamleitung</h3>
       <p class="small muted">Hier siehst du nur mit. Eingeben (einchecken, antworten, Koffer-Code) kannst du unter Teamleitung, auf diesem Handy ohne Code.</p>
       <a class="btn" href="#/team">Zur Teamleitung</a></div>`;
 
-  if (st.status === "drawn") return out + `<div class="panel"><h3>Ihr seid startklar</h3>
+  if (st.status === "drawn") return kopfAlt + out + `<div class="panel"><h3>Ihr seid startklar</h3>
     <p>Alle Teams starten gleichzeitig. Wartet auf das Signal der Spielleitung.</p>${msgBox()}
     <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>`
     // vor dem Start ist der Mitlese-Link der wichtigste Handgriff: einmal in die Gruppe, dann sehen alle mit
@@ -1328,7 +1363,7 @@ function teamAnsicht(st, lesen) {
   if (st.place) {
     const koffer = st.place <= st.prizeCount;
     // Für die Aufsicht am Koffer zählt der Platz: der steht zuerst, das Schloss darunter
-    return out + `<div class="panel" style="text-align:center">
+    return kopfAlt + out + `<div class="panel" style="text-align:center">
       <div style="font-size:var(--fs-schild);line-height:1.1">${koffer ? platzZeichen(st.place, st.prizeCount) : "🏁"}</div>
       <h2>Platz ${st.place}</h2>
       <p>${koffer ? "Ihr habt einen Koffer gewonnen. Zeigt diesen Bildschirm der Spielleitung am Koffer."
@@ -1337,13 +1372,13 @@ function teamAnsicht(st, lesen) {
       + (st.status === "finished" && !lesen && S.pub ? ranglisteHTML(S.pub, st.team.name) : "")
       + (koffer ? helpBtn(`Stadtjagd: ${kennung} hat Platz ${st.place}.`) : "") + ende;
   }
-  if (st.status === "finished") return out + `<div class="panel"><h2>Das Spiel ist vorbei</h2>
+  if (st.status === "finished") return kopfAlt + out + `<div class="panel"><h2>Das Spiel ist vorbei</h2>
     <p>Die Spielleitung hat das Spiel beendet. ${lesen ? "Die Rangliste steht unten." : "Danke fürs Mitspielen."}</p>${msgBox()}</div>`
     + (lesen ? "" : (S.pub ? ranglisteHTML(S.pub, st.team.name) : `<div class="panel"><p class="muted">Rangliste wird geladen …</p></div>`)) + ende;
 
   // Gruppenselfie: die gelöste Station wartet auf ihr Foto, oder die Teamleitung ersetzt gerade eines
   if ((st.selfie && st.selfie.on && st.selfie.pending) || (!lesen && S.selfie)) {
-    return out + selfieHTML(st, lesen, leitung, ichSelbst)
+    return kopfAlt + out + selfieHTML(st, lesen, leitung, ichSelbst)
       + (unterwegs ? `<div class="panel ziffern"><div class="bar"><h3>Eure Ziffern</h3>
         <span class="small muted">${(st.digits || []).filter(d => d != null).length} von ${st.totalStations}</span></div>${lockHTML(st, true)}${routeHTML(st)}</div>` : "")
       + helpBtn(`Stadtjagd: Hier ist ${kennung}. Wir brauchen Hilfe beim Gruppenfoto.`) + ende;
@@ -1355,12 +1390,11 @@ function teamAnsicht(st, lesen) {
         ? `Noch ${left} von ${st.prizeCount} Koffern zu vergeben. Es zählt, wer den Code zuerst eingibt.`
         : "Alle Koffer sind vergeben. Gebt den Code trotzdem ein, dann steht ihr mit Platz in der Rangliste."}</p>
       ${lesen ? "" : `<p class="small muted" style="margin-top:6px">Tippt die ${zahl(ANZ(st) + 1)} Ziffern aus dem Schloss oben ab, wenn ihr am Koffer steht. Die App prüft dabei euren Standort.</p>`}${msgBox()}</div>`;
-    out += helpBtn(`Stadtjagd: Hier ist ${kennung}. Wir stehen am Koffer und brauchen Hilfe.`);
-    return spielHuelle(st, null, lesen, (out + ende).slice(kopf0.length));
+    return spielHuelle(st, null, lesen, out + ende, `Stadtjagd: Hier ist ${kennung}. Wir stehen am Koffer und brauchen Hilfe.`);
   }
 
   const s = st.station;
-  if (!s) return out + `<div class="panel"><p>Das Spiel läuft gerade nicht.</p></div>` + (lesen ? "" : nav());
+  if (!s) return kopfAlt + out + `<div class="panel"><p>Das Spiel läuft gerade nicht.</p></div>` + (lesen ? "" : nav());
 
   // Wechsel bei Mitlesenden (Rätsel offen, nächste Station): das neue Panel kurz umranden
   const neuKlasse = lesen && S.mitNeuBis > Date.now() ? "neu" : "";
@@ -1416,10 +1450,7 @@ function teamAnsicht(st, lesen) {
       ${pause ? "" : (okOben ? "" : msgBox()) + (lesen ? `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
           : `Fehlversuche: ${st.failedAttempts} von 3, danach 2 Minuten Pause.`}</p>` : "")}</div>`;
   }
-  out += helpBtn(`Stadtjagd: Hier ist ${kennung}. `
-    + (s ? `Wir brauchen Hilfe bei Station ${s.position}.` : "Wir brauchen Hilfe."));
-  const weg = (out + ende).slice(kopf0.length);
-  return spielHuelle(st, s, lesen, weg);
+  return spielHuelle(st, s, lesen, out + ende, `Stadtjagd: Hier ist ${kennung}. Wir brauchen Hilfe bei Station ${s.position}.`);
 }
 // Mitlese-Link fürs Team, mit passendem Satz je nach Phase
 function mitlesePanelHTML(st, text) {
@@ -2475,6 +2506,12 @@ const ACT = {
   },
   "t-gps"() { startGps(); },
   "t-tab"(d) { S.team.tab = d.tab; },
+  "t-hilfe"() { S.team.hilfe = true; },
+  // Ein Tipp ins Blatt selbst schließt nicht (sonst ginge der WhatsApp-Link verloren); der Schließen-Knopf und der Hintergrund schon
+  "t-hilfe-zu"(d, e) {
+    if (e && e.target.closest(".blatt") && !e.target.closest("button[data-act=t-hilfe-zu]")) return false;
+    S.team.hilfe = false;
+  },
   "t-kal"() { kalStart(); },
   "t-kal-skip"() { kalEnde(false); },
   async "t-check"() {
@@ -3515,7 +3552,7 @@ document.addEventListener("click", async e => {
   // Dauert es (Standort holen, Funk), sagt der Knopf selbst, was gerade passiert, auch über ein Neuzeichnen hinweg
   if (a.dataset.wait) { a.textContent = a.dataset.wait; a.setAttribute("aria-busy", "true"); S.wartetAuf = a.dataset.act; }
   try {
-    const r = await fn(a.dataset);
+    const r = await fn(a.dataset, e);
     S.busy = false; S.wartetAuf = null;
     // Geklappt: Felder leeren (render rettet sonst das Getippte). Abgelehnt oder Rückfrage: stehen lassen.
     // Der Merker nur, wenn jetzt auch neu gezeichnet wird: sonst verwürfe das nächste Neuzeichnen (10-s-Abruf,
@@ -3534,6 +3571,7 @@ document.addEventListener("change", e => {
   if (e.target.id === "tneu") { const b = $("#tabgeben"); if (b) b.disabled = !e.target.value; }
 });
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && S.team.hilfe) { S.team.hilfe = false; render(); return; }
   if (e.key === "Escape" && S.gross) { S.gross = null; render(); return; }
   if (e.key === "Escape" && S.gps.kal) { kalEnde(false); render(); return; }
   if (e.key === "Escape" && S.admin.confirm) { S.admin.confirm = null; render(); return; }

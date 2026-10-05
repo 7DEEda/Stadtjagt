@@ -84,7 +84,7 @@ with sync_playwright() as pw:
     print("Team, eine Station")
     pg.set_viewport_size({"width": 390, "height": 844})
     pg.goto("http://127.0.0.1:8822/app.html?szenario=teststation"); pg.wait_for_selector(".ph"); pg.click(".ftabs [data-tab=ziffern]"); pg.wait_for_selector(".lock")
-    pruef(pg.locator(".lock .wheel").count() == 2, f"Schloss mit zwei Rädern ({pg.locator('.lock .wheel').count()})")
+    pruef(pg.locator("#inhalt .lock .wheel").count() == 2, f"Schloss mit zwei Rädern ({pg.locator('#inhalt .lock .wheel').count()})")
     t = pg.inner_text("#app"); pg.click(".ftabs [data-tab=weg]"); t += pg.inner_text("#app")
     pruef("Station 1 von 1" in t and "EDEKA Grenzallee" in t, "Station 1 von 1, EDEKA")
     pruef("fünf" not in t and "sechs" not in t, "keine Rede von fünf oder sechs Ziffern")
