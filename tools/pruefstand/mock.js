@@ -166,7 +166,7 @@
     "admin-login": { welt: "running", view: "admin" },
     "admin-karte": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, fertig: ["Adler"], settle: 3500 },
     "admin-teams": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
-      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=teams]" }, { wait: 300 }] },
+      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=live]" }, { wait: 300 }] },
     "teststation": { welt: "running", view: "team", ls: IM_TEAM, testMode: true, teststation: true, fuchs: { solved: 0 } },
     "waechter-schlecht": { welt: "running", view: "team", testMode: true, teststation: true, gps: GPS_UNTERWEGS, steps: kompassAn,
       // Datum von heute (lokal, wie heute() im Spiel), sonst gilt der Vermerk als verfallen

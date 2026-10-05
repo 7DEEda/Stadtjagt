@@ -149,6 +149,32 @@ with sync_playwright() as pw:
     pg.goto(f"{BASIS}/app.html?szenario=leitung-unterwegs"); pg.wait_for_selector(".ph")
     pruef("Abmelden" not in pg.inner_text("#inhalt") and "Mitlesen fürs Team" not in pg.inner_text("#inhalt"), "Weg-Tab ohne Abmelden und Mitlese-Link")
 
+    print("Spielleitung, Karte und Teams")
+    pg.set_viewport_size({"width": 1440, "height": 900})
+    pg.goto(f"{BASIS}/app.html?szenario=admin-karte"); pg.wait_for_selector("#map .leaflet-marker-icon", timeout=25000)
+    reiter = [x.strip() for x in pg.locator(".tabs [role=tab]").all_inner_texts()]
+    pruef(reiter[:2] == ["Karte und Teams", "Zeitachse"], f"Reiter: {reiter}")
+    pruef("Auslosen" not in reiter and "Teams" not in reiter, "im Spiel kein Reiter Auslosen")
+    m, l = pg.locator("#map").bounding_box(), pg.locator("#teamfeld").bounding_box()
+    pruef(l["x"] > m["x"] + m["width"] - 2 and abs(l["y"] - m["y"]) < 40, "Teamliste rechts neben der Karte")
+    pruef(pg.locator("#app").bounding_box()["width"] > 1300, "volle Breite")
+    pruef(pg.locator("#tlrows").count() == 0, "Zeitachse nicht mehr unter der Karte")
+    pg.click("[data-act=a-tab][data-tab=zeit]"); pg.wait_for_selector("#tlrows")
+    pruef(pg.locator("#tlslider").count() == 1, "Zeitachse mit Schieber im eigenen Reiter")
+    pg.click("[data-act=a-tab][data-tab=live]"); pg.wait_for_selector("#map .leaflet-marker-icon", timeout=25000)
+    pg.click(".kartefuss [data-act=a-full]"); pg.wait_for_timeout(300)
+    vb = pg.locator("#map").bounding_box()
+    pruef(vb["width"] >= 1430 and vb["height"] >= 890, f"Vollbild füllt das Fenster ({vb})")
+    pg.click(".kartezu"); pg.wait_for_timeout(200)
+    pg.set_viewport_size({"width": 820, "height": 1180})
+    pg.goto(f"{BASIS}/app.html?szenario=admin-karte"); pg.wait_for_selector("#teamfeld")
+    m, l = pg.locator("#map").bounding_box(), pg.locator("#teamfeld").bounding_box()
+    pruef(l["y"] >= m["y"] + m["height"] - 2, "Tablet hoch: Liste unter der Karte")
+    pg.goto(f"{BASIS}/app.html?szenario=admin-auslosen"); pg.wait_for_selector(".tabs")
+    reiter = [x.strip() for x in pg.locator(".tabs [role=tab]").all_inner_texts()]
+    pruef("Auslosen" in reiter, f"vor dem Spiel gibt es den Reiter Auslosen ({reiter})")
+    pg.set_viewport_size({"width": 1440, "height": 900})
+
     pruef(not err, f"keine Seitenfehler {err[:2]}")
     b.close()
 

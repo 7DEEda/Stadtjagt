@@ -67,7 +67,7 @@ with sync_playwright() as pw:
     pruef("Haupteingang TSE" in pg.inner_text("#teststation"), "Zusammenfassung zeigt den neuen Start")
     pruef(pg.locator("[data-act=a-startpkt-edit][data-route=echt]").count() == 1, "Start der echten Route ebenfalls bearbeitbar")
     print("Karte der Spielleitung im Testmodus")
-    pg.click("[data-act=a-tab][data-tab=map]"); pg.wait_for_selector(".leaflet-marker-icon", timeout=25000); pg.wait_for_timeout(800)
+    pg.click("[data-act=a-tab][data-tab=live]"); pg.wait_for_selector(".leaflet-marker-icon", timeout=25000); pg.wait_for_timeout(800)
     # die gespielten Teams stehen im Prüfstand in Prag; geprüft wird, wo Start-Haus und Station liegen
     orte = pg.evaluate("layers.stations.map(l => l.getLatLng ? [l.getLatLng().lat, l.getLatLng().lng] : null).filter(Boolean)")
     pruef(orte and all(abs(o[0] - 52.47) < 0.05 for o in orte) and [52.4701, 13.4628] in [[round(o[0], 4), round(o[1], 4)] for o in orte], f"Start-Haus (eingetragen) und Teststation in Berlin ({orte})")

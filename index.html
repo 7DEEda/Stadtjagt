@@ -117,6 +117,7 @@ main > :not(.panel):not(.msg):not(#map):not(.overlay):not(.hochhalten){text-shad
 .btn,.chip,.tchip,input,select,textarea,.panel,.msg,.dialog,.hochhalten{text-shadow:none}
 main{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:20px 16px 70px}
 main.wide{max-width:900px}
+main.voll{max-width:1680px;padding:16px 24px 40px}
 h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
 h1{font-size:var(--fs-xxl);font-weight:700}h2{font-size:var(--fs-xl);font-weight:700}h3{font-size:var(--fs-l);font-weight:600}
 p{margin:.4em 0 0}
@@ -263,6 +264,15 @@ th{font:600 var(--fs-s) var(--body);color:var(--muted)}
 #map{height:62vh;min-height:320px;border-radius:12px;border:1px solid var(--line);margin-top:12px;background:var(--paper)}
 /* Leaflet setzt beim Anlegen position:relative inline, darum !important; sonst bleibt die Karte im Seitenfluss */
 #map.full{position:fixed!important;inset:0;height:100vh;height:100dvh;z-index:50;border-radius:0;margin:0}
+/* Spielleitung: Karte links, Teamliste rechts; unter 1024 px untereinander */
+.lv{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,440px);gap:16px;align-items:start;margin-top:14px}
+.lv .kartefeld #map{height:calc(100vh - 230px);min-height:420px;margin-top:0}
+.lv .kartefeld #map.full{position:fixed!important;inset:0;height:100vh;height:100dvh;min-height:0;z-index:50;border-radius:0}
+.kartefuss{margin-top:8px}
+.nw{white-space:nowrap}
+.teamfeld{margin-top:0;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding:0}
+@media (max-width:1023px){.lv{grid-template-columns:minmax(0,1fr)}.lv .kartefeld #map{height:56vh}.teamfeld{position:static;max-height:none}}
+.tabs .loesch{margin-left:auto;color:var(--err)}
 .kartezu{position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;z-index:1001;margin:0!important;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 /* Lücke in der Route: wie lange das Team kein GPS-Signal gemeldet hat */
 .maplueck{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;background:#fff;color:#17302A;border:1.5px solid var(--c,#5B6F68);border-radius:99px;padding:1px 7px;font:600 var(--fs-xs) var(--body);box-shadow:0 1px 3px rgba(17,17,17,.25)}
@@ -444,7 +454,7 @@ input[type=date]{min-height:50px}
   .btn.sm{margin:0 8px 8px 0}.tabs{gap:8px}.tabs button{padding:13px 14px}
 }
 /* Teamleitung am Tablet: breitere Spalte, Kompass und Entfernung auf Armlänge lesbar */
-@media (min-width:700px){main:not(.wide){max-width:600px}.compass.gross svg{width:180px;height:180px}:root{--fs-zahl:56px}}
+@media (min-width:700px){main:not(.wide):not(.voll){max-width:600px}.compass.gross svg{width:180px;height:180px}:root{--fs-zahl:56px}}
 </style>
 </head>
 <body>
@@ -605,7 +615,7 @@ const S = {
   gps: { pos: null, acc: null, heading: null, gpsHeading: null, gpsHeadingAt: null, needle: 0, on: false, err: null, kompass: "unbekannt", lastSent: 0, lastSentPos: null, sentAt: null,
          // kompassAcc: Genauigkeit in Grad (nur iOS), kal: laufendes Einmessen, kalOk: Ergebnis für den Hinweis danach
          kompassAcc: null, kal: null, kalOk: null },
-  admin: { pin: SS.getItem("sj.pin") || null, state: null, tab: "map", edit: null, full: false,
+  admin: { pin: SS.getItem("sj.pin") || null, state: null, tab: "live", edit: null, full: false,
            // Routen: tracks[teamId] = {name, points:[[lat,lng,ms]], stations:[...]}
            tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false, confirm: null,
            draw: { mode: "size", value: 10 } }
@@ -1869,6 +1879,34 @@ function ekVorschau() {
     : f >= 1 ? "Name lesbar, Ortshinweis sichtbar" : f > 0 ? `${offen} von ${folge.length} Buchstaben` : "alles verschlüsselt");
 }
 
+/* Zwischenfassung bis Task 7: die bisherige Tabelle mit Leitung, Code, Stand und Eingriffen */
+function teamlisteHTML(st) {
+  const laeuft = st.status === "running" || st.status === "finished";
+    // im Spiel nach Platz und Fortschritt, sonst alphabetisch
+    const reihe = laeuft ? [...(st.teams || [])].sort((a, b) => (a.place || 99) - (b.place || 99)
+      || b.solved - a.solved || a.name.localeCompare(b.name, "de")) : (st.teams || []);
+    const spaeter = laeuft ? `<p class="small muted" style="margin-top:12px">Neu auslosen geht erst wieder nach „Fortschritt zurücksetzen“ im Reiter Daten löschen.
+        Solange das Spiel ${st.status === "running" ? "läuft" : "beendet ist"}, wäre sonst der Fortschritt der Teams verloren.</p>` : "";
+    return `<div style="padding:16px"><table><tr><th>Team</th><th>Code</th><th>Stand</th><th></th></tr>
+      ${reihe.map(t => `<tr><td><b>${teamEmoji(t.name)} ${esc(t.name)}</b><br><span class="small muted">${t.memberCount} Pers., Leitung</span><br>
+          <select class="sm" data-chg="a-leader" data-id="${t.id}" data-ort="t:${t.id}" aria-label="Teamleitung von Team ${esc(t.name)}">
+            ${!t.leaderId ? `<option value="" selected>offen</option>` : ""}
+            ${(st.participants || []).filter(p => p.teamId === t.id).map(p => `<option value="${esc(p.id)}" ${p.id === t.leaderId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}
+          </select></td>
+        <td class="small" style="white-space:nowrap">${esc(t.code)}<br>${t.readToken ? `<button class="btn sm alt" style="margin-top:6px" data-act="a-mit" data-id="${t.id}" data-ort="t:${t.id}" data-token="${esc(t.readToken)}" data-name="${esc(t.name)}">Mitlese-Link</button>` : ""}</td>
+        <td><div class="prog"><span style="width:${(t.solved / Math.max(1, aktiv(st).length)) * 100}%"></span></div>
+          <span class="small muted">${t.solved} / ${aktiv(st).length} gelöst</span>${zustandHTML(t, st)}
+          ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}
+          ${msgBox("t:" + t.id)}</td>
+        <td>${st.status === "running" && t.currentPosition && !t.place ? `<div style="display:flex;flex-direction:column;gap:6px">
+          ${"checkedInAt" in t && t.checkedInAt ? "" : `<button class="btn sm alt" data-act="a-danger" data-key="unlock" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Freischalten</button>`}
+          ${"checkedInAt" in t && !t.checkedInAt ? "" : `<button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Rätsel werten</button>`}</div>` : ""}</td></tr>`).join("")}
+      </table><p class="small muted">„Freischalten“ steht da, solange ein Team unterwegs ist, und ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.
+        „Rätsel werten“ steht da, sobald es eingecheckt hat, und zählt die Station als gelöst, wenn ein Rätsel klemmt.
+        Die Teamleitung wechselst du über das Auswahlfeld; die neue Leitung ist auf ihrem eigenen Handy gleich drin. Den Code brauchst du nur, wenn du selbst am Tablet für ein Team eingibst.
+        „Mitlese-Link“ kopiert den Link, mit dem Nachzügler bei ihrem Team mitlesen.</p>${spaeter}</div>`;
+}
+function zuletztZeichnen() { }   // Task 8
 /* ---------- Spielleitung ---------- */
 function viewAdmin() {
   const A = S.admin;
@@ -1892,18 +1930,24 @@ function viewAdmin() {
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
   if (missing.length) out += `<div class="msg err">Ohne Koordinaten kann dort niemand einchecken. Betroffen: Station ${missing.map(s => s.position).join(", ")}.</div>`;
 
-  const tabs = [["map", "Karte"], ["teams", "Teams"], ["people", "Teilnehmende"], ["stations", "Stationen"], ["fotos", "Fotos"], ["danger", "Daten löschen"]];
-  out += `<div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${A.tab === k}" data-act="a-tab" data-tab="${k}">${l}</button>`).join("")}</div>`;
+  const laeuft = st.status === "running" || st.status === "finished";
+  if (A.tab === "teams" && laeuft) A.tab = "live";   // alter gemerkter Zustand: Auslosen gibt es im Spiel nicht mehr
+  const tabs = [["live", "Karte und Teams"], ["zeit", "Zeitachse"], ...(laeuft ? [] : [["teams", "Auslosen"]]),
+    ["people", "Teilnehmende"], ["stations", "Stationen"], ["fotos", "Fotos"], ["danger", "Daten löschen"]];
+  out += `<div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${A.tab === k}" data-act="a-tab" data-tab="${k}"${k === "danger" ? ' class="loesch"' : ""}>${l}</button>`).join("")}</div>`;
 
-  if (A.tab === "map") {
+  if (A.tab === "live") {
     const withPos = (st.teams || []).filter(t => t.position);
-    out += `<div id="map" class="${A.full ? "full" : ""}"></div>
-      <button class="btn sm kartezu" data-act="a-full" ${A.full ? "" : "hidden"}>Vollbild beenden</button>
-      <div class="bar" style="margin-top:8px"><span class="small muted">${withPos.length} von ${(st.teams || []).length} Teams melden eine Position. Aktualisierung alle 10 Sekunden. Gestrichelt: Strecke ohne GPS-Signal, mit Dauer.</span>
-      <span><button class="btn sm alt" data-act="a-alle">Alle zeigen</button><button class="btn sm alt" data-act="a-full">Vollbild</button></span></div>
-      <div class="legend" id="legend">${(st.teams || []).map((t, i) => `<button class="tchip ${A.hidden[t.id] ? "off" : ""}" style="--c:${teamColor(i)}" data-act="a-team" data-id="${t.id}"><i></i>${teamEmoji(t.name)} ${esc(t.name)}</button>`).join("")}</div>`;
-    const without = (st.teams || []).filter(t => !t.position);
-    if (without.length) out += `<p class="small muted">Ohne Position: ${without.map(t => esc(t.name)).join(", ")}</p>`;
+    out += `<div class="lv"><section class="kartefeld">
+        <div id="map" class="${A.full ? "full" : ""}"></div>
+        <button class="btn sm kartezu" data-act="a-full" ${A.full ? "" : "hidden"}>Vollbild beenden</button>
+        <div class="bar kartefuss"><span class="small muted"><b class="nw">${withPos.length} von ${(st.teams || []).length}</b> Teams mit Standort, alle 10 s. Gestrichelt: Strecke ohne GPS-Signal.</span>
+          <span><button class="btn sm alt" data-act="a-alle">Alle zeigen</button><button class="btn sm alt" data-act="a-full">Vollbild</button></span></div>
+        <div class="legend" id="legend">${(st.teams || []).map((t, i) => `<button class="tchip ${A.hidden[t.id] ? "off" : ""}" style="--c:${teamColor(i)}" data-act="a-team" data-id="${t.id}"><i></i>${teamEmoji(t.name)} ${esc(t.name)}</button>`).join("")}</div>
+        <div class="panel" id="zuletzt"></div>
+      </section><section class="teamfeld panel" id="teamfeld">${teamlisteHTML(st)}</section></div>`;
+  }
+  if (A.tab === "zeit") {
     out += `<div class="panel"><div class="bar"><h3>Zeitachse</h3><span class="small muted" id="tlspan"></span></div>
       <div class="tl-head">
         <button class="btn sm" data-act="a-play" id="tlplay">Abspielen</button>
@@ -1917,7 +1961,6 @@ function viewAdmin() {
   }
   if (A.tab === "teams") {
     const n = (st.participants || []).length, d = A.draw;
-    const laeuft = st.status === "running" || st.status === "finished";
     // Nach dem Auslosen ist Starten der nächste Schritt, nicht Neu auslosen
     if (st.status === "drawn") out += `<div class="panel"><h3>Bereit zum Start</h3>
         <p class="small muted">Die Teamleitungen sind auf ihrem eigenen Handy unter „Teamleitung“ gleich drin, einen Code braucht niemand. Vorher die Mitlese-Links in die Gruppen schicken. Die App fragt vor dem Start noch einmal nach.</p>
@@ -1944,29 +1987,7 @@ function viewAdmin() {
         <button class="btn ${st.status === "drawn" ? "alt" : ""}" data-act="a-draw" data-wait="Wird ausgelost …" ${n < (st.testMode ? 1 : 2) ? "disabled" : ""}>${st.status === "drawn" ? "Neu auslosen" : "Auslosen"}</button>
         ${n < (st.testMode ? 1 : 2) ? `<p class="small muted">Es müssen mindestens ${st.testMode ? "eine Person" : "zwei Personen"} angemeldet sein.</p>` : ""}</div>`;
     }
-    // im Spiel nach Platz und Fortschritt, sonst alphabetisch
-    const reihe = laeuft ? [...(st.teams || [])].sort((a, b) => (a.place || 99) - (b.place || 99)
-      || b.solved - a.solved || a.name.localeCompare(b.name, "de")) : (st.teams || []);
-    const spaeter = laeuft ? `<p class="small muted" style="margin-top:12px">Neu auslosen geht erst wieder nach „Fortschritt zurücksetzen“ im Reiter Daten löschen.
-        Solange das Spiel ${st.status === "running" ? "läuft" : "beendet ist"}, wäre sonst der Fortschritt der Teams verloren.</p>` : "";
-    out += `<div class="panel"><table><tr><th>Team</th><th>Code</th><th>Stand</th><th></th></tr>
-      ${reihe.map(t => `<tr><td><b>${teamEmoji(t.name)} ${esc(t.name)}</b><br><span class="small muted">${t.memberCount} Pers., Leitung</span><br>
-          <select class="sm" data-chg="a-leader" data-id="${t.id}" data-ort="t:${t.id}" aria-label="Teamleitung von Team ${esc(t.name)}">
-            ${!t.leaderId ? `<option value="" selected>offen</option>` : ""}
-            ${(st.participants || []).filter(p => p.teamId === t.id).map(p => `<option value="${esc(p.id)}" ${p.id === t.leaderId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}
-          </select></td>
-        <td class="small" style="white-space:nowrap">${esc(t.code)}<br>${t.readToken ? `<button class="btn sm alt" style="margin-top:6px" data-act="a-mit" data-id="${t.id}" data-ort="t:${t.id}" data-token="${esc(t.readToken)}" data-name="${esc(t.name)}">Mitlese-Link</button>` : ""}</td>
-        <td><div class="prog"><span style="width:${(t.solved / Math.max(1, aktiv(st).length)) * 100}%"></span></div>
-          <span class="small muted">${t.solved} / ${aktiv(st).length} gelöst</span>${zustandHTML(t, st)}
-          ${t.place ? `<br><b class="small" style="white-space:nowrap">${t.place <= (st.prizeCount ?? 3) ? platzZeichen(t.place, st.prizeCount ?? 3) + " " : ""}Platz ${t.place}, ${uhrzeit(t.finishedAt)}</b>` : ""}
-          ${msgBox("t:" + t.id)}</td>
-        <td>${st.status === "running" && t.currentPosition && !t.place ? `<div style="display:flex;flex-direction:column;gap:6px">
-          ${"checkedInAt" in t && t.checkedInAt ? "" : `<button class="btn sm alt" data-act="a-danger" data-key="unlock" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Freischalten</button>`}
-          ${"checkedInAt" in t && !t.checkedInAt ? "" : `<button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Rätsel werten</button>`}</div>` : ""}</td></tr>`).join("")}
-      </table><p class="small muted">„Freischalten“ steht da, solange ein Team unterwegs ist, und ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.
-        „Rätsel werten“ steht da, sobald es eingecheckt hat, und zählt die Station als gelöst, wenn ein Rätsel klemmt.
-        Die Teamleitung wechselst du über das Auswahlfeld; die neue Leitung ist auf ihrem eigenen Handy gleich drin. Den Code brauchst du nur, wenn du selbst am Tablet für ein Team eingibst.
-        „Mitlese-Link“ kopiert den Link, mit dem Nachzügler bei ihrem Team mitlesen.</p>${spaeter}</div>`;
+    out += `<div class="panel">${teamlisteHTML(st)}</div>`;
   }
   if (A.tab === "people") {
     // Testdaten nur vor dem Auslosen oder im Testmodus: am Eventtag steht hier sonst ein Fehlgriff neben "Alle eintragen"
@@ -3469,7 +3490,7 @@ function render() {
   if (!S.felderFrisch && S.feldKontext === kontext)
     app.querySelectorAll("input[id]:not([type=range]):not([type=password]), textarea[id], select[id]").forEach(el => { getippt[el.id] = el.value; });
   S.felderFrisch = false;
-  app.className = S.view === "admin" && S.admin.pin ? "wide" : "";
+  app.className = S.view === "admin" && S.admin.pin ? "voll" : "";
   const stand = S.view === "admin" ? S.admin.state : S.view === "team" ? S.team.state : S.pub;
   if (stand && stand.background) hintergrundSetzen(stand.background);
   // Liegt ein Dialog oder die Hochhalten-Ansicht darüber, scrollt die Seite dahinter nicht mit
@@ -3506,9 +3527,9 @@ function render() {
     if (b) { b.textContent = b.dataset.wait; b.disabled = true; b.setAttribute("aria-busy", "true"); }
   }
   wachHaltenPruefen();
-  if (S.view === "admin" && S.admin.pin && S.admin.tab === "map") {
-    drawMap(true); renderTimeline();
-    syncTracks().then(() => { drawMap(false); renderTimeline(); }).catch(() => { });
+  if (S.view === "admin" && S.admin.pin && (S.admin.tab === "live" || S.admin.tab === "zeit")) {
+    if (S.admin.tab === "live") drawMap(true); else renderTimeline();
+    syncTracks().then(() => { if (S.admin.tab === "live") { drawMap(false); zuletztZeichnen(); } else renderTimeline(); }).catch(() => { });
   }
   if (S.view === "team" || (S.view === "public" && S.mit)) liveUpdate();
   if (S.admin.confirm) ($("#dlgword") || $("#dlgok"))?.focus();
@@ -3627,7 +3648,7 @@ setInterval(() => {
       S.admin.state = s;
       const netzWeg = netzOk();
       if (S.admin.tab === "fotos" && (s.photoCount || 0) !== (S.admin.fotos || []).length) fotosLaden();
-      if (S.admin.tab === "map") { syncTracks().then(() => { drawMap(false); renderTimeline(); }).catch(() => { }); if (netzWeg && !busyTyping) render(); }
+      if (S.admin.tab === "live" || S.admin.tab === "zeit") { syncTracks().then(() => { if (S.admin.tab === "live") { drawMap(false); zuletztZeichnen(); } else renderTimeline(); }).catch(() => { }); if (netzWeg && !busyTyping) render(); }
       else if (!busyTyping && !S.admin.edit && !S.admin.confirm && !S.gross) render();
     }).catch(() => { });
     return;

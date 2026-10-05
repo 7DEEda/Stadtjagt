@@ -367,7 +367,7 @@ with sync_playwright() as pw:
     pg3 = b.new_page(viewport={"width": 1180, "height": 820}); pg3.set_default_timeout(15000)
     pg3.on("pageerror", lambda e: err.append(str(e)))
     pg3.goto("http://127.0.0.1:8826/app.html?szenario=admin-teststation"); pg3.wait_for_selector(".tabs")
-    pg3.click("[data-act=a-tab][data-tab=teams]"); pg3.wait_for_timeout(500)
+    pg3.click("[data-act=a-tab][data-tab=live]"); pg3.wait_for_timeout(500)
     zeile = pg3.locator("text=Kompass falsch, Pfeil nach Laufrichtung")
     pruef(zeile.count() == 1, f"Reiter Teams: genau ein Team mit Hinweis ({zeile.count()})")
     pruef(pg3.locator(".card, tr, li", has=pg3.locator("text=Fuchs")).filter(has=zeile).count() >= 1, "der Hinweis steht bei Fuchs")
