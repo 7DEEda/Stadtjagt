@@ -1893,7 +1893,9 @@ Gebaut auf Branch `umbau-weiterentwicklung` (nicht gemerged, nicht gepusht), nac
   unten feste Aktionsleiste (Einchecken / Antwort mit Zeile Fehlversuche /
   Koffer-Code; Mitlesende sehen, wer eingibt; Fehler erscheinen in der Leiste,
   `data-ort="leiste"`). Drei Reiter: Weg bzw. Rätsel, Ziffern, Team (Mitlese-Link,
-  Mitglieder, Album, Leitung abgeben, Abmelden). Scrollposition je Reiter bleibt
+  Mitglieder, Team-Zeichen zum Hochhalten, Album, Zieleinlauf bzw. Rangliste, Leitung
+  abgeben, Abmelden). Die Mitlese-Ansicht in der Hülle rendert nichts hinter ihr
+  (nur das Hochhalten-Fenster); render() setzt den Fensterscroll zurück. Scrollposition je Reiter bleibt
   über das 10-s-Neuzeichnen. Phasen Auslosen, Platz, Beendet und Selfie behalten
   die alte lange Seite. Viewport `interactive-widget=resizes-content`.
 - **Spielleitung:** Kopf und Reiterleiste in voller Breite. Reiter "Karte und

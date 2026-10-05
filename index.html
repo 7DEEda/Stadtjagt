@@ -939,6 +939,12 @@ function viewSetup() {
 }
 
 /* ---------- Öffentliche Ansicht ---------- */
+// Ganzer Bildschirm in Teamfarbe, zum Hochhalten auf dem Platz (Anmeldeseite und Tab Team)
+function hochHTML(name) {
+  const farbe = teamColor(Math.max(0, ((S.pub && S.pub.teams) || []).findIndex(x => x.name === name)));
+  return `<div class="hochhalten ${schriftAuf(farbe) === "#FFFFFF" ? "" : "hellgrund"}" style="--c:${farbe};--c-ink:${schriftAuf(farbe)}" data-act="pub-hoch-zu" role="button" aria-label="Schließen">
+      <div class="riesig" aria-hidden="true">${teamEmoji(name)}</div><b>Team ${esc(name)}</b><small>Tippen zum Schließen</small></div>`;
+}
 function viewPublic() {
   const p = S.pub;
   if (!p) return brand("Teamfahrt") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
@@ -966,7 +972,8 @@ function viewPublic() {
   // Mitlesen: wer sich auf diesem Handy angemeldet hat, sieht ab dem Start, was die Teamleitung sieht
   const mit = S.mit && S.mit.team && (p.status === "running" || p.status === "finished") ? S.mit : null;
   if (mit) out = teamAnsicht(mit, true);
-  const hochFarbe = farbe => `--c:${farbe};--c-ink:${schriftAuf(farbe)}`;
+  // Die Hülle füllt den Bildschirm und scrollt selbst: nichts darf dahinter angehängt werden, nur das Hochhalten-Fenster
+  if (mit && document.body.classList.contains("spiel")) return out + (S.hoch ? hochHTML(mit.team.name) : "");
 
   const vorbei = p.status === "finished";
   out += ranglisteHTML(p, mit ? mit.team.name : null);
@@ -996,9 +1003,7 @@ function viewPublic() {
       <ul class="names">${(t.members || []).map(m => `<li class="${m === t.leaderName ? "leader" : ""}">${esc(m)}</li>`).join("")}</ul></div>`
       // vor dem Start: Standort und Kompass schon freigeben, am Übungsziel ausprobieren
       + (S.mit && S.mit.team && p.status === "drawn" ? vorbereitenHTML() : "");
-    // ganzer Bildschirm in Teamfarbe, zum Hochhalten auf dem Platz
-    if (S.hoch) out += `<div class="hochhalten ${schriftAuf(farbe) === "#FFFFFF" ? "" : "hellgrund"}" style="${hochFarbe(farbe)}" data-act="pub-hoch-zu" role="button" aria-label="Schließen">
-      <div class="riesig" aria-hidden="true">${teamEmoji(t.name)}</div><b>Team ${esc(t.name)}</b><small>Tippen zum Schließen</small></div>`;
+    if (S.hoch) out += hochHTML(t.name);
   }
   // Teamsuche: groß nur auf Handys, die ihr eigenes Team nicht kennen (von anderen angemeldet,
   // von der Spielleitung nachgetragen, anderer Browser). Sonst ein kleiner Link für Kollegen.
@@ -1288,7 +1293,7 @@ function viewTeam() {
   }
   const st = S.team.state;
   if (!st) return brand("Teamleitung") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
-  return teamAnsicht(st, false);
+  return teamAnsicht(st, false) + (S.hoch && document.body.classList.contains("spiel") ? hochHTML(st.team.name) : "");
 }
 // Umbau Weiterentwicklung: das Spiel am Handy als feste Hülle. Kopf und Tabs stehen, nur der Inhalt scrollt.
 const TAB_ICON = {
@@ -1346,7 +1351,7 @@ function leisteHTML(st, s, lesen) {
     return `<label for="tans">Eure Antwort</label>
       <div class="reihe"><input id="tans" ${s.numeric ? 'inputmode="numeric" pattern="[0-9]*"' : ""} autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" ${pause ? "disabled" : ""}>
       <button class="btn" data-act="t-answer" data-ort="leiste" data-wait="Wird geprüft …" ${S.busy || pause ? "disabled" : ""}>Prüfen</button></div>
-      ${pause ? "" : `<p class="small muted" style="margin:6px 0 0;white-space:nowrap">${st.testMode ? "Testmodus: jede Antwort zählt" : `Fehlversuche: ${st.failedAttempts} von 3, dann 2 Minuten Pause`}</p>`}${msgBox("leiste")}`;
+      ${pause ? "" : `<p class="small muted" style="margin:6px 0 0">${st.testMode ? "Testmodus: jede Antwort zählt" : `Fehlversuche: <span class="nw">${st.failedAttempts} von 3</span>, dann 2 Minuten Pause`}</p>`}${msgBox("leiste")}`;
   }
   const g = S.gps, hasTarget = s.lat != null && s.lng != null;
   if (!g.on && !st.testMode) return `<button class="btn" data-act="t-gps">Standort und Kompass freigeben</button>`;
@@ -1356,7 +1361,10 @@ function teamTabHTML(st, lesen) {
   const mitglieder = `<div class="panel"><h3>Mitglieder <span class="small muted nw">${(st.team.members || []).length}</span></h3>
     <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}${m === st.team.leaderName ? ' <span class="chip">Teamleitung</span>' : ""}</li>`).join("")}</ul></div>`;
   return (lesen ? "" : mitlesePanelHTML(st, "Wer diesen Link öffnet, sieht auf dem eigenen Handy alles mit: Station, Rätsel, Ziffern. Eingeben kannst nur du."))
-    + mitglieder + albumHTML(st) + (lesen ? "" : leitungHTML(st, true) + abmeldenHTML() + nav());
+    + mitglieder
+    + `<p style="text-align:center;margin:10px 0 0"><button class="link" data-act="pub-hoch">${teamEmoji(st.team.name)} Team-Zeichen zum Hochhalten</button></p>`
+    + albumHTML(st) + (S.pub ? ranglisteHTML(S.pub, st.team.name) : "")
+    + (lesen ? "" : leitungHTML(st, true) + abmeldenHTML() + nav());
 }
 // Die Hülle fürs laufende Spiel: je nach Tab Weg (der lange Teil), Ziffern oder Team
 function spielHuelle(st, s, lesen, weg, hilfeText) {
@@ -1379,7 +1387,7 @@ function teamAnsicht(st, lesen) {
   // Kopf für die Phasen ohne Hülle; die Hülle hat ihren eigenen (kopfHTML)
   const kopfAlt = `<div class="bar"><div>${logo()}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
     <div class="muted small">${lesen ? `Teamleitung: ${esc(st.team.leaderName || "offen")}`
-      : st.team.leaderName === S.myName ? "Du leitest das Team" : `Teamleitung: ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div>${themaBtn()}</div>`;
+      : st.team.leaderName === S.myName ? "Du leitest das Team" : `Teamleitung: ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div>${themaBtn()}</div>`
     + testHinweis(st);
   let out = "";
 
@@ -1921,7 +1929,7 @@ const problemListe = st => (st.teams || []).map(t => ({ t, p: problemVon(t, st) 
   .sort((a, b) => (a.p.stufe === b.p.stufe ? 0 : a.p.stufe === "fehler" ? -1 : 1) || a.t.name.localeCompare(b.t.name, "de")).map(x => x.t);
 function teamZeile(t, i, st) {
   const p = problemVon(t, st), sel = S.admin.sel === t.id, gesamt = aktiv(st).length;
-  const wo = t.place ? `im Ziel, Platz ${t.place}` : t.checkedInAt ? `an Station ${t.currentPosition}` : t.currentPosition ? `zu Station ${t.currentPosition}` : `${t.memberCount} Pers.`;
+  const wo = t.place ? `im Ziel, Platz\u00a0${t.place}` : t.checkedInAt ? `an Station ${t.currentPosition}` : t.currentPosition ? `zu Station ${t.currentPosition}` : `${t.memberCount} Pers.`;
   const knopf = st.status !== "running" || t.place || !t.currentPosition ? ""
     : !t.checkedInAt ? `<button class="btn sm alt" data-act="a-danger" data-key="unlock" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Freischalten</button>`
       : `<button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Rätsel werten</button>`;
@@ -1953,12 +1961,12 @@ function ereignisse(st) {
   (st.teams || []).forEach(t => {
     const tr = A.tracks && A.tracks[t.id];
     ((tr && tr.stations) || []).forEach(s => {
-      if (s.checkedInAt) liste.push({ at: new Date(s.checkedInAt).getTime(), teamId: t.id, text: `eingecheckt an Station ${s.position}`, art: "" });
-      if (s.solvedAt) liste.push({ at: new Date(s.solvedAt).getTime(), teamId: t.id, text: `Ziffer von Station ${s.position}`, art: "ok" });
+      if (s.checkedInAt) liste.push({ at: new Date(s.checkedInAt).getTime(), teamId: t.id, text: `eingecheckt an Station ${s.position}`, art: "" });
+      if (s.solvedAt) liste.push({ at: new Date(s.solvedAt).getTime(), teamId: t.id, text: `Ziffer von Station ${s.position}`, art: "ok" });
     });
     const p = problemVon(t, st), upd = t.position && t.position.updatedAt;
     if (p && p.stufe === "fehler" && upd) liste.push({ at: new Date(upd).getTime() + GPS_ALT_MS, teamId: t.id, text: "kein Standort mehr", art: "err" });
-    if (t.place && t.finishedAt) liste.push({ at: new Date(t.finishedAt).getTime(), teamId: t.id, text: `im Ziel, Platz ${t.place}`, art: "ok" });
+    if (t.place && t.finishedAt) liste.push({ at: new Date(t.finishedAt).getTime(), teamId: t.id, text: `im Ziel, Platz\u00a0${t.place}`, art: "ok" });
   });
   return liste.filter(e => e.at <= Date.now()).sort((a, b) => b.at - a.at).slice(0, 8);
 }
@@ -2014,7 +2022,7 @@ function viewAdmin() {
         <div class="bar kartefuss"><span class="small muted"><b class="nw">${withPos.length} von ${(st.teams || []).length}</b> Teams mit Standort, alle 10 s. Gestrichelt: Strecke ohne GPS-Signal.</span>
           <span><button class="btn sm alt" data-act="a-alle">Alle zeigen</button><button class="btn sm alt" data-act="a-full">Vollbild</button></span></div>
         <div class="legend" id="legend">${(st.teams || []).map((t, i) => `<button class="tchip ${A.hidden[t.id] ? "off" : ""}" style="--c:${teamColor(i)}" data-act="a-team" data-id="${t.id}"><i></i>${teamEmoji(t.name)} ${esc(t.name)}</button>`).join("")}</div>
-        ${ohnePos.length ? `<div class="ohnepos">${ohnePos.map(t => `<button class="btn sm alt" data-act="a-sel" data-id="${t.id}">${teamEmoji(t.name)} ${esc(t.name)}: kein Standort</button>`).join("")}</div>` : ""}
+        ${ohnePos.length ? `<div class="ohnepos">${ohnePos.map(t => `<button class="btn sm alt" data-act="a-sel" data-id="${t.id}" data-zu="1">${teamEmoji(t.name)} ${esc(t.name)}: kein Standort</button>`).join("")}</div>` : ""}
         <div class="panel" id="zuletzt"></div>
       </section><section class="teamfeld panel" id="teamfeld">${teamlisteHTML(st)}</section></div>`;
   }
@@ -2326,7 +2334,7 @@ async function drawMap(first) {
     }
     if (off || !at || !nah(at[0], at[1])) { drop(layers.teams, t.id); return; }
     const ref = cur != null ? cur : Date.now();
-    const stale = ref - when > 180000;
+    const stale = ref - when > GPS_ALT_MS;
     pts.push(at);
     const gewaehlt = A.sel === t.id;
     const html = `<div class="mapbadge team ${stale ? "stale" : ""} ${gewaehlt ? "sel" : ""}" ${stale ? "" : `style="background:${color}"`}>${teamEmoji(t.name)}</div>`;
@@ -2564,7 +2572,7 @@ const ACT = {
     LS.removeItem("sj.abgemeldet");
     S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
   },
-  "t-logout"() { S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.setItem("sj.abgemeldet", "1"); stopGps(); },
+  "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.setItem("sj.abgemeldet", "1"); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
   // Mitlese-Link fürs Team: teilen (Share-Sheet, sonst WhatsApp) oder kopieren
@@ -2595,7 +2603,7 @@ const ACT = {
     try {
       const team = (await rpc("team_set_leader", { p_code: S.team.code, p_name: name })).team;
       // Abgegeben: dieses Handy meldet sich ab, die neue Leitung ist auf ihrem Handy gleich drin
-      S.team.code = null; S.team.state = null; S.team.abgeben = false; S.team.abmelden = false;
+      S.team.code = null; S.team.state = null; S.team.abgeben = false; S.team.abmelden = false; S.team.tab = "weg";
       LS.removeItem("sj.code"); stopGps();
       S.msg = { type: "ok", text: `${vorname(name)} leitet jetzt Team ${team ? team.name : ""} und tippt auf dem eigenen Handy auf „Teamleitung“. Station und Rätsel siehst du auf der Anmeldeseite mit.` };
     } catch (e) { S.msg = { type: "err", ort: "abgeben", text: e.message || "Etwas ist schiefgelaufen." }; }
@@ -3579,13 +3587,16 @@ function render() {
   app.innerHTML = (!cfg.url || !cfg.key) ? viewSetup()
     : S.view === "team" ? viewTeam()
       : S.view === "admin" ? viewAdmin() : viewPublic();
+  // Die Hülle ist so hoch wie der Bildschirm: ein mitgebrachter Fensterscroll würde Kopf und Tabs verschieben
+  if (document.body.classList.contains("spiel") && (window.scrollY || document.documentElement.scrollTop)) window.scrollTo(0, 0);
+  // Das Hilfe-Blatt gehört zur Hülle: ohne Hülle bleibt es nicht offen
+  if (!$(".ph")) S.team.hilfe = false;
   const inh2 = $("#inhalt");
   if (inh2 && S.team.scroll && S.team.scrollTab === S.team.tab) inh2.scrollTop = S.team.scroll;
   S.team.gezeichnet = inh2 ? S.team.tab : null;
   const tf2 = $("#teamfeld");
   if (tf2) {
     tf2.scrollTop = tfScroll;
-    if (S.admin.zuSel) { S.admin.zuSel = false; const z = tf2.querySelector(".row.sel"); if (z) z.scrollIntoView({ block: "nearest" }); }
   }
   app.insertAdjacentHTML("beforeend", fotoGrossHTML() + kalFensterHTML());
   document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross || $("#kal")));
@@ -3617,6 +3628,8 @@ function render() {
   if (S.view === "admin" && S.admin.tab === "teams") drawPreview();
   querPruefen();
   if (S.view === "admin" && S.admin.tab === "stations" && S.admin.edit) stationsKarte();
+  // Erst ganz am Ende: Karte und Leiste haben dann ihre Höhe, sonst bleibt die Zeile halb unter dem Rand
+  if (S.admin.zuSel) { S.admin.zuSel = false; const z = $("#teamfeld .row.sel"); if (z) z.scrollIntoView({ block: "nearest" }); }
 }
 // Zeitachse: Schieber zieht den Zeitpunkt, ganz rechts heißt "jetzt"
 document.addEventListener("input", e => {
