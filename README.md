@@ -10,10 +10,10 @@ Vollständiger Kontext, Architektur, Datenschutz und offene Punkte:
 
 Wie Spiel und Code funktionieren (Regeln, Zustände, Abläufe, Aufbau): **[SPIEL.md](SPIEL.md)**
 
-Nächster Schritt (Stand 05.10.2026): Umbau nach der Design-Variante
-"Weiterentwicklung", Plan in
-[docs/superpowers/plans/2026-10-05-weiterentwicklung.md](docs/superpowers/plans/2026-10-05-weiterentwicklung.md),
-noch nicht begonnen. Einzelheiten im HANDOFF unter "Stand zum Fortsetzen".
+Nächster Schritt (Stand 06.10.2026): Der Umbau "Weiterentwicklung" ist auf Branch
+`umbau-weiterentwicklung` gebaut, aber nicht gemerged und nicht gepusht. Er
+wartet auf Friedrichs Okay und einen Handytest. Einzelheiten im HANDOFF unter
+"Umbau Weiterentwicklung (Nachtrag 33)".
 
 ## Ansichten
 

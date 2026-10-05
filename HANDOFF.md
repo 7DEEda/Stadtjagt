@@ -1878,31 +1878,54 @@ Funde mit Szenario und Belegen lagen in `.superpowers/sdd/bugjagd-2026-10-03/` (
   Upload 0,4 s, App-Wechsel bleibt; Wach halten nur mit Tipp; Vibration,
   Benachrichtigung und Akku fehlen wie erwartet.
 
+## Umbau Weiterentwicklung (Nachtrag 33, 06.10.2026)
+
+Gebaut auf Branch `umbau-weiterentwicklung` (nicht gemerged, nicht gepusht), nach
+`docs/superpowers/plans/2026-10-05-weiterentwicklung.md`. Alles in `index.html`.
+
+- **Migration** `supabase/migrations/20261006090000_admin_fehlversuche.sql`
+  (Generator `tools/migration_admin_fehlversuche.py`, Probelauf
+  `tools/pruefstand/admin_fehlversuche_db.py`, live eingespielt): `admin_state`
+  liefert je Team `failedAttempts` und `lockedUntil`.
+- **Handy (Teamleitung und Mitlese-Ansicht):** feste Hülle. Kopf: Team,
+  Teamleitung, Restzeit, kleine Ziffern (öffnen den Reiter Ziffern), Hilfe-Knopf
+  (Sheet mit WhatsApp/Anrufen), Testmodus-Banner. Darunter scrollender Inhalt,
+  unten feste Aktionsleiste (Einchecken / Antwort mit Zeile Fehlversuche /
+  Koffer-Code; Mitlesende sehen, wer eingibt; Fehler erscheinen in der Leiste,
+  `data-ort="leiste"`). Drei Reiter: Weg bzw. Rätsel, Ziffern, Team (Mitlese-Link,
+  Mitglieder, Album, Leitung abgeben, Abmelden). Scrollposition je Reiter bleibt
+  über das 10-s-Neuzeichnen. Phasen Auslosen, Platz, Beendet und Selfie behalten
+  die alte lange Seite. Viewport `interactive-widget=resizes-content`.
+- **Spielleitung:** Kopf und Reiterleiste in voller Breite. Reiter "Karte und
+  Teams" (Karte links, Teamliste rechts, unter 1024 px die Liste unter der Karte),
+  "Zeitachse" (eigener Reiter), "Auslosen" nur vor dem Spiel, Teilnehmende,
+  Stationen, Fotos, "Daten löschen" (rechts, rot); Inhalt der Reiter außer Karte
+  höchstens 900 px. Teamliste: Block "Braucht dich" zuerst (kein GPS, GPS älter
+  als 5 min, mindestens 2 Fehlversuche); der Zähler im Kopf springt zum ersten
+  Problem; Zeile klappt auf (Leitungs-Select, Code, Mitlese-Link); Freischalten
+  und Rätsel werten als Zeilenknopf, Rückmeldung in der Zeile; Auswahl gleicht
+  Liste und Kartenmarker ab. Kartenausschnitt (Zoom, Verschieben, Popup) bleibt
+  über das Neuzeichnen, wird neu eingepasst bei "Alle zeigen" und beim
+  Routenwechsel test/echt. "Kein Standort"-Knöpfe unter der Karte; Liste
+  "Zuletzt" (8 letzte Ereignisse: eingecheckt, Ziffer, kein Standort mehr, im
+  Ziel) unter der Karte, Klick wählt das Team.
+- **Prüfskript** `tools/pruefstand/umbau.py` (Port 8840); neues Szenario in
+  `mock.js`: `admin-probleme`.
+- **Offen:** Friedrichs Okay und ein Handytest, danach Merge und Push.
+
 ## Stand zum Fortsetzen (05.10.2026)
 
 **Live:** alles bis Nachtrag 32 und die Änderungen vom 05.10., Geräte-Test bis Suite 21
 (https://7deeda.github.io/geraetetest/).
 
-**Design-Varianten: entschieden am 05.10.2026 für "Weiterentwicklung"**
-(`mockups/design-varianten/v-weiter.html`, lokal, nicht im Repo; Vergleich
-`mockups/design-varianten/index.html` und Artifact
-https://claude.ai/artifact/V2vfdrW3YhwzNh2TEQZ1iM). Gleicher Look, neuer
-Aufbau: Handy mit Ziffern im Kopf, fester Aktionsleiste unten und Nebensachen
-in Tabs statt unter dem Kompass; Spielleitung in voller Breite mit Karte und
-Teamliste nebeneinander, Zeitachse und Verwaltung in Reitern. Detailvergleich
-der Spielleitung (heute gegen geplant, klickbar, mit "Was sich ändert" und "Was
-bleibt"): `mockups/design-varianten/admin-karte.html`, von Friedrich am
-05.10. bestätigt.
+**Design-Variante "Weiterentwicklung": gebaut** (entschieden 05.10.2026, Umbau
+am 05./06.10.) auf Branch `umbau-weiterentwicklung`, siehe Nachtrag 33. Vorlagen
+nur lokal: `mockups/design-varianten/v-weiter.html` und `admin-karte.html`.
 
-**NÄCHSTER SCHRITT: Umbau nach Plan** `docs/superpowers/plans/2026-10-05-weiterentwicklung.md`
-(9 Tasks, nichts davon gebaut). Zuerst mit Friedrich klären: ausführen mit
-Subagenten je Task plus Review (empfohlen, weil die Tasks aufeinander aufbauen
-und alles in index.html landet) oder direkt in der Sitzung. Dann Task 1
-(Migration `admin_state` mit `failedAttempts`/`lockedUntil`, Probelauf, live
-einspielen) und weiter der Reihe nach; jeder Task wird mit dem neuen
-Prüfskript `tools/pruefstand/umbau.py` geprüft. Push erst nach Task 9 und
-Friedrichs Okay. Die Mockups liegen nur lokal in `mockups/design-varianten/`
-(nicht im Repo); ohne sie fehlt dem Plan die Vorlage.
+**NÄCHSTER SCHRITT:** Branch `umbau-weiterentwicklung` ist nicht gemerged und
+nicht gepusht. Wartet auf Friedrichs Okay und einen Handytest; danach Merge nach
+`master`, `git push origin master` und prüfen, dass auf
+https://7deeda.github.io/Stadtjagt/ `class="ftabs"` ausgeliefert wird.
 
 **Stresstest mit 100 Handys (Konzept 03.10., nicht gebaut):** Last heute ohne
 Realtime: jedes Handy fragt alle 10 s (Teamleitung `team_state`, Mitlesende

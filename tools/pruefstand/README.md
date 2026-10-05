@@ -32,6 +32,7 @@ etwa `timeout 300 python tools/pruefstand/waechter.py`.
 | `teststation.py` | Teststation und Startpunkt (Nachtrag 28 und 29) |
 | `waechter.py` | Kompass-Wächter: Logik, Anzeige, Spielleitung, Freigaben (Nachtrag 30) |
 | `bugjagd2.py` | Funde der Bugjagd vom 03.10.2026 |
+| `umbau.py` | Umbau Weiterentwicklung: Handy-Hülle, Reiter, Spielleitung mit Teamliste (Nachtrag 33) |
 
 ## Probeläufe gegen die echte Datenbank
 

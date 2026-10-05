@@ -30,7 +30,7 @@ App eingeben.
 |---|---|---|---|
 | **Teilnehmende** | Link, Name bei der Anmeldung; oder Mitlese-Link des Teams | sich anmelden (nur bis zum Auslosen), Team nachschauen | eigenes Team groß mit Emoji; ab dem Start alles, was die Teamleitung sieht (Geräte-Schlüssel aus der Anmeldung oder Mitlese-Link) |
 | **Teamleitung** | `#/team`: automatisch auf dem Handy, mit dem sie sich angemeldet hat (Geräte-Schlüssel); Team-Code nur als Ausweg für die Spielleitung am Tablet | einchecken, Rätsel beantworten, Koffer-Code eingeben, Mitlese-Link teilen, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
-| **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, fortsetzen, freischalten, Rätsel werten, Teamleitung wählen, Stationen pflegen, Leute eintragen, löschen, Testmodus | Karte mit Routen, Zeitachse, alle Teams mit Codes und Mitlese-Links, Koffer-Code |
+| **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, fortsetzen, freischalten, Rätsel werten, Teamleitung wählen, Stationen pflegen, Leute eintragen, löschen, Testmodus | Reiter Karte und Teams (Karte, Teamliste mit "Braucht dich", Zuletzt), Zeitachse, Codes und Mitlese-Links, Koffer-Code |
 
 Die Teamleitung wird beim Auslosen je Team zufällig bestimmt
 (`teams.leader_participant_id`); die Spielleitung kann sie ändern
@@ -197,10 +197,10 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
 - Ab dem Start zeigen alle Ansichten im Kopf die Restzeit (`endsAt`, aus
   `duration_min`), rot in den letzten 15 Minuten, danach „Zeit ist um“.
 - Nachzügler: nur über die Spielleitung (Hilfe-Knöpfe auf der Anmeldeseite).
-  Zum Mitlesen bekommen sie den Mitlese-Link ihres Teams (Reiter Teams oder
+  Zum Mitlesen bekommen sie den Mitlese-Link ihres Teams (Spielleitung: Reiter Karte und Teams, aufgeklappte Zeile; oder
   von der Teamleitung).
 - Teamleitung: „Mitlesen fürs Team“ (Link teilen oder kopieren) und „Leitung
-  abgeben“ stehen unten in ihrer Ansicht, in jeder Phase.
+  abgeben“ stehen im Reiter Team ihrer Ansicht (in den Phasen mit der alten langen Seite unten).
 
 ### 5.4 Spiel (`running`)
 - Teamleitung (`#/team`): Station, Ortshinweis, Kompass und Entfernung,
@@ -210,7 +210,7 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
   Eingaben („Einchecken macht Silke“, „Die Antwort gibt Silke ein“).
   Kompass und Entfernung mit dem eigenen GPS, keine Positionsmeldung.
 - Öffentliche Seite: „Zieleinlauf“ live, sobald das erste Team im Ziel ist.
-- Spielleitung: Karte mit Routen, Zeitachse, Teams nach Platz und Fortschritt.
+- Spielleitung: Reiter Karte und Teams (Karte, Teamliste mit "Braucht dich" zuerst, Zuletzt), Reiter Zeitachse.
   Je Team steht, wo es ist und seit wann („unterwegs zu Station 2 seit 14 min“,
   „an Station 2 seit 22 min“), dazu das Alter der letzten GPS-Meldung, rot ab
   5 Minuten (Nachtrag 21: `checkedInAt`, `lastSolvedAt` in `admin_state`).
@@ -327,7 +327,7 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
   `S.gps`, `S.mit`, `S.lookup`, …). `render()` baut `#app` komplett per
   `innerHTML` neu.
 - **Ansichten:** `viewPublic`, `viewTeam` → `teamAnsicht(st, lesen)`,
-  `viewAdmin` (Reiter Karte, Teams, Teilnehmende, Stationen, Daten löschen),
+  `viewAdmin` (Reiter Karte und Teams, Zeitachse, Auslosen, Teilnehmende, Stationen, Fotos, Daten löschen),
   `viewSetup` (ohne `config.js`). Routing über den Hash (`#/public`, `#/team`,
   `#/admin`).
 - **Aktionen:** Klicks auf `[data-act]` rufen `ACT[name](dataset)`. Wirft eine
