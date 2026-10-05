@@ -158,6 +158,8 @@
     "mitglied-unterwegs": { welt: "running", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 1 } },
     "mitglied-raetsel": { welt: "running", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 1, checkedIn: true, failedAttempts: 1 } },
     "mitglied-beendet": { welt: "finished", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 4 } },
+    // Spiel beendet, Handy ohne Namen: nur Rangliste, keine Teamsuche, keine Hilfe-Knöpfe
+    "fremd-beendet": { welt: "finished", view: "public", fuchs: { solved: 4 } },
     "admin-login": { welt: "running", view: "admin" },
     "admin-karte": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, fertig: ["Adler"], settle: 3500 },
     "admin-teams": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },

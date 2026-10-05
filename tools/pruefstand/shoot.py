@@ -44,7 +44,7 @@ HANDY = ["anmeldung-leer", "anmeldung-angemeldet", "teamkarte-mitglied", "teamka
          "leitung-login", "leitung-startklar", "leitung-startklar-kompass", "leitung-unterwegs", "leitung-unterwegs-standort",
          "leitung-kompass-ungenau", "leitung-kompass-einmessen", "leitung-checkin-abgelehnt", "leitung-raetsel",
          "leitung-raetsel-fehlversuch", "leitung-denkpause", "leitung-tipp", "leitung-koffer", "leitung-platz2",
-         "leitung-platz5", "leitung-beendet", "leitung-testmodus", "mitglied-unterwegs", "mitglied-raetsel", "mitglied-beendet"]
+         "leitung-platz5", "leitung-beendet", "leitung-testmodus", "mitglied-unterwegs", "mitglied-raetsel", "mitglied-beendet", "fremd-beendet"]
 KLEIN = ["anmeldung-leer", "teamkarte-mitglied", "leitung-unterwegs-standort", "leitung-raetsel-fehlversuch", "leitung-koffer", "leitung-startklar"]
 ADMIN = ["admin-login", "admin-karte", "admin-teams", "admin-stationen", "admin-teilnehmende", "admin-loeschen", "admin-auslosen"]
 NEU = ["admin-bereit", "admin-start-dialog", "admin-vollbild"]
