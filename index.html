@@ -2451,7 +2451,7 @@ const ACT = {
     } catch (e) { S.msg = { type: "err", ort: "abgeben", text: e.message || "Etwas ist schiefgelaufen." }; }
   },
   "t-gps"() { startGps(); },
-  "t-tab"(d) { S.team.tab = d.tab; S.team.scroll = 0; },
+  "t-tab"(d) { S.team.tab = d.tab; },
   "t-kal"() { kalStart(); },
   "t-kal-skip"() { kalEnde(false); },
   async "t-check"() {
@@ -3409,13 +3409,15 @@ function render() {
   document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross));
   // Der Inhalt der Hülle scrollt selbst und entsteht mit jedem Neuzeichnen neu: Stand merken, im selben Tab zurücksetzen
   const inh = $("#inhalt");
-  if (inh) { S.team.scroll = inh.scrollTop; S.team.scrollTab = S.team.tab; }
+  // gezeichnet = Tab, der gerade im DOM steht (nach einem Tabwechsel ist S.team.tab schon der neue)
+  S.team.scroll = inh ? inh.scrollTop : 0; S.team.scrollTab = S.team.gezeichnet;
   document.body.classList.remove("spiel");
   app.innerHTML = (!cfg.url || !cfg.key) ? viewSetup()
     : S.view === "team" ? viewTeam()
       : S.view === "admin" ? viewAdmin() : viewPublic();
   const inh2 = $("#inhalt");
   if (inh2 && S.team.scroll && S.team.scrollTab === S.team.tab) inh2.scrollTop = S.team.scroll;
+  S.team.gezeichnet = inh2 ? S.team.tab : null;
   app.insertAdjacentHTML("beforeend", fotoGrossHTML() + kalFensterHTML());
   document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross || $("#kal")));
   S.feldKontext = feldKontext();
