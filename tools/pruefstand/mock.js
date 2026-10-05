@@ -369,6 +369,9 @@
         memberCount: t.members.length, members: members(t), solved: t.solved,
         currentPosition: t.solved < 5 ? t.solved + 1 : null,
         lastActivity: iso(t.lastActivity),
+        // Umbau Weiterentwicklung: Fehlversuche und Pause an der aktuellen Station (Fuchs folgt dem Spielstand, Otter zeigt 2)
+        failedAttempts: t.solved >= 5 ? 0 : t.name === "Fuchs" ? FU.failedAttempts : t.name === "Otter" ? 2 : 0,
+        lockedUntil: t.solved < 5 && t.name === "Fuchs" ? iso(FU.lockedUntil) : null,
         // Nachtrag 21: Check-in an der aktuellen Station und letzte Lösung
         checkedInAt: iso((t.events.find(e => e.solvedAt == null && e.checkedInAt) || {}).checkedInAt || null),
         lastSolvedAt: iso(t.events.reduce((m, e) => Math.max(m, e.solvedAt || 0), 0) || null),
