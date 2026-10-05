@@ -1315,7 +1315,12 @@ function leisteHTML(st, s, lesen) {
   if (!g.on && !st.testMode) return `<button class="btn" data-act="t-gps">Standort und Kompass freigeben</button>`;
   return `<button class="btn ${checkWeit(st, s) ? "weit" : ""}" id="tcheck" data-act="t-check" data-ort="leiste" data-wait="Standort wird bestimmt …" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>${checkText(st, s)}</button>${msgBox("leiste")}`;
 }
-function teamTabHTML(st, lesen) { return `<div class="panel"><ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>`; }
+function teamTabHTML(st, lesen) {
+  const mitglieder = `<div class="panel"><h3>Mitglieder <span class="small muted nw">${(st.team.members || []).length}</span></h3>
+    <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}${m === st.team.leaderName ? ' <span class="chip">Teamleitung</span>' : ""}</li>`).join("")}</ul></div>`;
+  return (lesen ? "" : mitlesePanelHTML(st, "Wer diesen Link öffnet, sieht auf dem eigenen Handy alles mit: Station, Rätsel, Ziffern. Eingeben kannst nur du."))
+    + mitglieder + albumHTML(st) + (lesen ? "" : leitungHTML(st, true) + abmeldenHTML() + nav());
+}
 // Die Hülle fürs laufende Spiel: je nach Tab Weg (der lange Teil), Ziffern oder Team
 function spielHuelle(st, s, lesen, weg, hilfeText) {
   const zifferTab = `<div class="panel ziffern"><div class="bar"><h3>Eure Ziffern</h3>
@@ -1392,7 +1397,7 @@ function teamAnsicht(st, lesen) {
         ? `Noch ${left} von ${st.prizeCount} Koffern zu vergeben. Es zählt, wer den Code zuerst eingibt.`
         : "Alle Koffer sind vergeben. Gebt den Code trotzdem ein, dann steht ihr mit Platz in der Rangliste."}</p>
       ${lesen ? "" : `<p class="small muted" style="margin-top:6px">Tippt die ${zahl(ANZ(st) + 1)} Ziffern aus dem Schloss oben ab, wenn ihr am Koffer steht. Die App prüft dabei euren Standort.</p>`}${msgBox()}</div>`;
-    return spielHuelle(st, null, lesen, out + ende, `Stadtjagd: Hier ist ${kennung}. Wir stehen am Koffer und brauchen Hilfe.`);
+    return spielHuelle(st, null, lesen, out, `Stadtjagd: Hier ist ${kennung}. Wir stehen am Koffer und brauchen Hilfe.`);
   }
 
   const s = st.station;
@@ -1452,7 +1457,7 @@ function teamAnsicht(st, lesen) {
       ${pause ? "" : (okOben ? "" : msgBox()) + (lesen ? `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
           : `Fehlversuche: ${st.failedAttempts} von 3, danach 2 Minuten Pause.`}</p>` : "")}</div>`;
   }
-  return spielHuelle(st, s, lesen, out + ende, `Stadtjagd: Hier ist ${kennung}. Wir brauchen Hilfe bei Station ${s.position}.`);
+  return spielHuelle(st, s, lesen, out, `Stadtjagd: Hier ist ${kennung}. Wir brauchen Hilfe bei Station ${s.position}.`);
 }
 // Mitlese-Link fürs Team, mit passendem Satz je nach Phase
 function mitlesePanelHTML(st, text) {
@@ -2470,7 +2475,7 @@ const ACT = {
     LS.removeItem("sj.abgemeldet");
     S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
   },
-  "t-logout"() { S.team.code = null; S.team.state = null; S.team.abmelden = false; LS.removeItem("sj.code"); LS.setItem("sj.abgemeldet", "1"); stopGps(); },
+  "t-logout"() { S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.setItem("sj.abgemeldet", "1"); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
   // Mitlese-Link fürs Team: teilen (Share-Sheet, sonst WhatsApp) oder kopieren
@@ -2489,7 +2494,7 @@ const ACT = {
     catch { S.msg = { type: "info", ort: "mit", text: link }; }
   },
   "t-abgeben-frage"() {
-    S.team.abgeben = true; S.msg = null;
+    S.team.abgeben = true; S.msg = null; S.team.tab = "team";   // das Fenster steht im Tab Team
     // Der Knopf im Kompass-Hinweis steht weit weg vom Fenster: nach dem Neuzeichnen hinscrollen
     setTimeout(() => { const f = $("#tneu"); if (f) f.closest(".panel").scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }, 50);
   },
@@ -2563,7 +2568,7 @@ const ACT = {
     try {
       const vorher = alt.digits ? alt.digits[sf.pos - 1] : null;
       const s = await rpc("team_selfie", { p_code: S.team.code, p_position: sf.pos, p_photo: sf.foto, p_thumb: sf.thumb });
-      S.team.state = s; S.selfie = null; LS.removeItem(fotoSchluessel(s, sf.pos));
+      S.team.state = s; S.selfie = null; S.team.tab = "weg"; /* Meldung steht im Weg-Tab */  LS.removeItem(fotoSchluessel(s, sf.pos));
       const z = s.digits ? s.digits[sf.pos - 1] : null;
       if (vorher == null && z != null) { S.neueZiffer = { i: sf.pos - 1, bis: Date.now() + 8000 }; S.msg = { type: "ok", text: `Foto ist drin. Station ${sf.pos} gelöst, eure Ziffer: ${z}.` }; }
       else S.msg = { type: "ok", text: "Das neue Foto ist gesichert." };

@@ -56,7 +56,7 @@ with sync_playwright() as pw:
     z = pg.evaluate("S.team.state.digits"); t = pg.inner_text(".msg.ok")
     pruef(z[2] is not None and "Ziffer" in t, f"nach dem Foto: Ziffer da, Meldung: {t}")
     pruef(pg.locator("[data-act=t-gps], [data-act=t-check]").count() > 0, "danach steht die nächste Station da")
-    pg.wait_for_function("document.querySelectorAll(\".album button img\").length === 3"); pruef(True, "Album zeigt drei Fotos")
+    pg.click(".ftabs [data-tab=team]"); pg.wait_for_function("document.querySelectorAll(\".album button img\").length === 3"); pruef(True, "Album zeigt drei Fotos")
     pg.screenshot(path=SHOTS + "3.png", full_page=True)
 
     print("Foto groß und ersetzen")
@@ -66,7 +66,7 @@ with sync_playwright() as pw:
     aufnehmen("[data-act=t-foto-ersetzen]"); pg.wait_for_selector("img.foto")
     pruef("Foto ersetzen" in pg.inner_text("#app"), "Ersetzen zeigt die Vorschau")
     pg.click("[data-act=t-selfie-ok]"); pg.wait_for_selector(".msg.ok"); pruef("neue Foto" in pg.inner_text(".msg.ok"), "ersetzt: " + pg.inner_text(".msg.ok"))
-    pg.wait_for_selector(".album button img")
+    pg.click(".ftabs [data-tab=team]"); pg.wait_for_selector(".album button img")
     pg.click(".album button:nth-of-type(1)"); pg.wait_for_selector(".fotogross")
     pruef(pg.locator("[data-act=t-foto-ersetzen]").count() == 0, "älteres Foto: kein Neu aufnehmen")
     pg.keyboard.press("Escape"); pruef(pg.locator(".fotogross").count() == 0, "Escape schließt das große Foto")

@@ -139,6 +139,16 @@ with sync_playwright() as pw:
     pg.goto(f"{BASIS}/app.html?szenario=leitung-startklar"); pg.wait_for_selector(".ph, #app > *")
     pruef(pg.locator(".kopf").count() == 0 and pg.locator("[data-act=t-hilfe]").count() == 0 and pg.locator("a.help").count() >= 1, "Phase ohne Hülle behält ihren Hilfe-Knopf")
 
+    print("Tab Team")
+    pg.goto(f"{BASIS}/app.html?szenario=leitung-unterwegs"); pg.wait_for_selector(".ph"); pg.click(".ftabs [data-tab=team]")
+    t = pg.inner_text("#inhalt")
+    pruef("Mitlesen fürs Team" in t and "Anna Berger" in t and "Abmelden" in t, "Teamleitung: Mitlese-Link, Mitglieder, Abmelden")
+    pg.goto(f"{BASIS}/app.html?szenario=mitglied-unterwegs"); pg.wait_for_selector(".ph"); pg.click(".ftabs [data-tab=team]")
+    t = pg.inner_text("#inhalt")
+    pruef("Mitlesen fürs Team" not in t and "Abmelden" not in t and "Anna Berger" in t, "Mitlesende: nur Mitglieder")
+    pg.goto(f"{BASIS}/app.html?szenario=leitung-unterwegs"); pg.wait_for_selector(".ph")
+    pruef("Abmelden" not in pg.inner_text("#inhalt") and "Mitlesen fürs Team" not in pg.inner_text("#inhalt"), "Weg-Tab ohne Abmelden und Mitlese-Link")
+
     pruef(not err, f"keine Seitenfehler {err[:2]}")
     b.close()
 
