@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Stadtjagd</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -214,6 +214,11 @@ body.spiel main{max-width:none;padding:0}
 .ph > .leiste{background:var(--card);border-top:1px solid var(--line);padding:10px 16px 12px}
 .ph > .leiste:empty{display:none}
 .ph > .leiste .btn{margin-top:0}
+.ph > .leiste label{display:block;margin:0 0 6px}
+.ph > .leiste .reihe{display:flex;gap:8px;align-items:stretch}
+.ph > .leiste .reihe input{flex:1;min-width:0;min-height:52px}
+.ph > .leiste .reihe .btn{width:auto;flex:none;min-width:120px}
+.ph > .leiste .msg{margin:8px 0 0}
 .ftabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 .ftabs button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:58px;border:0;background:none;color:var(--muted);font:600 var(--fs-xs)/1.2 var(--body);cursor:pointer}
 .ftabs button svg{width:24px;height:24px}
@@ -1245,13 +1250,46 @@ function tabsHTML(st) {
     `<button role="tab" data-act="t-tab" data-tab="${id}" aria-selected="${(S.team.tab || "weg") === id}">${ic}<span>${txt}</span>${b ? `<span class="badge">${b}</span>` : ""}</button>`).join("")}</nav>`;
 }
 function huelleHTML(teile) {
-  return `<div class="ph"><header class="kopf">${teile.kopf}</header><main class="inhalt" id="inhalt">${teile.inhalt}</main>
+  return `<div class="ph"><header class="kopf">${teile.kopf}</header><div class="inhalt" id="inhalt">${teile.inhalt}</div>
     <div class="leiste" id="leiste">${teile.leiste || ""}</div>${teile.tabs}</div>`;
 }
 // Zwischenfassungen, Task 3 bis 5 ersetzen sie
 function kopfHTML(st, lesen) { return `<h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>`; }
-function leisteHTML(st, s, lesen) { return ""; }
+// Die eine Handlung, die gerade dran ist, steht immer unten. Mitlesende sehen dort, wer sie macht.
+function leisteHTML(st, s, lesen) {
+  const leitung = vorname(st.team.leaderName) || "eure Teamleitung";
+  const ichSelbst = lesen && st.name && st.name === st.team.leaderName;
+  if (lesen) return ichSelbst ? `<a class="btn" href="#/team">Zur Teamleitung</a>`
+    : `<p class="small" style="margin:0">${st.allSolved ? "Den Koffer-Code" : s && st.checkedIn ? "Die Antwort" : "Einchecken"} gibt <b>${esc(leitung)}</b> ein.</p>`;
+  if (st.allSolved) {
+    const left = st.prizesLeft ?? 0;
+    return `<label for="tfin">Koffer-Code, <span style="white-space:nowrap">${ANZ(st) + 1} Stellen</span></label>
+      <div class="reihe"><input id="tfin" inputmode="numeric" pattern="[0-9]*" maxlength="${ANZ(st) + 1}" autocomplete="off" enterkeyhint="go">
+      <button class="btn" data-act="t-final" data-wait="Standort wird bestimmt …" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Code eingeben"}</button></div>${msgBox("leiste")}`;
+  }
+  if (!s) return "";
+  if (st.checkedIn) {
+    const pause = !st.testMode && st.lockedUntil && new Date(st.lockedUntil).getTime() > Date.now();
+    return `<label for="tans">Eure Antwort</label>
+      <div class="reihe"><input id="tans" ${s.numeric ? 'inputmode="numeric" pattern="[0-9]*"' : ""} autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" ${pause ? "disabled" : ""}>
+      <button class="btn" data-act="t-answer" data-wait="Wird geprüft …" ${S.busy || pause ? "disabled" : ""}>Prüfen</button></div>
+      ${pause ? "" : `<p class="small muted" style="margin:6px 0 0;white-space:nowrap">${st.testMode ? "Testmodus: jede Antwort zählt" : `Fehlversuche: ${st.failedAttempts} von 3`}</p>`}${msgBox("leiste")}`;
+  }
+  const g = S.gps, hasTarget = s.lat != null && s.lng != null;
+  if (!g.on && !st.testMode) return `<button class="btn" data-act="t-gps">Standort und Kompass freigeben</button>`;
+  return `<button class="btn ${checkWeit(st, s) ? "weit" : ""}" id="tcheck" data-act="t-check" data-wait="Standort wird bestimmt …" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>${checkText(st, s)}</button>${msgBox("leiste")}`;
+}
 function teamTabHTML(st, lesen) { return `<div class="panel"><ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>`; }
+// Die Hülle fürs laufende Spiel: je nach Tab Weg (der lange Teil), Ziffern oder Team
+function spielHuelle(st, s, lesen, weg) {
+  const zifferTab = `<div class="panel ziffern"><div class="bar"><h3>Eure Ziffern</h3>
+    <span class="small muted nw">${st.solvedCount} von ${st.totalStations}</span></div>${lockHTML(st)}${routeHTML(st)}
+    <p class="small muted" style="margin-top:6px">Die abgesetzte letzte Ziffer ist die Schlussziffer: die Einerstelle der Summe ${summeText(st)}.</p></div>`;
+  const tab = S.team.tab || "weg";
+  const inhalt = tab === "ziffern" ? zifferTab : tab === "team" ? teamTabHTML(st, lesen) : weg;
+  document.body.classList.add("spiel");
+  return huelleHTML({ kopf: kopfHTML(st, lesen), inhalt, leiste: leisteHTML(st, s, lesen), tabs: tabsHTML(st) });
+}
 // Was ein Team sieht. lesen = Mitglied: sieht alles wie die Teamleitung, gibt aber nichts ein.
 // Ohne lesen = Teamleitung (Code kommt vom eigenen Handy): checkt ein, beantwortet Rätsel, gibt den Koffer-Code ein.
 function teamAnsicht(st, lesen) {
@@ -1316,12 +1354,9 @@ function teamAnsicht(st, lesen) {
       <p class="small ${left ? "" : "muted"}" style="margin-top:8px">${left
         ? `Noch ${left} von ${st.prizeCount} Koffern zu vergeben. Es zählt, wer den Code zuerst eingibt.`
         : "Alle Koffer sind vergeben. Gebt den Code trotzdem ein, dann steht ihr mit Platz in der Rangliste."}</p>
-      ${lesen ? (ichSelbst ? "" : `<p class="small" style="margin-top:12px">Den Koffer-Code gibt <b>${esc(leitung)}</b> ein. Er steht oben im Zahlenschloss.</p>`)
-        : `<div style="margin-top:12px"><label for="tfin">Koffer-Code, <span class="nb" style="white-space:nowrap">${ANZ(st) + 1} Stellen</span></label>
-      <p class="small muted" style="margin:0 0 6px">Tippt die ${zahl(ANZ(st) + 1)} Ziffern aus dem Schloss oben ab, wenn ihr am Koffer steht. Die App prüft dabei euren Standort.</p>
-      <input id="tfin" inputmode="numeric" pattern="[0-9]*" maxlength="${ANZ(st) + 1}" autocomplete="off" enterkeyhint="go"></div>
-      <button class="btn" data-act="t-final" data-wait="Standort wird bestimmt …" ${S.busy ? "disabled" : ""}>${left ? "Koffer öffnen" : "Koffer-Code eingeben"}</button>`}${msgBox()}</div>`;
-    return out + helpBtn(`Stadtjagd: Hier ist ${kennung}. Wir stehen am Koffer und brauchen Hilfe.`) + ende;
+      ${lesen ? "" : `<p class="small muted" style="margin-top:6px">Tippt die ${zahl(ANZ(st) + 1)} Ziffern aus dem Schloss oben ab, wenn ihr am Koffer steht. Die App prüft dabei euren Standort.</p>`}${msgBox()}</div>`;
+    out += helpBtn(`Stadtjagd: Hier ist ${kennung}. Wir stehen am Koffer und brauchen Hilfe.`);
+    return spielHuelle(st, null, lesen, (out + ende).slice(kopf0.length));
   }
 
   const s = st.station;
@@ -1344,12 +1379,10 @@ function teamAnsicht(st, lesen) {
           <div class="small" id="umkreis">${umkreisHTML()}</div>
           <div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div>${kompassChip()}</div></div>
       ${!hasTarget ? `<div class="msg err">Für diese Station fehlen die Koordinaten. Die Spielleitung muss sie setzen.</div>` : ""}
-      ${!g.on ? `<button class="btn ${lesen ? "alt" : ""}" data-act="t-gps">Standort und Kompass freigeben</button>
-        ${lesen ? (ichSelbst ? "" : `<p class="small muted" style="margin-top:6px">Freiwillig: Dann zeigt auch dein Handy Richtung und Entfernung.</p>`)
-          : st.testMode ? "" : `<p class="small muted" style="text-align:center;margin-top:6px">Erst den Standort freigeben, dann könnt ihr einchecken.</p>`}` : ""}
-      ${lesen ? (ichSelbst ? "" : `<p class="small muted" style="margin-top:12px">Einchecken macht <b>${esc(leitung)}</b>, sobald ihr da seid. Dann erscheint hier das Rätsel.</p>`)
-        : g.on || st.testMode ? `<button class="btn ${checkWeit(st, s) ? "weit" : ""}" id="tcheck" data-act="t-check" data-wait="Standort wird bestimmt …" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>${checkText(st, s)}</button>
-      ${!st.testMode && hasTarget && g.on && !g.pos ? `<p class="small muted" style="text-align:center;margin-top:6px">Sobald der Standort da ist, könnt ihr einchecken.</p>` : ""}` : ""}
+      ${(lesen || st.testMode) && !g.on ? `<button class="btn alt" data-act="t-gps">Standort und Kompass freigeben</button>
+        ${!lesen || ichSelbst ? "" : `<p class="small muted" style="margin-top:6px">Freiwillig: Dann zeigt auch dein Handy Richtung und Entfernung.</p>`}` : ""}
+      ${!lesen && !g.on && !st.testMode ? `<p class="small muted" style="margin-top:6px">Erst den Standort freigeben, dann könnt ihr einchecken.</p>` : ""}
+      ${!lesen && !st.testMode && hasTarget && g.on && !g.pos ? `<p class="small muted" style="margin-top:6px">Sobald der Standort da ist, könnt ihr einchecken.</p>` : ""}
       ${okOben ? "" : msgBox()}
       ${grobHTML()}${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
       ${kalOk}
@@ -1380,23 +1413,13 @@ function teamAnsicht(st, lesen) {
     out += `<div class="panel ${neuKlasse}"><p class="muted small">Station ${s.position}: ${esc(s.name)}</p>${okOben ? msgBox() : ""}
       <p class="riddle" style="margin-top:8px">${esc(s.riddle || "")}</p>${tipp}
       ${pause ? `<div class="msg err" id="pause" data-bis="${esc(st.lockedUntil)}">${pauseText(st.lockedUntil)}</div>` : ""}
-      ${lesen ? (ichSelbst ? "" : `<p class="small" style="margin-top:12px">Die Antwort gibt <b>${esc(leitung)}</b> ein. Überlegt gemeinsam.</p>`)
-        : `<div style="margin-top:12px"><label for="tans">Eure Antwort</label><input id="tans" ${s.numeric ? 'inputmode="numeric" pattern="[0-9]*"' : ""} autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" ${pause ? "disabled" : ""}></div>
-      <button class="btn" data-act="t-answer" data-wait="Wird geprüft …" ${S.busy || pause ? "disabled" : ""}>Antwort prüfen</button>`}
-      ${pause ? "" : (okOben ? "" : msgBox()) + `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
-          : `Fehlversuche: ${st.failedAttempts} von 3, danach 2 Minuten Pause.`}</p>`}</div>`;
+      ${pause ? "" : (okOben ? "" : msgBox()) + (lesen ? `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
+          : `Fehlversuche: ${st.failedAttempts} von 3, danach 2 Minuten Pause.`}</p>` : "")}</div>`;
   }
-  // Tab Ziffern: Schloss, Route und Erklärung der Schlussziffer
-  const zifferTab = `<div class="panel ziffern"><div class="bar"><h3>Eure Ziffern</h3>
-    <span class="small muted nw">${st.solvedCount} von ${st.totalStations}</span></div>${lockHTML(st)}${routeHTML(st)}
-    <p class="small muted" style="margin-top:6px">Die abgesetzte letzte Ziffer ist die Schlussziffer: die Einerstelle der Summe ${summeText(st)}.</p></div>`;
   out += helpBtn(`Stadtjagd: Hier ist ${kennung}. `
     + (s ? `Wir brauchen Hilfe bei Station ${s.position}.` : "Wir brauchen Hilfe."));
   const weg = (out + ende).slice(kopf0.length);
-  const tab = S.team.tab || "weg";
-  const inhalt = tab === "ziffern" ? zifferTab : tab === "team" ? teamTabHTML(st, lesen) : weg;
-  document.body.classList.add("spiel");
-  return huelleHTML({ kopf: kopfHTML(st, lesen), inhalt, leiste: leisteHTML(st, s, lesen), tabs: tabsHTML(st) });
+  return spielHuelle(st, s, lesen, weg);
 }
 // Mitlese-Link fürs Team, mit passendem Satz je nach Phase
 function mitlesePanelHTML(st, text) {
@@ -2460,19 +2483,19 @@ const ACT = {
     S.team.state = r.state;
     // Zu weit weg: sagen, wie weit, und was zu tun ist
     const text = !r.ok && r.distance != null ? `Noch ${fmtDist(r.distance)} bis zur Station. Geht näher heran und tippt noch mal.` : r.message;
-    S.msg = { type: r.ok ? "ok" : "err", text: text + ungenauHinweis(r, pos) };
+    S.msg = { type: r.ok ? "ok" : "err", ort: r.ok ? undefined : "leiste", text: text + ungenauHinweis(r, pos) };
   },
   async "t-answer"() {
     const pos = S.team.state && S.team.state.station && S.team.state.station.position;
     // Leeres Feld zählt nicht als Fehlversuch (Bugjagd 03.10.2026, Fund 16); im Testmodus zählt es als richtig
-    if (!val("tans") && !(S.team.state && S.team.state.testMode)) { S.msg = { type: "err", text: "Bitte gebt eine Antwort ein." }; return; }
+    if (!val("tans") && !(S.team.state && S.team.state.testMode)) { S.msg = { type: "err", ort: "leiste", text: "Bitte gebt eine Antwort ein." }; return; }
     const r = await rpc("submit_answer", { p_code: S.team.code, p_answer: val("tans") });
     S.team.state = r.state;
     // Richtig: den Moment benennen, mit der Ziffer, und das neue Rad im Schloss kurz markieren
     const ziffer = r.ok && pos && r.state && r.state.digits ? r.state.digits[pos - 1] : null;
     if (r.ok && r.state && r.state.selfie && r.state.selfie.pending) S.msg = null;
     else if (r.ok && ziffer != null) { S.neueZiffer = { i: pos - 1, bis: Date.now() + 8000 }; S.msg = { type: "ok", text: `Richtig. Station ${pos} gelöst, eure Ziffer: ${ziffer}.` }; }
-    else S.msg = { type: r.ok ? "ok" : "err", text: r.message };
+    else S.msg = { type: r.ok ? "ok" : "err", ort: r.ok ? undefined : "leiste", text: r.message };
   },
   async "t-tip"() {
     const r = await rpc("reveal_tip", { p_code: S.team.code });
@@ -2486,7 +2509,7 @@ const ACT = {
     const text = r.ok ? r.message
       : r.distance != null ? `Noch ${fmtDist(r.distance)} bis zu den Koffern. Geht näher heran und tippt noch mal.`
         : /bleibt zu/.test(r.message || "") ? "Der Code stimmt nicht. Vergleicht ihn Ziffer für Ziffer mit dem Schloss oben." : r.message;
-    S.msg = { type: r.ok ? "ok" : "err", text: text + ungenauHinweis(r, pos) };
+    S.msg = { type: r.ok ? "ok" : "err", ort: r.ok ? undefined : "leiste", text: text + ungenauHinweis(r, pos) };
   },
   // Gruppenselfie. Die Kamera geht im Fingertipp auf, darum steht vor selfieKamera() kein await.
   "t-selfie"() {
