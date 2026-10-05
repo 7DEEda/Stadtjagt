@@ -928,7 +928,7 @@ function viewPublic() {
   if (!t || S.sucheOffen) {
     const f = S.fremd;
     out += `<div class="panel"><label for="plook">${eigenBekannt ? "Anderes Team nachschauen" : "In welchem Team bin ich?"}</label>
-    <input id="plook" value="${eigenBekannt ? "" : esc(S.myName || "")}" autocapitalize="words" enterkeyhint="search">
+    <input id="plook" value="${eigenBekannt ? "" : esc(S.myName || "")}" placeholder="${eigenBekannt ? "Name einer Person aus dem Team" : "Dein Name"}" autocapitalize="words" enterkeyhint="search">
     <button class="btn" data-act="pub-look" data-wait="Wird gesucht …">Team anzeigen</button>${msgBox("suche")}
     ${S.kandidaten ? `<div class="wahl">${S.kandidaten.map(n => `<button class="btn sm alt" data-act="pub-look" data-wait="Wird gesucht …" data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : ""}
     ${f ? `<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px"><h3>${teamEmoji(f.name)} Team ${esc(f.name)}</h3>
