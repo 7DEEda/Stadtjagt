@@ -269,6 +269,8 @@ th{font:600 var(--fs-s) var(--body);color:var(--muted)}
 .lv .kartefeld #map{height:calc(100vh - 230px);min-height:420px;margin-top:0}
 .lv .kartefeld #map.full{position:fixed!important;inset:0;height:100vh;height:100dvh;min-height:0;z-index:50;border-radius:0}
 .kartefuss{margin-top:8px}
+.inhalt900{max-width:900px}
+#zuletzt:empty{display:none}
 .nw{white-space:nowrap}
 .teamfeld{margin-top:0;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding:0}
 @media (max-width:1023px){.lv{grid-template-columns:minmax(0,1fr)}.lv .kartefeld #map{height:56vh}.teamfeld{position:static;max-height:none}}
@@ -1936,6 +1938,7 @@ function viewAdmin() {
     ["people", "Teilnehmende"], ["stations", "Stationen"], ["fotos", "Fotos"], ["danger", "Daten löschen"]];
   out += `<div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${A.tab === k}" data-act="a-tab" data-tab="${k}"${k === "danger" ? ' class="loesch"' : ""}>${l}</button>`).join("")}</div>`;
 
+  const inhaltAb = out.length;
   if (A.tab === "live") {
     const withPos = (st.teams || []).filter(t => t.position);
     out += `<div class="lv"><section class="kartefeld">
@@ -2082,6 +2085,7 @@ function viewAdmin() {
       : `<div class="panel"><p class="muted">Erst nach dem Auslosen gibt es hier etwas zu löschen.</p></div>`;
     out += `<p class="small muted" style="margin-top:12px">Einzelne Personen löschst du im Reiter Teilnehmende über das ×, neu auslosen im Reiter Teams. Beides fragt ebenfalls nach.</p>`;
   }
+  if (A.tab !== "live" && A.tab !== "zeit") out = out.slice(0, inhaltAb) + `<div class="inhalt900">${out.slice(inhaltAb)}</div>`;   // Kopf und Reiter bleiben voll breit, der Inhalt nicht
   if (A.confirm) {
     const D = DANGER[A.confirm.key];
     const txt = (v) => {

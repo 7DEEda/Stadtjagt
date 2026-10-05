@@ -170,6 +170,10 @@ with sync_playwright() as pw:
     pg.goto(f"{BASIS}/app.html?szenario=admin-karte"); pg.wait_for_selector("#teamfeld")
     m, l = pg.locator("#map").bounding_box(), pg.locator("#teamfeld").bounding_box()
     pruef(l["y"] >= m["y"] + m["height"] - 2, "Tablet hoch: Liste unter der Karte")
+    pg.set_viewport_size({"width": 1440, "height": 900}); pg.goto(f"{BASIS}/app.html?szenario=admin-karte"); pg.wait_for_selector(".tabs")
+    pg.click("[data-act=a-tab][data-tab=people]"); pg.wait_for_selector("#aadd")
+    pw, tw = pg.locator(".inhalt900 .panel").first.bounding_box()["width"], pg.locator(".tabs").bounding_box()["width"]
+    pruef(pw <= 900 and tw > 1300, f"Teilnehmende: Inhalt {pw:.0f} px, Reiterleiste {tw:.0f} px")
     pg.goto(f"{BASIS}/app.html?szenario=admin-auslosen"); pg.wait_for_selector(".tabs")
     reiter = [x.strip() for x in pg.locator(".tabs [role=tab]").all_inner_texts()]
     pruef("Auslosen" in reiter, f"vor dem Spiel gibt es den Reiter Auslosen ({reiter})")

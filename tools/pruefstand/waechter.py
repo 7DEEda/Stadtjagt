@@ -369,7 +369,7 @@ with sync_playwright() as pw:
     pg3.goto("http://127.0.0.1:8826/app.html?szenario=admin-teststation"); pg3.wait_for_selector(".tabs")
     pg3.click("[data-act=a-tab][data-tab=live]"); pg3.wait_for_timeout(500)
     zeile = pg3.locator("text=Kompass falsch, Pfeil nach Laufrichtung")
-    pruef(zeile.count() == 1, f"Reiter Teams: genau ein Team mit Hinweis ({zeile.count()})")
+    pruef(zeile.count() == 1, f"Karte und Teams: genau ein Team mit Hinweis ({zeile.count()})")
     pruef(pg3.locator(".card, tr, li", has=pg3.locator("text=Fuchs")).filter(has=zeile).count() >= 1, "der Hinweis steht bei Fuchs")
     # Testmodus aus: der Pfeil des Teams folgt weiter dem Kompass, also nur der Vermerk, ohne "Pfeil nach Laufrichtung"
     VERMERK = "[...document.querySelectorAll('.chip')].map(c => c.textContent.trim()).filter(x => x.startsWith('Kompass falsch'))"
