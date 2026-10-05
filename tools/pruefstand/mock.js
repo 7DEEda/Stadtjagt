@@ -113,6 +113,9 @@
       steps: [{ until: ".teamkarte" }, { click: ".teamkarte .btn[data-act=pub-hoch]" }, { wait: 400 }] },
     "teamsuche": { welt: "drawn", view: "public",
       steps: [{ until: "#plook" }, { fill: ["#plook", "Anna"] }, { click: ".btn[data-act=pub-look]" }, { wait: 400 }] },
+    // Tippfehler: "Ana Bergr" findet nichts Enthaltenes, schlägt Anna Berger vor
+    "teamsuche-tippfehler": { welt: "drawn", view: "public",
+      steps: [{ until: "#plook" }, { fill: ["#plook", "Ana Bergr"] }, { click: ".btn[data-act=pub-look]" }, { wait: 400 }] },
     "leitung-login": { welt: "drawn", view: "team" },
     "leitung-ohne-code": { welt: "running", view: "team", fuchs: { solved: 1 }, ls: { "sj.name": "Anna Berger", "sj.token": TOK("Anna Berger") } },
     "mitglied-auf-teamleitung": { welt: "running", view: "team", fuchs: { solved: 1 }, ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") } },
@@ -380,6 +383,10 @@
         stations: t.events.map(e => ({ position: e.position, checkedInAt: iso(e.checkedInAt), solvedAt: iso(e.solvedAt) })) })) };
   }
   const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9ß]/g, "");
+  // Editierabstand wie name_abstand in der Datenbank
+  const lev = (a, b) => { let v = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) { const n = [i]; for (let j = 1; j <= b.length; j++) n[j] = Math.min(n[j - 1] + 1, v[j] + 1, v[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); v = n; }
+    return v[b.length]; };
   // angemeldete Namen (norm) mit ihrem Geräte-Schlüssel, für die wiederholbare Anmeldung
   const ANGEMELDET = {}, NEU = {};
   PERSONEN.forEach(p => { ANGEMELDET[norm(p.name)] = p.token; });
@@ -398,8 +405,20 @@
     lookup_participant: a => {
       const q = norm(a.p_name); if (!q) return { found: false };
       const exakt = PERSONEN.find(p => norm(p.name) === q);
-      const treffer = exakt ? [exakt] : PERSONEN.filter(p => norm(p.name).includes(q));
-      if (treffer.length > 1) return { found: false, candidates: treffer.slice(0, 8).map(p => p.name), more: treffer.length > 8 };
+      const treffer = exakt ? [exakt] : q.length >= 3 ? PERSONEN.filter(p => norm(p.name).includes(q)) : [];
+      const woerter = n => n.split(/[\s-]+/).map(norm).filter(Boolean);
+      if (treffer.length > 1) {
+        const anfang = p => woerter(p.name).some(w => w.startsWith(q));
+        const sortiert = treffer.slice().sort((x, y) => (anfang(y) - anfang(x)) || x.name.localeCompare(y.name));
+        return { found: false, candidates: sortiert.slice(0, 8).map(p => p.name), more: treffer.length > 8 };
+      }
+      if (!treffer.length && q.length >= 3) {
+        const grenze = q.length >= 8 ? 2 : 1;
+        const abstand = p => Math.min(lev(norm(p.name), q), lev(norm(p.name.split(/\s+/).reverse().join(" ")), q), ...woerter(p.name).map(w => lev(w, q)));
+        const nah = PERSONEN.map(p => ({ p, d: abstand(p) })).filter(x => x.d <= grenze)
+          .sort((x, y) => x.d - y.d || x.p.name.localeCompare(y.p.name)).slice(0, 5);
+        if (nah.length) return { found: false, candidates: nah.map(x => x.p.name), more: false, fuzzy: true };
+      }
       if (!treffer.length) return { found: false };
       const p = treffer[0], t = mitTeams() ? teamOf(p) : null;
       return { found: true, name: p.name, team: t ? { name: t.name, leaderName: t.leaderName, members: members(t) } : null };

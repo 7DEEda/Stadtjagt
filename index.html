@@ -2336,7 +2336,8 @@ const ACT = {
     if (eigen) {
       if (!r.found && r.candidates) {
         S.kandidaten = r.candidates;
-        S.msg = { type: "info", ort: "suche", text: "Welchen Namen meinst du? Tipp drauf" + (r.more ? " oder schreib etwas genauer." : ".") };
+        S.msg = { type: "info", ort: "suche", text: r.fuzzy ? "Kein genauer Treffer. Meinst du einen davon? Tipp drauf."
+          : "Welchen Namen meinst du? Tipp drauf" + (r.more ? " oder schreib etwas genauer." : ".") };
       } else if (!r.found) S.msg = { type: "err", ort: "suche", text: "Kein Name gefunden. Prüfe die Schreibweise." };
       else if (!r.team) S.msg = { type: "ok", ort: "suche", text: r.name + " ist angemeldet, aber noch keinem Team zugeteilt." };
       else { S.fremd = r.team; S.msg = { type: "ok", ort: "suche", text: r.name + " ist in Team " + r.team.name + "." }; }
@@ -2345,7 +2346,8 @@ const ACT = {
     S.lookupEigen = false;
     if (!r.found && r.candidates) {
       S.lookup = null; S.kandidaten = r.candidates;
-      S.msg = { type: "info", ort: "suche", text: "Welcher Name ist deiner? Tipp drauf" + (r.more ? " oder schreib etwas genauer." : ".") };
+      S.msg = { type: "info", ort: "suche", text: r.fuzzy ? "Kein genauer Treffer. Ist einer davon deiner? Tipp drauf."
+        : "Welcher Name ist deiner? Tipp drauf" + (r.more ? " oder schreib etwas genauer." : ".") };
       return;
     }
     if (!r.found) { S.lookup = null; S.msg = { type: "err", ort: "suche", text: "Kein Name gefunden. Prüfe die Schreibweise." }; return; }

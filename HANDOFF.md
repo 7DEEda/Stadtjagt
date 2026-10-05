@@ -1850,7 +1850,17 @@ Funde mit Szenario und Belegen lagen in `.superpowers/sdd/bugjagd-2026-10-03/` (
 - **Teamsuche mit Platzhalter:** "Dein Name", bei bekanntem eigenem Team "Name
   einer Person aus dem Team". Die Suche geht nur nach Personennamen
   (`lookup_participant`: genauer Treffer über `norm()`, sonst Teilstring ab 3
-  Zeichen, bis 8 Kandidaten); Tippfehler findet sie nicht.
+  Zeichen, bis 8 Kandidaten).
+- **Namenssuche fehlertolerant** (Migration `20261005120000_namenssuche.sql`,
+  live; Probelauf `tools/pruefstand/namenssuche_db.py`, 11 Prüfungen): mehrere
+  Teiltreffer kommen mit Wortanfang zuerst ("Anna" bringt Anna Berger vor
+  Hanna Schulz); findet die Suche nichts Enthaltenes, schlägt sie bis zu 5
+  ähnliche Namen vor (`fuzzy: true`; Editierabstand höchstens 1, ab 8 Zeichen
+  2, gegen den ganzen Namen, die vertauschte Wortfolge und jedes Wort). Ein
+  Vorschlag wird nie von selbst übernommen. `name_abstand` ist ein kleiner
+  Levenshtein in plpgsql ohne Erweiterung, für anon nicht aufrufbar. App:
+  "Kein genauer Treffer. Ist einer davon deiner? Tipp drauf."; Prüfstand-
+  Szenario `teamsuche-tippfehler` ("Ana Bergr").
 - **Nach Spielende** (`status = finished`) zeigt die Startseite nur Rangliste
   bzw. die eigene Teamkarte: keine Teamsuche, keine Hilfe-Knöpfe (WhatsApp,
   Anrufen), keine Links Anmeldung/Teamleitung. Die Teamleitung kommt nach dem
@@ -1899,6 +1909,4 @@ und 10 % mit Übergabe, Akku aller Teammitglieder, Mockups
 `mockups/rollen-akku-kompass.html`, `mockups/akku-warnung.html`.
 
 **Weitere offene Punkte:** Positionen aus 4 älteren Geräte-Test-Läufen löschen
-(Frage an Friedrich offen); Namenssuche fehlertolerant machen (Vorschlag
-05.10.: ähnliche Namen per `pg_trgm` anbieten, Treffer am Wortanfang zuerst);
-404 beim ersten Prüfstand-Bild abstellen.
+(Frage an Friedrich offen); 404 beim ersten Prüfstand-Bild abstellen.
