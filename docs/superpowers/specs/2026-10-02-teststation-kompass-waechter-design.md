@@ -254,3 +254,28 @@ Mockups: `mockups/kompass-waechter.html`, `mockups/akku-warnung.html`.
 - Eigener Prüfschritt vor dem Start (Drehen auf dem Tisch) im Spiel.
 - Mehrere Teststationen oder eine Test-Route.
 - Benachrichtigungen und Vibration.
+
+## Nach der Umsetzung geändert (03./04.10.2026, Reviews)
+
+Diese Regeln gelten statt der Angaben oben, wo sie abweichen:
+
+- **Stillstand** zählt nur als schlecht, nie als gut; Wandern ist die
+  Nettoverschiebung seit Beginn des Abschnitts.
+- **Zurück auf ok:** 5 gute Abschnitte nur bei Vermerk aus früherer Sitzung,
+  sonst 3. Das Prüfen nach dem Einmessen dauert genauso viele Abschnitte.
+- **Gedächtnis:** `datum` ist das lokale Datum; der Vermerk gilt am selben
+  Kalendertag und wird nur beim Entstehen oder bei einem neuen Versuch
+  geschrieben.
+- **Wann nicht gemessen wird:** Handy nahe senkrecht (|oben z| < 0,4),
+  Bildschirm nach unten (|beta| > 90°), iOS meldet selbst schlechte Genauigkeit,
+  Android nach einer Pause.
+- **Laufrichtung:** vom Ankerpunkt aus, sobald ein neuer Punkt mehr als 8 m und
+  mehr als seine GPS-Genauigkeit entfernt ist; gilt 30 s, wird immer
+  mitgerechnet. Ohne Laufrichtung Fragezeichen und „erst ein paar Schritte“,
+  Hinweissatz „Geht ein paar Schritte, dann zeigt der Pfeil eure Laufrichtung.
+  Die Entfernung stimmt immer.“
+- **Leitung abgeben** im Hinweis nur, wenn es weitere Teammitglieder gibt.
+- **Spielleitung:** „Kompass falsch, Pfeil nach Laufrichtung“ im Testmodus, sonst
+  „Kompass falsch“; nur bei einer Position jünger als 3 min.
+- **iOS-Freigaben:** im selben Tipp erst Kompass, dann Bewegung, beide vor dem
+  ersten `await`.

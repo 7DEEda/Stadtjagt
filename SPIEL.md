@@ -5,8 +5,9 @@ welche Zustände und Abläufe es gibt und wo das im Code steht. Den Verlauf der
 Entscheidungen und die Betriebsnotizen (Zugänge, Umgebung, Historie) enthält
 `HANDOFF.md`.
 
-Stand: 01.10.2026, Nachträge 1 bis 27. Die Abschnitte 1 bis 10 beschreiben den Stand bis Nachtrag 22;
-was seitdem dazukam, steht geschlossen in den Abschnitten 11 und 12.
+Stand: 05.10.2026, Nachträge 1 bis 32. Die Abschnitte 1 bis 10 beschreiben den Stand bis Nachtrag 22,
+ergänzt um Regeln, die sich seitdem geändert haben; was seitdem dazukam, steht geschlossen in den
+Abschnitten 11 bis 13.
 
 ---
 
@@ -101,6 +102,9 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
   Station mit (`p_position`); ist das Team schon weiter, wertet der Server
   nichts (Nachtrag 20).
 - Richtig: `progress.solved_at`, Ziffer frei.
+- Leer (nach `norm()` nichts übrig): außerhalb des Testmodus kein Fehlversuch,
+  „Bitte gebt eine Antwort ein.“ (Nachtrag 32). Im Testmodus zählt jede
+  Antwort als richtig, auch ein leeres Feld.
 - Falsch: `failed_attempts` +1; beim dritten Fehlversuch 2 Minuten Sperre
   (`locked_until`), Zähler zurück auf 0, `pauses` +1. Die App zeigt einen
   Countdown und sperrt Feld und Knopf.
@@ -137,6 +141,10 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
   oder > 1000 m. Die Admin-Karte ignoriert zusätzlich Punkte über 30 km von der
   ersten Station.
 - `team_positions` hält den letzten Punkt, `position_log` die Route.
+- Seit Nachtrag 30 geht das Urteil des Kompass-Wächters mit (`p_kompass`:
+  `ok` / `unzuverlaessig`, sonst null), bei einem Wechsel des Urteils sofort.
+  Die App schickt immer nur eine Meldung zur Zeit und wiederholt ohne
+  `p_kompass` nur bei PGRST202 (Datenbank ohne Nachtrag 30).
 
 ---
 
@@ -145,7 +153,11 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
 ### 5.1 Anmeldung (`registration`)
 1. `#/public`, Name eintragen → `register_participant`.
 2. Antwort enthält `token` (64 Hex-Zeichen, Nachtrag 11). Die App speichert
-   `sj.name` und `sj.token` im `localStorage`.
+   `sj.name` und `sj.token` im `localStorage`. Seit Nachtrag 32 erzeugt die App
+   den Token selbst, legt ihn vor dem Aufruf ab und schickt ihn als `p_token`
+   mit; kennt der Server den Token schon, gibt er die vorhandene Anmeldung
+   zurück (Antwort im Funkloch verloren, auch nach Umbenennen). Für einen
+   vorhandenen Namen gibt es nie einen neuen Token.
 3. Doppelte Namen (über `name_key = norm(name)`) werden abgelehnt, ebenso
    Namen ohne einen lateinischen Buchstaben oder eine Ziffer (leerer
    Schlüssel, Nachtrag 20). Die Anmeldung wartet mit `for share` auf ein
@@ -451,6 +463,11 @@ anon, authenticated`, am Ende `notify pgrst, 'reload schema';`.
   weiter geprüft. Rotes „Testmodus an“ in Admin und Team-Ansicht.
   „Spiel starten“ warnt, solange er an ist (bleibt beim Testen dauerhaft an,
   Entscheidung 19.09.2026).
+- Im laufenden Spiel mit Plätzen lässt er sich in keine Richtung umschalten
+  (Nachtrag 32); Ausweg ist „Fortschritt zurücksetzen“. Vor dem Event also
+  erst zurücksetzen, dann ausschalten.
+- Im Testmodus spielen alle Teams nur die Teststation (Nachtrag 28), und der
+  Kompass-Wächter wirkt (Nachtrag 30).
 - „Testdaten einfügen“ im Reiter Teilnehmende: 90 Namen mit „(Test)“;
   „Testdaten entfernen“ nimmt genau die wieder raus.
 
@@ -653,3 +670,29 @@ Probedaten weg, Löschdatum für Fotos).
   Wiederholung ohne `p_kompass` nur bei PGRST202. Spielleitung:
   `zustandHTML` zeigt den Vermerk bei Position < 3 min. Prüfen:
   `python tools/pruefstand/waechter.py`, Probelauf `waechter_db.py`.
+
+## 13. Bugjagd 03.10.2026 (Nachtrag 31 und 32)
+
+- **Rechte:** `current_station(uuid)` ist wieder für anon und authenticated
+  gesperrt (Nachtrag 31). Nach jedem drop + create einer Funktion die Rechte
+  ausdrücklich setzen (§9). Probelauf `tools/pruefstand/rechte_db.py` prüft
+  alle internen Hilfsfunktionen.
+- **`rpc()`:** bricht nach 15 s ab (Fotos 60 s) wie bei einem Netzfehler;
+  Netzfehler tragen `netz: true`, die Meldung `kind: "netz"`, und `netzOk()`
+  räumt sie nach der nächsten guten Antwort ab. Fehler tragen den
+  PostgREST-Code als `e.code`.
+- **Teamleitung ohne Code:** bei Netzfehler Meldung und neuer Versuch im
+  10-s-Takt (`leitungOhneCode`, `S.team.ohneNetz`).
+- **Spielleitung:** `koordAusFeldern()` zerlegt ein Koordinatenpaar im Feld
+  Breite immer (Station, Teststation, Startpunkt); Enter im Formular geht an
+  den Knopf mit `data-enter-ziel`; `felderFrisch` nur, wenn neu gezeichnet wird.
+- **Standort:** Fehler Code 2 nach einem ersten Fix beendet die Ortung nicht
+  mehr, der letzte Punkt bleibt mit seinem Alter stehen.
+- **Merker je Station:** `merkerTeil()` hängt Route (test/echt) und
+  Spielbeginn an die Schlüssel von `sj.geheim.*` und den Fotos, damit ein
+  Testlauf nichts ins echte Spiel trägt.
+- **Datenbank (Nachtrag 32):** `register_participant(p_name, p_token)`,
+  `admin_set_test_mode` mit Sperre bei Plätzen, `submit_answer` mit leerer
+  Antwort, `device_test_save` mit Formprüfung. Generator
+  `tools/migration_bugjagd2.py`, Probelauf `tools/pruefstand/bugjagd2_db.py`.
+- Prüfen: `python tools/pruefstand/bugjagd2.py`.

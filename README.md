@@ -76,6 +76,10 @@ supabase/seed-*.sql            Prager Stationen und Testpersonen
   Handy quer liegt, Zifferntastatur bei Zahlenlösungen, „Wir sind da“ zeigt die
   Entfernung. Das **Design System** liegt in `design-system/` (Regeln in
   `MASTER.md`, Ansicht in `index.html`, online unter `/design-system/`).
+- **Seit dem 03.10.2026:** Teststation und Startpunkt je Route, **Kompass-Wächter**
+  (erkennt im Testmodus einen falsch zeigenden Kompass, der Pfeil folgt dann der
+  Laufrichtung, die Spielleitung sieht „Kompass falsch“), dazu die Funde einer
+  Bugjagd (Nachtrag 31 und 32).
 
 Prüfen ohne Datenbank: `python tools/pruefstand/selfie.py`, `name.py`,
 `geraetetest.py`, `kritik.py`, `ziffer.py`, `teststation.py` (Probelauf `teststation_db.py`),

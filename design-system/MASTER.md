@@ -168,7 +168,7 @@ Nicht animieren: Breite und Höhe (Layout springt), Seitenwechsel.
 | **Chip** | `.chip` | Status kurz („Läuft“, „Noch 1:47 h“); live in Orange |
 | **Ziffernschloss** | `.lock .wheel` | 6 Räder in `--ink`, sechstes abgesetzt und gestrichelt (Schlussziffer), neue Ziffer pulsiert |
 | **Route** | `.route` | Punkte 1 bis 5, erledigt orange, jetzt mit orangem Ring, offen mit `--feld`-Ring |
-| **Kompass** | `.compass` | Ring, orange Nadel, Entfernung daneben groß; Fragezeichen, solange keine Richtung |
+| **Kompass** | `.compass` | Ring, orange Nadel, Entfernung daneben groß; Fragezeichen, solange keine Richtung. Folgt der Pfeil der Laufrichtung statt dem Kompass: Nadel nur als gestrichelter Umriss, Ring gestrichelt (`.compass.lauf`), Plakette `.kchip` „nach Laufrichtung“ (sonst „Kompass“) |
 | **Verschlüsselter Name** | `.geheim` | `--mono`, feste Zellen (0,64 em breit, 1,2 em hoch); offen in Orange, eingerastet in `--ink`, Fortschrittsbalken |
 | **Dialog** | `.overlay .dialog` | oben ausgerichtet, scrollbar, Radius 14 px, Innenabstand 24 px, immer mit sichtbarem Abbrechen |
 | **Hochformat-Hinweis** | `.quer` | Handy mit Notch dreht sich im Uhrzeigersinn, Pfeil gleiche Richtung |

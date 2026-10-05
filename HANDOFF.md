@@ -8,7 +8,7 @@ Summe der fünf. Am Ziel stehen drei Koffer mit absteigendem Preisgeld: die
 ersten drei Teams, die den vollständigen Code eingeben, bekommen Platz 1 bis 3
 und je einen Koffer. Alle anderen laufen weiter und kommen mit Platz ins Ziel.
 
-**Stand 01.10.2026, abends:** Live auf GitHub Pages, Nachträge 1 bis 27 in der
+**Stand 05.10.2026:** Live auf GitHub Pages, Nachträge 1 bis 32 in der
 Datenbank. Seit dem 19.09. dazugekommen, jeweils mit eigenem Abschnitt am Ende
 dieser Datei:
 
@@ -26,6 +26,8 @@ dieser Datei:
   hell/dunkel, Schriftstufen `--fs-*`
 - Nachtrag 28 bis 30 (02./03.10.): Teststation, Startpunkt je Route,
   Kompass-Wächter (Abschnitt „Kompass-Wächter (Nachtrag 30)“ am Ende)
+- Nachtrag 31 und 32 (04.10.): Funde der Bugjagd, darunter eine Rechte-Lücke
+  (Abschnitt „Bugjagd 03.10.2026“ am Ende)
 
 **Die Datenbank ist gerade im Probebetrieb, nicht leer** (Stand 03.10.: Status
 „Anmeldung“, Testmodus an; die Angaben hier stammen vom 30.09.): zwei Teams (Fuchs, Wolf) aus Friedrichs Durchgang am 30.09.,
@@ -142,12 +144,13 @@ RPC-Endpunkte auf.
 ```
 index.html                      die komplette App, kein Build nötig
 config.js                       Supabase-Zugang und WhatsApp-Nummer
+kompass-waechter.js             Kompass-Wächter: Kompass gegen Gyroskop prüfen (Nachtrag 30)
 geraete-test.html               Geräte-Test: prüft auf einem Handy alles, was das Spiel braucht (Nachtrag 23)
 geraete-tests.js                die Suite dazu, ein Baustein je Test
 kompass-test.html               leitet auf geraete-test.html weiter
 tools/testlaeufe.py             Läufe des Geräte-Tests nach testlaeufe/ holen
 tools/sql.py                    SQL an die Datenbank schicken, ohne den SQL-Editor
-supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge einspielen
+supabase/migrations/            Schema und Spiellogik, alle Dateien in Dateinamen-Reihenfolge einspielen
   20260918120000_init.sql         Tabellen, Rechte, alle Funktionen
   20260918150000_where_clauses.sql  WHERE-Klauseln für pg-safeupdate
   20260918160000_routes.sql       Verlaufstabelle, admin_tracks, Beenden löscht nicht mehr
@@ -170,6 +173,15 @@ supabase/migrations/            Schema und Spiellogik, in dieser Reihenfolge ein
   20260919090000_hintergrund.sql  Hintergrund umschaltbar (game_state.background, admin_set_background)
   20260919100000_bugjagd.sql      Funde der Bugjagd: norm mit Háček, Sperren beim Auslosen, Station beim Werten, lange PIN
   20260919110000_team_zustand.sql admin_state mit checkedInAt und lastSolvedAt (Zustandszeile im Reiter Teams)
+  20260930120000_geraetetest.sql  Läufe des Geräte-Tests speichern (Nachtrag 23)
+  20260930180000_gruppenselfie.sql  Gruppenselfie an jeder Station (Nachtrag 25)
+  20260930200000_name_verschluesselt.sql  Stationsname verschlüsselt, Kreise fürs Entschlüsseln (Nachtrag 26)
+  20261001120000_zahlenantwort.sql  station.numeric für die Zifferntastatur (Nachtrag 27)
+  20261002120000_teststation.sql  Teststation: stations_alle mit route, Sicht stations (Nachtrag 28)
+  20261002140000_startpunkt.sql   Startpunkt je Route (Nachtrag 29)
+  20261002160000_kompass_waechter.sql  Urteil des Kompass-Wächters mit der Position (Nachtrag 30)
+  20261004090000_current_station_sperren.sql  current_station wieder gesperrt (Nachtrag 31)
+  20261004100000_bugjagd2.sql     Funde der Bugjagd 03.10.: Anmeldung, Testmodus, leere Antwort, Geräte-Test (Nachtrag 32)
 hintergrund/a.svg, b.svg, c.svg  die drei Hintergrund-Varianten, werden nachgeladen
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
@@ -974,7 +986,7 @@ Positionsmeldungen wird ein vollständiger Bewegungsverlauf der Teamleitungen
 über die ganze Spielzeit. Den Teams vorher sagen, dass der Weg aufgezeichnet
 wird, und nach der Auswertung löschen.
 
-## Umgebung (Stand 19.09.2026, live)
+## Umgebung (Stand 05.10.2026, live)
 
 | Was | Wert |
 |---|---|
@@ -984,7 +996,8 @@ wird, und nach der Auswertung löschen.
 | Publishable key | `sb_publishable_7uEQEkFwi27XJdGLSoso5w_TMxHJYUq` (steht in `config.js`, darf öffentlich sein) |
 | Admin-PIN | in `game_state.admin_pin`, am 18.09.2026 geändert (Standard war 2026). Der aktuelle Wert steht bewusst nicht im Repo, das ist öffentlich. |
 
-Init-Migration und Nachträge 1 bis 21 sind eingespielt (22 braucht keine Migration), geprüft über `pg_proc`
+Alle Migrationen bis `20261004100000_bugjagd2.sql` (Nachtrag 32) sind eingespielt (Stand 05.10.2026;
+Nachträge ohne Datenbankänderung haben keine Datei), geprüft über `pg_proc`
 und Aufrufe der Endpunkte. Wer die Datenbank neu aufsetzt, spielt sie in der
 Reihenfolge ein, in der sie unter „Alle Dateien“ stehen: ohne Nachtrag 1
 schlägt „Teams auslosen“ mit „UPDATE requires a WHERE clause“ fehl, ohne
