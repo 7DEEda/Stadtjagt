@@ -10,10 +10,10 @@ Vollständiger Kontext, Architektur, Datenschutz und offene Punkte:
 
 Wie Spiel und Code funktionieren (Regeln, Zustände, Abläufe, Aufbau): **[SPIEL.md](SPIEL.md)**
 
-Nächster Schritt (Stand 06.10.2026): Der Umbau "Weiterentwicklung" ist auf Branch
-`umbau-weiterentwicklung` gebaut, aber nicht gemerged und nicht gepusht. Er
-wartet auf Friedrichs Okay und einen Handytest. Einzelheiten im HANDOFF unter
-"Umbau Weiterentwicklung (Nachtrag 33)".
+Stand 09.10.2026: Der Umbau "Weiterentwicklung" ist live (Handy-Hülle mit
+Aktionsleiste und drei Reitern, Spielleitung mit "Karte und Teams"). Nächster
+Schritt: Handytest der neuen Hülle, danach der Stresstest. Einzelheiten im
+HANDOFF unter "Umbau Weiterentwicklung (Nachtrag 33)" und "Stand zum Fortsetzen".
 
 ## Ansichten
 

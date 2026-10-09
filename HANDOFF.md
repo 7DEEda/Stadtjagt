@@ -1880,7 +1880,8 @@ Funde mit Szenario und Belegen lagen in `.superpowers/sdd/bugjagd-2026-10-03/` (
 
 ## Umbau Weiterentwicklung (Nachtrag 33, 06.10.2026)
 
-Gebaut auf Branch `umbau-weiterentwicklung` (nicht gemerged, nicht gepusht), nach
+Gebaut auf Branch `umbau-weiterentwicklung`, am 09.10.2026 nach `master` gemerged
+(Fast-Forward auf f968a15) und live, nach
 `docs/superpowers/plans/2026-10-05-weiterentwicklung.md`. Alles in `index.html`.
 
 - **Migration** `supabase/migrations/20261006090000_admin_fehlversuche.sql`
@@ -1913,21 +1914,21 @@ Gebaut auf Branch `umbau-weiterentwicklung` (nicht gemerged, nicht gepusht), nac
   Ziel) unter der Karte, Klick wählt das Team.
 - **Prüfskript** `tools/pruefstand/umbau.py` (Port 8840); neues Szenario in
   `mock.js`: `admin-probleme`.
-- **Offen:** Friedrichs Okay und ein Handytest, danach Merge und Push.
+- **Live seit 09.10.2026** (Okay von Friedrich, `class="ftabs"` auf
+  https://7deeda.github.io/Stadtjagt/ geprüft). Ein Handytest der neuen Hülle
+  steht noch aus.
 
-## Stand zum Fortsetzen (05.10.2026)
+## Stand zum Fortsetzen (09.10.2026)
 
-**Live:** alles bis Nachtrag 32 und die Änderungen vom 05.10., Geräte-Test bis Suite 21
-(https://7deeda.github.io/geraetetest/).
+**Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test
+bis Suite 21 (https://7deeda.github.io/geraetetest/).
 
-**Design-Variante "Weiterentwicklung": gebaut** (entschieden 05.10.2026, Umbau
-am 05./06.10.) auf Branch `umbau-weiterentwicklung`, siehe Nachtrag 33. Vorlagen
-nur lokal: `mockups/design-varianten/v-weiter.html` und `admin-karte.html`.
+**Design-Variante "Weiterentwicklung": live** (entschieden 05.10.2026, Umbau
+am 05./06.10., gemerged 09.10.), siehe Nachtrag 33. Vorlagen nur lokal:
+`mockups/design-varianten/v-weiter.html` und `admin-karte.html`.
 
-**NÄCHSTER SCHRITT:** Branch `umbau-weiterentwicklung` ist nicht gemerged und
-nicht gepusht. Wartet auf Friedrichs Okay und einen Handytest; danach Merge nach
-`master`, `git push origin master` und prüfen, dass auf
-https://7deeda.github.io/Stadtjagt/ `class="ftabs"` ausgeliefert wird.
+**NÄCHSTER SCHRITT:** Handytest der neuen Hülle (Teamleitung, Mitlese-Ansicht,
+Spielleitung auf dem Tablet); danach Stresstest (unten).
 
 **Stresstest mit 100 Handys (Konzept 03.10., nicht gebaut):** Last heute ohne
 Realtime: jedes Handy fragt alle 10 s (Teamleitung `team_state`, Mitlesende
