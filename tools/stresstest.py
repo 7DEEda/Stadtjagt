@@ -8,7 +8,8 @@ Nur Python 3.10+ aus der Standardbibliothek, keine Pakete. Läuft auf jedem Rech
     python tools/stresstest.py lauf          # Anmeldung, Auslosen, Start, Spiel, Bericht
     python tools/stresstest.py aufraeumen    # Teilnehmende, Teams, Positionen im Testprojekt löschen
 
-Zugang (Umgebungsvariablen oder gleichnamige Schalter --url, --key, --ref, --token):
+Zugang (Umgebungsvariablen oder gleichnamige Schalter --url, --key, --ref, --token).
+URL, Key und Ref des Testprojekts "stadtjagd-stresstest" stehen als Vorgabe im Skript; nötig ist nur der Token:
     STRESS_URL    https://<ref>.supabase.co des Testprojekts
     STRESS_KEY    publishable/anon key des Testprojekts (Settings, API Keys)
     STRESS_REF    Projekt-Ref des Testprojekts (nur für "einrichten")
@@ -52,6 +53,10 @@ for strom in (sys.stdout, sys.stderr):
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 PIN = "stresstest"
+# Das Testprojekt "stadtjagd-stresstest" (13.10.2026). Der Publishable Key ist öffentlich gedacht wie der in config.js.
+TEST_URL = "https://brtngzltqgniihjaoskr.supabase.co"
+TEST_KEY = "sb_publishable_zxSC2IziBOI8nHmSKmoeuA_j_7-iIcf"
+TEST_REF = "brtngzltqgniihjaoskr"
 LIVE_REF = (re.search(r"https://([a-z0-9]+)\.supabase\.co", (REPO / "config.js").read_text(encoding="utf-8")) or [None, ""])[1]
 
 
@@ -394,9 +399,9 @@ def _still(fn, *args):
 def main():
     p = argparse.ArgumentParser(description="Stresstest der Stadtjagd gegen ein eigenes Supabase-Projekt")
     p.add_argument("befehl", choices=["einrichten", "lauf", "aufraeumen"])
-    p.add_argument("--url", default=os.environ.get("STRESS_URL"))
-    p.add_argument("--key", default=os.environ.get("STRESS_KEY"))
-    p.add_argument("--ref", default=os.environ.get("STRESS_REF"))
+    p.add_argument("--url", default=os.environ.get("STRESS_URL") or TEST_URL)
+    p.add_argument("--key", default=os.environ.get("STRESS_KEY") or TEST_KEY)
+    p.add_argument("--ref", default=os.environ.get("STRESS_REF") or TEST_REF)
     p.add_argument("--token", default=os.environ.get("SUPABASE_ACCESS_TOKEN"))
     p.add_argument("--handys", type=int, default=100)
     p.add_argument("--teams", type=int, default=12)
