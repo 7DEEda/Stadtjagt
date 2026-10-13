@@ -1940,6 +1940,14 @@ hochrechnen, (2) Lastskript mit 100 gespielten Handys nach Drehbuch gegen ein
 **eigenes** Supabase-Projekt (nicht die Live-Datenbank; `tools/sql.py` braucht
 dafür einen Schalter fürs Zielprojekt), (3) 10 bis 20 echte Browser per
 Playwright plus Skript-Handys, dann Feldtest mit 3 bis 5 Handys.
+Skript seit 13.10.2026: `tools/stresstest.py` (nur Standardbibliothek;
+`einrichten` spielt alle Migrationen, Stationen, Testlösungen und PIN
+"stresstest" in ein eigenes Projekt, `lauf` spielt Anmeldung, Auslosen, Start
+und das Spiel mit 100 Handys im Zeitraffer und schreibt einen Bericht
+`tools/stresstest-bericht-*.json`, `aufraeumen` leert das Testprojekt).
+Verweigert das Live-Projekt. Trockenlauf gegen einen lokalen Fake-Server ok
+(100 Handys, 12 Teams im Ziel, etwa 20 bis 25 Anfragen/s); gegen ein echtes
+Testprojekt noch nicht gelaufen.
 
 **Danach (Teil 3, Spezifikation fertig, kein Plan):** Rollen ohne Tippen
 (Teamleitung übergeben, Handy schaltet von selbst um), Akku-Warnung bei 20 %

@@ -19,3 +19,4 @@ sicherungen/
 
 # Arbeitsbereich der Umsetzungspläne
 .superpowers/
+tools/stresstest-bericht-*.json
