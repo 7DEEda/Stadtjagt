@@ -1943,7 +1943,7 @@ Playwright plus Skript-Handys, dann Feldtest mit 3 bis 5 Handys.
 Ablauf, Bewertung, Aufräumen und Protokoll: **`tools/STRESSTEST.md`**.
 Skript seit 13.10.2026: `tools/stresstest.py` (nur Standardbibliothek;
 `einrichten` spielt alle Migrationen, Stationen, Testlösungen und PIN
-"stresstest" in ein eigenes Projekt, `lauf` spielt Anmeldung, Auslosen, Start
+"stresstest-2026" in ein eigenes Projekt, `lauf` spielt Anmeldung, Auslosen, Start
 und das Spiel mit 100 Handys im Zeitraffer und schreibt einen Bericht
 `tools/stresstest-bericht-*.json`, `aufraeumen` leert das Testprojekt).
 Verweigert das Live-Projekt. Trockenlauf gegen einen lokalen Fake-Server ok

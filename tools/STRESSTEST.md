@@ -26,7 +26,7 @@ auf einen eigenen Server umzieht. Die App selbst bleibt auf GitHub Pages
   Region Central EU (Frankfurt), Postgres (Standard), gleiche Einstellungen
   wie das Live-Projekt.
 - URL, Publishable Key und Ref stehen als Vorgabe in `tools/stresstest.py`.
-- Admin-PIN im Testprojekt: `stresstest` (setzt `einrichten`).
+- Admin-PIN im Testprojekt: `stresstest-2026` (setzt `einrichten`).
 - Das Live-Projekt (`lwdmwklyydhcvnhpjudk`) verweigert das Skript; dort wird
   nie getestet.
 
@@ -131,3 +131,14 @@ gemeinsam sagen, dass es jetzt gut ist. Bis dahin bleibt alles stehen, auch
   (100 Handys, 12 Teams im Ziel, etwa 20 bis 25 Anfragen/s). Testprojekt
   angelegt, Schema noch nicht eingespielt. Supabase meldete an dem Tag
   Störungen.
+- 13.10.2026, 16:55: Token nur für das Testprojekt angelegt (24 h gültig, bis
+  etwa 14.10. 16:45), liegt in `tools/stresstest.token`. `einrichten` lief vom
+  Arbeitsrechner: alle 33 Migrationen ok, Stationen, Lösungen `loesung1` bis
+  `loesung5`, PIN `stresstest-2026`. Korrekturen am Skript: PIN mindestens
+  12 Zeichen (Datenbankregel), `einrichten` wiederholbar (überspringt das
+  Schema, wenn es steht), Spieldauer als ganze Minuten. Funktionstest mit
+  10 Handys, 2 Teams, 1,5 min: keine Fehler, p95 unter 125 ms (Supabase meldete
+  Störungen, daher keine Messung). **Nächster Schritt: Lauf 1 (Schritt 2),
+  sobald status.supabase.com grün ist.** Der Token wird für die Läufe nicht
+  mehr gebraucht.
+

@@ -53,7 +53,7 @@ for strom in (sys.stdout, sys.stderr):
         pass
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-PIN = "stresstest"
+PIN = "stresstest-2026"   # die Datenbank verlangt mindestens 12 Zeichen
 # Das Testprojekt "stadtjagd-stresstest" (13.10.2026). Der Publishable Key ist öffentlich gedacht wie der in config.js.
 TEST_URL = "https://brtngzltqgniihjaoskr.supabase.co"
 TEST_KEY = "sb_publishable_zxSC2IziBOI8nHmSKmoeuA_j_7-iIcf"
@@ -284,7 +284,14 @@ def sql(a, text):
 def einrichten(a):
     zugang(a, mit_admin=True)
     dateien = sorted((REPO / "supabase" / "migrations").glob("*.sql"))
-    print(f"Spiele {len(dateien)} Migrationen in Projekt {a.ref} ein ...")
+    # Wiederholbar: steht das Schema schon (admin_state gibt es), nur Stationen, Lösungen und PIN setzen.
+    # Die erste Migration beginnt mit "drop table ... cascade" und scheitert auf einem fertigen Schema.
+    da = sql(a, "select to_regprocedure('public.admin_state(text)') is not null as da")
+    if da and da[0].get("da"):
+        print("Schema steht schon, Migrationen übersprungen.")
+        dateien = []
+    else:
+        print(f"Spiele {len(dateien)} Migrationen in Projekt {a.ref} ein ...")
     for d in dateien:
         try:
             sql(a, d.read_text(encoding="utf-8"))
@@ -328,7 +335,7 @@ def lauf(a):
     if st.get("testMode") or st.get("route") == "test":
         sys.exit("Das Testprojekt steht im Testmodus. Der Stresstest prüft Entfernungen und Antworten echt: Testmodus aus.")
     a.koffer = st.get("caseCode") or "".join(str(s.get("digit", 0)) for s in stationen)
-    v.rpc("admin_set_settings", {"p_pin": PIN, "p_duration_min": a.dauer + 10, "p_case_hint": "Stresstest"}, buchen=False)
+    v.rpc("admin_set_settings", {"p_pin": PIN, "p_duration_min": int(math.ceil(a.dauer)) + 10, "p_case_hint": "Stresstest"}, buchen=False)
 
     print(f"1. Anmeldung: {a.handys} Handys in {a.anmeldung_s} s")
     tokens, tlock = [], threading.Lock()
