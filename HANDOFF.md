@@ -1949,7 +1949,8 @@ Verweigert das Live-Projekt. Trockenlauf gegen einen lokalen Fake-Server ok
 (100 Handys, 12 Teams im Ziel, etwa 20 bis 25 Anfragen/s); gegen ein echtes
 Testprojekt noch nicht gelaufen. Testprojekt `stadtjagd-stresstest`
 (Ref brtngzltqgniihjaoskr, Frankfurt) seit 13.10. angelegt, Schema noch nicht
-eingespielt. **Nach dem Stresstest wieder löschen:** Projekt und Token im
+eingespielt. **Nach dem Stresstest wieder löschen, aber erst wenn nichts
+auffällt und Friedrich zustimmt (ggf. mehrere Läufe):** Projekt und Token im
 Supabase-Dashboard, die Vorgaben TEST_URL/TEST_KEY/TEST_REF im Skript.
 
 **Danach (Teil 3, Spezifikation fertig, kein Plan):** Rollen ohne Tippen
