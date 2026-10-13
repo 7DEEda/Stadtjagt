@@ -69,6 +69,21 @@ class Messung:
         self.bytes = defaultdict(list)
         self.fehler = defaultdict(lambda: defaultdict(int))   # fn -> meldung -> anzahl
         self.fenster = []                    # (zeitpunkt, fn, ms, ok)
+        self.logik = defaultdict(lambda: defaultdict(int))    # fn -> meldung -> anzahl: HTTP ok, aber {"ok": false}
+        self.rand = defaultdict(lambda: [0, 0, []])           # randfall -> [bestanden, gesamt, abweichungen]
+
+    def buche_logik(self, fn, meldung):
+        with self.lock:
+            self.logik[fn][(meldung or "ok: false")[:120]] += 1
+
+    def randfall(self, name, bestanden, info=""):
+        with self.lock:
+            r = self.rand[name]
+            r[1] += 1
+            if bestanden:
+                r[0] += 1
+            elif len(r[2]) < 3:
+                r[2].append(str(info)[:140])
 
     def buche(self, fn, ms, ok, n_bytes=0, meldung=None):
         with self.lock:
@@ -92,7 +107,7 @@ class Messung:
 
     def bericht(self):
         out = {}
-        for fn in sorted(set(self.zeiten) | set(self.fehler)):
+        for fn in sorted(set(self.zeiten) | set(self.fehler) | set(self.logik)):
             z = sorted(self.zeiten[fn])
             q = lambda p: round(z[min(len(z) - 1, max(0, int(len(z) * p) - 1))]) if z else None
             out[fn] = {
@@ -100,6 +115,7 @@ class Messung:
                 "p50_ms": q(.50), "p95_ms": q(.95), "p99_ms": q(.99), "max_ms": round(z[-1]) if z else None,
                 "mittel_bytes": round(statistics.mean(self.bytes[fn])) if self.bytes[fn] else None,
                 "fehlermeldungen": dict(self.fehler[fn]),
+                "logikfehler": dict(self.logik[fn]),
             }
         return out
 
@@ -117,7 +133,8 @@ class Verbindung:
         # http nur für den Trockenlauf gegen einen lokalen Fake-Server
         self.art = http.client.HTTPConnection if u.scheme == "http" else http.client.HTTPSConnection
 
-    def rpc(self, fn, args=None, buchen=True):
+    def rpc(self, fn, args=None, buchen=True, streng=True):
+        """streng: eine Antwort {"ok": false} zählt als Logikfehler (HTTP ok, aber das Spiel lehnt ab)."""
         body = json.dumps(args or {}).encode("utf-8")
         kopf = {"Content-Type": "application/json", "apikey": self.key, "Authorization": "Bearer " + self.key}
         t0 = time.perf_counter()
@@ -148,6 +165,8 @@ class Verbindung:
             raise RuntimeError(meldung)
         if buchen:
             M.buche(fn, ms, True, len(daten))
+            if streng and isinstance(data, dict) and data.get("ok") is False:
+                M.buche_logik(fn, data.get("message"))
         return data
 
 
@@ -167,6 +186,10 @@ class Lauf:
         self.a = a
         self.ende = False
         self.start_t = None
+        self.lock = threading.Lock()
+        self.fertig = 0
+        self.n_teams = 0
+        self.alle = threading.Event()
 
     def warte(self, s):
         """Schlafen, aber beim Ende sofort aufhören."""
@@ -212,10 +235,37 @@ class Lauf:
                 letzte_meldung = time.time()
             return st
 
+        def rand(name, fn, args, erwartet):
+            """Randfall: erwartet 'ok' (ok: true), 'nein' (ok: false) oder 'fehler' (HTTP-Fehler). Ungebucht."""
+            try:
+                r = v.rpc(fn, args, buchen=False, streng=False)
+            except RuntimeError as e:
+                M.randfall(name, erwartet == "fehler", f"unerwartet: {e}")
+                return None
+            msg = r.get("message") if isinstance(r, dict) else r
+            if erwartet == "fehler":
+                M.randfall(name, False, f"kein Fehler: {msg}")
+            else:
+                M.randfall(name, (isinstance(r, dict) and r.get("ok") is True) == (erwartet == "ok"), msg)
+            return r
+
+        def falsch():
+            try:
+                v.rpc("submit_answer", {"p_code": code, "p_answer": "falsch"}, streng=False)
+            except RuntimeError:
+                pass
+
         self.warte(random.uniform(0, self.a.takt))
-        ziele = stationen + [None]          # None = Koffer am Start
-        for ziel in ziele:
-            nach = (ziel["lat"], ziel["lng"]) if ziel else start
+        # Randfälle am Start, vor der ersten Station
+        if random.random() < .5:
+            rand("Antwort ohne Check-in", "submit_answer", {"p_code": code, "p_answer": stationen[0]["answer"]}, "nein")
+        if random.random() < .5:
+            rand("Check-in zu weit weg (am Start)", "check_in", {"p_code": code, "p_lat": pos[0], "p_lng": pos[1], "p_acc": 8}, "nein")
+        if random.random() < .2:
+            rand("Unbekannter Teamcode", "team_state", {"p_code": "XXXXXXXX"}, "fehler")
+
+        for i, ziel in enumerate(stationen):
+            nach = (ziel["lat"], ziel["lng"])
             von, weg = pos, meter(pos, nach)
             dauer = max(1.0, weg / tempo)
             t0 = time.time()
@@ -231,27 +281,64 @@ class Lauf:
                 self.warte(min(self.a.takt, dauer * (1 - f)))
             if self.ende:
                 return
-            if ziel is None:                # Koffer
-                try:
-                    v.rpc("submit_final", {"p_code": code, "p_value": self.a.koffer, "p_lat": pos[0], "p_lng": pos[1], "p_acc": 8})
-                except RuntimeError:
-                    pass
-                break
             try:
                 v.rpc("check_in", {"p_code": code, "p_lat": nach[0], "p_lng": nach[1], "p_acc": 8})
             except RuntimeError:
                 pass
+            if random.random() < .25:
+                rand("Doppelter Check-in (Doppeltipp)", "check_in", {"p_code": code, "p_lat": nach[0], "p_lng": nach[1], "p_acc": 8}, "ok")
             self.warte(random.uniform(20, 90) / self.a.zeitraffer * 10)      # Rätsel lesen und lösen
-            if random.random() < .3:
-                try:
-                    v.rpc("submit_answer", {"p_code": code, "p_answer": "falsch"})
-                except RuntimeError:
-                    pass
+            if i == 1 and random.random() < .3:      # dreimal falsch: Denkpause, die Pause läuft in Echtzeit
+                for _ in range(3):
+                    falsch()
+                    self.warte(random.uniform(1, 3))
+                rand("Richtig, aber in der Denkpause", "submit_answer", {"p_code": code, "p_answer": ziel["answer"]}, "nein")
+                self.warte(125)
+            elif random.random() < .3:
+                falsch()
                 self.warte(random.uniform(5, 15))
             try:
                 v.rpc("submit_answer", {"p_code": code, "p_answer": ziel["answer"]})
             except RuntimeError:
                 pass
+            if random.random() < .25:           # zweimal getippt: darf die nächste Station nicht mitlösen
+                rand("Doppelte richtige Antwort (Doppeltipp)", "submit_answer", {"p_code": code, "p_answer": ziel["answer"]}, "nein")
+
+        # Alle Stationen gelöst: der Koffer steht an der letzten Station. Alle Teams geben ihn ungefähr gleichzeitig ein
+        # (Platzvergabe unter Sperre), höchstens 4 min Wartezeit auf die langsamsten.
+        with self.lock:
+            self.fertig += 1
+            if self.fertig >= self.n_teams:
+                self.alle.set()
+        t0 = time.time()
+        while not self.alle.is_set() and time.time() - t0 < 240 and self.warte(0):
+            try:
+                abfragen()
+            except RuntimeError:
+                pass
+            self.alle.wait(self.a.takt)
+        if self.ende:
+            return
+        koffer = self.a.koffer
+        if random.random() < .5:
+            rand("Koffer zu weit weg (am Start)", "submit_final", {"p_code": code, "p_value": koffer, "p_lat": start[0], "p_lng": start[1], "p_acc": 8}, "nein")
+        if random.random() < .2:
+            rand("Koffer ohne GPS", "submit_final", {"p_code": code, "p_value": koffer}, "nein")
+        if random.random() < .3:
+            rand("Falscher Koffer-Code", "submit_final", {"p_code": code, "p_value": koffer[:-1] + str((int(koffer[-1]) + 1) % 10), "p_lat": pos[0], "p_lng": pos[1], "p_acc": 8}, "nein")
+        wert = "-".join(koffer) if random.random() < .25 else koffer       # Eingabe mit Strichen zählt auch
+        r1 = None
+        try:
+            r1 = v.rpc("submit_final", {"p_code": code, "p_value": wert, "p_lat": pos[0], "p_lng": pos[1], "p_acc": 8})
+        except RuntimeError:
+            pass
+        if r1 and r1.get("ok") and random.random() < .3:
+            r2 = None
+            try:
+                r2 = v.rpc("submit_final", {"p_code": code, "p_value": koffer, "p_lat": pos[0], "p_lng": pos[1], "p_acc": 8}, buchen=False, streng=False)
+            except RuntimeError:
+                pass
+            M.randfall("Koffer doppelt abgeschickt, gleicher Platz", bool(r2 and r2.get("ok") and r2.get("place") == r1.get("place")), r2)
         while self.warte(self.a.takt):      # im Ziel: weiter abfragen wie die App
             try:
                 abfragen()
@@ -349,6 +436,26 @@ def lauf(a):
     [t.start() for t in th]
     [t.join() for t in th]
     print(f"   {len(tokens)} angemeldet")
+    vr = Verbindung(a.url, a.key)
+
+    def rand(name, fn, args, erwartet_fehler=True):
+        try:
+            r = vr.rpc(fn, args, buchen=False, streng=False)
+            M.randfall(name, not erwartet_fehler, f"kein Fehler: {r}" if erwartet_fehler else "")
+        except RuntimeError as e:
+            M.randfall(name, erwartet_fehler, f"unerwartet: {e}")
+    if tokens:
+        rand("Anmeldung: Name doppelt", "register_participant", {"p_name": "Stress Person 000"})
+        rand("Anmeldung: Name doppelt (Groß/Klein, Leerzeichen)", "register_participant", {"p_name": "  stress   PERSON 000 "})
+        rand("Anmeldung: Name zu kurz", "register_participant", {"p_name": "A"})
+        rand("Anmeldung: Name nur Sonderzeichen", "register_participant", {"p_name": "!!!???"})
+        rand("Anmeldung: Name zu lang", "register_participant", {"p_name": "X" * 61})
+        rand("Anmeldung: ungültiger Geräte-Schlüssel", "register_participant", {"p_name": "Stress Rand 001", "p_token": "abc"})
+        try:    # Wiederholung mit demselben Schlüssel (Antwort ging verloren): gleiche Person, kein Fehler
+            r = vr.rpc("register_participant", {"p_name": "Stress Person 000", "p_token": tokens[0]}, buchen=False, streng=False)
+            M.randfall("Anmeldung: Wiederholung mit eigenem Schlüssel", r.get("token") == tokens[0], r)
+        except RuntimeError as e:
+            M.randfall("Anmeldung: Wiederholung mit eigenem Schlüssel", False, f"unerwartet: {e}")
 
     print(f"2. Auslosen in {a.teams} Teams und Start")
     v.rpc("admin_draw", {"p_pin": PIN, "p_teams": a.teams, "p_size": None})
@@ -360,8 +467,11 @@ def lauf(a):
             pass
     v.rpc("admin_start", {"p_pin": PIN})
     print(f"   {len(leitungen)} Teamleitungen, Spiel läuft")
+    for i in range(3):      # nach dem Start: die Anmeldung ist zu, die Spielleitung trägt nach
+        rand("Nachmelden nach Start wird abgelehnt", "register_participant", {"p_name": f"Stress Spät {i}"})
 
     L = Lauf(a)
+    L.n_teams = len(leitungen)
     leit_tok = {t for t, _ in leitungen}
     threads = [threading.Thread(target=L.teamleitung, args=(code, stationen, start), daemon=True) for _, code in leitungen]
     threads += [threading.Thread(target=L.mitlesen, args=(tok,), daemon=True) for tok in tokens if tok not in leit_tok]
@@ -384,17 +494,30 @@ def lauf(a):
         geloest = sum(t.get("solved") or 0 for t in ende.get("teams") or [])
     except RuntimeError:
         im_ziel = geloest = None
+        ende = {}
+    plaetze = sorted(t.get("place") for t in (ende.get("teams") or []) if t.get("place"))
+    plaetze_ok = plaetze == list(range(1, len(plaetze) + 1))
+    soll_geloest = len(stationen) * len(ende.get("teams") or [])
     b = {"zeit": time.strftime("%Y-%m-%d %H:%M"), "parameter": {k: getattr(a, k) for k in ("handys", "teams", "dauer", "takt", "zeitraffer", "spielleitungen", "anmeldung_s")},
-         "ergebnis": {"teams_im_ziel": im_ziel, "stationen_geloest": geloest}, "funktionen": M.bericht()}
+         "ergebnis": {"teams_im_ziel": im_ziel, "teams": len(ende.get("teams") or []), "stationen_geloest": geloest, "stationen_soll": soll_geloest, "plaetze_lueckenlos": plaetze_ok},
+         "randfaelle": {k: {"bestanden": r[0], "gesamt": r[1], "abweichungen": r[2]} for k, r in sorted(M.rand.items())}, "funktionen": M.bericht()}
     datei = REPO / "tools" / f"stresstest-bericht-{time.strftime('%Y%m%d-%H%M')}.json"
     datei.write_text(json.dumps(b, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"\n4. Bericht ({datei.name}): Teams im Ziel {im_ziel}, Stationen gelöst {geloest}\n")
+    print(f"\n4. Bericht ({datei.name}): Teams im Ziel {im_ziel} von {len(ende.get('teams') or [])}, "
+          f"Stationen gelöst {geloest} von {soll_geloest}, Plätze {'lückenlos und eindeutig' if plaetze_ok else 'FEHLERHAFT: ' + str(plaetze)}\n")
     print(f"{'Funktion':<22}{'ok':>7}{'Fehler':>8}{'p50':>7}{'p95':>7}{'p99':>7}{'max':>7}{'KB':>7}")
     for fn, r in b["funktionen"].items():
         kb = f"{r['mittel_bytes'] / 1024:.1f}" if r["mittel_bytes"] is not None else "-"
         print(f"{fn:<22}{r['ok']:>7}{r['fehler']:>8}{r['p50_ms'] or '-':>7}{r['p95_ms'] or '-':>7}{r['p99_ms'] or '-':>7}{r['max_ms'] or '-':>7}{kb:>7}")
         for m, n in r["fehlermeldungen"].items():
             print(f"{'':<22}  {n} x {m}")
+        for m, n in r["logikfehler"].items():
+            print(f"{'':<22}  {n} x Logik: {m}")
+    print("\nRandfälle (erwartetes Verhalten des Servers):")
+    for k, r in b["randfaelle"].items():
+        print(f"  {'ok  ' if r['bestanden'] == r['gesamt'] else 'ABW '} {k}: {r['bestanden']}/{r['gesamt']}")
+        for x in r["abweichungen"]:
+            print(f"        {x}")
 
 
 def token_datei():

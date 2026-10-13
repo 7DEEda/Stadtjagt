@@ -141,4 +141,24 @@ gemeinsam sagen, dass es jetzt gut ist. Bis dahin bleibt alles stehen, auch
   Störungen, daher keine Messung). **Nächster Schritt: Lauf 1 (Schritt 2),
   sobald status.supabase.com grün ist.** Der Token wird für die Läufe nicht
   mehr gebraucht.
+- 13.10.2026, 17:16 (Lauf 1, erster Versuch, 15 min): 0 Fehler, p95 aller
+  Funktionen unter 170 ms, ein Ausreißer bei 790 s (p95 2,9 s, max 7,4 s).
+  "Teams im Ziel 0": Fehler im Skript, nicht in der App. Der Koffer liegt an der
+  letzten Station, das Skript schickte die Teams zum Start; `submit_final`
+  lehnte mit `ok: false` ab, und das Skript zählte jeden HTTP-200 als ok.
+- 13.10.2026, 17:48 (Lauf 1 wiederholt, 20 min, Skript korrigiert): Skript
+  prüft jetzt `ok: false` als Logikfehler, Koffer an der letzten Station,
+  alle Teams geben ihn ungefähr gleichzeitig ein, dazu 18 Randfälle (doppelter
+  Name, Nachmelden, Check-in zu weit weg, Doppeltipp, Denkpause, falscher oder
+  doppelter Koffer-Code, Koffer ohne GPS ...). **Ergebnis:** 0 Fehler, 0
+  Logikfehler, alle 18 Randfälle wie erwartet, 12 von 12 Teams im Ziel, 60 von
+  60 Stationen, Plätze lückenlos und eindeutig, `submit_final` p95 90 ms.
+  p95 gesamt: public_state 190, member_state 129, team_state 108, admin_state
+  378 ms; **p99 public_state 2346 ms (Kriterium 2000 verfehlt)**. Ursache: drei
+  kurze Aussetzer (340 s, 700 bis 740 s, kleiner 830 s), in denen alle
+  Funktionen gleichzeitig langsam waren (p95 bis 4,1 s), ohne Fehler und ohne
+  Trend; p50 blieb bei 44 ms. Das erste Lauf-1 hatte einen ähnlichen Aussetzer.
+  Spricht für Netz oder Supabase (Störung an dem Tag), nicht für eine einzelne
+  Abfrage. Antwortgrößen: public_state 5,7 KB, admin_state 26 KB. Nächster
+  Schritt: Lauf 2 (200 Handys), um zu sehen, ob die Aussetzer bleiben.
 
