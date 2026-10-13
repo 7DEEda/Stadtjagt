@@ -1940,6 +1940,7 @@ hochrechnen, (2) Lastskript mit 100 gespielten Handys nach Drehbuch gegen ein
 **eigenes** Supabase-Projekt (nicht die Live-Datenbank; `tools/sql.py` braucht
 dafür einen Schalter fürs Zielprojekt), (3) 10 bis 20 echte Browser per
 Playwright plus Skript-Handys, dann Feldtest mit 3 bis 5 Handys.
+Ablauf, Bewertung, Aufräumen und Protokoll: **`tools/STRESSTEST.md`**.
 Skript seit 13.10.2026: `tools/stresstest.py` (nur Standardbibliothek;
 `einrichten` spielt alle Migrationen, Stationen, Testlösungen und PIN
 "stresstest" in ein eigenes Projekt, `lauf` spielt Anmeldung, Auslosen, Start

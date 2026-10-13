@@ -1,0 +1,125 @@
+# Stresstest der Stadtjagd
+
+Anleitung für Friedrich und für eine Claude-Sitzung, die den Stresstest
+übernimmt (etwa auf dem privaten Rechner). Stand 13.10.2026.
+
+**An Claude:** Arbeite diese Datei der Reihe nach ab, ohne nachzufragen, wo
+es nicht nötig ist. Fragen musst du nur an den markierten Stellen
+(**FRIEDRICH**). Halte den Stand unten unter "Protokoll" fest, damit jede
+Sitzung weiß, wo es weitergeht. Diese Datei liegt im öffentlichen Repo:
+schreib hier nie Passwörter, Tokens oder den Secret Key hinein.
+
+## Worum es geht
+
+Am Eventtag (Prag) spielen etwa 100 Handys gleichzeitig. Jedes fragt alle
+10 Sekunden den Spielstand ab, die Teamleitungen melden zusätzlich ihre
+Position; zusammen etwa 20 bis 30 Anfragen pro Sekunde an Supabase. Der Test
+zeigt, ob das Live-Setup (Supabase, kostenloser Plan, Frankfurt) das
+zuverlässig schafft, und wo die Grenze liegt. Davon hängt ab, ob die Datenbank
+bei Supabase bleibt (dann Pro für den Event-Monat, damit nichts pausiert) oder
+auf einen eigenen Server umzieht. Die App selbst bleibt auf GitHub Pages
+(Entscheidung 13.10.2026).
+
+## Testprojekt
+
+- Supabase-Projekt `stadtjagd-stresstest`, Ref `brtngzltqgniihjaoskr`,
+  Region Central EU (Frankfurt), Postgres (Standard), gleiche Einstellungen
+  wie das Live-Projekt.
+- URL, Publishable Key und Ref stehen als Vorgabe in `tools/stresstest.py`.
+- Admin-PIN im Testprojekt: `stresstest` (setzt `einrichten`).
+- Das Live-Projekt (`lwdmwklyydhcvnhpjudk`) verweigert das Skript; dort wird
+  nie getestet.
+
+## Voraussetzungen
+
+1. Repo aktuell: über OneDrive erst fertig synchronisieren lassen, oder
+   `git clone https://github.com/7DEEda/Stadtjagt.git` außerhalb von OneDrive.
+   Danach `git pull`.
+2. Python ab 3.10 (`python --version`), keine Zusatzpakete.
+3. **FRIEDRICH:** ein Personal Access Token von
+   supabase.com/dashboard/account/tokens, nur für Schritt 1 ("einrichten").
+   In der PowerShell setzen, nicht in eine Datei schreiben:
+   `$env:SUPABASE_ACCESS_TOKEN="<Token>"`
+4. status.supabase.com prüfen: Bei einer Störung (am 13.10. war eine) sagen
+   die Messwerte nichts über die App. Dann nur einrichten, nicht messen.
+
+## Ablauf
+
+Alle Befehle im Repo-Ordner, im Vordergrund. `lauf` dauert etwa 17 Minuten
+(1 min Anmeldung, 15 min Spiel, Bericht).
+
+1. **Einrichten** (einmal):
+   `python tools/stresstest.py einrichten`
+   Spielt alle Migrationen, die Prager Stationen, Testlösungen und die PIN
+   ein. Bricht es an einer Migration ab, Datei und Fehlermeldung notieren und
+   der Ursache nachgehen (frisches Projekt: fehlende Rolle, Erweiterung oder
+   eine Migration, die Daten voraussetzt). Danach kann der Token im
+   Dashboard zurückgezogen werden.
+2. **Lauf 1, Eventlast:** `python tools/stresstest.py lauf`
+   (100 Handys, 12 Teams, Takt 10 s, 2 Tablets der Spielleitung).
+3. **Bewerten** (siehe unten). Ist Lauf 1 gut:
+4. **Lauf 2, doppelte Last:** `python tools/stresstest.py lauf --handys 200 --teams 24`
+5. **Lauf 3, schneller Takt:** `python tools/stresstest.py lauf --takt 5`
+   (entspricht ungefähr 200 Handys im normalen Takt).
+6. Ergebnisse unten ins Protokoll, Berichte liegen als
+   `tools/stresstest-bericht-*.json` (nicht im Repo, `.gitignore`).
+7. **FRIEDRICH:** Ergebnis gemeinsam ansehen. Erst danach Schritt
+   "Aufräumen".
+
+Zwischen zwei Läufen räumt `lauf` das Testprojekt selbst auf (Teilnehmende,
+Teams, Positionen). Von Hand: `python tools/stresstest.py aufraeumen`.
+
+## Bewerten
+
+Gut, wenn in Lauf 1 alles davon gilt:
+
+- Fehler: 0 bei allen Funktionen. Jeder Fehler wird mit Meldung angezeigt;
+  "Verbindung: ..." deutet auf das eigene Netz, "HTTP 5xx" oder Zeitüberschreitungen
+  auf Supabase.
+- p95 der häufigen Abfragen (`public_state`, `member_state`, `team_state`,
+  `admin_state`) unter 1000 ms, p99 unter 2000 ms. Darüber merkt man es am
+  Handy (Kompass und Entfernung kommen trotzdem lokal, aber Check-in und
+  Antworten fühlen sich zäh an).
+- `register_participant` während der Anmeldespitze ohne Fehler, p95 unter
+  2000 ms.
+- Ergebnis: alle 12 Teams im Ziel, 60 Stationen gelöst.
+- Die 10-Sekunden-Zeilen bleiben über die ganze Zeit ungefähr gleich (kein
+  Anstieg der Antwortzeit gegen Ende: das wäre ein Zeichen für wachsende
+  Datenmengen, etwa Routen in `admin_tracks` oder Positionen).
+- Antwortgröße von `public_state` und `admin_state` notieren: sie wächst mit
+  der Teilnehmerzahl und geht über Mobilfunk.
+
+Zeigen Lauf 2 oder 3 Fehler oder p95 über 1000 ms, ist das keine Katastrophe,
+sondern die Grenze: festhalten, ab welcher Last. Fällt schon Lauf 1 durch:
+die langsamste Funktion zuerst ansehen (Abfrage im SQL, fehlender Index,
+Antwort zu groß) und **FRIEDRICH** fragen, bevor etwas an der Live-App oder
+der Live-Datenbank geändert wird.
+
+Wird gemessen über den eigenen Internetanschluss: sind alle Zeiten
+gleichmäßig hoch, zuerst die eigene Leitung verdächtigen (zweiter Lauf zu
+anderer Zeit oder von einem anderen Netz).
+
+## Aufräumen (erst nach FRIEDRICHs Okay)
+
+Nur, wenn beim Stresstest nichts aufgefallen ist bzw. Friedrich und Claude
+gemeinsam sagen, dass es jetzt gut ist. Bis dahin bleibt alles stehen, auch
+über mehrere Läufe und Korrekturen hinweg.
+
+1. In `tools/stresstest.py` die Vorgaben `TEST_URL`, `TEST_KEY`, `TEST_REF`
+   leeren (auf `None` setzen), committen und pushen.
+2. **FRIEDRICH:** im Supabase-Dashboard das Projekt `stadtjagd-stresstest`
+   löschen und den Personal Access Token zurückziehen. Wurde der Secret Key
+   des Testprojekts irgendwo geteilt, ist er mit dem Projekt weg.
+3. Auf dem Arbeitsrechner liegen in Claudes Projektgedächtnis Zugangsdaten
+   des Testprojekts (Datei `stadtjagd-stresstest-db-passwort.md`); die
+   Sitzung dort löscht sie samt Eintrag in `MEMORY.md`.
+4. HANDOFF, Abschnitt "Stresstest": Ergebnis in zwei, drei Sätzen, die
+   Entscheidung Supabase Pro oder eigener Server, und dass das Testprojekt
+   gelöscht ist.
+
+## Protokoll
+
+- 13.10.2026: Skript fertig, Trockenlauf gegen lokalen Fake-Server ok
+  (100 Handys, 12 Teams im Ziel, etwa 20 bis 25 Anfragen/s). Testprojekt
+  angelegt, Schema noch nicht eingespielt. Supabase meldete an dem Tag
+  Störungen.
