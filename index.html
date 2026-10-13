@@ -3470,9 +3470,10 @@ async function leitungNochDa(s) {
   LS.removeItem("sj.code"); stopGps();
   S.msg = { type: "info", text: `${vorname(s.team.leaderName)} leitet jetzt Team ${s.team.name}. Station und Rätsel siehst du auf der Anmeldeseite mit.` };
 }
-// Nach dem Ende zeigt auch die Teamleitung die Rangliste: dafür die öffentliche Sicht dazuholen
+// Die Teamleitung zeigt im Tab Team den Zieleinlauf (im Spiel) bzw. die Rangliste (nach dem Ende), und
+// Hochhalten nimmt die Teamfarbe aus der Teamreihenfolge: dafür die öffentliche Sicht dazuholen
 async function ranglisteHolen() {
-  if (!S.team.state || S.team.state.status !== "finished") return;
+  if (!S.team.state || !["running", "finished"].includes(S.team.state.status)) return;
   try { S.pub = await rpc("public_state", {}); } catch { /* beim nächsten Mal */ }
 }
 // Nach einem Neu-Auslosen gilt der alte Team-Code nicht mehr: abmelden und das sagen,
