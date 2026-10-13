@@ -56,12 +56,9 @@ geprüft):
 - Tablet: Tastatur verdeckt keine Knöpfe, Griffe auf der Stationskarte lassen
   sich ziehen, ohne dass die Seite scrollt
 - QR-Code des Mitlese-Links mit einer Handykamera scannen
-- **Offen (02.10., Friedrich): Stresstest mit 100 Geräten.** Prüfen, ob
-  Supabase (Anmeldung, team_state-Abfragen alle paar Sekunden, report_position,
-  Selfie-Uploads, Realtime) 100 gleichzeitige Handys trägt; Antwortzeiten und
-  Fehlerquote messen, Grenzen des Supabase-Tarifs (Verbindungen, Anfragen)
-  gegenprüfen. Vorschlag: Lastskript, das 100 gespielte Handys gegen eine
-  Kopie der Datenbank oder im Testmodus laufen lässt.
+- **Erledigt 13.10.: Stresstest mit 100 Geräten** (bestanden, auch mit
+  200 Handys und doppeltem Takt; Ergebnis im Abschnitt "Stresstest" und in
+  `tools/STRESSTEST.md`). Nicht gemessen: Selfie-Uploads und Mobilfunk.
 
 **Befund vom 29.09., erledigt am 02.10.:** Ändert die Spielleitung im laufenden
 Spiel die Ziffer einer Station, die Teams schon gelöst haben, ändert sich deren
@@ -1928,31 +1925,25 @@ am 05./06.10., gemerged 09.10.), siehe Nachtrag 33. Vorlagen nur lokal:
 `mockups/design-varianten/v-weiter.html` und `admin-karte.html`.
 
 **NÄCHSTER SCHRITT:** Handytest der neuen Hülle (Teamleitung, Mitlese-Ansicht,
-Spielleitung auf dem Tablet); danach Stresstest (unten).
+Spielleitung auf dem Tablet).
 
-**Stresstest mit 100 Handys (Konzept 03.10., nicht gebaut):** Last heute ohne
-Realtime: jedes Handy fragt alle 10 s (Teamleitung `team_state`, Mitlesende
-`public_state` + `member_state`), Teamleitungen melden die Position; zusammen
-etwa 20 Anfragen/s. Risiken: Datenmenge (`public_state` an alle, alle 10 s),
-CPU der JSON-Funktionen, Spitzen bei Anmeldung und Auslosung. Vorgehen:
-(1) Antwortgröße und Laufzeit der vier häufigen Abfragen messen und
-hochrechnen, (2) Lastskript mit 100 gespielten Handys nach Drehbuch gegen ein
-**eigenes** Supabase-Projekt (nicht die Live-Datenbank; `tools/sql.py` braucht
-dafür einen Schalter fürs Zielprojekt), (3) 10 bis 20 echte Browser per
-Playwright plus Skript-Handys, dann Feldtest mit 3 bis 5 Handys.
-Ablauf, Bewertung, Aufräumen und Protokoll: **`tools/STRESSTEST.md`**.
-Skript seit 13.10.2026: `tools/stresstest.py` (nur Standardbibliothek;
-`einrichten` spielt alle Migrationen, Stationen, Testlösungen und PIN
-"stresstest-2026" in ein eigenes Projekt, `lauf` spielt Anmeldung, Auslosen, Start
-und das Spiel mit 100 Handys im Zeitraffer und schreibt einen Bericht
-`tools/stresstest-bericht-*.json`, `aufraeumen` leert das Testprojekt).
-Verweigert das Live-Projekt. Trockenlauf gegen einen lokalen Fake-Server ok
-(100 Handys, 12 Teams im Ziel, etwa 20 bis 25 Anfragen/s); gegen ein echtes
-Testprojekt noch nicht gelaufen. Testprojekt `stadtjagd-stresstest`
-(Ref brtngzltqgniihjaoskr, Frankfurt) seit 13.10. angelegt, Schema noch nicht
-eingespielt. **Nach dem Stresstest wieder löschen, aber erst wenn nichts
-auffällt und Friedrich zustimmt (ggf. mehrere Läufe):** Projekt und Token im
-Supabase-Dashboard, die Vorgaben TEST_URL/TEST_KEY/TEST_REF im Skript.
+**Stresstest (13.10.2026, bestanden):** `tools/stresstest.py` (nur
+Standardbibliothek) spielte gegen ein eigenes Supabase-Projekt (Free, Frankfurt,
+alle Migrationen und die Prager Stationen) Anmeldung, Auslosen, Start und das
+Spiel mit gespielten Handys im Zeitraffer, dazu 18 Randfälle (doppelter Name,
+Nachmelden nach Start, Check-in zu weit weg, Doppeltipp, Denkpause, falscher,
+doppelter oder GPS-loser Koffer-Code). Drei Läufe à 20 min: 100 Handys/12 Teams
+(etwa 20 Anfragen/s, die Eventlast), 200 Handys/16 Teams, 100 Handys im
+5-s-Takt (etwa 38 Anfragen/s). Alle Läufe ohne Fehler, alle Teams im Ziel,
+Plätze lückenlos, alle Randfälle wie erwartet; p95 der häufigen Abfragen 55 bis
+190 ms, `admin_state` bis 380 ms, `register_participant` in der Anmeldespitze
+bis 500 ms. Einzige Auffälligkeit: im ersten Lauf drei kurze Aussetzer (10 bis
+40 s, alle Funktionen gleichzeitig bis 4 s, keine Fehler), in den beiden
+späteren Läufen nicht wieder; am Testtag meldete Supabase Störungen. Antwortgröße
+`public_state` 6 bis 9 KB, `admin_state` 26 bis 44 KB je Abfrage. Nicht gemessen:
+Mobilfunk mit wechselnden IPs, Last von mehreren Standorten, Selfie-Uploads.
+Protokoll und Anleitung für einen neuen Lauf: `tools/STRESSTEST.md`. Testprojekt
+`stadtjagd-stresstest` gelöscht, Vorgaben im Skript geleert.
 
 **Danach (Teil 3, Spezifikation fertig, kein Plan):** Rollen ohne Tippen
 (Teamleitung übergeben, Handy schaltet von selbst um), Akku-Warnung bei 20 %
@@ -1964,8 +1955,10 @@ Subdomain ("Luxus", nicht nötig). Kein Hetzner-Server für die App. Ob die
 Datenbank bei Supabase bleibt (dann Pro für den Event-Monat, damit das Projekt
 nicht pausiert) oder auf einen eigenen Hetzner-Server mit PostgreSQL +
 PostgREST umzieht (geht, weil die App nur `/rest/v1/rpc` nutzt; Vorteil
-Datenschutz, Nachteil eigener Betrieb), wird nach den Messungen im Stresstest
-entschieden. Weitere Punkte für die Ausfallsicherheit, noch nicht umgesetzt:
+Datenschutz, Nachteil eigener Betrieb): der Stresstest (13.10.) spricht für
+Supabase, schon der Free-Tarif trägt das Doppelte der Eventlast fehlerfrei.
+Empfehlung: bleiben, Pro für den Event-Monat; Friedrichs Entscheidung steht
+noch aus. Weitere Punkte für die Ausfallsicherheit, noch nicht umgesetzt:
 Leaflet lokal statt von unpkg; Service Worker, damit die App bei
 Funkloch/Pages-Aussetzer lädt; Änderungsstopp einige Tage vor dem Event und
 sichtbare Version; Verhalten ohne Netz bei Einchecken/Antwort prüfen (klare

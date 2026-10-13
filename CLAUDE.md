@@ -6,6 +6,5 @@ Code: `SPIEL.md`.
 
 - Das Repo ist öffentlich (GitHub Pages): nie Passwörter, Tokens, die
   Admin-PIN oder Secret Keys committen.
-- **Laufende Aufgabe (seit 13.10.2026): Stresstest.** Anleitung, Bewertung,
-  Aufräumen und Protokoll in `tools/STRESSTEST.md`; wer den Stresstest
-  übernimmt, arbeitet sie ab und führt das Protokoll dort fort.
+- Stresstest am 13.10.2026 bestanden und aufgeräumt; Protokoll und
+  Anleitung für einen neuen Lauf in `tools/STRESSTEST.md`.

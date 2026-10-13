@@ -22,10 +22,14 @@ auf einen eigenen Server umzieht. Die App selbst bleibt auf GitHub Pages
 
 ## Testprojekt
 
-- Supabase-Projekt `stadtjagd-stresstest`, Ref `brtngzltqgniihjaoskr`,
-  Region Central EU (Frankfurt), Postgres (Standard), gleiche Einstellungen
-  wie das Live-Projekt.
-- URL, Publishable Key und Ref stehen als Vorgabe in `tools/stresstest.py`.
+**Stand 13.10.2026: Der Stresstest ist bestanden und aufgeräumt, das
+Testprojekt `stadtjagd-stresstest` ist gelöscht.** Für einen neuen Lauf:
+
+- Supabase-Projekt neu anlegen, Region Central EU (Frankfurt), Postgres
+  (Standard), gleiche Einstellungen wie das Live-Projekt.
+- URL, Publishable Key und Ref in `tools/stresstest.py` (`TEST_URL`,
+  `TEST_KEY`, `TEST_REF`, stehen auf `None`) oder per `STRESS_URL`,
+  `STRESS_KEY`, `STRESS_REF` setzen.
 - Admin-PIN im Testprojekt: `stresstest-2026` (setzt `einrichten`).
 - Das Live-Projekt (`lwdmwklyydhcvnhpjudk`) verweigert das Skript; dort wird
   nie getestet.
@@ -182,4 +186,12 @@ gemeinsam sagen, dass es jetzt gut ist. Bis dahin bleibt alles stehen, auch
   Free-Tier-Projekts bei Inaktivität. Offen für Friedrich: Supabase Pro für
   den Event-Monat (gegen Pausieren und mehr Rechenleistung) und, ob Aufräumen
   jetzt folgen soll.
+- 13.10.2026, 18:45: **Aufgeräumt** (Freigabe Friedrich). `TEST_URL`,
+  `TEST_KEY`, `TEST_REF` im Skript auf `None`, `tools/stresstest.token`
+  gelöscht, HANDOFF ergänzt. Offen bei Friedrich: Projekt
+  `stadtjagd-stresstest` und den Token "Acces White" im Supabase-Dashboard
+  löschen bzw. zurückziehen; auf dem Arbeitsrechner die Gedächtnisdatei
+  `stadtjagd-stresstest-db-passwort.md` samt Eintrag in `MEMORY.md` löschen
+  (liegt nicht auf diesem Rechner). Die Berichte
+  `tools/stresstest-bericht-20261013-*.json` bleiben lokal (gitignored).
 

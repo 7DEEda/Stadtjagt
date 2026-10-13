@@ -54,10 +54,12 @@ for strom in (sys.stdout, sys.stderr):
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 PIN = "stresstest-2026"   # die Datenbank verlangt mindestens 12 Zeichen
-# Das Testprojekt "stadtjagd-stresstest" (13.10.2026). Der Publishable Key ist öffentlich gedacht wie der in config.js.
-TEST_URL = "https://brtngzltqgniihjaoskr.supabase.co"
-TEST_KEY = "sb_publishable_zxSC2IziBOI8nHmSKmoeuA_j_7-iIcf"
-TEST_REF = "brtngzltqgniihjaoskr"
+# Vorgaben für ein Testprojekt; das Projekt "stadtjagd-stresstest" vom 13.10.2026 ist gelöscht (Stresstest bestanden).
+# Für einen neuen Lauf ein frisches Supabase-Projekt anlegen und URL, Publishable Key und Ref hier oder per
+# Umgebungsvariable / Schalter setzen.
+TEST_URL = None
+TEST_KEY = None
+TEST_REF = None
 LIVE_REF = (re.search(r"https://([a-z0-9]+)\.supabase\.co", (REPO / "config.js").read_text(encoding="utf-8")) or [None, ""])[1]
 
 
