@@ -38,6 +38,10 @@ auf einen eigenen Server umzieht. Die App selbst bleibt auf GitHub Pages
 2. Python ab 3.10 (`python --version`), keine Zusatzpakete.
 3. **FRIEDRICH:** ein Personal Access Token von
    supabase.com/dashboard/account/tokens, nur für Schritt 1 ("einrichten").
+   Auf Friedrichs privatem Rechner gibt es schon einen: "Acces White"
+   (`sbp_fc2043…126b`, Konto mit der Org "7DEEda's Org", gültig bis
+   30.04.2027); den nehmen, kein neuer nötig. Der Token auf dem Arbeitsrechner
+   (`sbp_fce8b2…`) sieht das Testprojekt nicht (HTTP 403) und taugt hierfür nicht.
    Er liegt in `tools/stresstest.token` (nur der Token, eine Zeile). Die Datei
    steht in `.gitignore`, kommt also nie ins öffentliche Repo, wird aber über
    OneDrive mitsynchronisiert; das Skript liest sie von selbst. Fehlt sie,
