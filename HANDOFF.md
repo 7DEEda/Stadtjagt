@@ -1946,5 +1946,19 @@ Playwright plus Skript-Handys, dann Feldtest mit 3 bis 5 Handys.
 und 10 % mit Übergabe, Akku aller Teammitglieder, Mockups
 `mockups/rollen-akku-kompass.html`, `mockups/akku-warnung.html`.
 
+**Hosting (Entscheidung 13.10.2026):** App bleibt auf GitHub Pages, keine eigene
+Subdomain ("Luxus", nicht nötig). Kein Hetzner-Server für die App. Ob die
+Datenbank bei Supabase bleibt (dann Pro für den Event-Monat, damit das Projekt
+nicht pausiert) oder auf einen eigenen Hetzner-Server mit PostgreSQL +
+PostgREST umzieht (geht, weil die App nur `/rest/v1/rpc` nutzt; Vorteil
+Datenschutz, Nachteil eigener Betrieb), wird nach den Messungen im Stresstest
+entschieden. Weitere Punkte für die Ausfallsicherheit, noch nicht umgesetzt:
+Leaflet lokal statt von unpkg; Service Worker, damit die App bei
+Funkloch/Pages-Aussetzer lädt; Änderungsstopp einige Tage vor dem Event und
+sichtbare Version; Verhalten ohne Netz bei Einchecken/Antwort prüfen (klare
+Meldung, nichts doppelt); Notfallplan auf Papier für die Spielleitung
+(Stationen, Rätsel, Lösungen, Koffer-Code). Eventdatum steht im HANDOFF noch
+nicht.
+
 **Weitere offene Punkte:** Positionen aus 4 älteren Geräte-Test-Läufen löschen
 (Frage an Friedrich offen); 404 beim ersten Prüfstand-Bild abstellen.
