@@ -1947,7 +1947,10 @@ und das Spiel mit 100 Handys im Zeitraffer und schreibt einen Bericht
 `tools/stresstest-bericht-*.json`, `aufraeumen` leert das Testprojekt).
 Verweigert das Live-Projekt. Trockenlauf gegen einen lokalen Fake-Server ok
 (100 Handys, 12 Teams im Ziel, etwa 20 bis 25 Anfragen/s); gegen ein echtes
-Testprojekt noch nicht gelaufen.
+Testprojekt noch nicht gelaufen. Testprojekt `stadtjagd-stresstest`
+(Ref brtngzltqgniihjaoskr, Frankfurt) seit 13.10. angelegt, Schema noch nicht
+eingespielt. **Nach dem Stresstest wieder löschen:** Projekt und Token im
+Supabase-Dashboard, die Vorgaben TEST_URL/TEST_KEY/TEST_REF im Skript.
 
 **Danach (Teil 3, Spezifikation fertig, kein Plan):** Rollen ohne Tippen
 (Teamleitung übergeben, Handy schaltet von selbst um), Akku-Warnung bei 20 %
