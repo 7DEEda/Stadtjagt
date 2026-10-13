@@ -159,6 +159,27 @@ gemeinsam sagen, dass es jetzt gut ist. Bis dahin bleibt alles stehen, auch
   Funktionen gleichzeitig langsam waren (p95 bis 4,1 s), ohne Fehler und ohne
   Trend; p50 blieb bei 44 ms. Das erste Lauf-1 hatte einen ähnlichen Aussetzer.
   Spricht für Netz oder Supabase (Störung an dem Tag), nicht für eine einzelne
-  Abfrage. Antwortgrößen: public_state 5,7 KB, admin_state 26 KB. Nächster
-  Schritt: Lauf 2 (200 Handys), um zu sehen, ob die Aussetzer bleiben.
+  Abfrage. Antwortgrößen: public_state 5,7 KB, admin_state 26 KB. 
+- 13.10.2026, 18:11 (Lauf 2, 200 Handys, `--teams 24`, 20 min): 0 Fehler, 0
+  Logikfehler, alle Randfälle ok. Gebildet wurden nur 16 Teams (`admin_draw`
+  hat eine Mindestgröße, 24 Teams bei 200 Personen gehen nicht); alle 16 im
+  Ziel, 80 von 80 Stationen, Plätze lückenlos. p95: public_state 64,
+  member_state 54, team_state 57, admin_state 229 ms; p99 überall unter
+  400 ms; kein Aussetzer. Antwortgröße admin_state 44 KB, public_state 8,9 KB.
+- 13.10.2026, 18:32 (Lauf 3, Takt 5 s, 100 Handys, 20 min, etwa 38
+  Anfragen/s, also das Doppelte der Eventlast): 0 Fehler, 12 von 12 Teams im
+  Ziel, 60 von 60 Stationen, alle Randfälle ok. p95: public_state 60,
+  member_state 54, team_state 55, admin_state 170 ms; p99 unter 260 ms;
+  register_participant p95 501 ms (Anmeldespitze, Kriterium 2000 ms);
+  submit_final p95 129 ms. Nur zwei Fenster über 200 ms (Start 222, 840 s
+  379 ms).
+- **Bewertung (Stand 13.10.2026, 18:35):** Die Last am Eventtag (etwa 20
+  Anfragen/s) und bis zum Doppelten davon laufen fehlerfrei mit p95 unter
+  400 ms. Verfehlt wurde nur der p99 von public_state im ersten Lauf 1 (2346 ms)
+  durch drei kurze, alle Funktionen betreffende Aussetzer, die in Lauf 2 und 3
+  nicht wiederkehrten (Netz oder Supabase-Störung). Nicht geprüft: Mobilfunk
+  mit wechselnden IPs, eine Last von mehreren Rechnern, Pausieren des
+  Free-Tier-Projekts bei Inaktivität. Offen für Friedrich: Supabase Pro für
+  den Event-Monat (gegen Pausieren und mehr Rechenleistung) und, ob Aufräumen
+  jetzt folgen soll.
 
