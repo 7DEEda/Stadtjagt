@@ -38,8 +38,11 @@ auf einen eigenen Server umzieht. Die App selbst bleibt auf GitHub Pages
 2. Python ab 3.10 (`python --version`), keine Zusatzpakete.
 3. **FRIEDRICH:** ein Personal Access Token von
    supabase.com/dashboard/account/tokens, nur für Schritt 1 ("einrichten").
-   In der PowerShell setzen, nicht in eine Datei schreiben:
-   `$env:SUPABASE_ACCESS_TOKEN="<Token>"`
+   Er liegt in `tools/stresstest.token` (nur der Token, eine Zeile). Die Datei
+   steht in `.gitignore`, kommt also nie ins öffentliche Repo, wird aber über
+   OneDrive mitsynchronisiert; das Skript liest sie von selbst. Fehlt sie,
+   Friedrich nach dem Token fragen und ihn dort ablegen (Erlaubnis vom
+   13.10.2026). Alternativ `$env:SUPABASE_ACCESS_TOKEN="<Token>"`.
 4. status.supabase.com prüfen: Bei einer Störung (am 13.10. war eine) sagen
    die Messwerte nichts über die App. Dann nur einrichten, nicht messen.
 
@@ -107,8 +110,9 @@ gemeinsam sagen, dass es jetzt gut ist. Bis dahin bleibt alles stehen, auch
 
 1. In `tools/stresstest.py` die Vorgaben `TEST_URL`, `TEST_KEY`, `TEST_REF`
    leeren (auf `None` setzen), committen und pushen.
-2. **FRIEDRICH:** im Supabase-Dashboard das Projekt `stadtjagd-stresstest`
-   löschen und den Personal Access Token zurückziehen. Wurde der Secret Key
+2. `tools/stresstest.token` löschen. **FRIEDRICH:** im Supabase-Dashboard das
+   Projekt `stadtjagd-stresstest` löschen und den Personal Access Token
+   zurückziehen. Wurde der Secret Key
    des Testprojekts irgendwo geteilt, ist er mit dem Projekt weg.
 3. Auf dem Arbeitsrechner liegen in Claudes Projektgedächtnis Zugangsdaten
    des Testprojekts (Datei `stadtjagd-stresstest-db-passwort.md`); die

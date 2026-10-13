@@ -13,7 +13,8 @@ URL, Key und Ref des Testprojekts "stadtjagd-stresstest" stehen als Vorgabe im S
     STRESS_URL    https://<ref>.supabase.co des Testprojekts
     STRESS_KEY    publishable/anon key des Testprojekts (Settings, API Keys)
     STRESS_REF    Projekt-Ref des Testprojekts (nur für "einrichten")
-    SUPABASE_ACCESS_TOKEN  Personal Access Token (nur für "einrichten"), supabase.com/dashboard/account/tokens
+    SUPABASE_ACCESS_TOKEN  Personal Access Token (nur für "einrichten"), supabase.com/dashboard/account/tokens;
+                           ersatzweise in der Datei tools/stresstest.token (in .gitignore)
 
 Das Live-Projekt (Ref aus config.js) wird verweigert: der Test schreibt Anmeldungen, Positionen und
 Check-ins. Was gemessen wird: Antwortzeit (p50/p95/p99/max), Fehler und Antwortgröße je Server-Funktion,
@@ -389,6 +390,12 @@ def lauf(a):
             print(f"{'':<22}  {n} x {m}")
 
 
+def token_datei():
+    """Token aus tools/stresstest.token (steht in .gitignore, kommt nie ins öffentliche Repo)."""
+    f = REPO / "tools" / "stresstest.token"
+    return f.read_text(encoding="utf-8").strip() if f.exists() else None
+
+
 def _still(fn, *args):
     try:
         fn(*args)
@@ -402,7 +409,7 @@ def main():
     p.add_argument("--url", default=os.environ.get("STRESS_URL") or TEST_URL)
     p.add_argument("--key", default=os.environ.get("STRESS_KEY") or TEST_KEY)
     p.add_argument("--ref", default=os.environ.get("STRESS_REF") or TEST_REF)
-    p.add_argument("--token", default=os.environ.get("SUPABASE_ACCESS_TOKEN"))
+    p.add_argument("--token", default=os.environ.get("SUPABASE_ACCESS_TOKEN") or token_datei())
     p.add_argument("--handys", type=int, default=100)
     p.add_argument("--teams", type=int, default=12)
     p.add_argument("--dauer", type=float, default=15, help="Minuten Spielzeit")
