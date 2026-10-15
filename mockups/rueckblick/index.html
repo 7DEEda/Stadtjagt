@@ -1,0 +1,1043 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stadtjagd Rückblick (Mockup)</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="fonts.css">
+<script>try { const t = localStorage.getItem("sj.thema"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<style>
+/* Mockup der Rückblick-Show, Spezifikation: docs/superpowers/specs/2026-10-15-rueckblick-show-design.md
+   Token wie index.html (design-system/MASTER.md); dazu die Bühnenstufen --bs-* und die Kartenfarben,
+   die nur die Show braucht (Abweichungen, siehe Spezifikation Abschnitt 4). */
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --feld:#7D9189;
+  --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#0F1B18; --flag-text:#C2410C; --water:#2F6E9E;
+  --ok:#25683F; --ok-bg:#E3F1E7; --warn:#8A5A00; --warn-bg:#FBF0D9;
+  --park:#DFEAD6; --strasse:#FFFFFF; --strasse-rand:#D3DECF; --fluss:#C9DDEA; --flaeche:#E6EBE2;
+  --head:'Barlow Semi Condensed', 'Arial Narrow', sans-serif; --body:'Barlow', Arial, sans-serif;
+  --emoji:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;
+  /* Bühnenstufen, gemessen auf der 1920er Bühne; bei 1280x720 zwei Drittel davon */
+  --bs-xs:30px; --bs-s:36px; --bs-m:48px; --bs-l:72px; --bs-xl:120px; --bs-uhr:168px; --bs-titel:200px;
+  --kurve:cubic-bezier(.32,.72,.4,1);
+  --schatten:0 12px 32px rgba(17,17,17,.28), 0 2px 6px rgba(17,17,17,.12);
+  color-scheme: light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38; --feld:#5E786F;
+    --contour:#1C312B; --flag:#FF7A3A; --flag-ink:#0F1B18; --flag-text:#FF7A3A; --water:#6FA8D6;
+    --ok:#6CCB8E; --ok-bg:#16332A; --warn:#E8B75A; --warn-bg:#33290F;
+    --park:#13261F; --strasse:#22362F; --strasse-rand:#1B2D27; --fluss:#16303F; --flaeche:#14231E;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38; --feld:#5E786F;
+  --contour:#1C312B; --flag:#FF7A3A; --flag-ink:#0F1B18; --flag-text:#FF7A3A; --water:#6FA8D6;
+  --ok:#6CCB8E; --ok-bg:#16332A; --warn:#E8B75A; --warn-bg:#33290F;
+  --park:#13261F; --strasse:#22362F; --strasse-rand:#1B2D27; --fluss:#16303F; --flaeche:#14231E;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);overflow:hidden}
+body.still{cursor:none}
+.nw{white-space:nowrap}
+.tab{font-variant-numeric:tabular-nums}
+.emo{font-family:var(--emoji);font-style:normal}
+
+/* ---------- Bühne: 1920x1080, skaliert auf jedes 16:9-Fenster ---------- */
+#buehne{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:var(--paper)}
+#welt,#schirm{position:absolute;inset:0;width:1920px;height:1080px;display:block}
+#buehne[data-art=titel] #stationen,#buehne[data-art=titel] #namen,#buehne[data-art=platz] #stationen,#buehne[data-art=platz] #namen,#buehne[data-art=vorbereiten] #stationen{display:none}
+#buehne[data-art=platz] #grund{opacity:.32}
+#buehne[data-art=platz] #spuren{opacity:.5}
+#buehne[data-art=platz] .radius{display:none}
+#welt .hoehe{fill:none;stroke:var(--contour);stroke-width:1.6;vector-effect:non-scaling-stroke}
+#welt .park{fill:var(--park)}
+#welt .flaeche{fill:var(--flaeche)}
+#welt .fluss{fill:none;stroke:var(--fluss);stroke-linecap:round;stroke-linejoin:round}
+#welt .strasse-r{fill:none;stroke:var(--strasse-rand);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+#welt .strasse{fill:none;stroke:var(--strasse);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+#welt .neben{fill:none;stroke:var(--strasse);stroke-width:3;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#welt .weg{fill:none;stroke:var(--feld);stroke-width:1.6;stroke-dasharray:6 7;opacity:.55;vector-effect:non-scaling-stroke}
+#welt .radius{fill:var(--flag);fill-opacity:.09;stroke:var(--flag);stroke-width:2;stroke-opacity:.7;vector-effect:non-scaling-stroke}
+#welt .rand{fill:none;stroke:var(--card);stroke-width:12;stroke-linecap:round;stroke-linejoin:round;opacity:.85;vector-effect:non-scaling-stroke}
+#welt .spur{fill:none;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+#welt .luecke{fill:none;stroke-width:4;stroke-dasharray:10 10;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#schirm text{font-family:var(--head);font-weight:700}
+#schirm .ortsname{font:600 var(--bs-xs) var(--body);font-style:italic;fill:var(--muted);opacity:.75}
+#schirm .flussname{font:600 var(--bs-xs) var(--body);font-style:italic;fill:var(--water);opacity:.85}
+#schirm .stnr{font-size:32px;fill:var(--flag-ink)}
+#schirm .stbadge{fill:var(--flag);stroke:var(--card);stroke-width:4}
+#schirm .startbadge{fill:var(--ink);stroke:var(--card);stroke-width:4}
+#schirm .haus{fill:none;stroke:var(--paper);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#schirm .kopf circle.k{stroke:var(--card);stroke-width:5}
+#schirm .kopf circle.ohne{fill:none;stroke:var(--ink);stroke-width:2.5;stroke-dasharray:6 5}
+#schirm .kopf text{font-family:var(--emoji);font-size:34px;font-weight:400}
+#schirm .puls{fill:none;stroke-width:5}
+#schirm .lueckenhinweis{font:500 var(--bs-xs) var(--body);fill:var(--muted)}
+
+/* ---------- Seitenleiste der Kartenkapitel ---------- */
+#seite{position:absolute;top:0;right:0;bottom:0;width:600px;background:var(--card);border-left:1px solid var(--line);padding:56px 56px 48px;display:flex;flex-direction:column;opacity:0}
+.s-kopf{display:flex;align-items:center;gap:16px;font:600 var(--bs-s) var(--head);color:var(--muted)}
+.s-kopf svg{width:52px;height:52px;color:var(--ink)}
+.s-kapitel{margin-top:44px;font:600 var(--bs-s) var(--head);color:var(--muted)}
+.s-name{font:700 var(--bs-l)/1.02 var(--head);margin-top:6px;min-height:148px}
+.s-uhr{font:700 var(--bs-uhr)/1 var(--head);margin-top:20px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.s-seit{font:500 var(--bs-s) var(--body);color:var(--muted);margin-top:4px}
+.s-liste{margin-top:40px;flex:1;display:flex;flex-direction:column;gap:18px;overflow:hidden}
+.ev{display:grid;grid-template-columns:64px 1fr auto;column-gap:16px;align-items:center}
+.ev .b{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font:32px/1 var(--emoji);border:4px solid var(--card);box-shadow:0 0 0 1px var(--line)}
+.ev .n{font:600 var(--bs-s)/1.1 var(--head)}
+.ev .w{font:500 var(--bs-xs)/1.15 var(--body);color:var(--muted);grid-column:2}
+.ev .z{font:600 var(--bs-xs) var(--head);color:var(--muted);grid-row:1;grid-column:3;font-variant-numeric:tabular-nums}
+.legende{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-top:-8px}
+.legende div{display:flex;align-items:center;gap:12px;font:600 var(--bs-xs) var(--head);white-space:nowrap}
+.legende i{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font:28px/1 var(--emoji);flex:none}
+.s-route{display:flex;align-items:center;margin-top:24px}
+.s-route b{width:52px;height:52px;border-radius:50%;border:4px solid var(--feld);display:grid;place-items:center;font:700 var(--bs-xs) var(--head);color:var(--muted);background:var(--card);flex:none}
+.s-route b.da{background:var(--flag);border-color:var(--flag);color:var(--flag-ink)}
+.s-route b.jetzt{border-color:var(--flag);color:var(--ink);box-shadow:0 0 0 5px color-mix(in srgb, var(--flag) 25%, transparent)}
+.s-route i{flex:1;height:4px;background:var(--line)}
+.s-route i.da{background:var(--flag)}
+
+/* ---------- Szenen über der Karte ---------- */
+.szene{position:absolute;inset:0;opacity:0}
+.schleier{position:absolute;inset:0;background:color-mix(in srgb, var(--paper) 72%, transparent)}
+.schleier.mittel{background:color-mix(in srgb, var(--paper) 82%, transparent)}
+.schleier.dicht{background:color-mix(in srgb, var(--paper) 93%, transparent)}
+
+/* Vorspann */
+.titel{position:absolute;left:0;right:0;top:250px;text-align:center}
+.titel .logo{width:150px;height:150px;margin:0 auto;color:var(--ink)}
+.titel h1{font:700 var(--bs-titel)/.95 var(--head);margin:28px 0 0;letter-spacing:-.01em}
+.titel .ort{font:700 var(--bs-xl)/1 var(--head);color:var(--flag-text);margin-top:4px}
+.titel .fakten{font:500 var(--bs-m) var(--body);color:var(--muted);margin-top:44px}
+.titel .fakten span{white-space:nowrap}
+
+/* Fotos einer Station */
+.f-kopf{position:absolute;left:80px;right:80px;top:64px;display:flex;align-items:center;gap:28px}
+.f-kopf .nr{width:104px;height:104px;border-radius:50%;background:var(--flag);color:var(--flag-ink);display:grid;place-items:center;font:700 64px var(--head);flex:none}
+.f-kopf h2{font:700 var(--bs-l)/1 var(--head);margin:0}
+.f-kopf .sub{font:500 var(--bs-s) var(--body);color:var(--muted);margin-top:6px}
+.f-kopf .zuerst{margin-left:auto;text-align:right}
+.f-kopf .zuerst small{display:block;font:500 var(--bs-xs) var(--body);color:var(--muted)}
+.f-kopf .zuerst b{font:700 var(--bs-m) var(--head);white-space:nowrap}
+.kachel{position:absolute;left:0;top:0;width:540px;height:720px;transform-origin:0 0;border-radius:8px;overflow:hidden;background:var(--card);will-change:transform}
+.kachel img{width:100%;height:100%;object-fit:cover;display:block}
+.kachel.gross{box-shadow:var(--schatten)}
+.unterschrift{position:absolute;display:flex;align-items:center;gap:10px;font:600 var(--bs-xs)/1 var(--head);white-space:nowrap}
+.unterschrift i{width:14px;height:34px;border-radius:3px;flex:none}
+.unterschrift .zt{color:var(--muted);font-weight:500;margin-left:auto;font-variant-numeric:tabular-nums}
+.spot{position:absolute;left:0;right:0;top:948px;text-align:center;font:700 var(--bs-m) var(--head);white-space:nowrap}
+.spot .zt{color:var(--muted);font-weight:500;margin-left:16px;font-variant-numeric:tabular-nums}
+
+/* Finale: ein Koffer-Platz */
+.p-spalte{position:absolute;top:72px;bottom:72px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.p-titel{font:700 var(--bs-xl)/1 var(--head);display:flex;align-items:center;gap:28px;white-space:nowrap}
+.p-titel .emo{font-size:120px}
+.p-lbl{font:500 var(--bs-s) var(--body);color:var(--muted);margin-top:56px}
+.walzen{display:flex;align-items:center;gap:14px;margin-top:16px}
+.walze{width:128px;height:176px;border-radius:8px;background:var(--ink);overflow:hidden;position:relative}
+.walze .band{position:absolute;left:0;right:0;top:0}
+.walze .band div{height:176px;display:grid;place-items:center;font:700 136px/1 var(--head);color:var(--paper);font-variant-numeric:tabular-nums}
+.walze::after{content:"";position:absolute;inset:0;background:linear-gradient(var(--ink),transparent 22%,transparent 78%,var(--ink));opacity:.55}
+.walzen .dp{font:700 110px/1 var(--head);color:var(--muted);margin:0 2px}
+.p-team{display:flex;align-items:center;gap:36px;margin-top:64px}
+.p-team .b{width:184px;height:184px;border-radius:50%;display:grid;place-items:center;font:112px/1 var(--emoji);border:8px solid var(--card);box-shadow:0 0 0 1px var(--line);flex:none}
+.p-team .n{font:700 var(--bs-xl)/1 var(--head)}
+.p-team .m{font:500 var(--bs-xs)/1.35 var(--body);color:var(--muted);margin-top:12px;max-width:820px}
+.p-foto{position:absolute;left:1380px;top:250px;width:420px;height:560px;border-radius:8px;overflow:hidden;background:var(--card);border:10px solid var(--card);box-shadow:var(--schatten)}
+.p-foto img{width:100%;height:100%;object-fit:cover;display:block;border-radius:4px}
+.p-foto small{position:absolute;left:0;right:0;bottom:0;padding:14px 16px;font:600 var(--bs-xs) var(--head);color:#fff;background:linear-gradient(transparent,rgba(15,27,24,.75));white-space:nowrap}
+
+/* Alle Teams */
+.a-kopf{position:absolute;left:80px;top:56px;font:700 var(--bs-l)/1 var(--head)}
+.a-netz{position:absolute;left:80px;right:80px;top:176px;bottom:64px;display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.a-karte{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 26px 20px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+.a-karte::before{content:"";position:absolute;left:0;right:0;top:0;height:10px;background:var(--c)}
+.a-karte .z1{display:flex;justify-content:space-between;align-items:baseline;font:600 var(--bs-xs) var(--head);color:var(--muted);margin-top:4px}
+.a-karte .z1 .pl{font:700 var(--bs-s) var(--head);color:var(--ink);white-space:nowrap}
+.a-karte .z1 .pl .emo{font-size:40px;vertical-align:-4px;margin-right:6px}
+.a-karte .z2{display:flex;align-items:center;gap:16px}
+.a-karte .z2 i{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;font:44px/1 var(--emoji);flex:none}
+.a-karte .z2 b{font:700 var(--bs-m)/1 var(--head)}
+.a-karte .z3{font:500 var(--bs-xs) var(--body);color:var(--muted);white-space:nowrap}
+
+/* Abspann */
+.ab-karte{position:absolute;left:64px;bottom:64px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:36px 44px}
+.ab-karte h2{font:700 var(--bs-l)/1 var(--head);margin:0}
+.ab-karte p{font:500 var(--bs-s) var(--body);color:var(--muted);margin:12px 0 0;white-space:nowrap}
+
+/* Vorbereiten (vor dem Start, auch auf dem Beamer sichtbar) */
+.v-panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:1120px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:56px 64px 52px}
+.v-panel h1{font:700 var(--bs-l)/1 var(--head);margin:0;display:flex;align-items:center;gap:20px}
+.v-panel h1 svg{width:64px;height:64px}
+.v-liste{margin:40px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:18px}
+.v-liste li{display:grid;grid-template-columns:48px 1fr;column-gap:16px;font:500 var(--bs-s)/1.25 var(--body)}
+.v-liste li svg{width:40px;height:40px;margin-top:2px}
+.v-liste li small{display:block;grid-column:2;font-size:var(--bs-xs);color:var(--muted);margin-top:2px}
+.v-liste .ok svg{color:var(--ok)}
+.v-liste .warn svg{color:var(--warn)}
+.v-opt{display:flex;flex-direction:column;gap:6px;margin-top:36px;border-top:1px solid var(--line);padding-top:28px}
+.v-opt label{display:flex;align-items:center;gap:18px;font:500 var(--bs-s) var(--body);min-height:64px;cursor:pointer}
+.v-opt input{width:36px;height:36px;accent-color:var(--flag);margin:0;flex:none}
+.v-opt .link{font:600 var(--bs-xs) var(--body);color:var(--muted);text-decoration:underline;background:none;border:0;padding:12px 0;cursor:pointer;margin-left:54px;align-self:flex-start;min-height:56px}
+.v-fuss{display:flex;align-items:center;gap:32px;margin-top:32px}
+.v-fuss .start{flex:none;border:0;border-radius:10px;background:var(--flag);color:var(--flag-ink);font:700 var(--bs-m) var(--head);padding:0 48px;min-height:96px;cursor:pointer}
+.v-fuss .start:focus-visible{outline:4px solid var(--ink);outline-offset:4px}
+.v-fuss .dauer{font:500 var(--bs-s) var(--body);color:var(--muted)}
+.v-fuss .dauer b{color:var(--ink);font-family:var(--head);white-space:nowrap}
+.v-tasten{margin-top:28px;font:500 var(--bs-xs) var(--body);color:var(--muted)}
+.v-tasten kbd,.hilfe kbd{font:600 .9em var(--head);border:1.5px solid var(--feld);border-radius:6px;padding:0 10px;color:var(--ink);white-space:nowrap}
+
+/* Fotos durchsehen */
+.d-panel{position:absolute;inset:48px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:40px 48px;display:flex;flex-direction:column}
+.d-panel h2{font:700 var(--bs-m) var(--head);margin:0}
+.d-panel p{font:500 var(--bs-xs) var(--body);color:var(--muted);margin:8px 0 0}
+.d-reihen{flex:1;display:flex;flex-direction:column;gap:12px;margin-top:20px;overflow:hidden}
+.d-reihe{display:flex;align-items:center;gap:10px}
+.d-reihe .nr{width:52px;height:52px;border-radius:50%;background:var(--flag);color:var(--flag-ink);display:grid;place-items:center;font:700 var(--bs-xs) var(--head);flex:none;margin-right:10px}
+.d-bild{width:90px;height:120px;border-radius:8px;overflow:hidden;position:relative;border:0;padding:0;cursor:pointer;background:var(--paper);flex:none}
+.d-bild img{width:100%;height:100%;object-fit:cover;display:block}
+.d-bild span{position:absolute;left:0;right:0;bottom:0;font:24px/1.3 var(--emoji);background:color-mix(in srgb, var(--card) 85%, transparent)}
+.d-bild.aus img{opacity:.22}
+.d-bild.aus::after{content:"aus";position:absolute;inset:0;display:grid;place-items:center;font:700 var(--bs-xs) var(--head);color:var(--ink)}
+.d-panel .fertig{align-self:flex-end;border:0;border-radius:10px;background:var(--flag);color:var(--flag-ink);font:700 var(--bs-s) var(--head);padding:0 40px;min-height:72px;cursor:pointer;margin-top:16px}
+
+/* Tastenhilfe */
+.hilfe{position:absolute;left:50%;top:120px;transform:translateX(-50%);width:1080px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:44px 56px;box-shadow:var(--schatten)}
+.hilfe h2{font:700 var(--bs-m) var(--head);margin:0 0 20px}
+.hilfe table{border-collapse:collapse;width:100%;font:500 var(--bs-s) var(--body)}
+.hilfe td{padding:9px 0;vertical-align:top}
+.hilfe td:first-child{width:380px;white-space:nowrap}
+
+/* ---------- Steuerleiste (Bildschirm-Pixel, nicht skaliert; nur mit Maus) ---------- */
+#leiste{position:fixed;left:0;right:0;bottom:0;height:72px;display:flex;align-items:center;gap:8px;padding:0 16px;background:var(--card);border-top:1px solid var(--line);font:600 15px var(--head);color:var(--ink);transition:opacity .16s var(--kurve),transform .16s var(--kurve);z-index:5}
+#leiste.weg{opacity:0;transform:translateY(8px);pointer-events:none}
+#leiste button{min-height:48px;min-width:48px;border-radius:10px;border:1.5px solid var(--feld);background:transparent;color:var(--ink);font:700 15px var(--head);padding:0 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+#leiste button.haupt{background:var(--flag);border-color:var(--flag);color:var(--flag-ink);min-width:116px;justify-content:center}
+#leiste svg{width:18px;height:18px;fill:currentColor}
+#leiste .spur{flex:1;display:flex;gap:3px;height:12px;margin:0 10px;min-width:120px}
+#leiste .spur span{flex:var(--d);background:var(--line);border-radius:2px;position:relative;overflow:hidden;cursor:pointer}
+#leiste .spur span i{position:absolute;inset:0 auto 0 0;width:var(--p,0%);background:var(--flag)}
+#leiste .kap{min-width:180px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#leiste .zeit{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+#schwarz{position:fixed;inset:0;background:#000;z-index:9;display:none}
+#schwarz.an{display:block}
+@media (max-width:900px){ #leiste .kap,#leiste .zeit{display:none} }
+@media (prefers-reduced-motion:reduce){ #leiste{transition:none} }
+</style>
+</head>
+<body>
+<div id="buehne" aria-live="off">
+  <svg id="welt" aria-hidden="true"><g id="grund"></g><g id="spuren"></g></svg>
+  <svg id="schirm" viewBox="0 0 1920 1080" aria-hidden="true"><g id="namen"></g><g id="stationen"></g><g id="pulse"></g><g id="koepfe"></g><text id="lhinweis" class="lueckenhinweis" x="48" y="1040"></text></svg>
+  <aside id="seite">
+    <div class="s-kopf"><span id="sLogo"></span><span>Stadtjagd Prag</span></div>
+    <div class="s-kapitel" id="sKap"></div>
+    <div class="s-name" id="sName"></div>
+    <div class="s-uhr" id="sUhr">14:00</div>
+    <div class="s-seit" id="sSeit"></div>
+    <div class="s-liste" id="sListe"></div>
+    <div class="s-route" id="sRoute"></div>
+  </aside>
+  <div id="szenen"></div>
+  <div id="ueber"></div>
+</div>
+<div id="leiste" class="weg" role="toolbar" aria-label="Steuerung">
+  <button data-k="zurueck" title="Zurück (Pfeil links)"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>Zurück</button>
+  <button data-k="spiel" class="haupt" id="bSpiel"><svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg><span>Start</span></button>
+  <button data-k="weiter" title="Weiter (Pfeil rechts)">Weiter<svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+  <div class="spur" id="lSpur"></div>
+  <span class="kap" id="lKap"></span>
+  <span class="zeit" id="lZeit"></span>
+  <button data-k="thema" title="Hell oder dunkel (T)">Hell/Dunkel</button>
+  <button data-k="voll" title="Vollbild (F)">Vollbild</button>
+  <button data-k="hilfe" title="Tasten (H)">Tasten</button>
+</div>
+<div id="schwarz"></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Beispieldaten in der Form der echten RPCs (admin_state, admin_tracks,
+   admin_photos). Die Show selbst liest nur DATEN, siehe aufbereiten().
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const MIN = 60000;
+const TEAM_COLORS = ["#2F6E9E", "#2E7D4F", "#7B3FA0", "#C62828", "#F9A825", "#00838F", "#AD1457", "#4E6E1F",
+  "#E65100", "#3949AB", "#00695C", "#8D6E63", "#D81B60", "#455A64", "#0277BD", "#9E9D24"];
+const TEAM_EMOJI = { fuchs: "🦊", wolf: "🐺", eule: "🦉", tiger: "🐯", panda: "🐼", einhorn: "🦄", flamingo: "🦩",
+  pinguin: "🐧", delfin: "🐬", adler: "🦅", igel: "🦔", otter: "🦦", krake: "🐙", biber: "🦫", koala: "🐨", drache: "🐉" };
+const teamEmoji = n => TEAM_EMOJI[String(n || "").toLowerCase()] || "🐾";
+const MEDAILLE = ["🥇", "🥈", "🥉"];
+const schriftAuf = hex => { const n = parseInt(hex.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.55 ? "#17302A" : "#FFFFFF"; };
+
+function zufall(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// Projektion: Meter um einen Bezugspunkt in Holešovice/Letná (für 1 km genau genug)
+const LAT0 = 50.1000, LNG0 = 14.4235, KX = 71520, KY = 111200;
+const P = (lat, lng) => [(lng - LNG0) * KX, (LAT0 - lat) * KY];
+const LL = (x, y) => [LAT0 - y / KY, LNG0 + x / KX];
+
+const BEISPIEL = (() => {
+  const R = zufall(20261017);
+  const T0 = new Date(2026, 9, 17, 14, 0, 12).getTime(), TEND = new Date(2026, 9, 17, 16, 40, 0).getTime();
+  const STATIONEN = [
+    { position: 1, name: "Planetarium Prag", lat: 50.105286, lng: 14.427406, radiusM: 50 },
+    { position: 2, name: "Rudolfstollen", lat: 50.104441, lng: 14.419553, radiusM: 60 },
+    { position: 3, name: "Wasserturm Letná", lat: 50.100195, lng: 14.420089, radiusM: 50 },
+    { position: 4, name: "Aussicht Letná", lat: 50.095789, lng: 14.425346, radiusM: 50 },
+    { position: 5, name: "Metronom", lat: 50.094775, lng: 14.415938, radiusM: 50 }];
+  const START = { name: "Hotel Mama Shelter", lat: 50.102458, lng: 14.431681 };
+  const WEGE = [
+    [[50.1036, 14.4317], [50.1047, 14.4311], [50.1053, 14.4291]],
+    [[50.1059, 14.4252], [50.1057, 14.4222], [50.1049, 14.4203]],
+    [[50.1034, 14.4191], [50.1021, 14.4207], [50.1010, 14.4198]],
+    [[50.0992, 14.4213], [50.0981, 14.4233], [50.0968, 14.4249]],
+    [[50.0957, 14.4229], [50.0955, 14.4201], [50.0951, 14.4176]]];
+  const UMWEG = { Pinguin: { 1: [[50.1063, 14.4262], [50.1076, 14.4240], [50.1070, 14.4208], [50.1052, 14.4200]] },
+    Flamingo: { 3: [[50.0995, 14.4247], [50.0986, 14.4282], [50.0972, 14.4268]] },
+    Wolf: { 4: [[50.0962, 14.4232], [50.0966, 14.4196], [50.0955, 14.4178]] } };
+  const NAMEN = ["Adler", "Delfin", "Einhorn", "Eule", "Flamingo", "Fuchs", "Igel", "Otter", "Panda", "Pinguin", "Tiger", "Wolf"];
+  const TEMPO = { Adler: .78, Eule: .84, Tiger: .88, Fuchs: .93, Wolf: .97, Panda: 1, Delfin: 1.04, Pinguin: 1.08, Einhorn: 1.2, Flamingo: 1.3, Otter: 1.12, Igel: 1.38 };
+  const GEHEN = [8, 10, 9, 10, 11], RAETSEL = [6, 9, 7, 11, 8];
+  const STECKT = { Otter: 5, Igel: 4 };              // rätselt beim Spielende noch an dieser Station
+  const OHNE_GPS = new Set(["Igel"]);                 // Handy der Teamleitung hat nie gemeldet
+  const LUECKE = { Otter: [T0 + 31 * MIN, T0 + 45 * MIN] };   // Handy in der Tasche
+  const OHNE_FOTO = new Set(["Delfin:1", "Pinguin:3", "Wolf:4"]);
+  const VOR = ["Anna", "Ben", "Clara", "David", "Emre", "Fatma", "Greta", "Hannes", "Ida", "Jonas", "Kira", "Lars", "Mia", "Nils", "Olga", "Paul",
+    "Rosa", "Sven", "Tara", "Uwe", "Vera", "Wim", "Yara", "Zoe", "Aylin", "Bruno", "Carla", "Dennis", "Elif", "Finn", "Gül", "Henrik"];
+  const NACH = ["Berger", "Demir", "Keller", "Krüger", "Hoffmann", "Schröder", "Wagner", "Neumann", "Schulz", "Hofmann", "Franke", "Martin",
+    "Yılmaz", "Lehmann", "Peters", "Graf", "Vogel", "Kaya", "Brandt", "Busch", "Arnold", "Lorenz", "Sommer", "Winter"];
+  const leute = new Set(); while (leute.size < 96) leute.add(VOR[Math.floor(R() * VOR.length)] + " " + NACH[Math.floor(R() * NACH.length)]);
+  const alle = [...leute];
+
+  const along = (wp, f) => {   // Punkt bei Anteil f der Länge eines Linienzugs
+    const seg = []; let L = 0;
+    for (let i = 1; i < wp.length; i++) { const d = Math.hypot(wp[i][0] - wp[i - 1][0], wp[i][1] - wp[i - 1][1]); seg.push(d); L += d; }
+    let s = f * L;
+    for (let i = 0; i < seg.length; i++) {
+      if (s <= seg[i] || i === seg.length - 1) { const u = seg[i] ? Math.min(1, s / seg[i]) : 0;
+        const a = wp[i], b = wp[i + 1], nx = -(b[1] - a[1]) / (seg[i] || 1), ny = (b[0] - a[0]) / (seg[i] || 1);
+        return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, nx, ny]; }
+      s -= seg[i];
+    }
+  };
+  const teams = [], tracks = [], fotos = [];
+  NAMEN.forEach((name, ti) => {
+    const f = TEMPO[name], seite = (R() - .5) * 16, pts = [], sts = [];
+    const punkt = (x, y, t, s = 4) => pts.push([x + (R() - .5) * s * 2, y + (R() - .5) * s * 2, t]);
+    let t = T0 + R() * 1.5 * MIN, cur = P(START.lat, START.lng), fertig = null;
+    for (let k = 0; k < 5; k++) {
+      const s = STATIONEN[k], ziel = P(s.lat, s.lng);
+      const wp = [cur, ...((UMWEG[name] && UMWEG[name][k]) || WEGE[k]).map(p => P(p[0], p[1])), ziel];
+      const gehen = GEHEN[k] * f * (0.85 + R() * 0.3) * MIN;
+      for (let tt = t; tt < t + gehen; tt += 15000 + (R() - .5) * 6000) {
+        const a = along(wp, (tt - t) / gehen); punkt(a[0] + a[2] * seite, a[1] + a[3] * seite, tt);
+      }
+      const an = t + gehen, ein = an + (0.3 + R() * 0.6) * MIN;
+      const st = { position: k + 1, checkedInAt: new Date(ein).toISOString(), solvedAt: null };
+      sts.push(st);
+      if (STECKT[name] === k + 1) { for (let tt = an; tt < TEND; tt += 60000) punkt(ziel[0] + 18, ziel[1] - 10, tt, 6); break; }
+      const geloest = ein + RAETSEL[k] * f * (0.7 + R() * 0.6) * MIN;
+      st.solvedAt = new Date(geloest).toISOString();
+      if (!OHNE_FOTO.has(name + ":" + (k + 1))) fotos.push({ teamName: name, position: k + 1, stationName: s.name, route: "echt", takenAt: new Date(geloest + (0.6 + R() * 0.6) * MIN).toISOString() });
+      const weg = geloest + (1.2 + R() * 0.8) * MIN;
+      for (let tt = an; tt < weg; tt += 60000) punkt(ziel[0] + (R() - .5) * 20, ziel[1] + (R() - .5) * 20, tt, 3);
+      t = weg; cur = ziel;
+      if (k === 4) fertig = weg + (0.8 + R() * 1.6) * MIN;
+    }
+    if (fertig) for (let tt = t; tt < TEND; tt += 60000) punkt(cur[0] - 20 + R() * 40, cur[1] - 20 + R() * 40, tt, 4);
+    const id = "t" + (ti + 1);
+    const lu = LUECKE[name];
+    const roh = OHNE_GPS.has(name) ? [] : pts.filter(p => !lu || p[2] < lu[0] || p[2] > lu[1]).map(p => { const l = LL(p[0], p[1]); return [+l[0].toFixed(6), +l[1].toFixed(6), Math.round(p[2])]; });
+    const leute8 = alle.slice(ti * 8, ti * 8 + 8).sort((a, b) => a.localeCompare(b, "de"));
+    teams.push({ id, name, members: leute8, leaderName: leute8[Math.floor(R() * 8)], solved: sts.filter(s => s.solvedAt).length,
+      finishedAt: fertig ? new Date(fertig).toISOString() : null, place: null });
+    tracks.push({ id, name, points: roh, pointCount: roh.length, stations: sts });
+    fotos.forEach(x => { if (x.teamName === name) x.teamId = id; });
+  });
+  teams.filter(t => t.finishedAt).sort((a, b) => a.finishedAt.localeCompare(b.finishedAt)).forEach((t, i) => t.place = i + 1);
+  return {
+    state: { status: "finished", testMode: false, route: "echt", prizeCount: 3, selfieOn: true, photosDeleteOn: "2026-10-19",
+      startedAt: new Date(T0).toISOString(), finishedAt: new Date(TEND).toISOString(), start: START, stations: STATIONEN, teams },
+    tracks: { status: "finished", startedAt: new Date(T0).toISOString(), finishedAt: new Date(TEND).toISOString(), teams: tracks },
+    photos: fotos
+  };
+})();
+
+// Platzhalter für ein Gruppenselfie (im echten Spiel: admin_photo mit p_full = true)
+function mischen(a, b, w) { const p = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16)), x = p(a), y = p(b);
+  return "#" + x.map((v, i) => Math.round(v * (1 - w) + y[i] * w).toString(16).padStart(2, "0")).join(""); }
+function fotoBild(team, pos) {
+  const R = zufall(team.name.length * 97 + pos * 13 + team.name.charCodeAt(0));
+  const oben = mischen(team.farbe, "#FFFFFF", .58), unten = mischen(team.farbe, "#17302A", .2);
+  const marken = [
+    '<path d="M150 330 A150 150 0 0 1 450 330 Z M120 330 H480 V352 H120 Z"/>',
+    '<path d="M110 360 C150 200 450 200 490 360 Z" opacity=".5"/><path d="M220 360 V270 A80 80 0 0 1 380 270 V360 Z" fill="#17302A" opacity=".55"/>',
+    '<path d="M265 360 V150 H335 V360 Z M250 150 L300 80 L350 150 Z"/>',
+    '<path d="M120 360 H200 V320 H260 V280 H320 V240 H380 V200 H480 V360 Z"/>',
+    '<path d="M250 360 L350 360 L330 300 L270 300 Z"/><path d="M300 305 L410 80" stroke="#fff" stroke-width="16" stroke-linecap="round"/>'][pos - 1];
+  const n = 5 + Math.floor(R() * 4); let leute = "";
+  for (let i = 0; i < n; i++) {
+    const x = 70 + (460 / (n - 1)) * i + (R() - .5) * 30, y = 520 + (R() - .5) * 60 + (i % 2) * 34, r = 46 + R() * 10;
+    leute += `<g opacity="${(0.62 + R() * 0.2).toFixed(2)}"><circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${r.toFixed(0)}"/><ellipse cx="${x.toFixed(0)}" cy="${(y + r + 120).toFixed(0)}" rx="${(r * 1.7).toFixed(0)}" ry="${(r * 1.9).toFixed(0)}"/></g>`;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${oben}"/><stop offset="1" stop-color="${unten}"/></linearGradient></defs>
+    <rect width="600" height="800" fill="url(#g)"/><g fill="#fff" opacity=".5">${marken}</g><g fill="#17302A">${leute}</g>
+    <circle cx="520" cy="740" r="60" fill="#17302A" opacity=".85"/></svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+/* =====================================================================
+   Aufbereiten: aus den RPC-Antworten werden Teams, Spuren, Ereignisse,
+   Kapitel. Genau so ist es für die echte Show beschrieben (Spezifikation 6).
+   ===================================================================== */
+const LUECKE_M = 50, LUECKE_MS = 90000;
+const OPT = { fotos: true, anhalten: true, aus: new Set() };
+let D = null;   // aufbereitete Daten
+let K = [];     // Kapitel
+
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const ms = iso => iso ? Date.parse(iso) : null;
+const uhr = t => new Date(t).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+const uhrS = t => new Date(t).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+function dauer(m) { m = Math.round(m / 60000); return m < 60 ? m + " min" : Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0") + " h"; }
+const km = m => (m / 1000).toFixed(1).replace(".", ",") + " km";
+
+function aufbereiten(roh) {
+  const st = roh.state, t0 = ms(st.startedAt), tEnd = ms(st.finishedAt);
+  const stationen = st.stations.filter(s => s.lat != null && s.lng != null).map(s => ({ ...s, xy: P(s.lat, s.lng) }));
+  const start = { ...st.start, xy: P(st.start.lat, st.start.lng) };
+  const anker = [start.xy, ...stationen.map(s => s.xy)];
+  const teams = st.teams.map((t, i) => {
+    const tr = roh.tracks.teams.find(x => x.id === t.id) || { points: [], stations: [] };
+    // Punkte nur aus dem Spiel, nur nahe der Route, ohne GPS-Sprünge
+    let pts = tr.points.filter(p => p[2] >= t0 - MIN && p[2] <= tEnd)
+      .map(p => { const xy = P(p[0], p[1]); return { x: xy[0], y: xy[1], t: p[2] }; })
+      .filter(p => Math.min(...anker.map(a => dist(a, [p.x, p.y]))) < 1000);
+    pts = pts.filter((p, k, a) => { if (!k) return true; const q = a[k - 1]; return dist([p.x, p.y], [q.x, q.y]) / Math.max(1, (p.t - q.t) / 1000) < 4.2; });
+    const sts = (tr.stations || []).map(s => ({ position: s.position, ein: ms(s.checkedInAt), ok: ms(s.solvedAt) })).sort((a, b) => a.position - b.position);
+    const ohneGps = pts.length < 2;
+    if (ohneGps) {   // Weg aus den Check-ins, ganz gestrichelt
+      pts = [{ x: start.xy[0], y: start.xy[1], t: t0 }];
+      sts.forEach(s => { const sx = stationen.find(x => x.position === s.position); if (!sx) return;
+        pts.push({ x: sx.xy[0], y: sx.xy[1], t: s.ein }); if (s.ok) pts.push({ x: sx.xy[0], y: sx.xy[1], t: s.ok }); });
+      pts.forEach((p, k) => p.g = k > 0 && dist([p.x, p.y], [pts[k - 1].x, pts[k - 1].y]) > 1);
+    } else {
+      pts.forEach((p, k) => { if (!k) return; const q = pts[k - 1], m = dist([p.x, p.y], [q.x, q.y]), dt = p.t - q.t;
+        p.g = m > LUECKE_M || (dt > LUECKE_MS && m > 15); });
+    }
+    let weg = 0; if (!ohneGps) { let a = pts[0]; for (const q of pts) { const dd = dist([a.x, a.y], [q.x, q.y]); if (dd > 15) { weg += dd; a = q; } } }
+    return { id: t.id, name: t.name, emoji: teamEmoji(t.name), farbe: TEAM_COLORS[i % 16], members: t.members || [], place: t.place,
+      fertig: ms(t.finishedAt), pts, sts, ohneGps, weg, solved: sts.filter(s => s.ok).length,
+      luecken: !ohneGps && pts.some(p => p.g) };
+  });
+  // Reihenfolge wie die öffentliche Rangliste: Platz, dann gelöste Stationen, dann letzte Lösung
+  const letzte = t => Math.max(0, ...t.sts.filter(s => s.ok).map(s => s.ok)) || Infinity;
+  const rang = [...teams].sort((a, b) => (a.place || 999) - (b.place || 999) || b.solved - a.solved || letzte(a) - letzte(b));
+  const ereignisse = [];
+  teams.forEach(t => t.sts.forEach(s => { if (s.ein) ereignisse.push({ t: s.ein, team: t, art: "ein", pos: s.position });
+    if (s.ok) ereignisse.push({ t: s.ok, team: t, art: "ok", pos: s.position }); }));
+  ereignisse.sort((a, b) => a.t - b.t);
+  const fotos = roh.photos.filter(f => f.route === "echt" && teams.some(t => t.id === f.teamId))
+    .map(f => ({ ...f, team: teams.find(t => t.id === f.teamId), takenAt: ms(f.takenAt) }));
+  fotos.forEach(f => f.src = fotoBild(f.team, f.position));
+  // Grenzen der Kapitel: Zeitpunkt, an dem die Hälfte der Teams die Station gelöst hat
+  const mitSpiel = teams.filter(t => t.sts.length).length, haelfte = Math.ceil(mitSpiel / 2);
+  const grenzen = [t0];
+  for (const s of stationen) {
+    const ok = teams.map(t => (t.sts.find(x => x.position === s.position) || {}).ok).filter(Boolean).sort((a, b) => a - b);
+    if (!ok.length) break;
+    grenzen.push(Math.max(ok.length >= haelfte ? ok[haelfte - 1] : ok[ok.length - 1], grenzen[grenzen.length - 1] + 2 * MIN));
+  }
+  return { st, t0, tEnd, start, stationen, teams, rang, ereignisse, fotos, grenzen, prizeCount: st.prizeCount ?? 3 };
+}
+
+/* ---------- Kamera: Inhalt (Meter) in einen Bühnenbereich einpassen ---------- */
+const KARTE_B = { x: 0, w: 1320 }, VOLL_B = { x: 0, w: 1920 };
+function rahmen(punkte, pad, minW) {
+  let x0 = Math.min(...punkte.map(p => p[0])) - pad, x1 = Math.max(...punkte.map(p => p[0])) + pad;
+  let y0 = Math.min(...punkte.map(p => p[1])) - pad, y1 = Math.max(...punkte.map(p => p[1])) + pad;
+  if (x1 - x0 < minW) { const c = (x0 + x1) / 2; x0 = c - minW / 2; x1 = c + minW / 2; }
+  if (y1 - y0 < minW * .6) { const c = (y0 + y1) / 2; y0 = c - minW * .3; y1 = c + minW * .3; }
+  return { x0, x1, y0, y1 };
+}
+function einpassen(b, bereich, rand = 70) {
+  const s = Math.min((bereich.w - 2 * rand) / (b.x1 - b.x0), (1080 - 2 * rand) / (b.y1 - b.y0));
+  const bx = (b.x0 + b.x1) / 2, by = (b.y0 + b.y1) / 2;
+  return { cx: bx + (960 - (bereich.x + bereich.w / 2)) / s, cy: by, s };
+}
+function kamMisch(a, b, u) { return { cx: a.cx + (b.cx - a.cx) * u, cy: a.cy + (b.cy - a.cy) * u, s: Math.exp(Math.log(a.s) + (Math.log(b.s) - Math.log(a.s)) * u) }; }
+const glatt = u => u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u);
+
+/* ---------- Kopf (Teamposition) zu einer Zeit ---------- */
+function kopfIdx(p, T) { let lo = 0, hi = p.length - 1; if (!p.length || T < p[0].t) return -1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (p[m].t <= T) lo = m; else hi = m - 1; } return lo; }
+function kopf(team, T) {
+  const p = team.pts; if (!p.length) return null;
+  const i = kopfIdx(p, T); if (i < 0) return [p[0].x, p[0].y];
+  if (i >= p.length - 1) return [p[i].x, p[i].y];
+  const a = p[i], b = p[i + 1], u = (T - a.t) / Math.max(1, b.t - a.t);
+  return [a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u];
+}
+
+/* ---------- Kapitel ---------- */
+function kapitelBauen() {
+  const d = D, k = [];
+  const stationAt = p => d.stationen.find(s => s.position === p);
+  const uebersicht = rahmen([d.start.xy, ...d.stationen.map(s => s.xy), P(50.0925, 14.4170)], 110, 900);
+  d.uebersicht = uebersicht;
+  const mitFotos = OPT.fotos && d.fotos.length;
+  const wegDauer = mitFotos ? 18000 : 24000;
+  k.push({ id: "vorspann", art: "titel", dur: 7500, kam: einpassen(uebersicht, VOLL_B), name: "Vorspann" });
+  k.push({ id: "start", art: "karte", dur: 5500, von: d.t0, bis: d.t0, name: "Start",
+    kam: einpassen(rahmen([d.start.xy, stationAt(1).xy], 220, 800), KARTE_B) });
+  for (let i = 1; i < d.grenzen.length; i++) {
+    const s = stationAt(i), vor = i === 1 ? d.start.xy : stationAt(i - 1).xy, bis = d.grenzen[i];
+    const koepfe = d.teams.map(t => kopf(t, bis)).filter(Boolean);
+    k.push({ id: "weg" + i, art: "karte", dur: wegDauer, von: d.grenzen[i - 1], bis, station: i, name: "Weg zu Station " + i,
+      kam: einpassen(rahmen([vor, s.xy, ...koepfe], 140, 760), KARTE_B) });
+    const fotos = mitFotos ? d.fotos.filter(f => f.position === i && !OPT.aus.has(f.teamId + ":" + i)) : [];
+    if (fotos.length) {
+      const ein = t => ((t.sts.find(x => x.position === i) || {}).ein) || Infinity;
+      fotos.sort((a, b) => ein(a.team) - ein(b.team) || a.takenAt - b.takenAt);
+      k.push({ id: "fotos" + i, art: "fotos", dur: 1200 + fotos.length * 1000 + 2600, station: i, fotos, name: "Fotos Station " + i });
+    }
+  }
+  const letzte = d.grenzen.length - 1;
+  if (d.tEnd - d.grenzen[letzte] > 3 * MIN) {
+    const koepfe = d.teams.map(t => kopf(t, d.tEnd)).filter(Boolean);
+    k.push({ id: "ziel", art: "karte", dur: 10000, von: d.grenzen[letzte], bis: d.tEnd, station: letzte, ziel: true, name: "Bis zum Spielende",
+      kam: einpassen(rahmen([stationAt(letzte).xy, ...koepfe], 160, 760), KARTE_B) });
+  }
+  const koffer = d.rang.filter(t => t.place && t.place <= d.prizeCount).sort((a, b) => b.place - a.place);
+  koffer.forEach(t => k.push({ id: "platz" + t.place, art: "platz", team: t, dur: t.place === 1 ? 14000 : 12500,
+    halt: t.place === 1 ? 3600 : 2600, name: "Platz " + t.place, kam: einpassen(uebersicht, VOLL_B) }));
+  k.push({ id: "alle", art: "alle", dur: 15000, name: "Alle Teams", kam: einpassen(uebersicht, VOLL_B) });
+  k.push({ id: "abspann", art: "abspann", dur: 9000, name: "Alle Routen", kam: einpassen(rahmen([d.start.xy, ...d.stationen.map(s => s.xy)], 150, 900), { x: 560, w: 1360 }) });
+  k.forEach((x, i) => { x.i = i; if (!x.kam) x.kam = einpassen(uebersicht, VOLL_B); });
+  K = k;
+}
+
+/* =====================================================================
+   Zeichnen
+   ===================================================================== */
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attr = {}, kind) => { const e = document.createElementNS(NS, tag); for (const a in attr) e.setAttribute(a, attr[a]); if (kind) kind.appendChild(e); return e; };
+const pfad = pts => pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join("");
+const LOGO = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><g class="nadel" style="transform-origin:12px 12px"><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></g></svg>`;
+const HAUS = "M-9 2 0-6l9 8M-7 1v9h14V1M-2 10V5h4v5";
+
+// Grundkarte: stilisiert (im echten Spiel: hintergrund/rueckblick.svg aus OSM-Daten, siehe Spezifikation 8)
+function grundkarte() {
+  const g = $("#grund"); g.innerHTML = "";
+  el("rect", { x: -6000, y: -6000, width: 12000, height: 12000, fill: "var(--paper)" }, g);
+  const R = zufall(7);
+  const ring = (lat, lng, rx, ry, wob) => { const c = P(lat, lng), pts = [];
+    for (let a = 0; a < 64; a++) { const w = a / 64 * Math.PI * 2, f = 1 + Math.sin(w * 3 + wob) * .08 + Math.sin(w * 5 + wob * 2) * .05;
+      pts.push([c[0] + Math.cos(w) * rx * f, c[1] + Math.sin(w) * ry * f]); } return pfad(pts) + "Z"; };
+  for (let i = 0; i < 6; i++) el("path", { class: "hoehe", d: ring(50.0972, 14.4195, 1050 - i * 150, 330 - i * 48, i * .7) }, g);
+  for (let i = 0; i < 3; i++) el("path", { class: "hoehe", d: ring(50.1112, 14.4060, 700 - i * 170, 300 - i * 70, 2 + i) }, g);
+  const poly = (cls, ll) => el("path", { class: cls, d: pfad(ll.map(p => P(p[0], p[1]))) + "Z" }, g);
+  poly("park", [[50.0933, 14.4070], [50.0962, 14.4052], [50.0986, 14.4105], [50.0991, 14.4180], [50.0978, 14.4262], [50.0967, 14.4322], [50.0947, 14.4334], [50.0938, 14.4252], [50.0931, 14.4160]]);
+  poly("park", [[50.1033, 14.4030], [50.1076, 14.4010], [50.1102, 14.4100], [50.1101, 14.4232], [50.1082, 14.4304], [50.1061, 14.4290], [50.1044, 14.4222], [50.1036, 14.4150]]);
+  poly("flaeche", [[50.1051, 14.4296], [50.1087, 14.4305], [50.1082, 14.4352], [50.1050, 14.4345]]);
+  const fl = [[50.0872, 14.4080], [50.0899, 14.4118], [50.0916, 14.4152], [50.0924, 14.4195], [50.0929, 14.4245], [50.0935, 14.4295], [50.0946, 14.4345],
+    [50.0962, 14.4395], [50.0986, 14.4436], [50.1012, 14.4466], [50.1046, 14.4486], [50.1084, 14.4478]];
+  el("path", { class: "fluss", d: pfad(fl.map(p => P(p[0], p[1]))), "stroke-width": 150 }, g);
+  el("path", { class: "fluss", d: pfad([[50.1172, 14.4460], [50.1182, 14.4330], [50.1172, 14.4200], [50.1150, 14.4090], [50.1118, 14.4010]].map(p => P(p[0], p[1]))), "stroke-width": 140 }, g);
+  const str = (cls, ll) => { const d = pfad(ll.map(p => P(p[0], p[1]))); if (cls === "strasse") el("path", { class: "strasse-r", d }, g); el("path", { class: cls, d }, g); };
+  str("strasse", [[50.0992, 14.4040], [50.0986, 14.4150], [50.0983, 14.4250], [50.0981, 14.4330], [50.0979, 14.4420]]);
+  str("strasse", [[50.0982, 14.4318], [50.1010, 14.4317], [50.1036, 14.4318], [50.1052, 14.4320]]);
+  str("strasse", [[50.0980, 14.4352], [50.1012, 14.4352], [50.1052, 14.4350]]);
+  str("strasse", [[50.1004, 14.4050], [50.1010, 14.4140], [50.1028, 14.4200], [50.1031, 14.4280], [50.1036, 14.4318], [50.1040, 14.4440]]);
+  str("strasse", [[50.0915, 14.4175], [50.0941, 14.4170], [50.0983, 14.4185]]);
+  str("strasse", [[50.0925, 14.4256], [50.0952, 14.4254]]);
+  str("strasse", [[50.0938, 14.4332], [50.0968, 14.4330], [50.0981, 14.4330]]);
+  for (const la of [50.0996, 50.1016]) str("neben", [[la, 14.4318], [la, 14.4450]]);
+  for (const lo of [14.4385, 14.4420]) str("neben", [[50.0980, lo], [50.1040, lo]]);
+  str("neben", [[50.0986, 14.4250], [50.1004, 14.4240], [50.1020, 14.4232]]);
+  str("weg", [[50.1046, 14.4070], [50.1057, 14.4170], [50.1059, 14.4240], [50.1053, 14.4290]]);
+  str("weg", [[50.0957, 14.4100], [50.0953, 14.4200], [50.0958, 14.4300]]);
+  str("weg", [[50.1040, 14.4190], [50.1022, 14.4206], [50.1003, 14.4196]]);
+  // Ortsnamen: in Bildschirm-Pixeln, damit sie bei jedem Ausschnitt gleich groß bleiben
+  D.namen = [["Letná", 50.0972, 14.4140, "ortsname"], ["Stromovka", 50.1083, 14.4135, "ortsname"], ["Holešovice", 50.1006, 14.4400, "ortsname"],
+    ["Výstaviště", 50.1072, 14.4325, "ortsname"], ["Vltava", 50.0921, 14.4215, "flussname"]];
+}
+
+let teamEl = {}, kopfEl = {}, stEl = [], namenEl = [];
+function kartenElemente() {
+  const sp = $("#spuren"); sp.innerHTML = ""; teamEl = {};
+  D.stationen.forEach(s => el("circle", { class: "radius", cx: s.xy[0], cy: s.xy[1], r: s.radiusM || 50 }, sp));
+  D.teams.forEach(t => {
+    const g = el("g", {}, sp);
+    teamEl[t.id] = { g, rand: el("path", { class: "rand" }, g), luecke: el("path", { class: "luecke", stroke: t.farbe }, g), spur: el("path", { class: "spur", stroke: t.farbe }, g) };
+  });
+  const sg = $("#stationen"); sg.innerHTML = ""; stEl = [];
+  const startG = el("g", {}, sg); el("circle", { class: "startbadge", r: 28 }, startG); el("path", { class: "haus", d: HAUS }, startG);
+  stEl.push({ g: startG, xy: D.start.xy });
+  D.stationen.forEach(s => { const g = el("g", {}, sg); el("circle", { class: "stbadge", r: 28 }, g);
+    const tx = el("text", { class: "stnr", "text-anchor": "middle", y: 11 }, g); tx.textContent = s.position; stEl.push({ g, xy: s.xy }); });
+  const kg = $("#koepfe"); kg.innerHTML = ""; kopfEl = {};
+  D.teams.forEach(t => { const g = el("g", { class: "kopf" }, kg);
+    if (t.ohneGps) el("circle", { class: "ohne", r: 38 }, g);
+    el("circle", { class: "k", r: 30, fill: t.farbe }, g);
+    const tx = el("text", { "text-anchor": "middle", y: 12 }, g); tx.textContent = t.emoji; kopfEl[t.id] = g; });
+  const ng = $("#namen"); ng.innerHTML = ""; namenEl = D.namen.map(n => { const tx = el("text", { class: n[3], "text-anchor": "middle" }, ng); tx.textContent = n[0]; return { tx, xy: P(n[1], n[2]) }; });
+}
+
+// Ankunftsreihenfolge je Ort für die Ringplätze (Start: Teamreihenfolge)
+function ringPlatz(team, ortIdx) {
+  if (ortIdx === 0) return D.teams.indexOf(team);
+  const pos = D.stationen[ortIdx - 1].position;
+  const rf = D.teams.map(t => ({ t, e: (t.sts.find(x => x.position === pos) || {}).ein || Infinity })).sort((a, b) => a.e - b.e);
+  return rf.findIndex(x => x.t === team);
+}
+let ringCache = {};
+function zeichneKarte(T, kam, modus) {
+  // modus: { spuren: "alle" | "keine" | Team, koepfe: bool, bis: Zeit für eine einzelne Spur }
+  const s = kam.s, vw = 1920 / s, vh = 1080 / s, vx = kam.cx - vw / 2, vy = kam.cy - vh / 2;
+  $("#welt").setAttribute("viewBox", `${vx.toFixed(2)} ${vy.toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}`);
+  const sx = p => [(p[0] - vx) * s, (p[1] - vy) * s];
+  stEl.forEach(e => { const q = sx(e.xy); e.g.setAttribute("transform", `translate(${q[0].toFixed(1)} ${q[1].toFixed(1)})`); });
+  namenEl.forEach(n => { const q = sx(n.xy); n.tx.setAttribute("x", q[0].toFixed(0)); n.tx.setAttribute("y", q[1].toFixed(0)); });
+  D.teams.forEach(t => {
+    const e = teamEl[t.id], zeigen = modus.spuren === "alle" || modus.spuren === t;
+    e.g.style.display = zeigen ? "" : "none";
+    if (!zeigen) return;
+    const bis = modus.spuren === t && modus.bis != null ? modus.bis : T;
+    const p = t.pts, j = kopfIdx(p, bis);
+    let fest = "", luecke = "";
+    for (let i = 0; i <= j; i++) {
+      const c = p[i].x.toFixed(1) + " " + p[i].y.toFixed(1);
+      if (!i) { fest += "M" + c; continue; }
+      if (p[i].g) { luecke += "M" + p[i - 1].x.toFixed(1) + " " + p[i - 1].y.toFixed(1) + "L" + c; fest += "M" + c; } else fest += "L" + c;
+    }
+    if (j >= 0 && j < p.length - 1) { const h = kopf(t, bis), c = h[0].toFixed(1) + " " + h[1].toFixed(1);
+      if (p[j + 1].g) luecke += "M" + p[j].x.toFixed(1) + " " + p[j].y.toFixed(1) + "L" + c; else fest += "L" + c; }
+    e.spur.setAttribute("d", fest); e.rand.setAttribute("d", fest); e.luecke.setAttribute("d", luecke);
+  });
+  // Köpfe: an einem Ort stehen die Teams im Ring, in der Reihenfolge ihrer Ankunft
+  const orte = [D.start.xy, ...D.stationen.map(x => x.xy)];
+  D.teams.forEach(t => {
+    const g = kopfEl[t.id], h = modus.koepfe ? kopf(t, T) : null;
+    if (!h) { g.style.display = "none"; return; }
+    g.style.display = "";
+    let best = 0, bd = Infinity; orte.forEach((o, i) => { const dd = dist(o, h); if (dd < bd) { bd = dd; best = i; } });
+    let q = sx(h);
+    const w = glatt((70 - bd) / 45);
+    if (w > 0) {
+      const key = t.id + ":" + best, platz = ringCache[key] ?? (ringCache[key] = ringPlatz(t, best));
+      const a = -Math.PI / 2 + platz * (Math.PI * 2 / 12), o = sx(orte[best]);
+      const z = [o[0] + Math.cos(a) * 116, o[1] + Math.sin(a) * 116];
+      q = [q[0] + (z[0] - q[0]) * w, q[1] + (z[1] - q[1]) * w];
+    }
+    g.setAttribute("transform", `translate(${q[0].toFixed(1)} ${q[1].toFixed(1)})`);
+  });
+}
+
+/* =====================================================================
+   Ablauf: Kapitel, Zeit, Pause, Halt vor dem Aufdecken
+   ===================================================================== */
+const Z = { phase: "vorbereiten", i: 0, lokal: 0, spielt: false, haelt: false, frei: false, extra: 0, letzt: 0, szene: null, alt: null };
+const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const kapitelZeit = (k, lokal) => k.von + (k.bis - k.von) * glatt(Math.min(1, lokal / k.dur));
+function kamFuer(i, lokal) {
+  const k = K[i], vorher = i > 0 ? K[i - 1].kam : k.kam;
+  return ruhig ? k.kam : kamMisch(vorher, k.kam, glatt(lokal / 1800));
+}
+function letzteKarteVor(i) { for (let j = i; j >= 0; j--) if (K[j].art === "karte") return K[j]; return null; }
+
+function geheZu(i, lokal = 0) {
+  i = Math.max(0, Math.min(K.length - 1, i));
+  Z.phase = "show"; Z.i = i; Z.lokal = lokal; Z.haelt = false; Z.frei = false; Z.extra = 0;
+  szeneBauen();
+  zeichnen();
+}
+function weiter() {
+  if (Z.phase !== "show") return starten();
+  if (Z.haelt) { Z.haelt = false; Z.frei = true; if (!Z.spielt) Z.spielt = true; return; }
+  if (Z.i < K.length - 1) geheZu(Z.i + 1);
+}
+function zurueck() {
+  if (Z.phase !== "show") return;
+  if (Z.lokal > 1500) geheZu(Z.i); else geheZu(Z.i - 1);
+}
+function spielPause() {
+  if (Z.phase !== "show") return starten();
+  if (Z.haelt) return weiter();
+  if (Z.i === K.length - 1 && Z.lokal >= K[Z.i].dur) { geheZu(0); Z.spielt = true; return; }
+  Z.spielt = !Z.spielt; leisteZeigen(); knopf();
+}
+function starten() { $("#ueber").innerHTML = ""; Z.spielt = true; geheZu(0); knopf(); }
+function knopf() { const b = $("#bSpiel"); b.querySelector("span").textContent = Z.phase !== "show" ? "Start" : Z.spielt ? "Pause" : "Abspielen";
+  b.querySelector("svg").innerHTML = Z.spielt && Z.phase === "show" ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M7 4v16l13-8z"/>'; }
+
+function takt(jetzt) {
+  const dt = Math.min(100, jetzt - (Z.letzt || jetzt)); Z.letzt = jetzt;
+  if (Z.phase === "show") {
+    const k = K[Z.i];
+    if (Z.spielt) {
+      if (k.halt && OPT.anhalten && !Z.frei && Z.lokal < k.halt && Z.lokal + dt >= k.halt) { Z.lokal = k.halt; Z.haelt = true; }
+      if (Z.haelt) Z.extra += dt; else Z.lokal += dt;
+      if (Z.lokal >= k.dur) { if (Z.i < K.length - 1) geheZu(Z.i + 1); else { Z.lokal = k.dur; Z.spielt = false; knopf(); } }
+    }
+    zeichnen();
+  }
+  requestAnimationFrame(takt);
+}
+
+/* ---------- Szenen ---------- */
+const BREITE = 1920;
+function szeneBauen() {
+  const k = K[Z.i], box = $("#szenen");
+  if (Z.alt) Z.alt.remove();
+  Z.alt = Z.szene; if (Z.alt) Z.alt.style.zIndex = 1;
+  const s = document.createElement("div"); s.className = "szene"; s.style.zIndex = 2; s.dataset.k = k.id;
+  if (k.art === "titel") s.innerHTML = vorspannHTML();
+  if (k.art === "fotos") s.innerHTML = fotosHTML(k);
+  if (k.art === "platz") s.innerHTML = platzHTML(k);
+  if (k.art === "alle") s.innerHTML = alleHTML();
+  if (k.art === "abspann") s.innerHTML = abspannHTML();
+  box.appendChild(s); Z.szene = s; Z.altBis = 520; $("#buehne").dataset.art = k.art;
+  if (k.art === "karte") seiteFuellen(k);
+  ringCache = {};
+  leisteSpur();
+}
+const fakten = () => {
+  const d = D, leute = d.teams.reduce((n, t) => n + t.members.length, 0);
+  return { datum: new Date(d.t0).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" }), leute,
+    km: d.teams.reduce((n, t) => n + t.weg, 0) };
+};
+function vorspannHTML() {
+  const f = fakten();
+  return `<div class="schleier mittel"></div><div class="titel"><div class="logo">${LOGO}</div><h1>Stadtjagd</h1><div class="ort">Prag</div>
+    <div class="fakten"><span>${f.datum}</span> · <span>${D.teams.length} Teams</span> · <span>${f.leute} Leute</span> · <span>${D.stationen.length} Stationen</span></div></div>`;
+}
+function fotoRaster(n) {
+  let best = null;
+  for (let c = 1; c <= n; c++) { const r = Math.ceil(n / c), w = Math.min((1760 - (c - 1) * 32) / c, ((800 - (r - 1) * 40) / r - 52) * .75);
+    if (!best || w > best.w) best = { c, r, w }; }
+  const w = best.w, h = w / .75, gw = best.c * w + (best.c - 1) * 32, gh = best.r * (h + 52) + (best.r - 1) * 40;
+  const x0 = (BREITE - gw) / 2, y0 = 236 + (800 - gh) / 2;
+  return Array.from({ length: n }, (_, i) => { const r = Math.floor(i / best.c), c = i % best.c, inReihe = Math.min(best.c, n - r * best.c);
+    const versatz = (best.c - inReihe) * (w + 32) / 2; return { x: x0 + versatz + c * (w + 32), y: y0 + r * (h + 52 + 40), w, h }; });
+}
+function fotosHTML(k) {
+  const s = D.stationen.find(x => x.position === k.station), f = k.fotos, zuerst = f[0] && f[0].team;
+  const erst = D.teams.map(t => ({ t, e: (t.sts.find(x => x.position === k.station) || {}).ein })).filter(x => x.e).sort((a, b) => a.e - b.e)[0];
+  k.slots = fotoRaster(f.length);
+  return `<div class="schleier dicht"></div>
+    <div class="f-kopf"><div class="nr">${k.station}</div><div><h2>${esc(s.name)}</h2></div>
+      ${erst ? `<div class="zuerst"><small>zuerst da</small><b><span class="emo">${erst.t.emoji}</span> ${esc(erst.t.name)} <span class="tab">${uhr(erst.e)}</span></b></div>` : ""}</div>
+    ${f.map((x, i) => `<div class="kachel" data-i="${i}"><img src="${x.src}" alt="Gruppenfoto ${esc(x.team.name)}"></div>
+      <div class="unterschrift" data-u="${i}" style="left:${k.slots[i].x}px;top:${k.slots[i].y + k.slots[i].h + 12}px;width:${k.slots[i].w}px"><i style="background:${x.team.farbe}"></i><span class="emo">${x.team.emoji}</span>${esc(x.team.name)}<span class="zt">${uhr(x.takenAt)}</span></div>`).join("")}
+    <div class="spot" id="spot"></div>`;
+}
+function bestesFoto(t) {
+  const f = D.fotos.filter(x => x.teamId === t.id && !OPT.aus.has(x.teamId + ":" + x.position)).sort((a, b) => b.position - a.position);
+  return OPT.fotos ? f[0] : null;
+}
+function platzHTML(k) {
+  const t = k.team, foto = bestesFoto(t), ziffern = uhrS(t.fertig).replace(/:/g, "");
+  k.ziffern = ziffern; k.foto = !!foto;
+  const mitte = foto ? 740 : 960, links = mitte - 560;
+  const walzen = [0, 1, 2, 3, 4, 5].map(j => `${j === 2 || j === 4 ? '<span class="dp">:</span>' : ""}<div class="walze"><div class="band" data-w="${j}">${"0123456789012".split("").map(c => `<div>${c}</div>`).join("")}</div></div>`).join("");
+  return `<div class="p-spalte" style="left:${links}px;width:1120px">
+      <div class="p-titel" data-a="titel"><span class="emo">${MEDAILLE[t.place - 1] || "🧳"}</span>Platz ${t.place}</div>
+      <div class="p-lbl" data-a="walzen">Koffer-Code eingegeben um</div>
+      <div class="walzen" data-a="walzen">${walzen}</div>
+      <div class="p-team" data-a="team"><div class="b" style="background:${t.farbe}">${t.emoji}</div>
+        <div><div class="n">${esc(t.name)}</div><div class="m">${t.members.map(n => `<span class="nw">${esc(n)}</span>`).join(", ")}</div></div></div>
+    </div>
+    ${foto ? `<div class="p-foto" data-a="foto" style="transform:rotate(1.6deg)"><img src="${foto.src}" alt=""><small>Station ${foto.position}, ${uhr(foto.takenAt)}</small></div>` : ""}`;
+}
+function alleHTML() {
+  const n = D.rang.length, spalten = n > 12 ? 4 : 4, reihen = Math.ceil(n / spalten);
+  return `<div class="schleier dicht"></div><div class="a-kopf">Alle Teams</div>
+    <div class="a-netz" style="grid-template-rows:repeat(${reihen},1fr)">${D.rang.map((t, i) => {
+      const pl = t.place ? (t.place <= D.prizeCount ? `<span class="emo">${MEDAILLE[t.place - 1] || "🧳"}</span>Platz ${t.place}` : `Platz ${t.place}`)
+        : "unterwegs";
+      const z3 = t.place ? `im Ziel <span class="tab">${uhr(t.fertig)}</span>, nach ${dauer(t.fertig - D.t0)}` : `${t.solved} von ${D.stationen.length} Stationen`;
+      return `<div class="a-karte" data-i="${i}" style="--c:${t.farbe}"><div class="z1"><span class="pl">${pl}</span><span class="nw">${t.ohneGps ? "ohne GPS" : km(t.weg)}</span></div>
+        <div class="z2"><i style="background:${t.farbe}">${t.emoji}</i><b>${esc(t.name)}</b></div><div class="z3">${z3}</div></div>`; }).join("")}</div>`;
+}
+function abspannHTML() {
+  const f = fakten();
+  return `<div class="ab-karte"><h2>Stadtjagd Prag</h2><p>${D.teams.length} Teams, zusammen ${km(f.km)} gelaufen</p></div>`;
+}
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---------- Seitenleiste ---------- */
+let seiteStand = {};
+function seiteFuellen(k) {
+  $("#sKap").textContent = k.id === "start" ? "Start" : k.ziel ? "Zum Koffer" : "Weg zu";
+  $("#sName").textContent = k.id === "start" ? D.start.name : D.stationen.find(s => s.position === k.station).name;
+  seiteStand = {};
+}
+function seiteZeichnen(k, T) {
+  const uhrText = uhr(T), seit = T <= D.t0 ? `${D.teams.reduce((n, t) => n + t.members.length, 0)} Leute in ${D.teams.length} Teams` : `seit Start ${dauer(T - D.t0)}`;
+  if (seiteStand.uhr !== uhrText) { $("#sUhr").textContent = uhrText; seiteStand.uhr = uhrText; }
+  const ende = k.ziel && T >= D.tEnd - 1000;
+  const seitText = ende ? "Spielende" : seit;
+  if (seiteStand.seit !== seitText) { $("#sSeit").textContent = seitText; seiteStand.seit = seitText; }
+  // Liste: am Start die Teams, unterwegs die letzten drei Ereignisse
+  let html;
+  if (k.id === "start") html = `<div class="legende">${D.teams.map(t => `<div><i style="background:${t.farbe}">${t.emoji}</i>${esc(t.name)}</div>`).join("")}</div>`;
+  else {
+    const ev = D.ereignisse.filter(e => e.t >= k.von && e.t <= T).slice(-3).reverse();
+    html = ev.map(e => `<div class="ev"><span class="b" style="background:${e.team.farbe}">${e.team.emoji}</span><span class="n">${esc(e.team.name)}</span>
+      <span class="z">${uhr(e.t)}</span><span class="w">${e.art === "ein" ? "an Station " + e.pos : "Station " + e.pos + " gelöst"}</span></div>`).join("");
+  }
+  if (seiteStand.liste !== html) { $("#sListe").innerHTML = html; seiteStand.liste = html; }
+  const jetzt = k.station || 0;
+  const route = D.stationen.map((s, i) => `${i ? `<i class="${s.position <= jetzt - (k.ziel ? 0 : 1) ? "da" : ""}"></i>` : ""}<b class="${s.position < jetzt || (k.ziel && s.position === jetzt) ? "da" : s.position === jetzt ? "jetzt" : ""}">${s.position}</b>`).join("");
+  if (seiteStand.route !== route) { $("#sRoute").innerHTML = route; seiteStand.route = route; }
+}
+
+/* ---------- Ein Bild ---------- */
+const ein = (lokal, ab, dauerMs = 480) => ruhig ? (lokal >= ab ? 1 : 0) : glatt((lokal - ab) / dauerMs);
+function zeichnen() {
+  if (Z.phase !== "show") return;
+  const k = K[Z.i], L = Z.lokal, kam = kamFuer(Z.i, L);
+  leisteFortschritt();
+  // Übergang: neue Szene blendet über die alte
+  if (Z.szene) Z.szene.style.opacity = k.art === "karte" ? 0 : ein(L, 0);
+  if (Z.alt) { if (L > Z.altBis || k.art !== "karte" && ein(L, 0) >= 1) { Z.alt.remove(); Z.alt = null; } else if (k.art === "karte") Z.alt.style.opacity = 1 - ein(L, 0); }
+  const seite = $("#seite"), vorKarte = Z.i > 0 && K[Z.i - 1].art === "karte";
+  seite.style.opacity = k.art === "karte" ? (vorKarte ? 1 : ein(L, 0)) : (Z.alt && vorKarte ? 1 - ein(L, 0) : 0);
+  $("#lhinweis").textContent = "";
+  if (k.art === "karte") {
+    const T = kapitelZeit(k, L);
+    zeichneKarte(T, kam, { spuren: "alle", koepfe: true });
+    seiteZeichnen(k, T);
+    pulse(k, T);
+    if (D.teams.some(t => t.luecken || t.ohneGps) && T > D.t0) $("#lhinweis").textContent = "gestrichelt: ohne GPS-Signal";
+    return;
+  }
+  $("#pulse").innerHTML = "";
+  const vorher = letzteKarteVor(Z.i), Tfest = vorher ? vorher.bis : D.t0;
+  if (k.art === "titel") {
+    zeichneKarte(D.t0, kam, { spuren: "keine", koepfe: false });
+    const s = Z.szene; s.querySelector(".logo").style.opacity = ein(L, 100, 600);
+    const nadel = s.querySelector(".nadel"); if (nadel) nadel.style.transform = `rotate(${ruhig ? 0 : (1 - glatt(L / 2200)) * 140 * Math.cos(L / 260)}deg)`;
+    const h = s.querySelector("h1"), o = s.querySelector(".ort"), f = s.querySelector(".fakten");
+    [[h, 500], [o, 900], [f, 1500]].forEach(([e, ab]) => { const v = ein(L, ab); e.style.opacity = v; e.style.transform = `translateY(${(1 - v) * 16}px)`; });
+  }
+  if (k.art === "fotos") { zeichneKarte(Tfest, kam, { spuren: "alle", koepfe: true }); fotosZeichnen(k, L); }
+  if (k.art === "platz") platzZeichnen(k, L, kam);
+  if (k.art === "alle") {
+    zeichneKarte(D.tEnd, kam, { spuren: "alle", koepfe: false });
+    Z.szene.querySelectorAll(".a-karte").forEach(c => { const v = ein(L, 300 + c.dataset.i * 110); c.style.opacity = v; c.style.transform = `translateY(${(1 - v) * 16}px)`; });
+  }
+  if (k.art === "abspann") {
+    zeichneKarte(D.tEnd, kam, { spuren: "alle", koepfe: true });
+    const c = Z.szene.querySelector(".ab-karte"), v = ein(L, 1600); c.style.opacity = v; c.style.transform = `translateY(${(1 - v) * 16}px)`;
+  }
+}
+function pulse(k, T) {
+  const g = $("#pulse"), tempo = Math.max(1, (k.bis - k.von) / k.dur);
+  let html = "";
+  if (!ruhig) D.ereignisse.forEach(e => {
+    if (e.art !== "ok" || e.t > T) return;
+    const alter = (T - e.t) / tempo; if (alter > 1400) return;
+    const s = D.stationen.find(x => x.position === e.pos), u = alter / 1400;
+    const kam = kamFuer(Z.i, Z.lokal), q = [(s.xy[0] - kam.cx) * kam.s + 960, (s.xy[1] - kam.cy) * kam.s + 540];
+    html += `<circle class="puls" cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${(30 + u * 110).toFixed(1)}" stroke="${e.team.farbe}" opacity="${(1 - u).toFixed(2)}"/>`;
+  });
+  g.innerHTML = html;
+}
+function fotosZeichnen(k, L) {
+  const s = Z.szene, n = k.fotos.length, GROSS = { x: 960 - 330, y: 196, w: 660, h: 720 };
+  let spot = null;
+  k.fotos.forEach((f, i) => {
+    const kachel = s.querySelector(`.kachel[data-i="${i}"]`), u = s.querySelector(`.unterschrift[data-u="${i}"]`), slot = k.slots[i];
+    const a = 900 + i * 1000;           // erscheint groß in der Mitte, dann an seinen Platz in der Wand
+    const auf = ein(L, a, 320), weg = ruhig ? (L >= a + 700 ? 1 : 0) : glatt((L - a - 600) / 420);
+    if (L < a) { kachel.style.opacity = 0; u.style.opacity = 0; return; }
+    const gw = GROSS.h * .75, gx = 960 - gw / 2;
+    const sGross = gw / 540, sKlein = slot.w / 540;
+    const x = gx + (slot.x - gx) * weg, y = GROSS.y + (slot.y - GROSS.y) * weg, sc = sGross + (sKlein - sGross) * weg;
+    kachel.style.opacity = auf; kachel.style.zIndex = weg < 1 ? 5 : 1;
+    kachel.classList.toggle("gross", weg < 1);
+    kachel.style.transform = `translate(${x.toFixed(1)}px,${(y + (1 - auf) * 14).toFixed(1)}px) scale(${sc.toFixed(4)})`;
+    u.style.opacity = ein(L, a + 1000, 300);
+    if (weg < 1) spot = f;
+  });
+  const sp = s.querySelector("#spot"), txt = spot ? `<span class="emo">${spot.team.emoji}</span> ${esc(spot.team.name)}<span class="zt">${uhr(spot.takenAt)}</span>` : "";
+  if (sp.dataset.t !== txt) { sp.innerHTML = txt; sp.dataset.t = txt; }
+  sp.style.opacity = spot ? 1 : 0;
+}
+function platzZeichnen(k, L, kam) {
+  const s = Z.szene, t = k.team, halt = k.halt, schloss = halt + 300;
+  const enthuellt = schloss + 6 * 350 + 700;
+  zeichneKarte(D.tEnd, kam, { spuren: t, koepfe: false, bis: D.t0 + (t.fertig - D.t0) * glatt((L - enthuellt) / 2600) });
+  const sicht = (sel, v, dy = 16) => s.querySelectorAll(`[data-a="${sel}"]`).forEach(e => { e.style.opacity = v; e.style.transform = (e.dataset.a === "foto" ? "rotate(1.6deg) " : "") + `translateY(${(1 - v) * dy}px)`; });
+  sicht("titel", ein(L, 0)); sicht("walzen", ein(L, 500)); sicht("team", ein(L, enthuellt)); sicht("foto", ein(L, enthuellt + 500));
+  const spin = L + Z.extra;
+  s.querySelectorAll(".band").forEach(b => {
+    const j = +b.dataset.w, ziel = +k.ziffern[j], ab = schloss + j * 350;
+    let pos;
+    if (ruhig) pos = L >= ab ? ziel : 0;
+    else {
+      const p0 = (Math.min(spin, ab + Z.extra) * 0.014 + j * 3.3);
+      if (L < ab) pos = spin * 0.014 + j * 3.3;
+      else { const zielPos = Math.ceil((p0 - ziel) / 10) * 10 + ziel + 10, u = Math.min(1, (L - ab) / 650);
+        pos = p0 + (zielPos - p0) * (1 - Math.pow(1 - u, 3)); }
+    }
+    const m = ((pos % 10) + 10) % 10;
+    b.style.transform = `translateY(${(-m * 176).toFixed(1)}px)`;
+  });
+}
+
+/* =====================================================================
+   Vorbereiten, Fotos durchsehen, Tastenhilfe
+   ===================================================================== */
+const HAKEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" stroke-width="1.8"/><path d="m7.5 12.5 3 3 6-6.5"/></svg>';
+const ACHTUNG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg>';
+function gesamt() { return K.reduce((n, k) => n + k.dur, 0); }
+function mmss(t) { t = Math.round(t / 1000); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); }
+function vorbereitenHTML() {
+  const d = D, ohne = d.teams.filter(t => t.ohneGps), luecke = d.teams.filter(t => t.luecken);
+  const datum = new Date(d.st.photosDeleteOn + "T12:00").toLocaleDateString("de-DE");
+  const nichtIm = d.teams.filter(t => !t.place);
+  return `<div class="szene" style="opacity:1"><div class="schleier dicht"></div><div class="v-panel" role="dialog" aria-label="Rückblick vorbereiten">
+    <h1>${LOGO}Rückblick</h1>
+    <ul class="v-liste">
+      <li class="ok">${HAKEN}<span>Spiel beendet um <span class="nw">${uhr(d.tEnd)} Uhr</span>, ${d.teams.filter(t => t.place).length} von ${d.teams.length} Teams im Ziel</span>
+        ${nichtIm.length ? `<small>Beim Spielende unterwegs: ${nichtIm.map(t => esc(t.name)).join(", ")}</small>` : ""}</li>
+      <li class="${ohne.length ? "warn" : "ok"}">${ohne.length ? ACHTUNG : HAKEN}<span>${d.teams.length - ohne.length} von ${d.teams.length} Teams mit GPS-Route</span>
+        ${ohne.length ? `<small>${ohne.map(t => esc(t.name)).join(", ")} ohne GPS: Weg aus den Check-ins, gestrichelt</small>` : ""}</li>
+      <li class="ok">${HAKEN}<span>${d.fotos.length} Gruppenfotos geladen</span><small>Gelöscht am ${datum}</small></li>
+      <li class="ok">${HAKEN}<span>Alles geladen, die Show läuft jetzt auch ohne Netz</span></li>
+    </ul>
+    <div class="v-opt">
+      <label><input type="checkbox" id="oFotos" ${OPT.fotos ? "checked" : ""}> Gruppenfotos zeigen</label>
+      <button class="link" id="oDurch">Fotos durchsehen${OPT.aus.size ? ` (${OPT.aus.size} aus)` : ""}</button>
+      <label><input type="checkbox" id="oHalt" ${OPT.anhalten ? "checked" : ""}> Vor jedem Koffer-Platz anhalten, Weiter deckt auf</label>
+    </div>
+    <div class="v-fuss"><button class="start" id="oStart">Rückblick starten</button><span class="dauer">Dauer etwa <b class="tab">${mmss(gesamt())} min</b></span></div>
+    <div class="v-tasten"><kbd>Leertaste</kbd> Start und Pause · <kbd>→</kbd> <kbd>←</kbd> Kapitel · <kbd>F</kbd> Vollbild · <kbd>H</kbd> alle Tasten</div>
+  </div></div>`;
+}
+function vorbereiten() {
+  Z.phase = "vorbereiten"; Z.spielt = false; knopf(); $("#buehne").dataset.art = "vorbereiten";
+  if (Z.szene) { Z.szene.remove(); Z.szene = null; } if (Z.alt) { Z.alt.remove(); Z.alt = null; }
+  $("#seite").style.opacity = 0; $("#pulse").innerHTML = ""; $("#lhinweis").textContent = "";
+  zeichneKarte(D.t0, einpassen(D.uebersicht, VOLL_B), { spuren: "keine", koepfe: false });
+  $("#ueber").innerHTML = vorbereitenHTML();
+  $("#oFotos").onchange = e => { OPT.fotos = e.target.checked; kapitelBauen(); vorbereiten(); };
+  $("#oHalt").onchange = e => { OPT.anhalten = e.target.checked; };
+  $("#oDurch").onclick = durchsehen;
+  $("#oStart").onclick = starten;
+  leisteSpur();
+}
+function durchsehen() {
+  const reihen = D.stationen.map(s => { const f = D.fotos.filter(x => x.position === s.position);
+    return `<div class="d-reihe"><span class="nr">${s.position}</span>${f.map(x => `<button class="d-bild ${OPT.aus.has(x.teamId + ":" + x.position) ? "aus" : ""}" data-id="${x.teamId}:${x.position}" title="${esc(x.team.name)}"><img src="${x.src}" alt=""><span>${x.team.emoji}</span></button>`).join("")}</div>`; }).join("");
+  $("#ueber").innerHTML = `<div class="szene" style="opacity:1"><div class="schleier dicht"></div><div class="d-panel" role="dialog" aria-label="Fotos durchsehen">
+    <h2>Fotos durchsehen</h2><p>Antippen nimmt ein Foto aus dem Rückblick. Gelöscht wird nichts.</p>
+    <div class="d-reihen">${reihen}</div><button class="fertig" id="dFertig">Fertig</button></div></div>`;
+  $("#ueber").querySelectorAll(".d-bild").forEach(b => b.onclick = () => { const id = b.dataset.id; OPT.aus.has(id) ? OPT.aus.delete(id) : OPT.aus.add(id); b.classList.toggle("aus"); });
+  $("#dFertig").onclick = () => { kapitelBauen(); vorbereiten(); };
+}
+function hilfe() {
+  const h = $("#hilfeBox");
+  if (h) { h.remove(); return; }
+  const d = document.createElement("div"); d.id = "hilfeBox"; d.className = "szene"; d.style.cssText = "opacity:1;z-index:20";
+  d.innerHTML = `<div class="hilfe" role="dialog" aria-label="Tasten"><h2>Tasten</h2><table>
+    <tr><td><kbd>Leertaste</kbd> <kbd>K</kbd></td><td>Start, Pause, am Finale aufdecken</td></tr>
+    <tr><td><kbd>→</kbd> <kbd>Bild ↓</kbd> <kbd>Enter</kbd></td><td>Weiter: nächstes Kapitel oder aufdecken</td></tr>
+    <tr><td><kbd>←</kbd> <kbd>Bild ↑</kbd></td><td>Zurück: Kapitel von vorn, zweimal: Kapitel davor</td></tr>
+    <tr><td><kbd>Pos1</kbd> <kbd>Ende</kbd></td><td>Zum Anfang, zum Finale</td></tr>
+    <tr><td><kbd>F</kbd></td><td>Vollbild an und aus</td></tr>
+    <tr><td><kbd>B</kbd> <kbd>.</kbd></td><td>Bild schwarz, Show hält an</td></tr>
+    <tr><td><kbd>T</kbd></td><td>Hell oder dunkel</td></tr>
+    <tr><td><kbd>H</kbd> <kbd>Esc</kbd></td><td>Diese Hilfe zu</td></tr></table></div>`;
+  $("#buehne").appendChild(d);
+}
+
+/* ---------- Steuerleiste ---------- */
+let leisteUhr = null;
+function leisteZeigen() {
+  $("#leiste").classList.remove("weg"); document.body.classList.remove("still");
+  clearTimeout(leisteUhr);
+  leisteUhr = setTimeout(() => { if (Z.phase === "show") { $("#leiste").classList.add("weg"); document.body.classList.add("still"); } }, 2500);
+}
+function leisteSpur() {
+  $("#lSpur").innerHTML = K.map((k, i) => `<span style="--d:${k.dur}" data-i="${i}" title="${esc(k.name)}"><i></i></span>`).join("");
+  $("#lSpur").querySelectorAll("span").forEach(s => s.onclick = () => { if (Z.phase !== "show") { $("#ueber").innerHTML = ""; } geheZu(+s.dataset.i); });
+  leisteFortschritt();
+}
+let fortStand = "";
+function leisteFortschritt() {
+  const vorbei = K.slice(0, Z.i).reduce((n, k) => n + k.dur, 0) + (Z.phase === "show" ? Math.min(Z.lokal, K[Z.i].dur) : 0);
+  const txt = (Z.phase === "show" ? K[Z.i].name + (Z.haelt ? ", wartet auf Weiter" : "") : "Vorbereiten") + "|" + mmss(vorbei) + " / " + mmss(gesamt());
+  $("#lSpur").querySelectorAll("span").forEach((s, i) => s.style.setProperty("--p", (i < Z.i ? 100 : i > Z.i || Z.phase !== "show" ? 0 : Math.min(100, Z.lokal / K[i].dur * 100)) + "%"));
+  if (txt !== fortStand) { const [a, b] = txt.split("|"); $("#lKap").textContent = a; $("#lZeit").textContent = b; fortStand = txt; }
+}
+function vollbild() {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+}
+function thema() {
+  const jetzt = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const neu = jetzt === "dark" ? "light" : "dark"; document.documentElement.dataset.theme = neu;
+  try { localStorage.setItem("sj.thema", neu); } catch (e) {}
+}
+function schwarz() { const s = $("#schwarz"); s.classList.toggle("an"); if (s.classList.contains("an")) { Z.spielt = false; knopf(); } }
+
+$("#leiste").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return;
+  ({ zurueck, weiter, spiel: spielPause, thema, voll: vollbild, hilfe })[b.dataset.k](); b.blur(); });
+document.addEventListener("mousemove", leisteZeigen);
+document.addEventListener("keydown", e => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  const k = e.key, schwarzAn = $("#schwarz").classList.contains("an");
+  if (schwarzAn && !["b", "B", "."].includes(k)) { schwarz(); e.preventDefault(); return; }
+  if ((k === " " || k === "Enter") && document.activeElement && document.activeElement.matches("input,button") && Z.phase !== "show") return;
+  const tat = {
+    " ": spielPause, k: spielPause, K: spielPause, F5: spielPause,
+    ArrowRight: weiter, PageDown: weiter, Enter: weiter, n: weiter,
+    ArrowLeft: zurueck, PageUp: zurueck, Backspace: zurueck, p: zurueck,
+    Home: () => { $("#ueber").innerHTML = ""; geheZu(0); },
+    End: () => { $("#ueber").innerHTML = ""; const i = K.findIndex(x => x.art === "platz"); geheZu(i >= 0 ? i : K.length - 2); },
+    f: vollbild, F: vollbild, t: thema, T: thema, b: schwarz, B: schwarz, ".": schwarz,
+    h: hilfe, H: hilfe, "?": hilfe, Escape: () => { const h = $("#hilfeBox"); if (h) h.remove(); }
+  }[k];
+  if (!tat) return;
+  e.preventDefault(); tat();
+});
+
+/* ---------- Bühne skalieren ---------- */
+function skalieren() {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080), b = $("#buehne");
+  b.style.transform = `scale(${s}) translate(-50%,-50%)`;
+}
+addEventListener("resize", skalieren);
+
+/* ---------- Los ---------- */
+D = aufbereiten(BEISPIEL);
+grundkarte(); kapitelBauen(); kartenElemente();
+$("#sLogo").innerHTML = LOGO;
+skalieren();
+// Für Prüfungen und Bildschirmfotos: RB.zeige("platz1", 9000) oder ?k=platz1&t=9000
+window.RB = { zeige: (id, lokal = 0) => { $("#ueber").innerHTML = ""; const i = K.findIndex(x => x.id === id); geheZu(i < 0 ? 0 : i, lokal); Z.spielt = false; knopf(); zeichnen(); },
+  kapitel: () => K.map(k => ({ id: k.id, dur: k.dur })), zustand: () => ({ phase: Z.phase, i: Z.i, id: K[Z.i] && K[Z.i].id, lokal: Z.lokal, spielt: Z.spielt, haelt: Z.haelt }),
+  gesamt, D: () => D };
+const q = new URLSearchParams(location.search);
+if (q.get("thema")) document.documentElement.dataset.theme = q.get("thema");
+if (q.get("fotos") === "0") { OPT.fotos = false; kapitelBauen(); }
+vorbereiten();
+if (q.get("k")) RB.zeige(q.get("k"), +(q.get("t") || 0));
+requestAnimationFrame(takt);
+</script>
+</body>
+</html>
