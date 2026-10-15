@@ -571,7 +571,7 @@ function grundkarte() {
     if (K.lagen.haupt) { el("path", { class: "strasse-r", d: K.lagen.haupt }, g); el("path", { class: "strasse", d: K.lagen.haupt }, g); }
     D.namen = [["Letná", 50.0972, 14.4140, "ortsname"], ["Stromovka", 50.1083, 14.4135, "ortsname"], ["Holešovice", 50.1006, 14.4400, "ortsname"],
       ["Výstaviště", 50.1072, 14.4325, "ortsname"], ["Vltava", 50.0921, 14.4215, "flussname"]];
-    D.osmQuelle = K.quelle; $("#osm").hidden = false;
+    D.osmQuelle = K.quelle;
     setTimeout(karteRastern);   // erst wenn die Kapitel stehen: der Ausschnitt richtet sich nach ihren Kameras
     return;
   }
@@ -689,8 +689,8 @@ function zeichneKarte(T, kam, modus) {
   // modus: { spuren: "alle" | "keine" | Team, koepfe: bool, bis: Zeit für eine einzelne Spur }
   const s = kam.s, vw = 1920 / s, vh = 1080 / s, vx = kam.cx - vw / 2, vy = kam.cy - vh / 2;
   $("#welt").setAttribute("viewBox", `${vx.toFixed(2)} ${vy.toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}`);
-  // Quellenhinweis neben die Seitenspalte, solange sie zu sehen ist
-  const osm = $("#osm"); if (osm) osm.style.right = (+getComputedStyle($("#seite")).opacity > .05 ? 624 : 24) + "px";
+  // Quellenhinweis (ODbL) nur im Abspann, klein unten rechts (Entscheidung Friedrich 16.10.: sonst zu präsent)
+  const osm = $("#osm"); if (osm) osm.hidden = !(D.osmQuelle && K[Z.i] && K[Z.i].id === "abspann");
   const sx = p => [(p[0] - vx) * s, (p[1] - vy) * s];
   stEl.forEach(e => { const q = sx(e.xy); e.g.setAttribute("transform", `translate(${q[0].toFixed(1)} ${q[1].toFixed(1)})`); });
   namenEl.forEach(n => { const q = sx(n.xy); n.tx.setAttribute("x", q[0].toFixed(0)); n.tx.setAttribute("y", q[1].toFixed(0)); });

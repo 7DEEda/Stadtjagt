@@ -438,5 +438,5 @@ Stadtjagd“):
   `<image>` in `#grund`), höchstens 5000 px Kantenlänge, Ausschnitt = Vereinigung aller Kamera-Sichtfenster der
   Kapitel plus Rand. Bei Wechsel hell/dunkel neu rendern. Routen, Stationen, Teamköpfe und Namen bleiben Vektor
   darüber. Ergebnis: 53 bis 60 Bilder pro Sekunde, Bild nach etwa 2 s fertig, in allen 18 Kapiteln volle Abdeckung.
-- **Quelle nennen (ODbL):** „© OpenStreetMap-Mitwirkende“ klein unten rechts auf der Bühne, über der Leiste und
-  neben der Seitenspalte, solange diese zu sehen ist.
+- **Quelle nennen (ODbL):** „© OpenStreetMap-Mitwirkende“ nur im Abspann, klein unten rechts (Friedrich 16.10.:
+  die ganze Zeit sichtbar war es zu präsent; Nennung im Abspann ist für Filme und Präsentationen üblich).
