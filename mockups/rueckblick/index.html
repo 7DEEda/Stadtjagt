@@ -115,7 +115,8 @@ body.still{cursor:none}
 .titel .logo{width:150px;height:150px;margin:0 auto;color:var(--ink)}
 .titel h1{font:700 var(--bs-titel)/.95 var(--head);margin:28px 0 0;letter-spacing:-.01em}
 .titel .ort{font:700 var(--bs-xl)/1 var(--head);color:var(--flag-text);margin-top:4px}
-.titel .fakten{font:500 var(--bs-m) var(--body);color:var(--muted);margin-top:44px}
+/* Teile mit Abstand statt Trennzeichen (kein Mittelpunkt, Entscheidung Friedrich) */
+.titel .fakten{font:500 var(--bs-m) var(--body);color:var(--muted);margin-top:44px;display:flex;flex-wrap:wrap;justify-content:center;column-gap:56px;row-gap:8px}
 .titel .fakten span{white-space:nowrap}
 
 /* Fotos einer Station */
@@ -194,7 +195,8 @@ body.still{cursor:none}
 .v-fuss .start:focus-visible{outline:4px solid var(--ink);outline-offset:4px}
 .v-fuss .dauer{font:500 var(--bs-s) var(--body);color:var(--muted)}
 .v-fuss .dauer b{color:var(--ink);font-family:var(--head);white-space:nowrap}
-.v-tasten{margin-top:28px;font:500 var(--bs-xs) var(--body);color:var(--muted)}
+.v-tasten{margin-top:28px;font:500 var(--bs-xs) var(--body);color:var(--muted);display:flex;flex-wrap:wrap;column-gap:40px;row-gap:10px}
+.v-tasten span{white-space:nowrap}
 .v-tasten kbd,.hilfe kbd{font:600 .9em var(--head);border:1.5px solid var(--feld);border-radius:6px;padding:0 10px;color:var(--ink);white-space:nowrap}
 
 /* Fotos durchsehen */
@@ -730,7 +732,7 @@ const fakten = () => {
 function vorspannHTML() {
   const f = fakten();
   return `<div class="schleier mittel"></div><div class="titel"><div class="logo">${LOGO}</div><h1>Stadtjagd</h1><div class="ort">Prag</div>
-    <div class="fakten"><span>${f.datum}</span> · <span>${D.teams.length} Teams</span> · <span>${f.leute} Leute</span> · <span>${D.stationen.length} Stationen</span></div></div>`;
+    <div class="fakten"><span>${f.datum}</span><span>${D.teams.length} Teams</span><span>${f.leute} Leute</span><span>${D.stationen.length} Stationen</span></div></div>`;
 }
 // Bühnen-Pixel, die unten für die feste Leiste frei bleiben müssen (skalieren() setzt --unten)
 const untenFrei = () => parseFloat(getComputedStyle($("#buehne")).getPropertyValue("--unten")) || 0;
@@ -952,7 +954,7 @@ function vorbereitenHTML() {
       <label><input type="checkbox" id="oHalt" ${OPT.anhalten ? "checked" : ""}> Vor jedem Koffer-Platz anhalten, Weiter deckt auf</label>
     </div>
     <div class="v-fuss"><button class="start" id="oStart">Rückblick starten</button><span class="dauer">Dauer etwa <b class="tab">${mmss(gesamt())} min</b></span></div>
-    <div class="v-tasten"><kbd>Leertaste</kbd> Start und Pause · <kbd>→</kbd> <kbd>←</kbd> Kapitel · <kbd>F</kbd> Vollbild · <kbd>H</kbd> alle Tasten</div>
+    <div class="v-tasten"><span><kbd>Leertaste</kbd> Start und Pause</span><span><kbd>→</kbd> <kbd>←</kbd> Kapitel</span><span><kbd>F</kbd> Vollbild</span><span><kbd>H</kbd> alle Tasten</span></div>
   </div></div>`;
 }
 function vorbereiten() {

@@ -417,3 +417,5 @@ Verbindlich für den Bau, im Mockup `mockups/rueckblick/index.html` umgesetzt:
 - **Unterschriften:** Name und Uhrzeit untereinander; die Unterschrift des großen Fotos steht auf eigener Fläche
   direkt darunter, die Unterschriften der Wand treten solange zurück. Geprüft: keine Überlappung, nichts
   abgeschnitten, alles im Bild, bei 1920x1080, 1366x768, 1280x720 und 1081x931.
+- **Kein Mittelpunkt (·)** in sichtbaren Texten (Entscheidung Friedrich): Aufzählungen wie Datum, Teams, Leute,
+  Stationen oder die Tastenhinweise stehen mit Abstand nebeneinander (Flex mit gap), ohne Trennzeichen.
