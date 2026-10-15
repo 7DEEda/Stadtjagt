@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stadtjagd Ausfallsicherheit</title>
+<!-- Entwurf zur Spezifikation docs/superpowers/specs/2026-10-15-ausfallsicherheit-design.md.
+     Alle Stationen, Rätsel, Lösungen und Namen sind erfunden: das Repo ist öffentlich. -->
+<style>
+@font-face{font-family:"Barlow";font-weight:400;font-display:swap;src:url(fonts/barlow-400-latin.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Barlow";font-weight:400;font-display:swap;src:url(fonts/barlow-400-latin-ext.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Barlow";font-weight:600;font-display:swap;src:url(fonts/barlow-600-latin.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Barlow";font-weight:600;font-display:swap;src:url(fonts/barlow-600-latin-ext.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Barlow Semi Condensed";font-weight:600;font-display:swap;src:url(fonts/barlow-semi-condensed-600-latin.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Barlow Semi Condensed";font-weight:600;font-display:swap;src:url(fonts/barlow-semi-condensed-600-latin-ext.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Barlow Semi Condensed";font-weight:700;font-display:swap;src:url(fonts/barlow-semi-condensed-700-latin.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Barlow Semi Condensed";font-weight:700;font-display:swap;src:url(fonts/barlow-semi-condensed-700-latin-ext.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --feld:#7D9189;
+  --flag:#EE5F1B; --flag-ink:#0F1B18; --ok:#25683F; --ok-bg:#E3F1E7; --err:#B3261E; --err-bg:#FBE9E7; --info-bg:#E6EEF4;
+  --warn:#8A5A00; --warn-bg:#FBF0D9;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --fs-xs:13px; --fs-s:15px; --fs-m:17px; --fs-l:19px; --fs-xl:24px; --fs-xxl:32px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38; --feld:#5E786F;
+  --flag:#FF7A3A; --ok:#6CCB8E; --ok-bg:#16332A; --err:#FF8A80; --err-bg:#3A1F1C; --info-bg:#172A36; --warn:#E8B75A; --warn-bg:#33290F}}
+:root[data-theme="dark"]{
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38; --feld:#5E786F;
+  --flag:#FF7A3A; --ok:#6CCB8E; --ok-bg:#16332A; --err:#FF8A80; --err-bg:#3A1F1C; --info-bg:#172A36; --warn:#E8B75A; --warn-bg:#33290F}
+/* Papier: Notfallmappe und Druck bleiben immer hell, auch im dunklen Design */
+.papier{--paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --feld:#7D9189; --flag:#EE5F1B; --warn:#8A5A00; --warn-bg:#FBF0D9;
+  background:var(--card);color:var(--ink)}
+
+*{box-sizing:border-box}
+html{scrollbar-gutter:stable}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:var(--fs-m)/1.5 var(--body)}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.1}
+h1{font-size:var(--fs-xxl);font-weight:700}h2{font-size:var(--fs-xl);font-weight:700}h3{font-size:var(--fs-l);font-weight:600}
+.small{font-size:var(--fs-s)}.muted{color:var(--muted)}
+.nw{white-space:nowrap}
+
+/* Rahmen des Mockups */
+.mk{max-width:1240px;margin:0 auto;padding:20px 16px 60px}
+.mk > header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.mk .wahl{display:flex;flex-wrap:wrap;gap:8px}
+.mk .wahl button{min-height:44px;padding:0 14px;border-radius:10px;border:1.5px solid var(--feld);background:var(--card);color:var(--ink);font:600 var(--fs-s) var(--body);cursor:pointer}
+.mk .wahl button[aria-pressed="true"]{border-color:var(--flag);box-shadow:inset 0 -3px 0 var(--flag)}
+.buehne{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.notiz{flex:1 1 280px;max-width:420px}
+.notiz p{margin:0 0 10px}
+.notiz code{font-size:var(--fs-s)}
+
+/* Handy */
+.handy{width:390px;max-width:100%;height:760px;border:1px solid var(--line);border-radius:28px;overflow:hidden;background:var(--paper);display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;flex:none}
+.kopf{background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px 8px}
+.k1{display:flex;align-items:center;gap:10px}.k1 .tier{font-size:30px;line-height:1}
+.k1 h1{font-size:var(--fs-xl)}.k1 .sub{display:block;font-size:var(--fs-xs);color:var(--muted)}
+.k2{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.chip{display:inline-block;padding:4px 10px;border-radius:99px;font:600 var(--fs-xs) var(--body);background:var(--paper);border:1px solid var(--line);white-space:nowrap}
+.chip.uhr{font-size:var(--fs-s);padding:5px 11px;font-variant-numeric:tabular-nums}
+.chip.knapp{background:var(--err-bg);color:var(--err);border-color:var(--err);font-weight:700}
+.chip.test{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.inhalt{overflow-y:auto;padding:14px 16px 20px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.inhalt > .panel:first-child{margin-top:0}
+.raetsel{font-size:var(--fs-l);margin:8px 0 0}
+.leiste{background:var(--card);border-top:1px solid var(--line);padding:10px 16px 12px}
+.leiste label{display:block;font-weight:600;font-size:var(--fs-s);margin:0 0 6px}
+.reihe{display:flex;gap:8px}
+input{flex:1;min-width:0;min-height:52px;font:500 var(--fs-m) var(--body);padding:11px 13px;border-radius:10px;border:1.5px solid var(--feld);background:var(--paper);color:var(--ink)}
+.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px 16px;font:700 var(--fs-l) var(--head);cursor:pointer;background:var(--flag);color:var(--flag-ink);min-height:48px}
+.reihe .btn{width:auto;min-width:120px}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--feld)}
+.btn.sm{display:inline-block;width:auto;padding:8px 14px;font-size:var(--fs-s);min-height:44px}
+.msg{border-radius:10px;padding:10px 12px;margin-top:8px;font-size:var(--fs-s)}
+.msg.err{background:var(--err-bg);color:var(--err)}.msg.ok{background:var(--ok-bg);color:var(--ok)}.msg.info{background:var(--info-bg);color:var(--ink)}
+.ftabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--card);border-top:1px solid var(--line)}
+.ftabs span{display:flex;align-items:center;justify-content:center;min-height:52px;color:var(--muted);font:600 var(--fs-xs) var(--body)}
+.ftabs span.an{color:var(--ink);box-shadow:inset 0 3px 0 var(--flag)}
+.nav{display:flex;gap:6px;justify-content:center;margin-top:24px;font-size:var(--fs-s)}
+.nav a{color:var(--muted);padding:10px 8px;min-height:42px}
+.nav a.an{color:var(--ink);font-weight:600;text-decoration:none}
+.nav span{color:var(--line);align-self:center}
+/* neu: Versionszeile unter der Navigation */
+.version{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0 10px;margin-top:2px;font-size:var(--fs-s);color:var(--muted)}
+.version .link{background:none;border:0;padding:10px 4px;min-height:44px;font:600 var(--fs-s) var(--body);color:var(--ink);text-decoration:underline;cursor:pointer}
+
+/* Notfallmappe: Bildschirm */
+.tablet{flex:1 1 640px;max-width:860px;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--paper)}
+.mappe-leiste{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+.mappe-leiste .knoepfe{display:flex;gap:8px}
+.mappe-leiste .btn{margin:0}
+.blatt{margin:16px;border:1px solid var(--line);border-radius:8px;padding:28px 32px;font-size:var(--fs-s)}
+.blatt h1{font-size:var(--fs-xxl)}
+.blatt h2{font-size:var(--fs-xl);margin:24px 0 8px;padding-top:12px;border-top:2px solid var(--ink)}
+.blatt .meta{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:6px;color:var(--muted)}
+.code{display:flex;align-items:baseline;gap:14px;margin-top:16px;padding:12px 16px;border:2px solid var(--ink);border-radius:8px}
+.code b{font:700 40px/1 var(--head);letter-spacing:.18em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.blatt ol{margin:6px 0 0;padding-left:22px}.blatt ol li{margin:2px 0}
+.station{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-top:10px;break-inside:avoid}
+.station .skopf{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.station h3{font-size:var(--fs-l)}
+.ziffer{font:700 var(--fs-xl)/1 var(--head);white-space:nowrap}
+.station dl{display:grid;grid-template-columns:110px minmax(0,1fr);gap:4px 12px;margin:8px 0 0}
+.station dt{color:var(--muted)}.station dd{margin:0}
+.loesung{font-weight:600}
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 var(--fs-xs) var(--body);color:var(--muted)}
+td.k{white-space:nowrap}
+.box{display:inline-block;vertical-align:middle;width:18px;height:18px;border:1.5px solid var(--ink);border-radius:3px;text-align:center;font:700 13px/15px var(--body)}
+td.lz{white-space:nowrap}
+td.lz .box + .box{margin-left:4px}
+.papierfuss{margin-top:20px;color:var(--muted);font-size:var(--fs-xs)}
+
+@media (max-width:700px){.blatt{margin:8px;padding:16px}.station dl{grid-template-columns:1fr}.station dt{margin-top:4px}}
+
+/* Druck: nur das Blatt, immer hell, A4 */
+@page{size:A4;margin:12mm}
+@media print{
+  body{background:#fff}
+  .mk > header,.notiz,.handy,.mappe-leiste,.mk .buehne > :not(.tablet){display:none!important}
+  .tablet{border:0;max-width:none;background:#fff}
+  .blatt{margin:0;border:0;padding:0}
+  .blatt h2{break-after:avoid}
+  .teams{break-before:page}
+}
+</style>
+</head>
+<body>
+<div class="mk">
+  <header>
+    <div><h1>Ausfallsicherheit</h1><div class="small muted">Entwurf zur Spezifikation vom 15.10.2026, alle Daten erfunden</div></div>
+    <div class="wahl" role="group" aria-label="Zustand">
+      <button data-z="weg" aria-pressed="true">Funkloch</button>
+      <button data-z="zurueck" aria-pressed="false">Wieder Netz</button>
+      <button data-z="abgleich" aria-pressed="false">Kam doch an</button>
+      <button data-z="neu" aria-pressed="false">Neue Version</button>
+      <button id="thema">Hell/Dunkel</button>
+    </div>
+  </header>
+
+  <div class="buehne">
+    <div class="handy" aria-label="Handy der Teamleitung">
+      <div class="kopf">
+        <div class="k1"><span class="tier">🦊</span><div><h1>Team Fuchs</h1><span class="sub">Du leitest das Team</span></div></div>
+        <div class="k2"><span class="chip uhr">Noch 1:47 h</span><span class="chip uhr knapp" id="stand">Stand 13:27</span></div>
+      </div>
+      <div class="inhalt">
+        <div class="panel">
+          <div class="small muted">Station 3 von 5</div>
+          <h2>Alter Brunnen</h2>
+          <p class="raetsel">Wie viele Löwenköpfe tragen den Brunnenrand?</p>
+        </div>
+        <div class="panel" id="teamtab">
+          <h3>Team</h3>
+          <p class="small" style="margin:6px 0 0">Mia, Jonas, Lea, Ben, Emil, Sara</p>
+          <div class="nav"><a href="#">Anmeldung</a><span>|</span><a class="an" href="#">Teamleitung</a></div>
+          <div class="version"><span class="nw">Version 15.10., 22:26</span><button class="link" id="neulink" hidden>Neue Version laden</button></div>
+        </div>
+      </div>
+      <div class="leiste">
+        <label for="tans">Eure Antwort</label>
+        <div class="reihe"><input id="tans" value="12" inputmode="text"><button class="btn">Prüfen</button></div>
+        <div class="msg err" id="m">Keine Verbindung. Tippt noch mal, sobald ihr Netz habt. Doppelt zählt nichts.</div>
+      </div>
+      <div class="ftabs"><span>Weg</span><span>Ziffern</span><span class="an">Team</span></div>
+    </div>
+
+    <div class="notiz small">
+      <p><b>Funkloch:</b> Die Antwort ging ab, eine Antwort kam nicht zurück. Feld und Text bleiben stehen, der Knopf ist sofort wieder frei. Oben steht seit 30 s ohne Kontakt „Stand 13:27“ (gibt es schon).</p>
+      <p><b>Wieder Netz:</b> Der 10-s-Abruf kommt durch, am Stand hat sich nichts geändert. Die Meldung wird zum Hinweis, nochmal zu tippen.</p>
+      <p><b>Kam doch an:</b> Der Abruf zeigt die Station als gelöst. Die App sagt das, als wäre die Antwort durchgekommen, mit Ziffer.</p>
+      <p><b>Neue Version:</b> Unten im Tab Team steht immer die Version (Zeit der Veröffentlichung auf GitHub Pages). Ist eine neuere online, kommt der Link dazu. Spielleitung sieht dieselbe Zeile unter ihrer Navigation.</p>
+      <p>Rechts die Notfallmappe der Spielleitung, aus dem Reiter Stationen. „Drucken“ druckt nur das Blatt, hell, A4.</p>
+    </div>
+
+    <div class="tablet">
+      <div class="mappe-leiste">
+        <b>Notfallmappe</b>
+        <div class="knoepfe"><button class="btn sm alt" onclick="return false">Zurück</button><button class="btn sm" onclick="window.print()">Drucken</button></div>
+      </div>
+      <article class="blatt papier">
+        <h1>Stadtjagd Notfallmappe</h1>
+        <div class="meta small"><span class="nw">Daten vom 18.10.2026, 09:12</span><span class="nw">Version 17.10., 21:40</span><span>12 Teams, 98 Personen</span><span>Testmodus aus</span></div>
+        <div class="code"><span class="small">Koffer-Code</span><b>482712</b><span class="small muted">gilt für alle 3 Koffer</span></div>
+        <p class="small" style="margin:10px 0 0"><b>Start:</b> Hotel am Fluss <span class="nw">50.10246, 14.43168</span>. <b>Koffer-Hinweis:</b> Im Hof hinter der grünen Tür.</p>
+
+        <h2>Wenn die App ausfällt</h2>
+        <ol>
+          <li>Teams melden sich per Anruf oder WhatsApp mit Teamname und Station.</li>
+          <li>Ortshinweis und Koordinaten der nächsten Station durchgeben, das Team läuft mit einer Karten-App.</li>
+          <li>Am Ort schickt das Team ein Gruppenfoto, dann das Rätsel vorlesen.</li>
+          <li>Antwort mit der Lösung vergleichen, Ziffer nennen, im Laufzettel abhaken.</li>
+          <li>An den Koffern zählt die Ankunft: Reihenfolge im Laufzettel eintragen.</li>
+        </ol>
+
+        <h2>Stationen</h2>
+        <div class="station"><div class="skopf"><h3>1 Uhrturm</h3><span class="ziffer">Ziffer 4</span></div>
+          <dl><dt>Ort</dt><dd><span class="nw">50.08710, 14.42070</span>, Radius <span class="nw">50 m</span></dd>
+          <dt>Ortshinweis</dt><dd>Wo sich jede Stunde Figuren zeigen.</dd>
+          <dt>Rätsel</dt><dd>Wie viele Figuren erscheinen oben im Fenster?</dd>
+          <dt>Lösung</dt><dd class="loesung">12 oder zwölf</dd>
+          <dt>Tipp</dt><dd>Zählt beim nächsten Stundenschlag mit.</dd></dl></div>
+        <div class="station"><div class="skopf"><h3>2 Steinbrücke</h3><span class="ziffer">Ziffer 8</span></div>
+          <dl><dt>Ort</dt><dd><span class="nw">50.08648, 14.41140</span>, Radius <span class="nw">60 m</span></dd>
+          <dt>Ortshinweis</dt><dd>Die älteste Brücke über den Fluss.</dd>
+          <dt>Rätsel</dt><dd>Welche Jahreszahl steht über dem Tor auf der Altstadtseite?</dd>
+          <dt>Lösung</dt><dd class="loesung">1357</dd>
+          <dt>Tipp</dt><dd class="muted">keiner</dd></dl></div>
+        <div class="station"><div class="skopf"><h3>3 Alter Brunnen</h3><span class="ziffer">Ziffer 2</span></div>
+          <dl><dt>Ort</dt><dd><span class="nw">50.08530, 14.42330</span>, Radius <span class="nw">50 m</span></dd>
+          <dt>Ortshinweis</dt><dd>Wasser und Löwen am kleinen Platz.</dd>
+          <dt>Rätsel</dt><dd>Wie viele Löwenköpfe tragen den Brunnenrand?</dd>
+          <dt>Lösung</dt><dd class="loesung">8 oder acht</dd>
+          <dt>Tipp</dt><dd>Geht einmal ganz herum.</dd></dl></div>
+        <p class="small muted">Stationen 4 und 5 wie oben.</p>
+
+        <h2 class="teams">Teams und Laufzettel</h2>
+        <table>
+          <thead><tr><th>Team</th><th>Leitung</th><th>Code</th><th>Mitglieder</th><th>Stationen</th><th>Koffer</th></tr></thead>
+          <tbody>
+            <tr><td>Fuchs</td><td>Mia Krause</td><td class="k">FUCHS-3821</td><td>Jonas, Lea, Ben, Emil, Sara</td><td class="lz"><span class="box">✓</span><span class="box">✓</span><span class="box"></span><span class="box"></span><span class="box"></span></td><td class="k">Platz ____</td></tr>
+            <tr><td>Biber</td><td>Tom Weber</td><td class="k">BIBER-1177</td><td>Anna, Paul, Nina, Felix, Ida, Max</td><td class="lz"><span class="box">✓</span><span class="box"></span><span class="box"></span><span class="box"></span><span class="box"></span></td><td class="k">Platz ____</td></tr>
+            <tr><td>Eule</td><td>Lena Wolf</td><td class="k">EULE-5604</td><td>Karl, Ella, Finn, Jana, Leo</td><td class="lz"><span class="box">✓</span><span class="box">✓</span><span class="box">✓</span><span class="box"></span><span class="box"></span></td><td class="k">Platz ____</td></tr>
+          </tbody>
+        </table>
+        <p class="papierfuss">Enthält alle Lösungen. Nach dem Spiel vernichten.</p>
+      </article>
+    </div>
+  </div>
+</div>
+<script>
+const Z = {
+  weg: { cls: "msg err", text: "Keine Verbindung. Tippt noch mal, sobald ihr Netz habt. Doppelt zählt nichts.", stand: true, neu: false },
+  zurueck: { cls: "msg info", text: "Wieder Netz. Tippt noch mal.", stand: false, neu: false },
+  abgleich: { cls: "msg ok", text: "Richtig. Station 3 gelöst, eure Ziffer: 2.", stand: false, neu: false },
+  neu: { cls: "", text: "", stand: false, neu: true }
+};
+document.querySelectorAll("[data-z]").forEach(b => b.addEventListener("click", () => {
+  const z = Z[b.dataset.z];
+  document.querySelectorAll("[data-z]").forEach(x => x.setAttribute("aria-pressed", x === b));
+  const m = document.getElementById("m");
+  m.hidden = !z.text; m.className = z.cls; m.textContent = z.text;
+  document.getElementById("stand").hidden = !z.stand;
+  document.getElementById("neulink").hidden = !z.neu;
+}));
+document.getElementById("thema").addEventListener("click", () => {
+  const r = document.documentElement, dunkel = r.dataset.theme === "dark" || (!r.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
+  r.dataset.theme = dunkel ? "light" : "dark";
+});
+</script>
+</body>
+</html>
