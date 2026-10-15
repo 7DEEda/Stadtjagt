@@ -275,27 +275,29 @@ th{font:600 var(--fs-s) var(--body);color:var(--muted)}
 .nw{white-space:nowrap}
 .teamfeld{margin-top:0;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding:0}
 @media (max-width:1023px){.lv{grid-template-columns:minmax(0,1fr)}.lv .kartefeld #map{height:56vh}.teamfeld{position:static;max-height:none}}
-/* Teamliste der Spielleitung */
-#teamfeld .list-kopf{display:flex;align-items:baseline;gap:10px;padding:12px 16px 10px;border-bottom:1px solid var(--line)}
-#teamfeld .list-kopf h3{margin:0}
-#teamfeld .tliste{list-style:none;margin:0;padding:0}
-#teamfeld .grp{position:sticky;top:0;z-index:1;padding:8px 16px;font:700 var(--fs-s)/1.3 var(--body);color:var(--muted);background:var(--paper);border-bottom:1px solid var(--line)}
-#teamfeld .grp.err{color:var(--err);background:var(--err-bg)}
-#teamfeld .row{border-bottom:1px solid var(--line);background:var(--card);transition:background-color .16s cubic-bezier(.32,.72,.4,1)}
-#teamfeld .row.p-fehler{box-shadow:inset 4px 0 0 var(--err)}
-#teamfeld .row.p-warn{box-shadow:inset 4px 0 0 var(--warn)}
-#teamfeld .row.sel{background:color-mix(in srgb,var(--flag) 8%,var(--card))}
-#teamfeld .row-top{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 8px}
-#teamfeld .row-top .btn{margin:0;flex:none}
-#teamfeld .row-main{flex:1;min-width:0;display:flex;align-items:center;gap:12px;min-height:60px;padding:4px 8px;border:0;background:none;text-align:left;border-radius:10px;color:var(--ink);font:inherit;cursor:pointer}
-#teamfeld .tier{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:21px;line-height:1;flex:none;background:color-mix(in srgb,var(--tc) 16%,var(--card));border:2px solid var(--tc)}
-#teamfeld .row-txt{min-width:0;display:flex;flex-direction:column;gap:2px}
-#teamfeld .l2{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;font-size:var(--fs-s);color:var(--muted);line-height:1.35}
-#teamfeld .chip.err{background:var(--err-bg);color:var(--err);border-color:var(--err)}
-#teamfeld .chip.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
-#teamfeld .detail{padding:0 16px 14px 68px;display:grid;gap:10px;justify-items:start}
-#teamfeld .detail p,#teamfeld .detail .msg{margin:0}
-#teamfeld .detail .msg{justify-self:stretch}
+/* Teamliste der Spielleitung: im Reiter live (#teamfeld) und im Reiter Auslosen gleich */
+.teamliste{padding:0}
+.teamliste:not(.teamfeld){overflow:hidden}
+.teamliste .list-kopf{display:flex;align-items:baseline;gap:10px;padding:12px 16px 10px;border-bottom:1px solid var(--line)}
+.teamliste .list-kopf h3{margin:0}
+.teamliste .tliste{list-style:none;margin:0;padding:0}
+.teamliste .grp{position:sticky;top:0;z-index:1;padding:8px 16px;font:700 var(--fs-s)/1.3 var(--body);color:var(--muted);background:var(--paper);border-bottom:1px solid var(--line)}
+.teamliste .grp.err{color:var(--err);background:var(--err-bg)}
+.teamliste .row{border-bottom:1px solid var(--line);background:var(--card);transition:background-color .16s cubic-bezier(.32,.72,.4,1)}
+.teamliste .row.p-fehler{box-shadow:inset 4px 0 0 var(--err)}
+.teamliste .row.p-warn{box-shadow:inset 4px 0 0 var(--warn)}
+.teamliste .row.sel{background:color-mix(in srgb,var(--flag) 8%,var(--card))}
+.teamliste .row-top{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 8px}
+.teamliste .row-top .btn{margin:0;flex:none}
+.teamliste .row-main{flex:1;min-width:0;display:flex;align-items:center;gap:12px;min-height:60px;padding:4px 8px;border:0;background:none;text-align:left;border-radius:10px;color:var(--ink);font:inherit;cursor:pointer}
+.teamliste .tier{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:21px;line-height:1;flex:none;background:color-mix(in srgb,var(--tc) 16%,var(--card));border:2px solid var(--tc)}
+.teamliste .row-txt{min-width:0;display:flex;flex-direction:column;gap:2px}
+.teamliste .l2{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;font-size:var(--fs-s);color:var(--muted);line-height:1.35}
+.teamliste .chip.err{background:var(--err-bg);color:var(--err);border-color:var(--err)}
+.teamliste .chip.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.teamliste .detail{padding:0 16px 14px 68px;display:grid;gap:10px;justify-items:start}
+.teamliste .detail p,.teamliste .detail .msg{margin:0}
+.teamliste .detail .msg{justify-self:stretch}
 .ohnepos{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .ohnepos .btn{margin:0}
 .mapbadge.team.sel{box-shadow:0 0 0 4px var(--ink),0 2px 8px rgba(0,0,0,.5);transform:scale(1.2)}
@@ -2040,7 +2042,7 @@ function viewAdmin() {
         <div class="legend" id="legend">${(st.teams || []).map((t, i) => `<button class="tchip ${A.hidden[t.id] ? "off" : ""}" style="--c:${teamColor(i)}" data-act="a-team" data-id="${t.id}"><i></i>${teamEmoji(t.name)} ${esc(t.name)}</button>`).join("")}</div>
         ${ohnePos.length ? `<div class="ohnepos">${ohnePos.map(t => `<button class="btn sm alt" data-act="a-sel" data-id="${t.id}" data-zu="1">${teamEmoji(t.name)} ${esc(t.name)}: kein Standort</button>`).join("")}</div>` : ""}
         <div class="panel" id="zuletzt"></div>
-      </section><section class="teamfeld panel" id="teamfeld">${teamlisteHTML(st)}</section></div>`;
+      </section><section class="teamfeld teamliste panel" id="teamfeld">${teamlisteHTML(st)}</section></div>`;
   }
   if (A.tab === "zeit") {
     out += `<div class="panel"><div class="bar"><h3>Zeitachse</h3><span class="small muted" id="tlspan"></span></div>
@@ -2082,7 +2084,7 @@ function viewAdmin() {
         <button class="btn ${st.status === "drawn" ? "alt" : ""}" data-act="a-draw" data-wait="Wird ausgelost …" ${n < (st.testMode ? 1 : 2) ? "disabled" : ""}>${st.status === "drawn" ? "Neu auslosen" : "Auslosen"}</button>
         ${n < (st.testMode ? 1 : 2) ? `<p class="small muted">Es müssen mindestens ${st.testMode ? "eine Person" : "zwei Personen"} angemeldet sein.</p>` : ""}</div>`;
     }
-    out += `<div class="panel">${teamlisteHTML(st)}</div>`;
+    out += `<div class="panel teamliste">${teamlisteHTML(st)}</div>`;
   }
   if (A.tab === "people") {
     // Testdaten nur vor dem Auslosen oder im Testmodus: am Eventtag steht hier sonst ein Fehlgriff neben "Alle eintragen"
