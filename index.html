@@ -1921,6 +1921,9 @@ function problemVon(t, st) {
   const upd = t.position && t.position.updatedAt, alt = upd ? Date.now() - new Date(upd).getTime() : null;
   if (alt == null) return { stufe: "fehler", kurz: "kein GPS", text: `${t.name} sendet keinen Standort. Ruf die Teamleitung an; ist das Team an der Station, schalte sie frei.` };
   if (alt > GPS_ALT_MS) return { stufe: "fehler", kurz: `GPS ${ago(upd)}`, text: `Letzter Standort ${ago(upd)}. Vielleicht ist das Handy gesperrt.` };
+  // Beim 3. Fehlversuch setzt submit_answer die Fehlversuche auf 0 und sperrt bis lockedUntil (Review 15.10.2026, Befund 2)
+  if (t.lockedUntil && new Date(t.lockedUntil).getTime() > Date.now()) return { stufe: "warn", kurz: `Denkpause bis ${uhrzeit(t.lockedUntil)}`,
+    text: `Dreimal falsch an Station ${t.currentPosition}, Denkpause bis ${uhrzeit(t.lockedUntil)}. Klemmt das Rätsel, kannst du es als gelöst werten.` };
   if ((t.failedAttempts || 0) >= 2) return { stufe: "warn", kurz: `${t.failedAttempts} Fehlversuche`, text: `${t.failedAttempts} von 3 Fehlversuchen an Station ${t.currentPosition}. Klemmt das Rätsel, kannst du es als gelöst werten.` };
   return null;
 }
