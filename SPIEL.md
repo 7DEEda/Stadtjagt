@@ -338,9 +338,13 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
 - **Datenbank:** `rpc(fn, args)` → `POST /rest/v1/rpc/<fn>`.
 - **Abfragen:** alle 10 s je nach Ansicht `public_state` (+ `member_state`),
   `team_state` oder `admin_state` (+ `admin_tracks` auf der Karte). Nicht,
-  solange ein Eingabefeld den Fokus hat, die Seite verdeckt ist oder die
-  Vollbild-Ansicht zum Hochhalten offen ist (außer das Team hat sich geändert).
-  Ein zweites Intervall (1 s) zählt die Denkpause herunter.
+  solange ein Eingabefeld den Fokus hat oder die Seite verdeckt ist. Neu
+  gezeichnet wird nicht, solange Hochhalten oder das Hilfe-Blatt offen ist
+  (außer das Team oder die Leitung hat sich geändert); beim Schließen schon.
+  Spielleitung in den Reitern Karte und Teams und Zeitachse: kein `render()`,
+  Karte, Zuletzt, Zeitachse sowie Teamliste und Zähler im Kopf
+  (`teamlisteNachziehen()`) ziehen sich selbst nach. Ein zweites Intervall
+  (1 s) zählt die Denkpause herunter.
 - **Löschen und Rückfragen:** alles über die Liste `DANGER` und einen Dialog,
   meist mit getipptem Wort `LÖSCHEN`; `wort: false` für Person und Spielende.
   `neutral: true` (Start, Teamleitung wechseln, Rätsel werten) zeigt den Dialog
@@ -348,7 +352,9 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
 - **Meldungen:** `S.msg` mit optionalem `ort`. `msgBox(ort)` zeigt nur Meldungen
   mit genau diesem ort, `msgBox()` nur die ohne. Jede Ansicht ruft `msgBox()`
   genau einmal auf, sonst steht eine Meldung doppelt. Feste Orte: `anm`,
-  `suche`, `karte`, `mit`, `abgeben`, `settings`, `bg`, `dlg`, `t:<Team-ID>`.
+  `suche`, `karte`, `mit`, `abgeben`, `settings`, `bg`, `dlg`, `t:<Team-ID>`,
+  `leiste` (Einchecken, Antwort und Koffer-Fehler in der Aktionsleiste, auf
+  jedem Tab sichtbar).
   Knöpfe mit `data-ort` geben ihren ort an Fehler aus dem Klick-Handler weiter.
 - **Eingaben:** `render()` rettet Getipptes und Fokus über jedes Neuzeichnen,
   solange derselbe Zustand zu sehen ist (`feldKontext`). Nach einer
@@ -696,3 +702,23 @@ Probedaten weg, Löschdatum für Fotos).
   Antwort, `device_test_save` mit Formprüfung. Generator
   `tools/migration_bugjagd2.py`, Probelauf `tools/pruefstand/bugjagd2_db.py`.
 - Prüfen: `python tools/pruefstand/bugjagd2.py`.
+
+## 14. Code-Review 15.10.2026 (Nachtrag 34)
+
+- **"Braucht dich":** kein GPS, GPS älter als 5 min, Denkpause nach dem
+  3. Fehlversuch (`lockedUntil` in der Zukunft, Warnung "Denkpause bis
+  HH:MM"), mindestens 2 Fehlversuche. Verfällt die Denkpause, gilt wieder die
+  normale Regel.
+- **Datenbank (Nachtrag 34, `20261015090000_namenssuche_grenze.sql`):**
+  `lookup_participant` sucht über 60 Zeichen (nach `norm`) nur genau; die
+  Tippfehler-Suche überspringt Kandidaten, deren Länge weiter als die erlaubte
+  Distanz abweicht, ohne `name_abstand`. Probelauf
+  `tools/pruefstand/namenssuche_grenze_db.py` (`--ohne` zeigt den alten Stand).
+- **Karte der Spielleitung:** eine verworfene Leaflet-Karte wird mit
+  `karteAbbauen()` (`map.remove()`) abgebaut; Auswahl eines Teams im Reiter
+  Karte und Teams zeichnet nicht neu (`auswahlZeigen()`). Verlässt die
+  Spielleitung den Reiter Zeitachse, stoppt das Abspielen und der Zeitpunkt
+  steht auf jetzt.
+- **Handy:** Erfolg von Einchecken und Antwort steht in der Leiste; Hochhalten
+  endet, sobald sein Fenster nicht mehr gezeichnet ist (etwa nach Spielende).
+- Prüfen: `python tools/pruefstand/review1510.py`.

@@ -33,6 +33,7 @@ etwa `timeout 300 python tools/pruefstand/waechter.py`.
 | `waechter.py` | Kompass-Wächter: Logik, Anzeige, Spielleitung, Freigaben (Nachtrag 30) |
 | `bugjagd2.py` | Funde der Bugjagd vom 03.10.2026 |
 | `umbau.py` | Umbau Weiterentwicklung: Handy-Hülle, Reiter, Spielleitung mit Teamliste (Nachtrag 33) |
+| `review1510.py` | Befunde des Code-Reviews vom 15.10.2026 (Nachtrag 34) |
 
 ## Probeläufe gegen die echte Datenbank
 
@@ -43,5 +44,6 @@ Zugang aus `tools/sql.py`.
 
 `name_db.py`, `selfie_db.py`, `teststation_db.py`, `startpunkt_db.py`,
 `waechter_db.py`, `rechte_db.py` (Rechte aller internen Hilfsfunktionen),
-`bugjagd2_db.py`. Mit `--ohne` zeigen `rechte_db.py` und `bugjagd2_db.py` den
-Stand ohne Migration.
+`bugjagd2_db.py`, `namenssuche_db.py`, `namenssuche_grenze_db.py`. Mit `--ohne`
+zeigen `rechte_db.py`, `bugjagd2_db.py` und `namenssuche_grenze_db.py` den Stand
+ohne Migration.

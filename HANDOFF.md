@@ -1901,7 +1901,7 @@ Gebaut auf Branch `umbau-weiterentwicklung`, am 09.10.2026 nach `master` gemerge
   "Zeitachse" (eigener Reiter), "Auslosen" nur vor dem Spiel, Teilnehmende,
   Stationen, Fotos, "Daten löschen" (rechts, rot); Inhalt der Reiter außer Karte
   höchstens 900 px. Teamliste: Block "Braucht dich" zuerst (kein GPS, GPS älter
-  als 5 min, mindestens 2 Fehlversuche); der Zähler im Kopf springt zum ersten
+  als 5 min, Denkpause seit Review 15.10., mindestens 2 Fehlversuche); der Zähler im Kopf springt zum ersten
   Problem; Zeile klappt auf (Leitungs-Select, Code, Mitlese-Link); Freischalten
   und Rätsel werten als Zeilenknopf, Rückmeldung in der Zeile; Auswahl gleicht
   Liste und Kartenmarker ab. Kartenausschnitt (Zoom, Verschieben, Popup) bleibt
@@ -1915,10 +1915,37 @@ Gebaut auf Branch `umbau-weiterentwicklung`, am 09.10.2026 nach `master` gemerge
   https://7deeda.github.io/Stadtjagt/ geprüft). Ein Handytest der neuen Hülle
   steht noch aus.
 
-## Stand zum Fortsetzen (09.10.2026)
+## Code-Review 15.10.2026 (Nachtrag 34, lokal, nicht gepusht)
+
+Review über 3597609..fb33189, zehn Befunde, alle behoben (Auftrag und Bericht:
+`.superpowers/sdd/review-2026-10-15/`). Prüfskript `tools/pruefstand/review1510.py`.
+
+- Spielleitung: Teamliste und Zähler "N Teams brauchen dich" ziehen sich im
+  10-s-Abruf nach, ohne die Karte neu zu bauen (`teamlisteNachziehen`);
+  Denkpause zählt zu "Braucht dich"; Zeitachse stoppt beim Verlassen ihres
+  Reiters; alte Leaflet-Karte wird abgebaut (`karteAbbauen`), Auswahl ohne
+  Neubau; Teamliste im Reiter Auslosen gestaltet (`.teamliste`); Texte nennen
+  die heutigen Reiter; "Spiel starten" landet im Reiter Karte und Teams (vorher
+  der nicht mehr vorhandene Reiter "map", also leer).
+- Handy: Hochhalten und Hilfe-Blatt flackern nicht mehr im 10-s-Abruf;
+  Hochhalten hängt nach Spielende nicht fest; Erfolg von Einchecken und
+  Antwort steht in der Leiste.
+- **Migration `20261015090000_namenssuche_grenze.sql` NICHT eingespielt:**
+  `lookup_participant` sucht über 60 Zeichen nur genau, Tippfehler-Suche ohne
+  Levenshtein für Kandidaten mit zu großem Längenunterschied. Probelauf
+  `tools/pruefstand/namenssuche_grenze_db.py` grün (31 Prüfungen), mit
+  `--ohne` rot. Einspielen: `python tools/sql.py supabase/migrations/20261015090000_namenssuche_grenze.sql`,
+  danach die App pushen.
+- Prüfstand: Chrome 155 hängt auf diesem Rechner beim `browser.close()` nach
+  Seiten mit Leaflet-Karte; die Skripte drucken ihre Prüfungen vorher, das
+  Schluss-"OK" fehlt dann (Timeout). `review1510.py` druckt das Ergebnis vor dem
+  Schließen.
+
+## Stand zum Fortsetzen (15.10.2026)
 
 **Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test
-bis Suite 21 (https://7deeda.github.io/geraetetest/).
+bis Suite 21 (https://7deeda.github.io/geraetetest/). Nachtrag 34 (Code-Review
+15.10.) liegt lokal auf master: erst die Migration einspielen, dann pushen.
 
 **Design-Variante "Weiterentwicklung": live** (entschieden 05.10.2026, Umbau
 am 05./06.10., gemerged 09.10.), siehe Nachtrag 33. Vorlagen nur lokal:
