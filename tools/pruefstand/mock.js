@@ -410,14 +410,15 @@
     lookup_participant: a => {
       const q = norm(a.p_name); if (!q) return { found: false };
       const exakt = PERSONEN.find(p => norm(p.name) === q);
-      const treffer = exakt ? [exakt] : q.length >= 3 ? PERSONEN.filter(p => norm(p.name).includes(q)) : [];
+      // Nachtrag 20261015090000: über 60 Zeichen nur die genaue Suche
+      const treffer = exakt ? [exakt] : q.length >= 3 && q.length <= 60 ? PERSONEN.filter(p => norm(p.name).includes(q)) : [];
       const woerter = n => n.split(/[\s-]+/).map(norm).filter(Boolean);
       if (treffer.length > 1) {
         const anfang = p => woerter(p.name).some(w => w.startsWith(q));
         const sortiert = treffer.slice().sort((x, y) => (anfang(y) - anfang(x)) || x.name.localeCompare(y.name));
         return { found: false, candidates: sortiert.slice(0, 8).map(p => p.name), more: treffer.length > 8 };
       }
-      if (!treffer.length && q.length >= 3) {
+      if (!treffer.length && q.length >= 3 && q.length <= 60) {
         const grenze = q.length >= 8 ? 2 : 1;
         const abstand = p => Math.min(lev(norm(p.name), q), lev(norm(p.name.split(/\s+/).reverse().join(" ")), q), ...woerter(p.name).map(w => lev(w, q)));
         const nah = PERSONEN.map(p => ({ p, d: abstand(p) })).filter(x => x.d <= grenze)
