@@ -1869,7 +1869,7 @@ async function stationsKarte() {
   K.team.on("drag", () => { const p = K.team.getLatLng(); S.admin.karte.team = [p.lat, p.lng]; ekVorschau(); });
   ekZeichnen();
   map2.fitBounds(L.latLngBounds([[vor.lat, vor.lng], mitte]).pad(0.4));
-  setTimeout(() => map2.invalidateSize(), 60);
+  setTimeout(() => { if (ekarte && ekarte.map === map2) map2.invalidateSize(); }, 60);   // inzwischen abgebaut: nichts tun
 }
 // Knopf und Felder an den Schalter "Nicht verschlüsseln" anpassen, ohne neu zu zeichnen
 function ekSchalter() {

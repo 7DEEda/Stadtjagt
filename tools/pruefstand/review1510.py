@@ -237,6 +237,9 @@ with sync_playwright() as pw:
         pg.evaluate("window.__alteKarte = ekarte.map; render()")
         pg.wait_for_function("ekarte && ekarte.map !== window.__alteKarte", timeout=25000)
         pruef(pg.evaluate("Object.keys(window.__alteKarte._layers).length === 0"), "Station bearbeiten: alte Karte mit remove() abgebaut")
+        n = len(err)
+        pg.evaluate("render(); setTimeout(render, 20)"); pg.wait_for_timeout(700)
+        pruef(len(err) == n, f"Station bearbeiten: zweimal schnell neu gezeichnet ohne Seitenfehler {err[n:n + 1]}")
         pg.close()
 
     if an(10):
