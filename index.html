@@ -708,7 +708,7 @@ const DANGER = {
     btn: "Spiel starten",
     async run() {
       const r = await rpc("admin_start", { p_pin: S.admin.pin });
-      S.admin.state = r.state; S.admin.tab = "map";
+      S.admin.state = r.state; S.admin.tab = "live";   // den Reiter "map" gibt es nicht mehr
       return r.warning ? { type: "err", text: r.warning } : "Das Spiel läuft.";
     }
   },
@@ -1287,7 +1287,7 @@ function viewTeam() {
     return brand("Teamleitung") + `<div class="panel">${warum}${msgBox()}
       <a class="btn ${ab ? "alt" : ""}" href="#/public">Zur Anmeldeseite</a></div>
       ${S.team.codeFeld ? `<div class="panel"><h3>Mit Team-Code eingeben</h3>
-        <p class="small muted">Nur für die Spielleitung, wenn das Handy einer Teamleitung ausfällt. Den Code zeigt der Reiter Teams.</p>
+        <p class="small muted">Nur für die Spielleitung, wenn das Handy einer Teamleitung ausfällt. Den Code zeigt die Teamliste im Reiter Karte und Teams, wenn du das Team antippst.</p>
         <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="FUCHS-1234"></div>
         <button class="btn" data-act="t-login" data-wait="Wird geprüft …" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox("code")}</div>`
       : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-codefeld">Spielleitung: mit Team-Code eingeben</button></p>`}`
@@ -2064,10 +2064,8 @@ function viewAdmin() {
         <p class="small muted">Die Teamleitungen sind auf ihrem eigenen Handy unter „Teamleitung“ gleich drin, einen Code braucht niemand. Vorher die Mitlese-Links in die Gruppen schicken. Die App fragt vor dem Start noch einmal nach.</p>
         ${st.testMode ? `<div class="msg err">Der Testmodus ist noch an: Entfernung und Antworten werden nicht geprüft. Ausschalten im Reiter Stationen.</div>` : ""}
         <button class="btn" data-act="a-start">Spiel starten</button></div>`;
-    if (laeuft) {
-      // Nach dem Start sperrt die Datenbank das Auslosen; der Weg zurück steht unter der Tabelle
-    } else {
-      out += `<div class="panel"><h3>Teams auslosen</h3>
+    // Den Reiter gibt es nur vor dem Start (laeuft schaltet oben auf live um); danach steht der Weg zurück im Reiter Daten löschen
+    out += `<div class="panel"><h3>Teams auslosen</h3>
         <div style="margin-top:8px"><span class="count">${n}</span> <span class="muted">${n === 1 ? "Person angemeldet" : "Personen angemeldet"}</span></div>
         <p class="small muted">${st.status === "registration" ? `Vor dem Auslosen mit der Gästeliste abgleichen: Wer hier steht und nicht dabei ist, im Reiter Teilnehmende löschen.
           Mit dem Auslosen schließt die Anmeldung, Nachzügler trägst du danach dort ein.`
@@ -2084,7 +2082,6 @@ function viewAdmin() {
         <p class="small" id="dprev" style="margin-top:10px">&nbsp;</p>
         <button class="btn ${st.status === "drawn" ? "alt" : ""}" data-act="a-draw" data-wait="Wird ausgelost …" ${n < (st.testMode ? 1 : 2) ? "disabled" : ""}>${st.status === "drawn" ? "Neu auslosen" : "Auslosen"}</button>
         ${n < (st.testMode ? 1 : 2) ? `<p class="small muted">Es müssen mindestens ${st.testMode ? "eine Person" : "zwei Personen"} angemeldet sein.</p>` : ""}</div>`;
-    }
     out += `<div class="panel teamliste">${teamlisteHTML(st)}</div>`;
   }
   if (A.tab === "people") {
@@ -2178,7 +2175,10 @@ function viewAdmin() {
           <p class="small muted">${esc(typeof DANGER[k].keeps === "function" ? DANGER[k].keeps(st) : DANGER[k].keeps)}</p>
           <button class="btn warn" data-act="a-danger" data-key="${k}">${esc(DANGER[k].btn)}</button></div>`).join("")
       : `<div class="panel"><p class="muted">Erst nach dem Auslosen gibt es hier etwas zu löschen.</p></div>`;
-    out += `<p class="small muted" style="margin-top:12px">Einzelne Personen löschst du im Reiter Teilnehmende über das ×, neu auslosen im Reiter Teams. Beides fragt ebenfalls nach.</p>`;
+    // Im Spiel gibt es den Reiter Auslosen nicht: dann sagen, wie es wieder geht (Review 15.10.2026, Befund 10)
+    out += `<p class="small muted" style="margin-top:12px">${laeuft
+      ? "Einzelne Personen löschst du im Reiter Teilnehmende über das ×, das fragt ebenfalls nach. Neu auslosen geht erst wieder nach „Fortschritt zurücksetzen“."
+      : "Einzelne Personen löschst du im Reiter Teilnehmende über das ×, neu auslosen im Reiter Auslosen. Beides fragt ebenfalls nach."}</p>`;
   }
   if (A.tab !== "live" && A.tab !== "zeit") out = out.slice(0, inhaltAb) + `<div class="inhalt900">${out.slice(inhaltAb)}</div>`;   // Kopf und Reiter bleiben voll breit, der Inhalt nicht
   if (A.confirm) {
