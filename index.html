@@ -2642,7 +2642,7 @@ const ACT = {
     S.team.state = r.state;
     // Zu weit weg: sagen, wie weit, und was zu tun ist
     const text = !r.ok && r.distance != null ? `Noch ${fmtDist(r.distance)} bis zur Station. Geht näher heran und tippt noch mal.` : r.message;
-    S.msg = { type: r.ok ? "ok" : "err", ort: r.ok ? undefined : "leiste", text: text + ungenauHinweis(r, pos) };
+    S.msg = { type: r.ok ? "ok" : "err", ort: "leiste", text: text + ungenauHinweis(r, pos) };
   },
   async "t-answer"() {
     const pos = S.team.state && S.team.state.station && S.team.state.station.position;
@@ -2653,8 +2653,8 @@ const ACT = {
     // Richtig: den Moment benennen, mit der Ziffer, und das neue Rad im Schloss kurz markieren
     const ziffer = r.ok && pos && r.state && r.state.digits ? r.state.digits[pos - 1] : null;
     if (r.ok && r.state && r.state.selfie && r.state.selfie.pending) S.msg = null;
-    else if (r.ok && ziffer != null) { S.neueZiffer = { i: pos - 1, bis: Date.now() + 8000 }; S.msg = { type: "ok", text: `Richtig. Station ${pos} gelöst, eure Ziffer: ${ziffer}.` }; }
-    else S.msg = { type: r.ok ? "ok" : "err", ort: r.ok ? undefined : "leiste", text: r.message };
+    else if (r.ok && ziffer != null) { S.neueZiffer = { i: pos - 1, bis: Date.now() + 8000 }; S.msg = { type: "ok", ort: "leiste", text: `Richtig. Station ${pos} gelöst, eure Ziffer: ${ziffer}.` }; }
+    else S.msg = { type: r.ok ? "ok" : "err", ort: "leiste", text: r.message };
   },
   async "t-tip"() {
     const r = await rpc("reveal_tip", { p_code: S.team.code });
@@ -2668,6 +2668,8 @@ const ACT = {
     const text = r.ok ? r.message
       : r.distance != null ? `Noch ${fmtDist(r.distance)} bis zu den Koffern. Geht näher heran und tippt noch mal.`
         : /bleibt zu/.test(r.message || "") ? "Der Code stimmt nicht. Vergleicht ihn Ziffer für Ziffer mit dem Schloss oben." : r.message;
+    // Fehler in der Leiste wie bei Einchecken und Antwort. Geklappt: das Team hat einen Platz, die Hülle samt Leiste
+    // weicht dem Platz-Bildschirm, und der zeigt die allgemeine Meldung (Review 15.10.2026, Befund 8)
     S.msg = { type: r.ok ? "ok" : "err", ort: r.ok ? undefined : "leiste", text: text + ungenauHinweis(r, pos) };
   },
   // Gruppenselfie. Die Kamera geht im Fingertipp auf, darum steht vor selfieKamera() kein await.
