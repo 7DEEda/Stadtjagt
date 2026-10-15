@@ -127,7 +127,7 @@ body.fest{overflow:hidden}
 /* Freier Text ohne Karte darunter bekommt einen Lichthof in Papierfarbe, wie Beschriftungen auf einer Landkarte.
    text-shadow erbt sich in die Kinder; Knöpfe, Felder und Karten setzen ihn zurück. */
 main > :not(.panel):not(.msg):not(#map):not(.overlay):not(.hochhalten){text-shadow:0 0 3px var(--paper),0 0 6px var(--paper),0 0 12px var(--paper),0 0 18px var(--paper)}
-.btn,.chip,.tchip,input,select,textarea,.panel,.msg,.dialog,.hochhalten{text-shadow:none}
+.btn,.chip,.tchip,input,select,textarea,.panel,.msg,.dialog,.hochhalten,.mappe,.mappe-leiste{text-shadow:none}
 main{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:20px 16px 70px}
 main.wide{max-width:900px}
 main.voll{max-width:1680px;padding:16px 24px 40px}
@@ -402,6 +402,55 @@ a.btn{text-decoration:none;text-align:center}
 .nav a{color:var(--muted);display:inline-block;padding:10px 8px;min-height:42px}
 .nav a[aria-current="page"]{color:var(--ink);font-weight:600;text-decoration:none}
 .nav span{color:var(--line);align-self:center}
+/* Notfallmappe (Ausfallsicherheit): ein Blatt, das immer hell ist, auch im dunklen Design; Druck nur dieses Blatt */
+.papier{--paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --feld:#7D9189; --flag:#EE5F1B;
+  --ok:#25683F; --err:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7; --info-bg:#E6EEF4; background:var(--card); color:var(--ink)}
+.mappe-leiste{position:relative;z-index:1;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+.mappe-leiste .knoepfe{display:flex;gap:8px}
+.mappe-leiste .btn{margin:0}
+.mappe{position:relative;z-index:1;max-width:860px;margin:16px auto;border:1px solid var(--line);border-radius:8px;padding:28px 32px;font-size:var(--fs-s);overflow-wrap:anywhere}
+.mappe h1{font-size:var(--fs-xxl)}
+.mappe h2{font-size:var(--fs-xl);margin:24px 0 8px;padding-top:12px;border-top:2px solid var(--ink)}
+.mappe h3{font-size:var(--fs-l)}
+.mappe .meta{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:6px;color:var(--muted)}
+.mappe .warnung{color:var(--err);font-weight:700}
+.mappe .code{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin-top:16px;padding:12px 16px;border:2px solid var(--ink);border-radius:8px}
+.mappe .code b{font:700 40px/1 var(--head);letter-spacing:.18em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.mappe .code b .fehlt{font-size:var(--fs-xl);letter-spacing:0}
+.mappe ol{margin:6px 0 0;padding-left:22px}.mappe ol li{margin:2px 0}
+.mappe .station{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-top:10px;break-inside:avoid}
+.mappe .skopf{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.mappe .ziffer{font:700 var(--fs-xl)/1 var(--head);white-space:nowrap}
+.mappe dl{display:grid;grid-template-columns:110px minmax(0,1fr);gap:4px 12px;margin:8px 0 0}
+.mappe dt{color:var(--muted)}.mappe dd{margin:0}
+.mappe .loesung{font-weight:600}
+.mappe table{margin-top:8px}
+.mappe th,.mappe td{padding:6px 8px;vertical-align:top}
+.mappe th{font-size:var(--fs-xs)}
+.mappe td.k,.mappe td.lz{white-space:nowrap}
+.mappe .box{display:inline-block;vertical-align:middle;width:18px;height:18px;border:1.5px solid var(--ink);border-radius:3px;text-align:center;font:700 13px/15px var(--body)}
+.mappe .box + .box{margin-left:4px}
+.mappe .papierfuss{margin-top:20px;color:var(--muted);font-size:var(--fs-xs)}
+@media (max-width:700px){
+  .mappe{margin:8px;padding:16px}
+  .mappe dl{grid-template-columns:1fr}.mappe dt{margin-top:4px}
+  .mappe table,.mappe tbody,.mappe tr,.mappe td{display:block}
+  .mappe thead{display:none}
+  .mappe tr{padding:8px 0;border-bottom:1px solid var(--line)}
+  .mappe td{border:0;padding:2px 0}
+}
+@page{size:A4;margin:12mm}
+@media print{
+  /* jede Ansicht druckt hell; :not(#druck) schlägt die Regeln für das dunkle Design */
+  :root:not(#druck){--paper:#FFFFFF; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --contour:#CFDBC8; --flag:#EE5F1B;
+    --flag-ink:#0F1B18; --feld:#7D9189; --water:#2F6E9E; --ok:#25683F; --err:#B3261E; --err-btn:#B3261E; --ok-bg:#E3F1E7; --err-bg:#FBE9E7; --info-bg:#E6EEF4}
+  body{background:#fff;transition:none}
+  .topo,#quer,.mappe-leiste,.nav,.version,.msg{display:none!important}
+  .mappe{margin:0;border:0;padding:0;max-width:none}
+  .mappe h2{break-after:avoid}
+  .mappe .teams{break-before:page}
+  .mappe tr{break-inside:avoid}
+}
 /* Version unter der Navigation (Ausfallsicherheit): welcher Stand läuft auf diesem Handy, Link bei neuerer Fassung */
 .version{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0 10px;margin-top:2px;font-size:var(--fs-s);color:var(--muted)}
 .version .link{margin-top:0;color:var(--ink)}
@@ -2051,6 +2100,62 @@ function zuletztZeichnen() {
     : `<p class="small muted">Noch nichts passiert.</p>`}`;
 }
 /* ---------- Spielleitung ---------- */
+/* ---------- Notfallmappe (Ausfallsicherheit, Abschnitt 5) ---------- */
+// Alles auf einem Blatt, falls Datenbank oder App ausfallen: Stationen mit Lösungen, Koffer-Code, Teams mit Codes.
+// Entsteht nur hier im Browser aus admin_state, nie als Datei im (öffentlichen) Repo. Braucht nur den Stand im
+// Speicher: geht auch, wenn die Datenbank gerade weg ist und das Tablet noch offen war.
+const datumZeit = t => { const d = new Date(t), z = n => String(n).padStart(2, "0");
+  return `${z(d.getDate())}.${z(d.getMonth() + 1)}.${d.getFullYear()}, ${z(d.getHours())}:${z(d.getMinutes())}`; };
+const FEHLT = `<span class="fehlt">fehlt</span>`;
+// Koffer-Code aus der echten Route: caseCode aus admin_state rechnet über die aktive Route, im Testmodus also über
+// die Teststation. Ziffern nach Position, dazu die Summe modulo 10 (wie submit_final).
+function mappeCode(stationen) {
+  const z = stationen.map(s => s.digit);
+  if (!z.length || z.some(d => d == null || d === "")) return null;
+  return z.join("") + (z.reduce((a, d) => a + Number(d), 0) % 10);
+}
+function mappeHTML(st) {
+  const stationen = (st.stations || []).slice().sort((a, b) => a.position - b.position);
+  const teams = st.teams || [], test = st.route === "test" || st.testMode;
+  const code = mappeCode(stationen), koord = (lat, lng) => `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+  const text = v => offen(v) ? FEHLT : esc(v);
+  const loesung = a => { const t = String(a || "").split("|").map(x => x.trim()).filter(Boolean); return t.length ? esc(t.join(" oder ")) : FEHLT; };
+  const start = st.start && st.start.lat != null ? `${esc(st.start.name || "")} <span class="nw">${koord(st.start.lat, st.start.lng)}</span>` : FEHLT;
+  const stationHTML = s => `<div class="station"><div class="skopf"><h3>${s.position} ${s.name ? esc(s.name) : FEHLT}</h3>
+      <span class="ziffer">Ziffer ${s.digit != null && s.digit !== "" ? esc(s.digit) : FEHLT}</span></div>
+    <dl><dt>Ort</dt><dd>${s.lat != null && s.lng != null ? `<span class="nw">${koord(s.lat, s.lng)}</span>` : FEHLT}, Radius <span class="nw">${s.radiusM != null ? esc(s.radiusM) + " m" : FEHLT}</span></dd>
+    <dt>Ortshinweis</dt><dd>${text(s.locationHint)}</dd>
+    <dt>Rätsel</dt><dd>${text(s.riddle)}</dd>
+    <dt>Lösung</dt><dd class="loesung">${loesung(s.answer)}</dd>
+    <dt>Tipp</dt><dd>${s.tip && String(s.tip).trim() ? esc(s.tip) : `<span class="muted">keiner</span>`}</dd></dl></div>`;
+  // Haken nur aus der echten Route: im Testmodus zählt solved die Teststation
+  const zeile = t => { const n = stationen.length, ok = test ? 0 : Math.min(t.solved || 0, n);
+    const mitglieder = (t.members || []).filter(m => m !== t.leaderName).map(vorname).join(", ");
+    return `<tr><td>${esc(t.name)}</td><td>${esc(t.leaderName || "")}</td><td class="k">${esc(t.code || "")}</td><td>${esc(mitglieder)}</td>
+      <td class="lz">${Array.from({ length: n }, (_, i) => `<span class="box${i < ok ? " an" : ""}">${i < ok ? "✓" : ""}</span>`).join("")}</td>
+      <td class="k">${t.place ? "Platz " + t.place : "Platz ____"}</td></tr>`; };
+  return `<div class="mappe-leiste"><b>Notfallmappe</b><div class="knoepfe">
+      <button class="btn sm alt" data-act="a-mappe-zu">Zurück</button><button class="btn sm" data-act="a-drucken">Drucken</button></div></div>${msgBox()}
+    <article class="mappe papier">
+      <h1>Stadtjagd Notfallmappe</h1>
+      <div class="meta small"><span class="nw">Daten vom ${datumZeit(S.admin.stateAt || Date.now())}</span>${VERSION ? `<span class="nw">${versionText(VERSION)}</span>` : ""}
+        <span>${teams.length} Teams, ${(st.participants || []).length} Personen</span>${test ? `<span class="warnung">Testmodus an</span>` : "<span>Testmodus aus</span>"}</div>
+      <div class="code"><span class="small">Koffer-Code</span><b>${code ? esc(code) : FEHLT}</b><span class="small muted">gilt für alle ${st.prizeCount ?? 3} Koffer</span></div>
+      <p class="small"><b>Start:</b> ${start}. <b>Koffer-Hinweis:</b> ${text(st.caseHint)}</p>
+      <h2>Wenn die App ausfällt</h2>
+      <ol><li>Teams melden sich per Anruf oder WhatsApp mit Teamname und Station.</li>
+        <li>Ortshinweis und Koordinaten der nächsten Station durchgeben, das Team läuft mit einer Karten-App.</li>
+        <li>Am Ort schickt das Team ein Gruppenfoto, dann das Rätsel vorlesen.</li>
+        <li>Antwort mit der Lösung vergleichen, Ziffer nennen, im Laufzettel abhaken.</li>
+        <li>An den Koffern zählt die Ankunft: Reihenfolge im Laufzettel eintragen.</li></ol>
+      <h2>Stationen</h2>
+      ${stationen.length ? stationen.map(stationHTML).join("") : `<p>${FEHLT}</p>`}
+      <h2 class="teams">Teams und Laufzettel</h2>
+      ${teams.length ? `<table><thead><tr><th>Team</th><th>Leitung</th><th>Code</th><th>Mitglieder</th><th>Stationen</th><th>Koffer</th></tr></thead>
+        <tbody>${teams.map(zeile).join("")}</tbody></table>` : "<p>Noch nicht ausgelost.</p>"}
+      <p class="papierfuss">Enthält alle Lösungen. Nach dem Spiel vernichten.</p>
+    </article>`;
+}
 function viewAdmin() {
   const A = S.admin;
   if (!A.pin) return brand("Spielleitung") + `<div class="panel"><h2>Einloggen</h2>
@@ -2059,6 +2164,7 @@ function viewAdmin() {
   const st = A.state;
   if (st && A.sel && !(st.teams || []).some(t => t.id === A.sel)) A.sel = null;   // Team verschwunden (etwa Daten zurückgesetzt)
   if (!st) return brand("Spielleitung") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
+  if (A.mappe) return mappeHTML(st);
 
   const status = st.status === "finished" ? '<span class="chip">Beendet</span>'
     : st.status === "running" ? '<span class="chip live">Läuft</span>'
@@ -2179,7 +2285,8 @@ function viewAdmin() {
       ${st.route === "test" ? `<p class="small muted">Im Testmodus wird diese Route nicht gespielt.</p>` : ""}
       ${startZeile("echt", st)}${(st.stations || []).map(s => stationZeile(s, st)).join("")}
       <p class="small" style="border-top:1px solid var(--line);padding-top:12px">Koffer-Code: <b style="white-space:nowrap">${esc(st.caseCode || "")}</b>, gilt für alle ${st.prizeCount ?? 3} Koffer.
-        Die Reihenfolge der Koffer ergibt sich aus dem Platz in der App.</p></div>`;
+        Die Reihenfolge der Koffer ergibt sich aus dem Platz in der App.</p>
+      <button class="btn sm alt" data-act="a-mappe">Notfallmappe</button></div>`;
   }
   if (A.tab === "fotos") {
     const fotos = A.fotos || [];
@@ -2792,9 +2899,13 @@ const ACT = {
   },
   async "a-login"() {
     const pin = val("apin");
-    S.admin.state = await rpc("admin_state", { p_pin: pin });
+    S.admin.state = await rpc("admin_state", { p_pin: pin }); S.admin.stateAt = Date.now();
     S.admin.pin = pin; SS.setItem("sj.pin", pin); S.msg = null; kartenSicht = null;
   },
+  "a-mappe"() { S.admin.mappe = true; S.admin.edit = null; S.msg = null; window.scrollTo(0, 0); },
+  "a-mappe-zu"() { S.admin.mappe = false; S.msg = null; },
+  // iPad: Druckdialog, dort AirPrint oder als PDF sichern
+  "a-drucken"() { window.print(); return false; },
   "a-tab"(d) {
     // Die Zeitachse gilt nur in ihrem Reiter: sonst spielt sie auf der Live-Karte weiter (Review 15.10.2026, Befund 4)
     if (S.admin.tab === "zeit" && d.tab !== "zeit") { stopPlay(); S.admin.cursor = null; }
@@ -3585,7 +3696,7 @@ async function refresh() {
     if (S.view === "public") { S.pub = await rpc("public_state", {}); netzOk(); await nameNochDa(); teamNachziehen(); await eigenesTeam(); await mitlesen(); }
     if (S.view === "team" && !S.team.code) await leitungOhneCode();
     if (S.view === "team" && S.team.code) { const s = await rpc("team_state", { p_code: S.team.code }); netzOk(); teamStandSetzen(s); await leitungNochDa(S.team.state); await ranglisteHolen(); }
-    if (S.view === "admin" && S.admin.pin) { S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin }); netzOk(); }
+    if (S.view === "admin" && S.admin.pin) { S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin }); S.admin.stateAt = Date.now(); netzOk(); }
     await gpsWiederStarten();
   } catch (e) {
     if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); return render(); }
@@ -3838,7 +3949,7 @@ setInterval(() => {
   const busyTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
   if (S.view === "admin" && S.admin.pin) {
     rpc("admin_state", { p_pin: S.admin.pin }).then(s => {
-      S.admin.state = s;
+      S.admin.state = s; S.admin.stateAt = Date.now();   // für "Daten vom" in der Notfallmappe
       const netzWeg = netzOk();
       if (S.admin.tab === "fotos" && (s.photoCount || 0) !== (S.admin.fotos || []).length) fotosLaden();
       if (S.admin.tab === "live" || S.admin.tab === "zeit") {
