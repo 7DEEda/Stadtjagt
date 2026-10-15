@@ -154,6 +154,9 @@
     "admin-station-karte": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, geheim: [340, 170],
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=stations]" }, { wait: 300 }, { click: "[data-act=a-edit][data-id=s3]" }, { until: "#emap .leaflet-marker-icon" }, { wait: 1500 }] },
     "leitung-koffer": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 5 } },
+    // Ausfallsicherheit (funkloch.py): Teamleitung steht an Station 2 bzw. an den Koffern
+    "funkloch-station": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 1 }, gps: { lat: 50.104441, lng: 14.419553, acc: 8 }, steps: kompassAn },
+    "funkloch-koffer": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 5 }, gps: { lat: 50.094775, lng: 14.415938, acc: 8 }, steps: kompassAn },
     "leitung-platz2": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 5 }, fertig: ["Adler", "Fuchs"] },
     "leitung-platz5": { welt: "running", view: "team", ls: IM_TEAM, fuchs: { solved: 5 }, fertig: ["Adler", "Eule", "Tiger", "Panda", "Fuchs"] },
     "leitung-beendet": { welt: "finished", view: "team", ls: IM_TEAM, fuchs: { solved: 4 } },
@@ -441,27 +444,49 @@
     check_in: a => {
       const t = fuchsByCode(a.p_code), s = STATIONEN[FU.solved];
       if (!s) return { ok: false, message: "Alle Stationen sind gelöst.", state: teamState(t) };
+      // schon eingecheckt (Wiederholung nach verlorener Antwort): gleiche Antwort, ohne die Entfernung neu zu prüfen
+      if (FU.checkedIn) return { ok: true, message: WELT.testMode ? "Testmodus: eingecheckt ohne Entfernungsprüfung." : "Angekommen. Das Rätsel ist frei.", state: teamState(t) };
       const d = a.p_lat == null ? null : dist({ lat: a.p_lat, lng: a.p_lng }, s);
       if (!WELT.testMode && d > s.radiusM) return { ok: false, distance: Math.round(d), message: "Noch nicht am Ziel: " + Math.round(d) + " m entfernt.", state: teamState(t) };
       FU.checkedIn = true;
       return { ok: true, distance: d == null ? null : Math.round(d), message: WELT.testMode ? "Testmodus: eingecheckt ohne Entfernungsprüfung." : "Angekommen. Das Rätsel ist frei.", state: teamState(t) };
     },
     submit_answer: a => {
+      // Datenbank ohne die Migration 20261016090000 kennt p_position nicht (PGRST202)
+      if (window.__ALTE_DB && "p_position" in a) fehler("Could not find the function public.submit_answer(p_answer, p_code, p_position) in the schema cache");
+      window.__ANTWORTEN = (window.__ANTWORTEN || []).concat([a]);
       const t = fuchsByCode(a.p_code), s = STATIONEN[FU.solved];
-      if (WELT.testMode || s.answer.split("|").some(x => norm(x) && norm(x) === norm(a.p_answer))) {
-        FU.solved++; FU.checkedIn = false; FU.failedAttempts = 0; FU.lockedUntil = null; FU.pauses = 0; FU.tipShown = false;
-        return { ok: true, message: WELT.testMode ? "Testmodus: jede Antwort zählt. Eine Ziffer ist frei." : "Richtig. Eine Ziffer ist frei.", state: teamState(t) };
+      const passt = st => WELT.testMode || st.answer.split("|").some(x => norm(x) && norm(x) === norm(a.p_answer));
+      const ERFOLG = WELT.testMode ? "Testmodus: jede Antwort zählt. Eine Ziffer ist frei." : "Richtig. Eine Ziffer ist frei.";
+      // Wiederholung nach dem Wechsel zur nächsten Station: nie gegen das nächste Rätsel prüfen
+      if (a.p_position != null && (!s || s.position !== a.p_position)) {
+        const fr = STATIONEN[a.p_position - 1], geloest = !!fr && a.p_position <= FU.solved;
+        if (geloest && passt(fr)) return { ok: true, message: ERFOLG, state: teamState(t) };
+        return { ok: false, message: geloest ? "Diese Station ist schon gelöst." : "Das Rätsel hat gewechselt. Lest es noch mal.", state: teamState(t) };
+      }
+      if (!s) return { ok: false, message: "Alle Stationen sind gelöst.", state: teamState(t) };
+      if (!FU.checkedIn) return { ok: false, message: "Erst am Ort einchecken, dann gibt es das Rätsel.", state: teamState(t) };
+      if (!WELT.testMode && FU.lockedUntil && FU.lockedUntil > Date.now())
+        return { ok: false, message: "Denkpause: noch " + Math.ceil((FU.lockedUntil - Date.now()) / 1000) + " Sekunden.", state: teamState(t) };
+      if (passt(s)) {
+        FU.solved++; FU.checkedIn = false; FU.failedAttempts = 0; FU.lockedUntil = null; FU.pauses = 0; FU.tipShown = false; FU.lastWrong = null;
+        return { ok: true, message: ERFOLG, state: teamState(t) };
       }
       // Nachtrag 32: leere Antwort zählt nicht als Fehlversuch
       if (!norm(a.p_answer)) return { ok: false, message: "Bitte gebt eine Antwort ein.", state: teamState(t) };
-      const n = FU.failedAttempts + 1;
+      const versuche = r => "Leider falsch. Noch " + r + (r === 1 ? " Versuch." : " Versuche.");
+      // dieselbe falsche Antwort wie zuletzt zählt nicht noch einmal
+      if (norm(a.p_answer) === FU.lastWrong) return { ok: false, message: versuche(FU.lockedUntil && FU.lockedUntil <= Date.now() ? 3 : 3 - FU.failedAttempts), state: teamState(t) };
+      const n = FU.lockedUntil && FU.lockedUntil <= Date.now() ? 1 : FU.failedAttempts + 1;
+      FU.lastWrong = norm(a.p_answer);
       if (n >= 3) { FU.failedAttempts = 0; FU.lockedUntil = Date.now() + 120000; FU.pauses++;
         return { ok: false, message: "Dreimal falsch. Zwei Minuten Denkpause für euer Team.", state: teamState(t) }; }
-      FU.failedAttempts = n;
-      return { ok: false, message: "Leider falsch. Noch " + (3 - n) + " Versuch(e).", state: teamState(t) };
+      FU.failedAttempts = n; FU.lockedUntil = null;
+      return { ok: false, message: versuche(3 - n), state: teamState(t) };
     },
     reveal_tip: a => { const t = fuchsByCode(a.p_code); FU.tipShown = true; return { ok: true, state: teamState(t) }; },
     submit_final: a => { const t = fuchsByCode(a.p_code);
+      if (t.place) return { ok: true, won: t.place <= 3, message: "Koffer offen.", state: teamState(t) };
       if (String(a.p_value).trim() !== CASE_CODE) return { ok: false, won: false, message: "Der Koffer bleibt zu. Prüft die letzte Ziffer.", state: teamState(t) };
       t.place = doneCount() + 1; t.finishedAt = Date.now();
       return { ok: true, won: t.place <= 3, message: "Koffer offen.", state: teamState(t) }; },
@@ -508,6 +533,12 @@
     await new Promise(r => setTimeout(r, 40));
     const fn = m[1];
     if (window.__funkloch === true || (window.__funkloch === "nur-foto" && fn === "team_selfie")) throw new TypeError("Prüfstand: Funkloch");
+    // __netz (Ausfallsicherheit): "weg" Anfrage kommt nie an; "antwort-weg" der Server führt sie aus, die Antwort geht
+    // verloren; "503" der Server ist weg (HTTP 503, HTML); "html" statt JSON kommt eine Seite (etwa ein WLAN-Portal)
+    const netz = window.__netz;
+    if (netz === "weg") throw new TypeError("Prüfstand: Funkloch");
+    if (netz === "503") return new Response("<html><body>503 Service Unavailable</body></html>", { status: 503, headers: { "Content-Type": "text/html" } });
+    if (netz === "html") return new Response("<!DOCTYPE html><title>Anmelden</title>", { status: 200, headers: { "Content-Type": "text/html" } });
     LOG.push(fn);
     // __haengt: Verbindung steht, aber es kommt keine Antwort (nur ein Abbruch über das Signal beendet die Anfrage)
     const passt = w => w === true || (Array.isArray(w) && w.includes(fn));
@@ -520,7 +551,7 @@
       if (!h) return antwort(404, { message: "Prüfstand kennt " + fn + " nicht." });
       const daten = h(args);
       // __verlieren: der Server hat es getan, die Antwort geht aber im Funkloch verloren
-      if (passt(window.__verlieren)) throw Object.assign(new TypeError("Prüfstand: Antwort verloren"), { verloren: true });
+      if (passt(window.__verlieren) || netz === "antwort-weg") throw Object.assign(new TypeError("Prüfstand: Antwort verloren"), { verloren: true });
       return antwort(200, daten);
     } catch (e) {
       if (e.verloren) throw e;

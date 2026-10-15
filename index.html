@@ -691,11 +691,14 @@ async function rpc(fn, args) {
     // "Failed to fetch", "Load failed" oder das Zeitlimit: draußen heißt das fast immer Funkloch
     throw keineVerbindung();
   } finally { clearTimeout(uhr); }
-  S.zuletzt = Date.now();
+  // Fällt die Datenbank aus, kommt meist kein Netzfehler, sondern HTTP 5xx (Cloudflare 520 bis 524) oder eine HTML-Seite
+  // (auch ein WLAN-Portal): für das Handy dasselbe wie ein Funkloch, mit Abgleich und letztem Stand
+  if (res.status >= 500) throw keineVerbindung();
   let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  try { data = text ? JSON.parse(text) : null; } catch { throw keineVerbindung(); }
   if (!res.ok) { const e = new Error((data && data.message) || "Fehler " + res.status); e.code = data && data.code; throw e; }
   if (typeof data === "string") throw new Error("Unerwartete Antwort vom Server.");
+  S.zuletzt = Date.now();   // nur eine gute Antwort zählt als Kontakt ("Stand 13:27" im Kopf)
   return data;
 }
 
@@ -1454,7 +1457,8 @@ function leisteHTML(st, s, lesen) {
       ${pause ? "" : `<p class="small muted" style="margin:6px 0 0">${st.testMode ? "Testmodus: jede Antwort zählt" : `Fehlversuche: <span class="nw">${st.failedAttempts} von 3</span>, dann 2 Minuten Pause`}</p>`}${msgBox("leiste")}`;
   }
   const g = S.gps, hasTarget = s.lat != null && s.lng != null;
-  if (!g.on && !st.testMode) return `<button class="btn" data-act="t-gps">Standort und Kompass freigeben</button>`;
+  // msgBox auch hier: nach einer Antwort ohne Standort stünde "Richtig. Station 2 gelöst" sonst nirgends
+  if (!g.on && !st.testMode) return `<button class="btn" data-act="t-gps">Standort und Kompass freigeben</button>${msgBox("leiste")}`;
   return `<button class="btn ${checkWeit(st, s) ? "weit" : ""}" id="tcheck" data-act="t-check" data-ort="leiste" data-wait="Standort wird bestimmt …" ${S.busy || (!st.testMode && (!hasTarget || !g.pos)) ? "disabled" : ""}>${checkText(st, s)}</button>${msgBox("leiste")}`;
 }
 function teamTabHTML(st, lesen) {
@@ -2803,7 +2807,7 @@ const ACT = {
   "t-kal-skip"() { kalEnde(false); },
   async "t-check"() {
     const pos = await standortFuerEingabe();
-    const r = await rpc("check_in", { p_code: S.team.code, p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc });
+    const r = await eingabe("t-check", () => rpc("check_in", { p_code: S.team.code, p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc }));
     S.team.state = r.state;
     // Zu weit weg: sagen, wie weit, und was zu tun ist
     const text = !r.ok && r.distance != null ? `Noch ${fmtDist(r.distance)} bis zur Station. Geht näher heran und tippt noch mal.` : r.message;
@@ -2813,7 +2817,13 @@ const ACT = {
     const pos = S.team.state && S.team.state.station && S.team.state.station.position;
     // Leeres Feld zählt nicht als Fehlversuch (Bugjagd 03.10.2026, Fund 16); im Testmodus zählt es als richtig
     if (!val("tans") && !(S.team.state && S.team.state.testMode)) { S.msg = { type: "err", ort: "leiste", text: "Bitte gebt eine Antwort ein." }; return; }
-    const r = await rpc("submit_answer", { p_code: S.team.code, p_answer: val("tans") });
+    // p_position: die Station, deren Rätsel beim Tippen zu sehen war. Kam die erste Antwort an und nur ihre Antwort nicht,
+    // prüft der Server eine Wiederholung nicht gegen das nächste Rätsel. Datenbank ohne die Migration: einmal ohne.
+    const args = { p_code: S.team.code, p_answer: val("tans"), p_position: pos || null };
+    const r = await eingabe("t-answer", async () => {
+      try { return await rpc("submit_answer", args); }
+      catch (e) { if (!ohneFunktion(e)) throw e; delete args.p_position; return rpc("submit_answer", args); }
+    });
     S.team.state = r.state;
     // Richtig: den Moment benennen, mit der Ziffer, und das neue Rad im Schloss kurz markieren
     const ziffer = r.ok && pos && r.state && r.state.digits ? r.state.digits[pos - 1] : null;
@@ -2828,7 +2838,7 @@ const ACT = {
   // Den Koffer-Code gibt man am Koffer ein: die Datenbank prüft die Position wie beim Check-in
   async "t-final"() {
     const pos = await standortFuerEingabe();
-    const r = await rpc("submit_final", { p_code: S.team.code, p_value: val("tfin"), p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc });
+    const r = await eingabe("t-final", () => rpc("submit_final", { p_code: S.team.code, p_value: val("tfin"), p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc }));
     S.team.state = r.state;
     const text = r.ok ? r.message
       : r.distance != null ? `Noch ${fmtDist(r.distance)} bis zu den Koffern. Geht näher heran und tippt noch mal.`
@@ -2857,7 +2867,9 @@ const ACT = {
     } catch (e) {
       // Funkloch: das Foto bleibt auf dem Handy und wird nachgereicht. Lehnt der Server ab, steht der Grund da.
       sf.status = "fehler"; sf.fehler = String(e.message || "").replace(/\.$/, "");
-      if (/Keine Verbindung/.test(e.message)) fotoMerken(alt, sf);
+      // Zeitstempel eines schon vorhandenen Fotos (Ersetzen): ein neueres im Abruf heißt, das hier kam doch an
+      sf.altAt = ((alt.selfie && alt.selfie.photos) || []).filter(f => f.position === sf.pos).map(f => f.takenAt)[0] || null;
+      if (e.netz) fotoMerken(alt, sf);
     }
   },
   async "t-selfie-skip"() {
@@ -2868,7 +2880,7 @@ const ACT = {
     S.team.state = s; S.selfie = null;
     const z = s.digits ? s.digits[p.position - 1] : null;
     if (z != null) S.neueZiffer = { i: p.position - 1, bis: Date.now() + 8000 };
-    S.msg = { type: "ok", text: `Station ${p.position} gelöst${z != null ? ", eure Ziffer: " + z : ""}.` + (hatte ? " Das Foto reichen wir nach, sobald das Netz reicht." : "") };
+    S.msg = { type: "ok", text: `Station ${p.position} gelöst${z != null ? ", eure Ziffer: " + z : ""}.` + (hatte ? " Das Foto wird nachgereicht, sobald das Netz reicht." : "") };
   },
   "foto-gross"(d) { S.gross = { pos: Number(d.pos), team: d.team || null, route: d.route || "echt" }; },
   "foto-zu"() { S.gross = null; },
@@ -3623,13 +3635,56 @@ async function nameNochDa() {
   if (S.lookupEigen) { S.lookup = null; S.lookupName = null; S.hoch = false; }
   return true;
 }
+// Eingabe ohne Netz (Ausfallsicherheit 3.4): Einchecken, Antwort und Koffer-Code werden nicht nachgereicht, aber
+// jede Wiederholung bekommt dieselbe Antwort wie die erste (Datenbank, Migration 20261016090000). Darum: sagen, dass
+// nichts doppelt zählt, und sich merken, in welcher Phase getippt wurde. Der nächste team_state gleicht ab (S.offen).
+const EINGABE_OHNE_NETZ = "Keine Verbindung. Tippt noch mal, sobald ihr Netz habt. Doppelt zählt nichts.";
+async function eingabe(act, ruf) {
+  const phase = phaseKey(S.team.state);
+  S.offen = null;
+  try { return await ruf(); }
+  catch (e) {
+    if (!e.netz) throw e;
+    S.offen = { act, phase };
+    throw Object.assign(new Error(EINGABE_OHNE_NETZ), { netz: true });
+  }
+}
+// Kam die Eingabe doch an? Phase weiter: die Erfolgsmeldung, als wäre die Antwort durchgekommen. Sonst nochmal tippen.
+function abgleich(o, s) {
+  if (phaseKey(s) === o.phase) return { type: "info", ort: "leiste", text: "Wieder Netz. Tippt noch mal." };
+  const pos = parseInt(o.phase, 10);
+  if (o.act === "t-check" && s.station && s.station.position === pos && s.checkedIn)
+    return { type: "ok", ort: "leiste", text: s.testMode ? "Testmodus: eingecheckt ohne Entfernungsprüfung." : "Angekommen. Das Rätsel ist frei." };
+  if (o.act === "t-answer" && pos && (s.solvedCount || 0) >= pos) {
+    if (s.selfie && s.selfie.on && s.selfie.pending) return null;   // erst das Gruppenselfie, wie nach einer Antwort mit Netz
+    const z = s.digits ? s.digits[pos - 1] : null;
+    if (z == null) return { type: "ok", ort: "leiste", text: "Richtig. Eine Ziffer ist frei." };
+    S.neueZiffer = { i: pos - 1, bis: Date.now() + 8000 };
+    return { type: "ok", ort: "leiste", text: `Richtig. Station ${pos} gelöst, eure Ziffer: ${z}.` };
+  }
+  if (o.act === "t-final" && s.place) {
+    const preis = s.prizeCount ?? 3;
+    return { type: "ok", text: s.place <= preis ? `Der Koffer ist offen. Platz ${s.place}!` : `Richtig, aber die Koffer sind vergeben. Ihr seid auf Platz ${s.place}.` };
+  }
+  return null;   // etwas anderes hat die Phase gewechselt (Spielleitung, Neustart): wie bisher ohne Meldung
+}
 // Eine Meldung gehört zu ihrer Phase (Station, Rätsel, Koffer). Springt der Stand weiter, etwa weil
 // die Spielleitung freigeschaltet hat, darf "Leider falsch" nicht auf dem nächsten Bildschirm stehen.
 const phaseKey = st => !st ? "" : st.place ? "platz" : st.allSolved ? "koffer"
   : st.selfie && st.selfie.on && st.selfie.pending ? "foto" + st.selfie.pending.position
   : st.station ? st.station.position + (st.checkedIn ? "r" : "c") : st.status;
 function teamStandSetzen(s) {
-  if (S.team.state && phaseKey(S.team.state) !== phaseKey(s)) S.msg = null;
+  if (S.offen) { const o = S.offen; S.offen = null; S.msg = abgleich(o, s); }
+  else if (S.team.state && phaseKey(S.team.state) !== phaseKey(s)) S.msg = null;
+  // Selfie im Funkloch geschickt, die Antwort ging verloren: zeigt der Abruf das Foto, ist es drin
+  const sf = S.selfie, fotos = s && s.selfie && s.selfie.photos || [];
+  const neu = sf && sf.status === "fehler" && fotos.find(f => f.position === sf.pos && f.takenAt !== sf.altAt);
+  if (neu) {
+    const vorher = S.team.state && S.team.state.digits ? S.team.state.digits[sf.pos - 1] : null, z = s.digits ? s.digits[sf.pos - 1] : null;
+    S.selfie = null; S.team.tab = "weg";
+    if (vorher == null && z != null) { S.neueZiffer = { i: sf.pos - 1, bis: Date.now() + 8000 }; S.msg = { type: "ok", text: `Foto ist drin. Station ${sf.pos} gelöst, eure Ziffer: ${z}.` }; }
+    else S.msg = { type: "ok", text: "Foto ist drin." };
+  }
   S.team.state = s;
   fotoNachreichen(s);
 }
