@@ -3775,18 +3775,21 @@ setInterval(() => {
   if (busyTyping) return;
   // Teamleitung ohne Code, die letzte Frage ging im Funkloch verloren: neu fragen, bis eine Antwort kommt (Fund 5)
   if (S.view === "team" && !S.team.code && S.team.ohneNetz) leitungOhneCode().then(ok => ok ? refresh() : render());
-  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(async s => { netzOk(); teamStandSetzen(s); await leitungNochDa(s); await ranglisteHolen(); render(); })
-    .catch(e => { if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); render(); } });
-  // Beim Hochhalten nicht neu zeichnen: die Vollbild-Ansicht würde jedes Mal neu einblenden und flackern.
-  // Die Daten kommen trotzdem, beim Schließen ist alles aktuell.
-  // Hat sich das Team geändert (neu ausgelost), trotzdem neu zeichnen.
+  // Beim Hochhalten und mit offenem Hilfe-Blatt nicht neu zeichnen: beides würde jedes Mal neu einblenden und
+  // flackern. Die Daten kommen trotzdem, beim Schließen ist alles aktuell (Review 15.10.2026, Befund 5).
+  // Hat sich das Team geändert (neu ausgelost, Leitung gewechselt), trotzdem neu zeichnen.
+  const offen = () => S.hoch || S.team.hilfe;
+  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(async s => {
+    const netzWeg = netzOk(); teamStandSetzen(s); await leitungNochDa(s); await ranglisteHolen();
+    if (!offen() || !S.team.code || netzWeg) render();
+  }).catch(e => { if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); render(); } });
   if (S.view === "public") rpc("public_state", {}).then(async s => {
     S.pub = s;
     const netzWeg = netzOk();
     const neu = (await nameNochDa()) | teamNachziehen();
     await eigenesTeam();
     await mitlesen();
-    if (!S.hoch || neu || netzWeg) render();
+    if (!offen() || neu || netzWeg) render();
   }).catch(() => { });
 }, 10000);
 let fingerSeit = 0;
