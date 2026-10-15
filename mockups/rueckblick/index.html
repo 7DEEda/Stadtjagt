@@ -180,7 +180,18 @@ body.still{cursor:none}
 .a-karte .z3{font:500 var(--bs-xs) var(--body);color:var(--muted);white-space:nowrap}
 
 /* Abspann */
-.ab-karte{position:absolute;left:64px;bottom:64px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:36px 44px}
+/* Abspann: alle Gruppenfotos laufen in zufälliger Reihenfolge wie ein Filmabspann durch */
+.rolle{position:absolute;left:0;top:0;width:1920px;will-change:transform}
+.rollfenster{position:absolute;inset:0 0 var(--unten, 0px) 0;overflow:hidden}
+/* weiches Ein- und Auslaufen über zwei stehende Verläufe statt einer Maske (die kostete bei jedem Bild Rechenzeit) */
+.rollfenster::before,.rollfenster::after{content:"";position:absolute;left:0;right:0;height:110px;z-index:1;pointer-events:none}
+.rollfenster::before{top:0;background:linear-gradient(color-mix(in srgb, var(--paper) 90%, transparent),transparent)}
+.rollfenster::after{bottom:0;background:linear-gradient(transparent,color-mix(in srgb, var(--paper) 90%, transparent))}
+.rolle .rk{position:absolute;border-radius:8px;overflow:hidden;background:var(--card);box-shadow:0 2px 10px rgba(17,17,17,.18)}
+.rolle .rk img{width:100%;height:100%;object-fit:cover;display:block}
+.rolle .ru{position:absolute;display:flex;align-items:center;gap:8px;font:600 var(--bs-xs)/1 var(--head);white-space:nowrap;overflow:hidden}
+.rolle .ru small{font:500 24px var(--body);color:var(--muted);margin-left:auto}
+.ab-karte{position:absolute;z-index:3;left:64px;bottom:calc(64px + var(--unten, 0px));background:var(--card);border:1px solid var(--line);border-radius:14px;padding:36px 44px}
 .ab-karte h2{font:700 var(--bs-l)/1 var(--head);margin:0}
 .ab-karte p{font:500 var(--bs-s) var(--body);color:var(--muted);margin:12px 0 0;white-space:nowrap}
 
@@ -545,7 +556,13 @@ function kapitelBauen() {
   koffer.forEach(t => k.push({ id: "platz" + t.place, art: "platz", team: t, dur: t.place === 1 ? 14000 : 12500,
     halt: t.place === 1 ? 3600 : 2600, name: "Platz " + t.place, kam: einpassen(uebersicht, VOLL_B) }));
   k.push({ id: "alle", art: "alle", dur: 15000, name: "Alle Teams", kam: einpassen(uebersicht, VOLL_B) });
-  k.push({ id: "abspann", art: "abspann", dur: 9000, name: "Alle Routen", kam: einpassen(rahmen([d.start.xy, ...d.stationen.map(s => s.xy)], 150, 900), { x: 560, w: 1360 }) });
+  const abFotos = mitFotos ? zufallsReihe(d.fotos.filter(f => !OPT.aus.has(f.teamId + ":" + f.position))) : [];
+  if (abFotos.length) {
+    const roll = abspannRolle(abFotos);
+    k.push({ id: "abspann", art: "abspann", dur: roll.dur, name: "Abspann", fotos: abFotos, roll, kam: einpassen(uebersicht, VOLL_B) });
+  } else {
+    k.push({ id: "abspann", art: "abspann", dur: 9000, name: "Alle Routen", kam: einpassen(rahmen([d.start.xy, ...d.stationen.map(s => s.xy)], 150, 900), { x: 560, w: 1360 }) });
+  }
   k.forEach((x, i) => { x.i = i; if (!x.kam) x.kam = einpassen(uebersicht, VOLL_B); });
   K = k;
 }
@@ -658,6 +675,7 @@ function karteRastern() {
 
 let teamEl = {}, kopfEl = {}, stEl = [], namenEl = [];
 function kartenElemente() {
+  letzteKarte = null;
   const sp = $("#spuren"); sp.innerHTML = ""; teamEl = {};
   D.stationen.forEach(s => el("circle", { class: "radius", cx: s.xy[0], cy: s.xy[1], r: s.radiusM || 50 }, sp));
   D.teams.forEach(t => {
@@ -685,8 +703,14 @@ function ringPlatz(team, ortIdx) {
   return rf.findIndex(x => x.t === team);
 }
 let ringCache = {};
+let letzteKarte = null;
 function zeichneKarte(T, kam, modus) {
   // modus: { spuren: "alle" | "keine" | Team, koepfe: bool, bis: Zeit für eine einzelne Spur }
+  // Steht alles still (Abspann, Alle Teams), nichts neu zeichnen: das kostete die Hälfte der Bildrate (gemessen 16.10.)
+  const sp = modus.spuren && modus.spuren.id ? modus.spuren.id : modus.spuren;
+  const schluessel = [Math.round(T), kam.cx.toFixed(2), kam.cy.toFixed(2), kam.s.toFixed(5), sp, modus.koepfe, modus.bis == null ? "" : Math.round(modus.bis), Z.szene && Z.szene.dataset.k].join("|");
+  if (schluessel === letzteKarte) return;
+  letzteKarte = schluessel;
   const s = kam.s, vw = 1920 / s, vh = 1080 / s, vx = kam.cx - vw / 2, vy = kam.cy - vh / 2;
   $("#welt").setAttribute("viewBox", `${vx.toFixed(2)} ${vy.toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}`);
   // Quellenhinweis (ODbL) nur im Abspann, klein unten rechts (Entscheidung Friedrich 16.10.: sonst zu präsent)
@@ -791,10 +815,10 @@ function szeneBauen() {
   if (k.art === "fotos") s.innerHTML = fotosHTML(k);
   if (k.art === "platz") s.innerHTML = platzHTML(k);
   if (k.art === "alle") s.innerHTML = alleHTML();
-  if (k.art === "abspann") s.innerHTML = abspannHTML();
+  if (k.art === "abspann") s.innerHTML = abspannHTML(k);
   box.appendChild(s); Z.szene = s; Z.altBis = 520; $("#buehne").dataset.art = k.art;
   if (k.art === "karte") seiteFuellen(k);
-  ringCache = {};
+  ringCache = {}; letzteKarte = null;
   leisteSpur();
 }
 const fakten = () => {
@@ -868,7 +892,24 @@ function alleHTML() {
       return `<div class="a-karte" data-i="${i}" style="--c:${t.farbe}"><div class="z1"><span class="pl">${pl}</span><span class="nw">${t.ohneGps ? "ohne GPS" : km(t.weg)}</span></div>
         <div class="z2"><i style="background:${t.farbe}">${t.emoji}</i><b>${esc(t.name)}</b></div><div class="z3">${z3}</div></div>`; }).join("")}</div>`;
 }
-function abspannHTML() {
+// Zufällige Reihenfolge, bei jedem Vorbereiten neu (Fisher-Yates)
+function zufallsReihe(a) { const r = a.slice(); for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; }
+// Sechs Spalten, jedes Foto in seinem Format in die kürzeste Spalte; Dauer nach Zahl der Fotos, am Ende 2,5 s nur die Karte
+function abspannRolle(fotos) {
+  const SP = 6, X0 = 80, B = 1760, LUECKE = 28, UNTER = 44, cw = (B - (SP - 1) * LUECKE) / SP, hoehe = Array(SP).fill(0), slots = [];
+  fotos.forEach((f, i) => { const c = hoehe.indexOf(Math.min(...hoehe)), h = cw / f.ratio;
+    slots[i] = { x: X0 + c * (cw + LUECKE), y: hoehe[c], w: cw, h }; hoehe[c] += h + UNTER + LUECKE; });
+  const lauf = Math.min(42000, Math.max(16000, fotos.length * 650)), gesamt = Math.max(...hoehe);
+  return { slots, gesamt, lauf, dur: lauf + 2500, tempo: (gesamt + 1080) / lauf };
+}
+function abspannHTML(k) {
+  if (k && k.roll) {
+    const f = fakten();
+    return `<div class="schleier mittel"></div><div class="rollfenster"><div class="rolle">${k.fotos.map((x, i) => { const sl = k.roll.slots[i];
+      return `<div class="rk" style="left:${sl.x}px;top:${sl.y}px;width:${sl.w}px;height:${sl.h}px"><img src="${x.src}" alt="Gruppenfoto ${esc(x.team.name)}"></div>
+        <div class="ru" style="left:${sl.x}px;top:${sl.y + sl.h + 8}px;width:${sl.w}px"><span class="emo">${x.team.emoji}</span>${esc(x.team.name)}<small>Station ${x.position}</small></div>`; }).join("")}</div></div>
+      <div class="ab-karte"><h2>Stadtjagd Prag</h2><p>${D.teams.length} Teams, zusammen ${km(f.km)} gelaufen</p></div>`;
+  }
   const f = fakten();
   return `<div class="ab-karte"><h2>Stadtjagd Prag</h2><p>${D.teams.length} Teams, zusammen ${km(f.km)} gelaufen</p></div>`;
 }
@@ -937,7 +978,12 @@ function zeichnen() {
     Z.szene.querySelectorAll(".a-karte").forEach(c => { const v = ein(L, 300 + c.dataset.i * 110); c.style.opacity = v; c.style.transform = `translateY(${(1 - v) * 16}px)`; });
   }
   if (k.art === "abspann") {
-    zeichneKarte(D.tEnd, kam, { spuren: "alle", koepfe: true });
+    zeichneKarte(D.tEnd, kam, { spuren: "alle", koepfe: !k.roll });
+    if (k.roll) {
+      const r = Z.szene.querySelector(".rolle"), lauf = Math.min(L, k.roll.lauf);
+      const weg = ruhig ? Math.floor(lauf / 5000) * 860 : k.roll.tempo * lauf;   // ruhig: alle 5 s eine Seite weiter
+      r.style.transform = `translate3d(0,${(1080 - weg).toFixed(1)}px,0)`;
+    }
     const c = Z.szene.querySelector(".ab-karte"), v = ein(L, 1600); c.style.opacity = v; c.style.transform = `translateY(${(1 - v) * 16}px)`;
   }
 }

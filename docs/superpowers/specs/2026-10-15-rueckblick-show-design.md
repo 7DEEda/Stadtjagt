@@ -440,3 +440,16 @@ Stadtjagd“):
   darüber. Ergebnis: 53 bis 60 Bilder pro Sekunde, Bild nach etwa 2 s fertig, in allen 18 Kapiteln volle Abdeckung.
 - **Quelle nennen (ODbL):** „© OpenStreetMap-Mitwirkende“ nur im Abspann, klein unten rechts (Friedrich 16.10.:
   die ganze Zeit sichtbar war es zu präsent; Nennung im Abspann ist für Filme und Präsentationen üblich).
+
+## Nachtrag 16.10.2026: Abspann mit allen Fotos (Friedrich: „als Abspann die Fotos durchlaufen lassen, random“)
+
+- **Abspann = Fotorolle:** Alle gezeigten Gruppenfotos (ohne die beim Durchsehen abgewählten) laufen in zufälliger
+  Reihenfolge (bei jedem Vorbereiten neu gemischt) wie ein Filmabspann von unten nach oben durch: sechs Spalten,
+  jedes Foto in seinem Format in die kürzeste Spalte, darunter Teamtier, Teamname und „Station n“. Dahinter die Karte
+  mit allen Routen unter einem Schleier, unten links fest die Karte „Stadtjagd Prag“ mit den gelaufenen Kilometern,
+  oben und unten laufen die Fotos über stehende Verläufe weich aus (keine Maske, die kostet Bildrate). Laufzeit
+  0,65 s je Foto, mindestens 16 s, höchstens 42 s, danach 2,5 s nur die Karte. Reduzierte Bewegung: seitenweise
+  alle 5 s statt Laufen. Ohne Fotos (oder „Gruppenfotos zeigen“ aus): Abspann wie bisher mit allen Routen.
+- **Bildrate:** `zeichneKarte()` zeichnet nur neu, wenn sich Zeit, Kamera, Routen-Auswahl oder Szene ändern; vorher
+  zeichnete der stillstehende Abspann die Karte mit allen Routen in jedem Bild neu (25 statt 60 Bilder pro Sekunde).
+  Gemessen danach: alle Kapitelarten 51 bis 60 Bilder pro Sekunde. Gesamtdauer mit 54 Fotos 4:38 min.
