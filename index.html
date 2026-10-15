@@ -2733,7 +2733,10 @@ const ACT = {
     S.admin.state = await rpc("admin_state", { p_pin: pin });
     S.admin.pin = pin; SS.setItem("sj.pin", pin); S.msg = null; kartenSicht = null;
   },
-  "a-tab"(d) { S.admin.tab = d.tab; S.admin.edit = null; S.admin.full = false; S.msg = null; if (d.tab === "fotos") fotosLaden(); },
+  "a-tab"(d) {
+    // Die Zeitachse gilt nur in ihrem Reiter: sonst spielt sie auf der Live-Karte weiter (Review 15.10.2026, Befund 4)
+    if (S.admin.tab === "zeit" && d.tab !== "zeit") { stopPlay(); S.admin.cursor = null; }
+    S.admin.tab = d.tab; S.admin.edit = null; S.admin.full = false; S.msg = null; if (d.tab === "fotos") fotosLaden(); },
   // Vollbild steht im Zustand und wird mitgezeichnet, sonst geht es beim nächsten Neuzeichnen verloren
   "a-full"() {
     S.admin.full = !S.admin.full;
@@ -2747,6 +2750,7 @@ const ACT = {
   "a-sel"(d) { S.admin.popupAuf = null; if (d.zu) { S.admin.sel = d.id; S.admin.zuSel = true; } else S.admin.sel = S.admin.sel === d.id ? null : d.id; },   // aus "Zuletzt": immer wählen und die Zeile ins Bild holen
   "a-probleme"() {
     const erst = problemListe(S.admin.state)[0];
+    if (erst && S.admin.tab === "zeit") { stopPlay(); S.admin.cursor = null; }   // wie "a-tab": Zeitachse bleibt in ihrem Reiter
     if (erst) { S.admin.tab = "live"; S.admin.sel = erst.id; S.admin.zuSel = true; }
   },
   "a-alle"() { if (map && kartenPunkte.length) map.fitBounds(L.latLngBounds(kartenPunkte).pad(0.2)); return false; },

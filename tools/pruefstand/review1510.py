@@ -130,6 +130,10 @@ with sync_playwright() as pw:
         pruef(pg.evaluate("S.admin.cursor") is not None, "Schieber setzt einen Zeitpunkt")
         pg.click("[data-act=a-tab][data-tab=people]"); pg.click("[data-act=a-tab][data-tab=live]")
         pruef(pg.evaluate("S.admin.cursor") is None, "über einen anderen Reiter zurück: Cursor auf jetzt")
+        pg.click("[data-act=a-tab][data-tab=zeit]"); pg.wait_for_selector("#tlslider"); pg.click("#tlplay"); pg.wait_for_timeout(200)
+        pg.click("[data-act=a-probleme]"); pg.wait_for_timeout(300)
+        pruef(pg.evaluate("S.admin.tab") == "live" and pg.evaluate("S.admin.playing") is False and pg.evaluate("S.admin.cursor") is None,
+              "Zähler im Kopf aus der Zeitachse: Abspielen gestoppt, Cursor auf jetzt")
         pg.close()
 
     if an(5):
