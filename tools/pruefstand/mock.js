@@ -560,7 +560,8 @@
   };
 
   /* ---------- Speicher und Ansicht vorbelegen ---------- */
-  try {
+  // __behalten (offline.py, per add_init_script): Neuladen wie auf dem Handy, Speicher und Adresse bleiben
+  if (!window.__behalten) try {
     // sj.thema (hell/dunkel) ist kein Spielstand und bleibt stehen
     Object.keys(localStorage).filter(k => k.startsWith("sj.") && k !== "sj.thema").forEach(k => localStorage.removeItem(k));
     Object.keys(sessionStorage).filter(k => k.startsWith("sj.")).forEach(k => sessionStorage.removeItem(k));
@@ -569,7 +570,7 @@
     Object.entries(ls).forEach(([k, v]) => localStorage.setItem(k, v));
     Object.entries(C.ss || {}).forEach(([k, v]) => sessionStorage.setItem(k, v));
   } catch (e) { console.warn("Prüfstand: Speicher gesperrt", e); }
-  history.replaceState(null, "", location.pathname + location.search + "#/" + (C.view || "public"));
+  if (!window.__behalten) history.replaceState(null, "", location.pathname + location.search + "#/" + (C.view || "public"));
 
   /* ---------- Standort ---------- */
   const GPS = C.gps ? Object.assign({}, C.gps) : null;

@@ -2758,7 +2758,7 @@ const ACT = {
     LS.removeItem("sj.abgemeldet");
     S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
   },
-  "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.setItem("sj.abgemeldet", "1"); stopGps(); },
+  "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.setItem("sj.abgemeldet", "1"); standVergessen(); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
   // Mitlese-Link fürs Team: teilen (Share-Sheet, sonst WhatsApp) oder kopieren
@@ -2790,7 +2790,7 @@ const ACT = {
       const team = (await rpc("team_set_leader", { p_code: S.team.code, p_name: name })).team;
       // Abgegeben: dieses Handy meldet sich ab, die neue Leitung ist auf ihrem Handy gleich drin
       S.team.code = null; S.team.state = null; S.team.abgeben = false; S.team.abmelden = false; S.team.tab = "weg";
-      LS.removeItem("sj.code"); stopGps();
+      LS.removeItem("sj.code"); standVergessen(); stopGps();
       S.msg = { type: "ok", text: `${vorname(name)} leitet jetzt Team ${team ? team.name : ""} und tippt auf dem eigenen Handy auf „Teamleitung“. Station und Rätsel siehst du auf der Anmeldeseite mit.` };
     } catch (e) { S.msg = { type: "err", ort: "abgeben", text: e.message || "Etwas ist schiefgelaufen." }; }
   },
@@ -3577,6 +3577,7 @@ async function mitlesen() {
     if (tok) {
       S.mit = await rpc("member_state", { p_token: tok }); namenUebernehmen(S.mit.name);
     } else S.mit = await rpc("member_state_by_team", { p_read_token: mitTok });
+    standMerken("sj.letzter.mit", { key: tok || mitTok, pub: S.pub, mit: S.mit });
     // Rätsel offen oder nächste Station: das neue Panel kurz umranden, damit es beim Mitlesen auffällt
     if (vorher && vorher !== phaseKey(S.mit)) S.mitNeuBis = Date.now() + 2500;
   } catch (e) {
@@ -3584,7 +3585,7 @@ async function mitlesen() {
     const weg = String(e.message).includes("Unbekanntes Gerät") || String(e.message).includes("Unbekannter Mitlese-Link");
     if (String(e.message).includes("Unbekanntes Gerät")) LS.removeItem("sj.token");
     if (String(e.message).includes("Unbekannter Mitlese-Link")) LS.removeItem("sj.mit");
-    if (weg) S.mit = null;
+    if (weg) { S.mit = null; LS.removeItem("sj.letzter.mit"); }
   }
 }
 // Mitlese-Link geöffnet (#/mit/<schlüssel>): Schlüssel merken, dann die normale Ansicht zeigen
@@ -3631,7 +3632,7 @@ async function nameNochDa() {
     if (!String(e.message).includes("Unbekanntes Gerät")) return false;   // Funkloch: beim nächsten Mal
   }
   // Name oder Schlüssel gibt es nicht mehr (etwa nach "Alle löschen"): zurück zur Anmeldung
-  S.myName = null; LS.removeItem("sj.name"); LS.removeItem("sj.token"); S.mit = null;
+  S.myName = null; LS.removeItem("sj.name"); LS.removeItem("sj.token"); S.mit = null; standVergessen();
   if (S.lookupEigen) { S.lookup = null; S.lookupName = null; S.hoch = false; }
   return true;
 }
@@ -3668,6 +3669,30 @@ function abgleich(o, s) {
   }
   return null;   // etwas anderes hat die Phase gewechselt (Spielleitung, Neustart): wie bisher ohne Meldung
 }
+// Letzter Stand ohne Netz (Ausfallsicherheit 1.6): Die Hülle kommt im Funkloch aus dem Cache des Service Workers,
+// zeigt ohne Daten aber nur "Lade …". Darum merkt sich das Handy den letzten Stand der Teamleitung bzw. des Mitlesens
+// (einige KB). Nicht für die Spielleitung: admin_state enthält alle Lösungen und Namen.
+const LETZTER_MAX_MS = 12 * 3600000;
+function standMerken(k, daten) { try { LS.setItem(k, JSON.stringify(Object.assign({ at: Date.now() }, daten))); } catch { /* Speicher voll: dann eben nicht */ } }
+function standLesen(k) {
+  try { const m = JSON.parse(LS.getItem(k) || "null"); return m && m.at && Date.now() - m.at <= LETZTER_MAX_MS ? m : null; }
+  catch { return null; }
+}
+function standVergessen() { LS.removeItem("sj.letzter.team"); LS.removeItem("sj.letzter.mit"); }
+const imSpiel = st => !!st && (st.status === "drawn" || st.status === "running");
+// Start im Funkloch: der gemerkte Stand, wenn er zu diesem Handy passt, höchstens 12 h alt ist und das Spiel läuft.
+// Entfernung, Pfeil, Ziffern, Rätsel und Hochhalten gehen dann, GPS und Kompass brauchen kein Netz.
+function letzterStand() {
+  if (S.view === "team" && S.team.code && !S.team.state) {
+    const m = standLesen("sj.letzter.team");
+    if (m && m.code === S.team.code && imSpiel(m.state)) { S.team.state = m.state; S.zuletzt = m.at; return true; }
+  }
+  if (S.view === "public" && !S.pub) {
+    const m = standLesen("sj.letzter.mit"), key = LS.getItem("sj.token") || LS.getItem("sj.mit");
+    if (m && key && m.key === key && m.pub && imSpiel(m.mit)) { S.pub = m.pub; S.mit = m.mit; S.zuletzt = m.at; return true; }
+  }
+  return false;
+}
 // Eine Meldung gehört zu ihrer Phase (Station, Rätsel, Koffer). Springt der Stand weiter, etwa weil
 // die Spielleitung freigeschaltet hat, darf "Leider falsch" nicht auf dem nächsten Bildschirm stehen.
 const phaseKey = st => !st ? "" : st.place ? "platz" : st.allSolved ? "koffer"
@@ -3686,6 +3711,7 @@ function teamStandSetzen(s) {
     else S.msg = { type: "ok", text: "Foto ist drin." };
   }
   S.team.state = s;
+  if (S.team.code && s) standMerken("sj.letzter.team", { code: S.team.code, state: s });
   fotoNachreichen(s);
 }
 // Teamleitung ohne Tippen: der Geräte-Schlüssel aus der Anmeldung sagt, wer das Handy ist; leitet die
@@ -3704,7 +3730,7 @@ async function leitungOhneCode() {
     S.team.ohneNetz = !!e.netz;
     if (e.netz) { S.msg = { type: "err", kind: "netz", text: e.message }; S.team.ohneGrund = e.message; return false; }
     netzOk();
-    S.team.ohneGrund = /keine Teamleitung|kein Team/.test(String(e.message)) ? "Du leitest gerade kein Team."
+    S.team.ohneGrund = /keine Teamleitung|kein Team\b/.test(String(e.message)) ? "Du leitest gerade kein Team."
       : String(e.message).includes("Unbekanntes Gerät") ? "Dieses Handy ist nicht mehr angemeldet." : e.message;
     return false;
   }
@@ -3716,10 +3742,10 @@ async function leitungNochDa(s) {
   if (!tok || !s || !s.team || !s.team.leaderName || s.team.leaderName === S.myName) return;
   try { await rpc("leader_code", { p_token: tok }); return; }   // umbenannt, aber weiter Leitung
   catch (e) {
-    if (!/keine Teamleitung|kein Team/.test(String(e.message)) && !String(e.message).includes("Unbekanntes Gerät")) return;   // Funkloch
+    if (!/keine Teamleitung|kein Team\b/.test(String(e.message)) && !String(e.message).includes("Unbekanntes Gerät")) return;   // Funkloch
   }
   S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.abgeben = false;
-  LS.removeItem("sj.code"); stopGps();
+  LS.removeItem("sj.code"); standVergessen(); stopGps();
   S.msg = { type: "info", text: `${vorname(s.team.leaderName)} leitet jetzt Team ${s.team.name}. Station und Rätsel siehst du auf der Anmeldeseite mit.` };
 }
 // Die Teamleitung zeigt im Tab Team den Zieleinlauf (im Spiel) bzw. die Rangliste (nach dem Ende), und
@@ -3732,7 +3758,7 @@ async function ranglisteHolen() {
 // statt still das alte Team weiter zu zeigen
 function codeUngueltig() {
   S.team.code = null; S.team.state = null; S.team.abmelden = false;
-  LS.removeItem("sj.code"); stopGps();
+  LS.removeItem("sj.code"); standVergessen(); stopGps();
   // Mit Geräte-Schlüssel holt der nächste Abruf das neue Team von selbst (leitungOhneCode)
   S.msg = LS.getItem("sj.token") ? { type: "info", text: "Die Teams wurden neu ausgelost." }
     : { type: "err", ort: "code", text: "Dieser Team-Code gilt nicht mehr, vermutlich wurde neu ausgelost." };
@@ -3757,6 +3783,7 @@ async function refresh() {
     if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); return render(); }
     if (String(e.message).includes("Falsche PIN")) { S.admin.pin = null; SS.removeItem("sj.pin"); kartenSicht = null; }
     S.msg = e.netz ? { type: "err", kind: "netz", text: e.message } : { type: "err", text: e.message };
+    if (e.netz && letzterStand()) gpsWiederStarten().catch(() => { });
   }
   render();
 }
@@ -4066,6 +4093,13 @@ document.addEventListener("visibilitychange", () => {
 });
 mitLinkPruefen();
 refresh();
+// Service Worker (sw.js, Ausfallsicherheit 1): die App startet auch im Funkloch oder bei einem Aussetzer von GitHub
+// Pages. Nur für die App selbst (./ oder ./index.html, nicht der Prüfstand mit app.html), nur über https oder lokal.
+// updateViaCache "none": der Browser prüft sw.js bei jeder Navigation am HTTP-Cache vorbei. Scheitert das
+// Registrieren (privater Modus, alter Browser), läuft die App wie ohne.
+if ("serviceWorker" in navigator && /\/(index\.html)?$/.test(location.pathname)
+    && (location.protocol === "https:" || location.hostname === "127.0.0.1" || location.hostname === "localhost"))
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => { }));
 </script>
 </body>
 </html>
