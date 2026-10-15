@@ -401,3 +401,19 @@ Doppelklick oder über einen lokalen Server. Zum Springen: `?k=platz1&t=9000`
 Prager Stationen, Start 14:00, Ende 16:40, 10 Teams im Ziel, Igel ohne GPS,
 Otter mit 14 min GPS-Lücke, Pinguin, Flamingo und Wolf mit Umwegen, drei
 fehlende Fotos. Die Fotos sind gezeichnete Platzhalter.
+
+## Nachtrag 16.10.2026 (Friedrich, nach Ansicht des Mockups)
+
+Verbindlich für den Bau, im Mockup `mockups/rueckblick/index.html` umgesetzt:
+
+- **Nichts unter der Leiste:** Die Steuerleiste liegt fest am Fensterrand, nicht auf der Bühne. Die Bühne kennt
+  ihre Höhe in Bühnen-Pixel (`--unten`, in `skalieren()` berechnet); Vorbereiten-Panel, Fotos-durchsehen-Panel,
+  Fotowand und großes Foto bleiben darüber. Passt das Vorbereiten-Panel nicht, wird es kleiner (`--vs`), es wird
+  nicht abgeschnitten und nicht gescrollt.
+- **Hoch- und Querformat:** Jedes Gruppenfoto behält sein Seitenverhältnis (im echten Spiel aus
+  `naturalWidth/naturalHeight` des geladenen Bildes). Die Fotowand legt Reihen gleicher Höhe an, jede Zelle
+  mindestens so breit wie ihre Unterschrift (Foto mittig darin). Das große Foto in der Mitte wird bei Querformat
+  breiter statt beschnitten.
+- **Unterschriften:** Name und Uhrzeit untereinander; die Unterschrift des großen Fotos steht auf eigener Fläche
+  direkt darunter, die Unterschriften der Wand treten solange zurück. Geprüft: keine Überlappung, nichts
+  abgeschnitten, alles im Bild, bei 1920x1080, 1366x768, 1280x720 und 1081x931.

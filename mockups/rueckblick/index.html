@@ -129,10 +129,12 @@ body.still{cursor:none}
 .kachel{position:absolute;left:0;top:0;width:540px;height:720px;transform-origin:0 0;border-radius:8px;overflow:hidden;background:var(--card);will-change:transform}
 .kachel img{width:100%;height:100%;object-fit:cover;display:block}
 .kachel.gross{box-shadow:var(--schatten)}
-.unterschrift{position:absolute;display:flex;align-items:center;gap:10px;font:600 var(--bs-xs)/1 var(--head);white-space:nowrap}
-.unterschrift i{width:14px;height:34px;border-radius:3px;flex:none}
-.unterschrift .zt{color:var(--muted);font-weight:500;margin-left:auto;font-variant-numeric:tabular-nums}
-.spot{position:absolute;left:0;right:0;top:948px;text-align:center;font:700 var(--bs-m) var(--head);white-space:nowrap}
+/* Name und Uhrzeit untereinander: auch schmale Hochformat-Kacheln stoßen nicht an den Nachbarn */
+.unterschrift{position:absolute;display:grid;grid-template-columns:14px auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:10px;row-gap:6px;align-items:center;font:600 var(--bs-xs)/1 var(--head);white-space:nowrap}
+.unterschrift i{width:14px;height:100%;min-height:62px;border-radius:3px;grid-row:1 / 3}
+.unterschrift .nm{overflow:hidden;text-overflow:ellipsis}
+.unterschrift .zt{grid-column:2 / 4;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+.spot{position:absolute;left:50%;top:948px;transform:translateX(-50%);z-index:6;padding:10px 28px;border-radius:12px;background:var(--card);box-shadow:var(--schatten);font:700 var(--bs-m) var(--head);white-space:nowrap}
 .spot .zt{color:var(--muted);font-weight:500;margin-left:16px;font-variant-numeric:tabular-nums}
 
 /* Finale: ein Koffer-Platz */
@@ -173,7 +175,8 @@ body.still{cursor:none}
 .ab-karte p{font:500 var(--bs-s) var(--body);color:var(--muted);margin:12px 0 0;white-space:nowrap}
 
 /* Vorbereiten (vor dem Start, auch auf dem Beamer sichtbar) */
-.v-panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:1120px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:56px 64px 52px}
+/* --unten: Höhe der festen Leiste unten, in Bühnen-Pixel umgerechnet (skalieren()); die Panels bleiben darüber */
+.v-panel{position:absolute;left:50%;top:calc((1080px - var(--unten, 0px)) / 2);transform:translate(-50%,-50%) scale(var(--vs, 1));width:1120px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:56px 64px 52px}
 .v-panel h1{font:700 var(--bs-l)/1 var(--head);margin:0;display:flex;align-items:center;gap:20px}
 .v-panel h1 svg{width:64px;height:64px}
 .v-liste{margin:40px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:18px}
@@ -195,7 +198,7 @@ body.still{cursor:none}
 .v-tasten kbd,.hilfe kbd{font:600 .9em var(--head);border:1.5px solid var(--feld);border-radius:6px;padding:0 10px;color:var(--ink);white-space:nowrap}
 
 /* Fotos durchsehen */
-.d-panel{position:absolute;inset:48px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:40px 48px;display:flex;flex-direction:column}
+.d-panel{position:absolute;inset:48px 48px calc(48px + var(--unten, 0px));background:var(--card);border:1px solid var(--line);border-radius:14px;padding:40px 48px;display:flex;flex-direction:column}
 .d-panel h2{font:700 var(--bs-m) var(--head);margin:0}
 .d-panel p{font:500 var(--bs-xs) var(--body);color:var(--muted);margin:8px 0 0}
 .d-reihen{flex:1;display:flex;flex-direction:column;gap:12px;margin-top:20px;overflow:hidden}
@@ -376,7 +379,7 @@ const BEISPIEL = (() => {
 // Platzhalter für ein Gruppenselfie (im echten Spiel: admin_photo mit p_full = true)
 function mischen(a, b, w) { const p = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16)), x = p(a), y = p(b);
   return "#" + x.map((v, i) => Math.round(v * (1 - w) + y[i] * w).toString(16).padStart(2, "0")).join(""); }
-function fotoBild(team, pos) {
+function fotoBild(team, pos, quer) {
   const R = zufall(team.name.length * 97 + pos * 13 + team.name.charCodeAt(0));
   const oben = mischen(team.farbe, "#FFFFFF", .58), unten = mischen(team.farbe, "#17302A", .2);
   const marken = [
@@ -390,7 +393,12 @@ function fotoBild(team, pos) {
     const x = 70 + (460 / (n - 1)) * i + (R() - .5) * 30, y = 520 + (R() - .5) * 60 + (i % 2) * 34, r = 46 + R() * 10;
     leute += `<g opacity="${(0.62 + R() * 0.2).toFixed(2)}"><circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${r.toFixed(0)}"/><ellipse cx="${x.toFixed(0)}" cy="${(y + r + 120).toFixed(0)}" rx="${(r * 1.7).toFixed(0)}" ry="${(r * 1.9).toFixed(0)}"/></g>`;
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${oben}"/><stop offset="1" stop-color="${unten}"/></linearGradient></defs>
+  // Querformat: dieselben Zutaten auf 800x600 verteilt (im echten Spiel kommt das Format aus dem Foto selbst)
+  const svg = quer
+    ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${oben}"/><stop offset="1" stop-color="${unten}"/></linearGradient></defs>
+    <rect width="800" height="600" fill="url(#g)"/><g fill="#fff" opacity=".5" transform="translate(100,-120)">${marken}</g><g fill="#17302A" transform="translate(-30,-230) scale(1.42,1)">${leute}</g>
+    <circle cx="730" cy="545" r="50" fill="#17302A" opacity=".85"/></svg>`
+    : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${oben}"/><stop offset="1" stop-color="${unten}"/></linearGradient></defs>
     <rect width="600" height="800" fill="url(#g)"/><g fill="#fff" opacity=".5">${marken}</g><g fill="#17302A">${leute}</g>
     <circle cx="520" cy="740" r="60" fill="#17302A" opacity=".85"/></svg>`;
   return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
@@ -449,7 +457,9 @@ function aufbereiten(roh) {
   ereignisse.sort((a, b) => a.t - b.t);
   const fotos = roh.photos.filter(f => f.route === "echt" && teams.some(t => t.id === f.teamId))
     .map(f => ({ ...f, team: teams.find(t => t.id === f.teamId), takenAt: ms(f.takenAt) }));
-  fotos.forEach(f => f.src = fotoBild(f.team, f.position));
+  // Seitenverhältnis je Foto (Breite/Höhe). Im echten Spiel aus naturalWidth/naturalHeight des geladenen Bildes;
+  // im Mockup ist jedes dritte Foto quer, damit man das Querformat sieht.
+  fotos.forEach((f, i) => { f.quer = i % 3 === 1; f.ratio = f.quer ? 4 / 3 : 3 / 4; f.src = fotoBild(f.team, f.position, f.quer); });
   // Grenzen der Kapitel: Zeitpunkt, an dem die Hälfte der Teams die Station gelöst hat
   const mitSpiel = teams.filter(t => t.sts.length).length, haelfte = Math.ceil(mitSpiel / 2);
   const grenzen = [t0];
@@ -722,24 +732,37 @@ function vorspannHTML() {
   return `<div class="schleier mittel"></div><div class="titel"><div class="logo">${LOGO}</div><h1>Stadtjagd</h1><div class="ort">Prag</div>
     <div class="fakten"><span>${f.datum}</span> · <span>${D.teams.length} Teams</span> · <span>${f.leute} Leute</span> · <span>${D.stationen.length} Stationen</span></div></div>`;
 }
-function fotoRaster(n) {
-  let best = null;
-  for (let c = 1; c <= n; c++) { const r = Math.ceil(n / c), w = Math.min((1760 - (c - 1) * 32) / c, ((800 - (r - 1) * 40) / r - 52) * .75);
-    if (!best || w > best.w) best = { c, r, w }; }
-  const w = best.w, h = w / .75, gw = best.c * w + (best.c - 1) * 32, gh = best.r * (h + 52) + (best.r - 1) * 40;
-  const x0 = (BREITE - gw) / 2, y0 = 236 + (800 - gh) / 2;
-  return Array.from({ length: n }, (_, i) => { const r = Math.floor(i / best.c), c = i % best.c, inReihe = Math.min(best.c, n - r * best.c);
-    const versatz = (best.c - inReihe) * (w + 32) / 2; return { x: x0 + versatz + c * (w + 32), y: y0 + r * (h + 52 + 40), w, h }; });
+// Bühnen-Pixel, die unten für die feste Leiste frei bleiben müssen (skalieren() setzt --unten)
+const untenFrei = () => parseFloat(getComputedStyle($("#buehne")).getPropertyValue("--unten")) || 0;
+// Fotowand: Reihen gleicher Höhe, jedes Foto in seinem eigenen Format (hoch oder quer), mittig, über der Leiste
+function fotoRaster(fotos) {
+  const B = 1760, OBEN = 236, UNTER = 86, ZEILE = 40, SPALTE = 32, MINU = 250, verf = 1080 - untenFrei() - 24 - OBEN;
+  // Zelle = Foto, aber mindestens so breit, dass die Unterschrift ganz passt; das Foto steht mittig darin
+  const zelle = (H, f) => Math.max(H * f.ratio, MINU);
+  const reihenBei = H => { const rs = [[]]; let w = 0;
+    fotos.forEach((f, i) => { const fw = zelle(H, f); if (rs[rs.length - 1].length && w + SPALTE + fw > B) { rs.push([]); w = 0; }
+      w += (rs[rs.length - 1].length ? SPALTE : 0) + fw; rs[rs.length - 1].push(i); });
+    return rs; };
+  let H = 520, rs = reihenBei(H);
+  while (H > 60 && rs.length * (H + UNTER) + (rs.length - 1) * ZEILE > verf) { H -= 4; rs = reihenBei(H); }
+  const gh = rs.length * (H + UNTER) + (rs.length - 1) * ZEILE, y0 = OBEN + Math.max(0, (verf - gh) / 2), slots = [];
+  rs.forEach((r, ri) => { const rw = r.reduce((a, i) => a + zelle(H, fotos[i]), 0) + (r.length - 1) * SPALTE;
+    let x = (BREITE - rw) / 2;
+    r.forEach(i => { const w = H * fotos[i].ratio, cw = zelle(H, fotos[i]);
+      slots[i] = { x: x + (cw - w) / 2, y: y0 + ri * (H + UNTER + ZEILE), w, h: H, cx: x, cw }; x += cw + SPALTE; }); });
+  return slots;
 }
+// Grundmaß einer Kachel: Hochformat 540x720, Querformat 720x540 (skaliert wird per transform)
+const kachelB = f => f.ratio >= 1 ? 720 : 540, kachelH = f => f.ratio >= 1 ? 540 : 720;
 function fotosHTML(k) {
   const s = D.stationen.find(x => x.position === k.station), f = k.fotos, zuerst = f[0] && f[0].team;
   const erst = D.teams.map(t => ({ t, e: (t.sts.find(x => x.position === k.station) || {}).ein })).filter(x => x.e).sort((a, b) => a.e - b.e)[0];
-  k.slots = fotoRaster(f.length);
+  k.slots = fotoRaster(f);
   return `<div class="schleier dicht"></div>
     <div class="f-kopf"><div class="nr">${k.station}</div><div><h2>${esc(s.name)}</h2></div>
       ${erst ? `<div class="zuerst"><small>zuerst da</small><b><span class="emo">${erst.t.emoji}</span> ${esc(erst.t.name)} <span class="tab">${uhr(erst.e)}</span></b></div>` : ""}</div>
-    ${f.map((x, i) => `<div class="kachel" data-i="${i}"><img src="${x.src}" alt="Gruppenfoto ${esc(x.team.name)}"></div>
-      <div class="unterschrift" data-u="${i}" style="left:${k.slots[i].x}px;top:${k.slots[i].y + k.slots[i].h + 12}px;width:${k.slots[i].w}px"><i style="background:${x.team.farbe}"></i><span class="emo">${x.team.emoji}</span>${esc(x.team.name)}<span class="zt">${uhr(x.takenAt)}</span></div>`).join("")}
+    ${f.map((x, i) => `<div class="kachel" data-i="${i}" style="width:${kachelB(x)}px;height:${kachelH(x)}px"><img src="${x.src}" alt="Gruppenfoto ${esc(x.team.name)}"></div>
+      <div class="unterschrift" data-u="${i}" style="left:${k.slots[i].cx}px;top:${k.slots[i].y + k.slots[i].h + 12}px;width:${k.slots[i].cw}px"><i style="background:${x.team.farbe}"></i><span class="emo">${x.team.emoji}</span><b class="nm">${esc(x.team.name)}</b><span class="zt">${uhr(x.takenAt)}</span></div>`).join("")}
     <div class="spot" id="spot"></div>`;
 }
 function bestesFoto(t) {
@@ -856,25 +879,29 @@ function pulse(k, T) {
   g.innerHTML = html;
 }
 function fotosZeichnen(k, L) {
-  const s = Z.szene, n = k.fotos.length, GROSS = { x: 960 - 330, y: 196, w: 660, h: 720 };
-  let spot = null;
+  const s = Z.szene, n = k.fotos.length, GY = 196;
+  // großes Foto: so hoch wie möglich, unter ihm bleibt Platz für die Unterschrift, alles über der Leiste
+  const grossH = Math.min(720, 1080 - untenFrei() - 24 - GY - 100);
+  let spot = null, spotH = grossH;
+  const aktiv = k.fotos.some((f, i) => { const a = 900 + i * 1000; return L >= a && (ruhig ? L < a + 700 : (L - a - 600) / 420 < 1); });
   k.fotos.forEach((f, i) => {
     const kachel = s.querySelector(`.kachel[data-i="${i}"]`), u = s.querySelector(`.unterschrift[data-u="${i}"]`), slot = k.slots[i];
     const a = 900 + i * 1000;           // erscheint groß in der Mitte, dann an seinen Platz in der Wand
     const auf = ein(L, a, 320), weg = ruhig ? (L >= a + 700 ? 1 : 0) : glatt((L - a - 600) / 420);
     if (L < a) { kachel.style.opacity = 0; u.style.opacity = 0; return; }
-    const gw = GROSS.h * .75, gx = 960 - gw / 2;
-    const sGross = gw / 540, sKlein = slot.w / 540;
-    const x = gx + (slot.x - gx) * weg, y = GROSS.y + (slot.y - GROSS.y) * weg, sc = sGross + (sKlein - sGross) * weg;
+    const gw = Math.min(1400, grossH * f.ratio), gh = gw / f.ratio, gx = 960 - gw / 2;
+    const sGross = gw / kachelB(f), sKlein = slot.w / kachelB(f);
+    const x = gx + (slot.x - gx) * weg, y = GY + (slot.y - GY) * weg, sc = sGross + (sKlein - sGross) * weg;
     kachel.style.opacity = auf; kachel.style.zIndex = weg < 1 ? 5 : 1;
     kachel.classList.toggle("gross", weg < 1);
     kachel.style.transform = `translate(${x.toFixed(1)}px,${(y + (1 - auf) * 14).toFixed(1)}px) scale(${sc.toFixed(4)})`;
-    u.style.opacity = ein(L, a + 1000, 300);
-    if (weg < 1) spot = f;
+    u.style.opacity = ein(L, a + 1000, 300) * (aktiv ? .25 : 1);
+    if (weg < 1) { spot = f; spotH = gh; }
   });
   const sp = s.querySelector("#spot"), txt = spot ? `<span class="emo">${spot.team.emoji}</span> ${esc(spot.team.name)}<span class="zt">${uhr(spot.takenAt)}</span>` : "";
   if (sp.dataset.t !== txt) { sp.innerHTML = txt; sp.dataset.t = txt; }
   sp.style.opacity = spot ? 1 : 0;
+  sp.style.top = (GY + spotH + 20) + "px";
 }
 function platzZeichnen(k, L, kam) {
   const s = Z.szene, t = k.team, halt = k.halt, schloss = halt + 300;
@@ -934,6 +961,7 @@ function vorbereiten() {
   $("#seite").style.opacity = 0; $("#pulse").innerHTML = ""; $("#lhinweis").textContent = "";
   zeichneKarte(D.t0, einpassen(D.uebersicht, VOLL_B), { spuren: "keine", koepfe: false });
   $("#ueber").innerHTML = vorbereitenHTML();
+  skalieren();   // das Panel ist erst jetzt da: Größe über der Leiste neu berechnen
   $("#oFotos").onchange = e => { OPT.fotos = e.target.checked; kapitelBauen(); vorbereiten(); };
   $("#oHalt").onchange = e => { OPT.anhalten = e.target.checked; };
   $("#oDurch").onclick = durchsehen;
@@ -1020,6 +1048,12 @@ document.addEventListener("keydown", e => {
 function skalieren() {
   const s = Math.min(innerWidth / 1920, innerHeight / 1080), b = $("#buehne");
   b.style.transform = `scale(${s}) translate(-50%,-50%)`;
+  // Die Leiste liegt fest am Fensterrand, nicht auf der Bühne: ihre Höhe in Bühnen-Pixel, damit Panels darüber bleiben
+  const l = $("#leiste"), unten = l ? l.offsetHeight / s - Math.max(0, (innerHeight - 1080 * s) / 2) / s : 0;
+  b.style.setProperty("--unten", Math.max(0, unten) + "px");
+  // Passt das Vorbereiten-Panel nicht über die Leiste, wird es kleiner statt abgeschnitten (kein Scrollen auf dem Beamer)
+  const v = $(".v-panel");
+  if (v) v.style.setProperty("--vs", Math.min(1, (1080 - Math.max(0, unten) - 48) / v.offsetHeight));
 }
 addEventListener("resize", skalieren);
 
