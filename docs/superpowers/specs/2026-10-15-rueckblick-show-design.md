@@ -419,3 +419,24 @@ Verbindlich für den Bau, im Mockup `mockups/rueckblick/index.html` umgesetzt:
   abgeschnitten, alles im Bild, bei 1920x1080, 1366x768, 1280x720 und 1081x931.
 - **Kein Mittelpunkt (·)** in sichtbaren Texten (Entscheidung Friedrich): Aufzählungen wie Datum, Teams, Leute,
   Stationen oder die Tastenhinweise stehen mit Abstand nebeneinander (Flex mit gap), ohne Trennzeichen.
+
+## Nachtrag 16.10.2026: echte Karte von Prag statt Kartenkacheln
+
+Verbindlich für den Bau (im Mockup umgesetzt, Friedrich: „Karte von Prag mit dem Ausschnitt in der Farbe der
+Stadtjagd“):
+
+- **Grundkarte aus OpenStreetMap, vorab erzeugt:** `tools/rueckblick/karte.py` liest einen Overpass-Abzug
+  (`tools/rueckblick/osm-karte.txt`, Rohdaten `prag-karte.json` nicht im Repo) und schreibt
+  `prag-karte.js` (`window.PRAG_KARTE`, ein SVG-Pfad je Ebene: gruen, park, wasser, flusslinie, gebaeude, weg,
+  bahn, neben, haupt; Koordinaten in Metern im System `P()`). Keine Leaflet-Kacheln in der Show; sie läuft damit
+  ohne Netz und überall in den Farben der Stadtjagd (Token `--paper`, `--gruen`, `--park`, `--fluss`, `--haus`,
+  `--haus-rand`, `--strasse`, `--strasse-rand`, `--feld`, hell und dunkel). Ändert sich die Route grundlegend,
+  `karte.py` mit passendem Ausschnitt neu laufen lassen.
+- **Einmal rendern, dann nur verschieben:** Die Vektorkarte hat tausende Formen; neu gezeichnet bei jeder
+  Kamerabewegung ruckelt sie (gemessen 16.10.: 3 bis 5 statt 55 Bilder pro Sekunde). Darum rendert die Show sie
+  beim Vorbereiten einmal als Bild (`karteRastern()`: SVG mit aufgelösten Token-Farben → Canvas → PNG →
+  `<image>` in `#grund`), höchstens 5000 px Kantenlänge, Ausschnitt = Vereinigung aller Kamera-Sichtfenster der
+  Kapitel plus Rand. Bei Wechsel hell/dunkel neu rendern. Routen, Stationen, Teamköpfe und Namen bleiben Vektor
+  darüber. Ergebnis: 53 bis 60 Bilder pro Sekunde, Bild nach etwa 2 s fertig, in allen 18 Kapiteln volle Abdeckung.
+- **Quelle nennen (ODbL):** „© OpenStreetMap-Mitwirkende“ klein unten rechts auf der Bühne, über der Leiste und
+  neben der Seitenspalte, solange diese zu sehen ist.

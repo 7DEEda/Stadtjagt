@@ -16,6 +16,7 @@
   --contour:#CFDBC8; --flag:#EE5F1B; --flag-ink:#0F1B18; --flag-text:#C2410C; --water:#2F6E9E;
   --ok:#25683F; --ok-bg:#E3F1E7; --warn:#8A5A00; --warn-bg:#FBF0D9;
   --park:#DFEAD6; --strasse:#FFFFFF; --strasse-rand:#D3DECF; --fluss:#C9DDEA; --flaeche:#E6EBE2;
+  --haus:#E2E8DD; --haus-rand:#D6DED0; --gruen:#E6EEDF;
   --head:'Barlow Semi Condensed', 'Arial Narrow', sans-serif; --body:'Barlow', Arial, sans-serif;
   --emoji:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;
   /* Bühnenstufen, gemessen auf der 1920er Bühne; bei 1280x720 zwei Drittel davon */
@@ -30,6 +31,7 @@
     --contour:#1C312B; --flag:#FF7A3A; --flag-ink:#0F1B18; --flag-text:#FF7A3A; --water:#6FA8D6;
     --ok:#6CCB8E; --ok-bg:#16332A; --warn:#E8B75A; --warn-bg:#33290F;
     --park:#13261F; --strasse:#22362F; --strasse-rand:#1B2D27; --fluss:#16303F; --flaeche:#14231E;
+    --haus:#152520; --haus-rand:#1A2C26; --gruen:#122219;
     color-scheme: dark;
   }
 }
@@ -38,6 +40,7 @@
   --contour:#1C312B; --flag:#FF7A3A; --flag-ink:#0F1B18; --flag-text:#FF7A3A; --water:#6FA8D6;
   --ok:#6CCB8E; --ok-bg:#16332A; --warn:#E8B75A; --warn-bg:#33290F;
   --park:#13261F; --strasse:#22362F; --strasse-rand:#1B2D27; --fluss:#16303F; --flaeche:#14231E;
+  --haus:#152520; --haus-rand:#1A2C26; --gruen:#122219;
   color-scheme: dark;
 }
 *{box-sizing:border-box}
@@ -57,6 +60,12 @@ body.still{cursor:none}
 #buehne[data-art=platz] .radius{display:none}
 #welt .hoehe{fill:none;stroke:var(--contour);stroke-width:1.6;vector-effect:non-scaling-stroke}
 #welt .park{fill:var(--park)}
+#welt .gruen{fill:var(--gruen)}
+#welt .wasser{fill:var(--fluss)}
+#welt .gebaeude{fill:var(--haus);stroke:var(--haus-rand);stroke-width:.8;vector-effect:non-scaling-stroke}
+#welt .bahn{fill:none;stroke:var(--feld);stroke-width:2;stroke-dasharray:10 6;opacity:.6;vector-effect:non-scaling-stroke}
+#welt .flusslinie{fill:none;stroke:var(--fluss);stroke-width:4;vector-effect:non-scaling-stroke}
+.osm{position:absolute;right:24px;bottom:calc(var(--unten, 0px) + 10px);z-index:4;font:500 18px var(--body);color:var(--muted);opacity:.8;pointer-events:none}
 #welt .flaeche{fill:var(--flaeche)}
 #welt .fluss{fill:none;stroke:var(--fluss);stroke-linecap:round;stroke-linejoin:round}
 #welt .strasse-r{fill:none;stroke:var(--strasse-rand);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
@@ -239,6 +248,7 @@ body.still{cursor:none}
 </head>
 <body>
 <div id="buehne" aria-live="off">
+  <div class="osm" id="osm" hidden>© OpenStreetMap-Mitwirkende</div>
   <svg id="welt" aria-hidden="true"><g id="grund"></g><g id="spuren"></g></svg>
   <svg id="schirm" viewBox="0 0 1920 1080" aria-hidden="true"><g id="namen"></g><g id="stationen"></g><g id="pulse"></g><g id="koepfe"></g><text id="lhinweis" class="lueckenhinweis" x="48" y="1040"></text></svg>
   <aside id="seite">
@@ -266,6 +276,7 @@ body.still{cursor:none}
 </div>
 <div id="schwarz"></div>
 
+<script src="prag-karte.js"></script>
 <script>
 "use strict";
 /* =====================================================================
@@ -552,6 +563,18 @@ const HAUS = "M-9 2 0-6l9 8M-7 1v9h14V1M-2 10V5h4v5";
 function grundkarte() {
   const g = $("#grund"); g.innerHTML = "";
   el("rect", { x: -6000, y: -6000, width: 12000, height: 12000, fill: "var(--paper)" }, g);
+  // Echte Karte aus OpenStreetMap (tools/rueckblick/karte.py), in den Farben der Stadtjagd; ohne sie die alte Zeichnung
+  const K = window.PRAG_KARTE;
+  if (K && K.lat0 === LAT0 && K.lng0 === LNG0) {
+    for (const lage of ["gruen", "park", "wasser", "flusslinie", "gebaeude", "weg", "bahn"]) if (K.lagen[lage]) el("path", { class: lage, d: K.lagen[lage] }, g);
+    if (K.lagen.neben) { el("path", { class: "strasse-r", d: K.lagen.neben, style: "stroke-width:6" }, g); el("path", { class: "neben", d: K.lagen.neben }, g); }
+    if (K.lagen.haupt) { el("path", { class: "strasse-r", d: K.lagen.haupt }, g); el("path", { class: "strasse", d: K.lagen.haupt }, g); }
+    D.namen = [["Letná", 50.0972, 14.4140, "ortsname"], ["Stromovka", 50.1083, 14.4135, "ortsname"], ["Holešovice", 50.1006, 14.4400, "ortsname"],
+      ["Výstaviště", 50.1072, 14.4325, "ortsname"], ["Vltava", 50.0921, 14.4215, "flussname"]];
+    D.osmQuelle = K.quelle; $("#osm").hidden = false;
+    setTimeout(karteRastern);   // erst wenn die Kapitel stehen: der Ausschnitt richtet sich nach ihren Kameras
+    return;
+  }
   const R = zufall(7);
   const ring = (lat, lng, rx, ry, wob) => { const c = P(lat, lng), pts = [];
     for (let a = 0; a < 64; a++) { const w = a / 64 * Math.PI * 2, f = 1 + Math.sin(w * 3 + wob) * .08 + Math.sin(w * 5 + wob * 2) * .05;
@@ -583,6 +606,54 @@ function grundkarte() {
   // Ortsnamen: in Bildschirm-Pixeln, damit sie bei jedem Ausschnitt gleich groß bleiben
   D.namen = [["Letná", 50.0972, 14.4140, "ortsname"], ["Stromovka", 50.1083, 14.4135, "ortsname"], ["Holešovice", 50.1006, 14.4400, "ortsname"],
     ["Výstaviště", 50.1072, 14.4325, "ortsname"], ["Vltava", 50.0921, 14.4215, "flussname"]];
+}
+
+/* Die echte Karte hat tausende Formen; neu gezeichnet bei jeder Kamerabewegung ruckelt sie (gemessen 16.10.: 3 bis 5
+   statt 55 Bilder pro Sekunde). Darum wird sie beim Vorbereiten einmal als Bild gerendert, in den aktuellen Farben,
+   und die Kamera verschiebt nur noch dieses Bild. Routen, Stationen und Namen bleiben Vektor darüber. */
+let rasterNr = 0;
+function karteRastern() {
+  const KA = window.PRAG_KARTE; if (!KA) return;
+  const nr = ++rasterNr, css = getComputedStyle(document.documentElement), f = n => css.getPropertyValue(n).trim();
+  // Ausschnitt: alles, was irgendeine Kamera der Show zeigt (Vereinigung der Sichtfenster), plus 250 m Rand
+  const fenster = (typeof K !== "undefined" ? K : []).map(k => k.kam).filter(Boolean)
+    .map(c => ({ x0: c.cx - 960 / c.s, x1: c.cx + 960 / c.s, y0: c.cy - 540 / c.s, y1: c.cy + 540 / c.s }));
+  const pkt = [D.start.xy, ...D.stationen.map(x => x.xy)];
+  fenster.push({ x0: Math.min(...pkt.map(q => q[0])) - 900, x1: Math.max(...pkt.map(q => q[0])) + 900,
+                 y0: Math.min(...pkt.map(q => q[1])) - 900, y1: Math.max(...pkt.map(q => q[1])) + 900 });
+  const x0 = Math.min(...fenster.map(r => r.x0)) - 250, x1 = Math.max(...fenster.map(r => r.x1)) + 250;
+  const y0 = Math.min(...fenster.map(r => r.y0)) - 250, y1 = Math.max(...fenster.map(r => r.y1)) + 250;
+  const w = x1 - x0, h = y1 - y0, res = Math.min(1.6, 5000 / Math.max(w, h)), W = Math.round(w * res), H = Math.round(h * res);
+  const px = n => (n / res).toFixed(3);   // Linienbreiten in Bildschirm-Pixeln des Bildes, umgerechnet in Meter
+  const lage = (name, attr) => KA.lagen[name] ? `<path d="${KA.lagen[name]}" ${attr}/>` : "";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x0} ${y0} ${w} ${h}" width="${W}" height="${H}">
+    <rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="${f("--paper")}"/>
+    ${lage("gruen", `fill="${f("--gruen")}"`)}${lage("park", `fill="${f("--park")}"`)}${lage("wasser", `fill="${f("--fluss")}"`)}
+    ${lage("flusslinie", `fill="none" stroke="${f("--fluss")}" stroke-width="${px(4)}"`)}
+    ${lage("gebaeude", `fill="${f("--haus")}" stroke="${f("--haus-rand")}" stroke-width="${px(.8)}"`)}
+    ${lage("weg", `fill="none" stroke="${f("--feld")}" stroke-opacity=".55" stroke-width="${px(1.4)}" stroke-dasharray="${px(6)} ${px(7)}"`)}
+    ${lage("bahn", `fill="none" stroke="${f("--feld")}" stroke-opacity=".6" stroke-width="${px(2)}" stroke-dasharray="${px(10)} ${px(6)}"`)}
+    ${lage("neben", `fill="none" stroke="${f("--strasse-rand")}" stroke-width="${px(6)}" stroke-linecap="round" stroke-linejoin="round"`)}
+    ${lage("neben", `fill="none" stroke="${f("--strasse")}" stroke-width="${px(3)}" stroke-linecap="round" stroke-linejoin="round"`)}
+    ${lage("haupt", `fill="none" stroke="${f("--strasse-rand")}" stroke-width="${px(9)}" stroke-linecap="round" stroke-linejoin="round"`)}
+    ${lage("haupt", `fill="none" stroke="${f("--strasse")}" stroke-width="${px(6)}" stroke-linecap="round" stroke-linejoin="round"`)}</svg>`;
+  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })), img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    if (nr !== rasterNr) return;
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    c.getContext("2d").drawImage(img, 0, 0, W, H);
+    c.toBlob(b => {
+      if (nr !== rasterNr || !b) return;
+      const g = $("#grund"), alt = g.querySelector("image.karte");
+      [...g.children].forEach(e => { if (e.tagName !== "rect") e.remove(); });   // Vektor-Ersatz weg, nur noch das Bild
+      if (alt && alt.dataset.url) URL.revokeObjectURL(alt.dataset.url);
+      const bu = URL.createObjectURL(b);
+      const im = el("image", { class: "karte", href: bu, x: x0, y: y0, width: w, height: h, preserveAspectRatio: "none" }, g);
+      im.dataset.url = bu; D.karteFertig = true;
+    }, "image/png");
+  };
+  img.src = url;
 }
 
 let teamEl = {}, kopfEl = {}, stEl = [], namenEl = [];
@@ -618,6 +689,8 @@ function zeichneKarte(T, kam, modus) {
   // modus: { spuren: "alle" | "keine" | Team, koepfe: bool, bis: Zeit für eine einzelne Spur }
   const s = kam.s, vw = 1920 / s, vh = 1080 / s, vx = kam.cx - vw / 2, vy = kam.cy - vh / 2;
   $("#welt").setAttribute("viewBox", `${vx.toFixed(2)} ${vy.toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}`);
+  // Quellenhinweis neben die Seitenspalte, solange sie zu sehen ist
+  const osm = $("#osm"); if (osm) osm.style.right = (+getComputedStyle($("#seite")).opacity > .05 ? 624 : 24) + "px";
   const sx = p => [(p[0] - vx) * s, (p[1] - vy) * s];
   stEl.forEach(e => { const q = sx(e.xy); e.g.setAttribute("transform", `translate(${q[0].toFixed(1)} ${q[1].toFixed(1)})`); });
   namenEl.forEach(n => { const q = sx(n.xy); n.tx.setAttribute("x", q[0].toFixed(0)); n.tx.setAttribute("y", q[1].toFixed(0)); });
@@ -1022,6 +1095,7 @@ function thema() {
   const jetzt = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
   const neu = jetzt === "dark" ? "light" : "dark"; document.documentElement.dataset.theme = neu;
   try { localStorage.setItem("sj.thema", neu); } catch (e) {}
+  if (window.PRAG_KARTE) grundkarte();
 }
 function schwarz() { const s = $("#schwarz"); s.classList.toggle("an"); if (s.classList.contains("an")) { Z.spielt = false; knopf(); } }
 
@@ -1069,7 +1143,8 @@ window.RB = { zeige: (id, lokal = 0) => { $("#ueber").innerHTML = ""; const i = 
   kapitel: () => K.map(k => ({ id: k.id, dur: k.dur })), zustand: () => ({ phase: Z.phase, i: Z.i, id: K[Z.i] && K[Z.i].id, lokal: Z.lokal, spielt: Z.spielt, haelt: Z.haelt }),
   gesamt, D: () => D };
 const q = new URLSearchParams(location.search);
-if (q.get("thema")) document.documentElement.dataset.theme = q.get("thema");
+if (q.get("thema")) { document.documentElement.dataset.theme = q.get("thema"); if (window.PRAG_KARTE) grundkarte(); }
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (window.PRAG_KARTE && !document.documentElement.dataset.theme) grundkarte(); });
 if (q.get("fotos") === "0") { OPT.fotos = false; kapitelBauen(); }
 vorbereiten();
 if (q.get("k")) RB.zeige(q.get("k"), +(q.get("t") || 0));

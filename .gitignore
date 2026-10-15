@@ -21,3 +21,4 @@ sicherungen/
 .superpowers/
 tools/stresstest-bericht-*.json
 tools/stresstest.token
+tools/rueckblick/*.json
