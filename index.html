@@ -402,6 +402,9 @@ a.btn{text-decoration:none;text-align:center}
 .nav a{color:var(--muted);display:inline-block;padding:10px 8px;min-height:42px}
 .nav a[aria-current="page"]{color:var(--ink);font-weight:600;text-decoration:none}
 .nav span{color:var(--line);align-self:center}
+/* Version unter der Navigation (Ausfallsicherheit): welcher Stand läuft auf diesem Handy, Link bei neuerer Fassung */
+.version{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0 10px;margin-top:2px;font-size:var(--fs-s);color:var(--muted)}
+.version .link{margin-top:0;color:var(--ink)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 /* Tablet hochkant: die Karte lässt Platz zum Wischen, sonst fängt sie jedes Scrollen ab */
 @media (orientation:portrait){#map{height:min(62vh,560px)}}
@@ -941,7 +944,40 @@ const msgBox = ort => {
 // Die Spielleitung öffnet #/admin direkt, Teilnehmende sehen nur, was sie brauchen
 const nav = () => `<div class="nav">${[["#/public", "Anmeldung"], ["#/team", "Teamleitung"]]
   .concat(S.view === "admin" ? [["#/admin", "Spielleitung"]] : [])
-  .map(([h, t]) => `<a href="${h}" ${h === "#/" + S.view ? 'aria-current="page"' : ""}>${t}</a>`).join("<span>|</span>")}</div>`;
+  .map(([h, t]) => `<a href="${h}" ${h === "#/" + S.view ? 'aria-current="page"' : ""}>${t}</a>`).join("<span>|</span>")}</div>` + versionZeile();
+
+/* ---------- Version (Ausfallsicherheit, Abschnitt 4) ---------- */
+// Die Version ist der Last-Modified-Kopf der geladenen Seite: GitHub Pages setzt ihn beim Deployment für alle Dateien
+// auf die Zeit der Veröffentlichung, und eine Seite aus dem Cache des Service Workers trägt ihren Kopf mit. Kein Build,
+// nichts von Hand zu pflegen. document.lastModified hat die Form "MM/DD/YYYY hh:mm:ss" (lokal), darum per Regex.
+// Fehlt der Kopf, liefert der Browser die aktuelle Zeit: liegt der Wert weniger als 5 s vor dem Laden, keine Zeile.
+const VERSION = (() => {
+  const m = /^(\d\d)\/(\d\d)\/(\d{4}) (\d\d):(\d\d):(\d\d)$/.exec(document.lastModified || "");
+  if (!m) return null;
+  const t = new Date(+m[3], m[1] - 1, +m[2], +m[4], +m[5], +m[6]).getTime();
+  return Date.now() - t < 5000 ? null : t;
+})();
+const versionText = t => { const d = new Date(t), z = n => String(n).padStart(2, "0");
+  return `Version ${z(d.getDate())}.${z(d.getMonth() + 1)}., ${z(d.getHours())}:${z(d.getMinutes())}`; };
+const neuLink = () => `<button class="link" data-act="neu-laden">Neue Version laden</button>`;
+function versionZeile() {
+  return VERSION ? `<div class="version"><span class="nw">${versionText(VERSION)}</span>${S.neueVersion ? neuLink() : ""}</div>` : "";
+}
+// Liegt eine neuere Fassung online? Nur fragen, nie von selbst neu laden: Neuladen kostet auf iOS die Kompass-Freigabe
+// und brächte Getipptes durcheinander. Beim Zurückkehren in die App und höchstens alle 10 Minuten aus dem 10-s-Takt.
+let versionGefragt = Date.now();   // eben geladen: die nächste Frage aus dem Takt erst in 10 Minuten
+async function versionPruefen(sofort) {
+  if (!VERSION || S.neueVersion || document.hidden || (!sofort && Date.now() - versionGefragt < 600000)) return;
+  versionGefragt = Date.now();
+  try {
+    const r = await fetch(location.pathname, { method: "HEAD", cache: "no-store" });
+    const lm = Date.parse(r.headers.get("Last-Modified") || "");
+    if (!r.ok || !(lm > VERSION + 1000)) return;
+    S.neueVersion = true;
+    // ohne Neuzeichnen: die Karte der Spielleitung und Getipptes bleiben, wie sie sind
+    document.querySelectorAll(".version").forEach(v => { if (!v.querySelector("[data-act=neu-laden]")) v.insertAdjacentHTML("beforeend", neuLink()); });
+  } catch { /* still: beim nächsten Mal */ }
+}
 
 /* ---------- Setup-Ansicht, falls nicht konfiguriert ---------- */
 function viewSetup() {
@@ -2647,6 +2683,7 @@ const ACT = {
       S.msg = { type: "ok", text: `${vorname(name)} leitet jetzt Team ${team ? team.name : ""} und tippt auf dem eigenen Handy auf „Teamleitung“. Station und Rätsel siehst du auf der Anmeldeseite mit.` };
     } catch (e) { S.msg = { type: "err", ort: "abgeben", text: e.message || "Etwas ist schiefgelaufen." }; }
   },
+  "neu-laden"() { location.reload(); return false; },
   "t-gps"() { startGps(); },
   "t-tab"(d) { S.team.tab = d.tab; },
   "t-hilfe"() { S.team.hilfe = true; },
@@ -3797,6 +3834,7 @@ setInterval(() => {
 }, 1000);
 setInterval(() => {
   if (document.hidden || (fingerSeit && Date.now() - fingerSeit < 3000)) return;
+  versionPruefen(false);
   const busyTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
   if (S.view === "admin" && S.admin.pin) {
     rpc("admin_state", { p_pin: S.admin.pin }).then(s => {
@@ -3858,6 +3896,7 @@ document.addEventListener("visibilitychange", () => {
   wegSeit = 0;
   S.wachHalten = null;
   if (cfg.url && cfg.key) refresh();
+  versionPruefen(true);
 });
 mitLinkPruefen();
 refresh();
