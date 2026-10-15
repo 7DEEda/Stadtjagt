@@ -1831,11 +1831,12 @@ function ekVorgaenger() {
 const ekPunkt = (mitte, k, m) => { const w = EK[k].winkel * Math.PI / 180;
   return [mitte[0] + m * Math.cos(w) / 111320, mitte[1] + m * Math.sin(w) / (111320 * Math.cos(mitte[0] * Math.PI / 180))]; };
 async function stationsKarte() {
-  const el = $("#emap"); if (!el) { ekarte = null; return; }
+  const el = $("#emap"); if (!el) { if (ekarte) karteAbbauen(ekarte.map); ekarte = null; return; }
   try { await loadLeaflet(); } catch (e) { el.innerHTML = `<p class="msg err">${esc(e.message)}</p>`; return; }
   if (!$("#emap") || $("#emap") !== el) return;   // inzwischen neu gezeichnet oder geschlossen
   if (ekarte && el.contains(ekarte.map.getContainer())) { ekZeichnen(); return; }
   const vor = ekVorgaenger(), mitte = ekMitte() || [vor.lat, vor.lng];
+  if (ekarte) karteAbbauen(ekarte.map);   // wie drawMap: die alte Karte abbauen (Befund 9)
   const map2 = L.map(el, { zoomControl: true, dragging: !matchMedia("(pointer: coarse)").matches }).setView(mitte, 16);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map2);
   const K = ekarte = { map: map2, kreise: {}, griffe: {}, schilder: {}, zieht: null };
@@ -2272,6 +2273,10 @@ function loadLeaflet() {
   return leafletReady;
 }
 let kartenPunkte = [];
+// Eine Leaflet-Karte abbauen, deren #map verworfen ist: Listener und Layer weg (Review 15.10.2026, Befund 9).
+// Leaflet 1.9: läuft noch eine Zoom-Animation, fiele ihr Ende (setTimeout 250 ms) über die abgebaute Karte
+// ("_leaflet_pos" von undefined); mit _animatingZoom = false kehrt _onZoomTransitionEnd sofort zurück.
+function karteAbbauen(m) { m._animatingZoom = false; m.remove(); }
 const LUECKE_M = 50, LUECKE_MS = 90000;   // ab hier gilt ein Stück der Route als Lücke ohne GPS-Signal
 async function drawMap(first) {
   const el = $("#map"); if (!el || !S.admin.state) return;
@@ -2280,6 +2285,9 @@ async function drawMap(first) {
   if (kartenRoute && kartenRoute !== route) { kartenSicht = null; first = true; }   // andere Stadt: Ausschnitt verwerfen, neu einpassen
   kartenRoute = route;
   if (!map || !el.contains(map.getContainer())) {
+    // Die alte Karte hängt am verworfenen #map: abbauen, sonst bleiben ihre Listener (Fenstergröße) und Layer liegen
+    // (Review 15.10.2026, Befund 9). remove() schließt ein offenes Popup; das neue soll es wieder öffnen.
+    if (map) { const auf = A.popupAuf; karteAbbauen(map); A.popupAuf = auf; }
     map = L.map(el, { zoomControl: true }).setView(kartenSicht ? kartenSicht.c : [50.0875, 14.4180], kartenSicht ? kartenSicht.z : 14);   // Prag, Altstadt
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
@@ -2367,7 +2375,7 @@ async function drawMap(first) {
       layers.teams[t.id].setZIndexOffset(gewaehlt ? 800 : 500);
     } else {
       layers.teams[t.id] = L.marker(at, { icon, zIndexOffset: gewaehlt ? 800 : 500 }).bindPopup(popup).addTo(map);
-      layers.teams[t.id].on("click", () => { S.admin.sel = t.id; S.admin.zuSel = true; A.popupAuf = t.id; render(); });   // nur beim Anlegen, sonst doppelt
+      layers.teams[t.id].on("click", () => { S.admin.sel = t.id; S.admin.zuSel = true; A.popupAuf = t.id; auswahlZeigen(); });   // nur beim Anlegen, sonst doppelt
       layers.teams[t.id].on("popupclose", () => { if (A.popupAuf === t.id) A.popupAuf = null; });
     }
     if (A.popupAuf === t.id && !layers.teams[t.id].isPopupOpen()) layers.teams[t.id].openPopup();   // nach dem Neuzeichnen wieder offen
@@ -2751,7 +2759,11 @@ const ACT = {
     setTimeout(() => map && map.invalidateSize(), 80);
     return false;
   },
-  "a-sel"(d) { S.admin.popupAuf = null; if (d.zu) { S.admin.sel = d.id; S.admin.zuSel = true; } else S.admin.sel = S.admin.sel === d.id ? null : d.id; },   // aus "Zuletzt": immer wählen und die Zeile ins Bild holen
+  "a-sel"(d) {
+    S.admin.popupAuf = null; if (map) map.closePopup();   // wie früher beim Neubau der Karte: ein offenes Popup geht zu
+    if (d.zu) { S.admin.sel = d.id; S.admin.zuSel = true; } else S.admin.sel = S.admin.sel === d.id ? null : d.id;   // aus "Zuletzt": immer wählen und die Zeile ins Bild holen
+    auswahlZeigen(); return false;
+  },
   "a-probleme"() {
     const erst = problemListe(S.admin.state)[0];
     if (erst && S.admin.tab === "zeit") { stopPlay(); S.admin.cursor = null; }   // wie "a-tab": Zeitachse bleibt in ihrem Reiter
@@ -3657,7 +3669,15 @@ function render() {
   querPruefen();
   if (S.view === "admin" && S.admin.tab === "stations" && S.admin.edit) stationsKarte();
   // Erst ganz am Ende: Karte und Leiste haben dann ihre Höhe, sonst bleibt die Zeile halb unter dem Rand
-  if (S.admin.zuSel) { S.admin.zuSel = false; const z = $("#teamfeld .row.sel"); if (z) z.scrollIntoView({ block: "nearest" }); }
+  zuSelZeigen();
+}
+function zuSelZeigen() { if (S.admin.zuSel) { S.admin.zuSel = false; const z = $("#teamfeld .row.sel"); if (z) z.scrollIntoView({ block: "nearest" }); } }
+// Auswahl eines Teams: im Reiter live nur Liste und Karte hervorheben, ohne die Karte neu zu bauen (Befund 9);
+// sonst (Reiter Auslosen, offener Dialog, Auswahlfeld im Fokus) wie bisher alles neu zeichnen
+function auswahlZeigen() {
+  const el = $("#map");
+  if (S.admin.tab === "live" && $("#teamfeld") && el && map && el.contains(map.getContainer()) && teamlisteNachziehen()) { drawMap(false); zuSelZeigen(); }
+  else render();
 }
 // Zeitachse: Schieber zieht den Zeitpunkt, ganz rechts heißt "jetzt"
 document.addEventListener("input", e => {

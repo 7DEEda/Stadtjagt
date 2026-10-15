@@ -212,6 +212,11 @@ with sync_playwright() as pw:
         pg.evaluate("window.__alteKarte = map; render()")
         pg.wait_for_function("map !== window.__alteKarte && document.querySelector('#map .leaflet-marker-icon')", timeout=25000)
         pruef(pg.evaluate("Object.keys(window.__alteKarte._layers).length === 0 && window.__alteKarte._containerId === undefined"), "render(): alte Karte mit remove() abgebaut")
+        # Abbau mitten in einer Zoom-Animation: deren Ende darf nicht über die abgebaute Karte fallen
+        n = len(err)
+        pg.evaluate("map.setZoom(map.getZoom() + 1)"); pg.wait_for_function("map._animatingZoom === true", timeout=3000)
+        pg.evaluate("render()"); pg.wait_for_timeout(900)
+        pruef(len(err) == n, f"Abbau während Zoom-Animation ohne Seitenfehler {err[n:n + 1]}")
         pg.evaluate("window.__karte = map")
         pg.click("#teamfeld .row:has-text('Otter') .row-main"); pg.wait_for_timeout(800)
         pruef(pg.evaluate("map === window.__karte") and pg.locator("#teamfeld .row.sel").count() == 1 and pg.locator(".mapbadge.team.sel").count() == 1,
@@ -221,8 +226,17 @@ with sync_playwright() as pw:
         pg.evaluate("layers.teams[S.admin.state.teams.find(x => x.name === 'Igel').id].fire('click')"); pg.wait_for_timeout(800)
         pruef(pg.evaluate("map === window.__karte") and "Igel" in pg.locator("#teamfeld .row.sel").inner_text() and pg.locator(".leaflet-popup").count() == 1,
               "Marker-Klick: wählt ohne Neubau, Popup offen")
+        pg.evaluate("window.__alteKarte = map; render()")
+        pg.wait_for_function("map !== window.__alteKarte && document.querySelector('#map .leaflet-marker-icon')", timeout=25000); pg.wait_for_timeout(500)
+        pruef(pg.locator(".leaflet-popup").count() == 1 and pg.evaluate("S.admin.popupAuf") is not None, "Neubau nach Marker-Klick: Popup wieder offen")
         pg.click("[data-act=a-probleme]"); pg.wait_for_timeout(800)
         pruef("Delfin" in pg.locator("#teamfeld .row.sel").inner_text(), "Zähler im Kopf wählt das erste Problem")
+        pg.close()
+        pg = neu(b, "admin-station-karte", breit=True)
+        pg.wait_for_selector("#emap .leaflet-marker-icon", timeout=25000)
+        pg.evaluate("window.__alteKarte = ekarte.map; render()")
+        pg.wait_for_function("ekarte && ekarte.map !== window.__alteKarte", timeout=25000)
+        pruef(pg.evaluate("Object.keys(window.__alteKarte._layers).length === 0"), "Station bearbeiten: alte Karte mit remove() abgebaut")
         pg.close()
 
     if an(10):
