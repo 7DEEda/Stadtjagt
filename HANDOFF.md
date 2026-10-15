@@ -1917,8 +1917,8 @@ Gebaut auf Branch `umbau-weiterentwicklung`, am 09.10.2026 nach `master` gemerge
 
 ## Code-Review 15.10.2026 (Nachtrag 34, lokal, nicht gepusht)
 
-Review über 3597609..fb33189, zehn Befunde, alle behoben (Auftrag und Bericht:
-`.superpowers/sdd/review-2026-10-15/`). Prüfskript `tools/pruefstand/review1510.py`.
+Review über 3597609..fb33189, zehn Befunde, alle behoben (Auftrag:
+`.superpowers/sdd/review-2026-10-15/brief.md`). Prüfskript `tools/pruefstand/review1510.py`.
 
 - Spielleitung: Teamliste und Zähler "N Teams brauchen dich" ziehen sich im
   10-s-Abruf nach, ohne die Karte neu zu bauen (`teamlisteNachziehen`);
