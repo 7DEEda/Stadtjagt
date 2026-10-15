@@ -3612,6 +3612,9 @@ function render() {
   if (document.body.classList.contains("spiel") && (window.scrollY || document.documentElement.scrollTop)) window.scrollTo(0, 0);
   // Das Hilfe-Blatt gehört zur Hülle: ohne Hülle bleibt es nicht offen
   if (!$(".ph")) S.team.hilfe = false;
+  // Hochhalten nur, solange sein Fenster gezeichnet ist (etwa nicht mehr nach Spielende ohne Hülle): sonst bliebe
+  // body.fest stehen und die Seite ließe sich nicht mehr rollen (Review 15.10.2026, Befund 6)
+  if (S.hoch && !$(".hochhalten")) S.hoch = false;
   const inh2 = $("#inhalt");
   if (inh2 && S.team.scroll && S.team.scrollTab === S.team.tab) inh2.scrollTop = S.team.scroll;
   S.team.gezeichnet = inh2 ? S.team.tab : null;
