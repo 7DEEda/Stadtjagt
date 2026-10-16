@@ -39,6 +39,7 @@ etwa `timeout 300 python tools/pruefstand/waechter.py`.
 | `mappe.py` | Notfallmappe: Inhalt, hell im dunklen Design, Druck, Handy (Nachtrag 35) |
 | `funkloch.py` | Eingaben ohne Netz, Abgleich, Serverfehler wie Funkloch; Schalter `window.__netz` in `mock.js` (Nachtrag 35) |
 | `offline.py` | Service Worker: Start ohne Server, letzter Stand, Netz zuerst, Notausgang; baut eigenen Ordner mit mock.js inline (Nachtrag 35) |
+| `rueckblick.py` | Rückblick-Show: Texte der App, Sperren und PIN, Laden und Vorbereiten, Kapitel, Aufbereiten, Tasten, Schutz vor dem Neuzeichnen, ohne Netz, Fotoauswahl, Bühne (Schrift, Rand, Striche, Bildschirmfotos `shots/rueckblick-*.png`), Probe (Nachtrag 36). Szenarien `rueckblick*` in `mock.js`; mit Gruppennummern aufrufbar (`rueckblick.py 6 7`), gesamt etwa 8 Minuten, also in zwei Läufen |
 
 Chrome 155 hängt auf dem Arbeitsrechner beim `browser.close()` nach einer Seite mit Leaflet-Karte (manchmal auch
 ohne). Die neuen Skripte drucken OK oder FEHLT vorher und enden über `abschluss.py`, das nur die eigenen

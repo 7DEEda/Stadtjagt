@@ -166,6 +166,21 @@
     "mitglied-beendet": { welt: "finished", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 4 } },
     // Spiel beendet, Handy ohne Namen: nur Rangliste, keine Teamsuche, keine Hilfe-Knöpfe
     "fremd-beendet": { welt: "finished", view: "public", fuchs: { solved: 4 } },
+    // Rückblick-Show (rueckblick.py): beendetes Spiel mit Fotos in Hoch- und Querformat, Delfin ganz ohne Check-in, ein fehlendes Foto,
+    // ein Foto der Teststation (route "test", darf nie geladen werden)
+    "rueckblick": { welt: "finished", view: "rueckblick", ss: { "sj.pin": "4711" }, fuchs: { solved: 4 }, selfie: {}, hochfotos: true,
+      stand: { Delfin: [0, false, null] }, fehltFoto: ["Pinguin:3"], testfoto: true },
+    "rueckblick-ohne-pin": { welt: "finished", view: "rueckblick", fuchs: { solved: 4 }, selfie: {} },
+    "rueckblick-laeuft": { welt: "running", view: "rueckblick", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 } },
+    "rueckblick-test": { welt: "finished", view: "rueckblick", ss: { "sj.pin": "4711" }, fuchs: { solved: 4 }, selfie: {}, testMode: true },
+    "rueckblick-probe": { welt: "finished", view: "rueckblick/probe" },
+    "rueckblick-ohne-fotos": { welt: "finished", view: "rueckblick", ss: { "sj.pin": "4711" }, fuchs: { solved: 4 } },
+    "rueckblick-station3-leer": { welt: "finished", view: "rueckblick", ss: { "sj.pin": "4711" }, fuchs: { solved: 4 }, selfie: {}, keinFoto: [3] },
+    "admin-beendet": { welt: "finished", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 4 }, selfie: {} },
+    "admin-fotos-heute": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 3 }, selfie: {}, loeschDatum: "heute",
+      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { wait: 400 }] },
+    "admin-fotos-spaet": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 3 }, selfie: {}, loeschDatum: "2099-01-01",
+      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { wait: 400 }] },
     "admin-login": { welt: "running", view: "admin" },
     "admin-karte": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, fertig: ["Adler"], settle: 3500 },
     // Weiterentwicklung Task 7: Delfin ohne Standort (Standardstand), Igel mit 7 min altem GPS, Otter mit 2 Fehlversuchen (aus dem Standardstand)
@@ -227,7 +242,7 @@
     t.solved = 0; t.checkedIn = false; t.place = null; t.finishedAt = null; t.events = []; t.points = []; t.position = null; t.lastActivity = null;
     if (!WELT.startedAt) return;
     const tab = C.welt === "finished" ? STAND_ENDE : STAND_LAUF;
-    let [solved, anStation, lag] = tab[t.name] || [0, false, 0];
+    let [solved, anStation, lag] = (C.stand && C.stand[t.name]) || tab[t.name] || [0, false, 0];
     if (t.name === "Fuchs") { solved = FU.solved; anStation = FU.checkedIn; }
     const platz = fertig.indexOf(t.name) + 1;
     if (platz) { solved = 5; t.place = platz; t.finishedAt = WELT.startedAt + (C.welt === "finished" ? 95 + platz * 11 : 50 + platz * 3) * MIN;
@@ -282,9 +297,10 @@
 
   /* ---------- Gruppenselfie (Nachtrag 25) ---------- */
   // gemaltes Gruppenfoto als JPEG, damit Album und Galerie ohne Kamera etwas zeigen
-  function beispielFoto(ton, voll) {
+  function beispielFoto(ton, voll, hoch) {
     const c = document.createElement("canvas"); c.width = voll ? 640 : 160; c.height = voll ? 480 : 120;
-    const g = c.getContext("2d"), k = c.width / 640;
+    if (hoch) { const w = c.width; c.width = c.height; c.height = w; }   // Hochformat (Rückblick prüft beide Formate)
+    const g = c.getContext("2d"), k = (hoch ? c.height : c.width) / 640;
     const v = g.createLinearGradient(0, 0, c.width, c.height); v.addColorStop(0, `hsl(${ton},45%,62%)`); v.addColorStop(1, `hsl(${ton + 40},50%,38%)`);
     g.fillStyle = v; g.fillRect(0, 0, c.width, c.height);
     for (let i = 0; i < 6; i++) { const x = (90 + i * 92) * k, y = (250 + (i % 2) * 40) * k;
@@ -292,16 +308,17 @@
       g.fillStyle = `hsl(${ton + i * 50},40%,35%)`; g.fillRect(x - 60 * k, y + 50 * k, 120 * k, 200 * k); }
     return c.toDataURL("image/jpeg", .8).split(",")[1];
   }
-  WELT.selfieOn = !!C.selfie; WELT.photosDeleteOn = C.selfie ? "2026-10-31" : null;
+  WELT.selfieOn = !!C.selfie; WELT.photosDeleteOn = C.selfie ? (C.loeschDatum === "heute" ? new Date().toISOString().slice(0, 10) : C.loeschDatum || "2026-10-31") : null;
+  const ohneFoto = (name, pos) => (C.keinFoto || []).includes(pos) || (C.fehltFoto || []).includes(name + ":" + pos);
   // C.selfie.offen: die zuletzt gelöste Station des Fuchs-Teams wartet noch auf ihr Foto
   const SELFIE_DA = {}, FOTOS = {};
   for (let i = 1; i <= FU.solved; i++) {
     const offen = C.selfie && C.selfie.offen && i === FU.solved;
     SELFIE_DA[i] = !offen;
-    if (C.selfie && !offen) FOTOS[i] = { foto: beispielFoto(i * 70, true), thumb: beispielFoto(i * 70, false), at: NOW - (FU.solved - i + 1) * 12 * MIN };
+    if (C.selfie && !offen && !ohneFoto("Fuchs", i)) FOTOS[i] = { foto: beispielFoto(i * 70, true), thumb: beispielFoto(i * 70, false), at: NOW - (FU.solved - i + 1) * 12 * MIN };
   }
   const ANDERE_FOTOS = [];
-  if (C.selfie) TEAMS.forEach(t => { if (t !== FUCHS) for (let i = 1; i <= t.solved; i++) ANDERE_FOTOS.push({ t, position: i, at: NOW - (t.solved - i + 1) * 9 * MIN }); });
+  if (C.selfie) TEAMS.forEach(t => { if (t !== FUCHS) for (let i = 1; i <= t.solved; i++) if (!ohneFoto(t.name, i)) ANDERE_FOTOS.push({ t, position: i, at: NOW - (t.solved - i + 1) * 9 * MIN }); });
   const fotoListe = () => Object.keys(FOTOS).map(p => ({ teamId: FUCHS.id, teamName: FUCHS.name, position: +p, stationName: STATIONEN[p - 1].name, takenAt: iso(FOTOS[p].at) }))
     .concat(ANDERE_FOTOS.map(f => ({ teamId: f.t.id, teamName: f.t.name, position: f.position, stationName: STATIONEN[f.position - 1].name, takenAt: iso(f.at) })))
     .concat(C.testfoto ? [{ teamId: FUCHS.id, teamName: FUCHS.name, position: 1, stationName: TESTSTATION.name, takenAt: iso(NOW - 5 * MIN), route: "test" }] : [])
@@ -503,7 +520,10 @@
       Object.assign(s, { name: a.p_name, lat: a.p_lat, lng: a.p_lng, radiusM: a.p_radius, revealStartM: a.p_reveal_start, revealClearM: a.p_reveal_clear }); return adminState(); },
     admin_set_start: a => { pin(a); window.__START = a; WELT[a.p_route === "test" ? "testStart" : "start"] = { name: a.p_name, lat: a.p_lat, lng: a.p_lng }; return adminState(); },
     admin_photos: a => { pin(a); return fotoListe(); },
-    admin_photo: a => { pin(a); window.__FOTO_ROUTE = (window.__FOTO_ROUTE || []).concat([a.p_route || "echt"]); const t = TEAMS.find(x => x.id === a.p_team); return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full) }; },
+    admin_photo: a => { pin(a); window.__FOTO_ROUTE = (window.__FOTO_ROUTE || []).concat([a.p_route || "echt"]); const t = TEAMS.find(x => x.id === a.p_team);
+      (window.__FOTO_ARGS = window.__FOTO_ARGS || []).push({ n: t.name, p: a.p_position, full: !!a.p_full });
+      if (window.__fotoFehler && window.__fotoFehler(a, t)) fehler("Foto nicht erreichbar.");
+      return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full, C.hochfotos && (t.name.length + a.p_position) % 3 === 0) }; },
     admin_set_selfie: a => { pin(a); WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
     admin_delete_photos: a => { pin(a); ANDERE_FOTOS.length = 0; Object.keys(FOTOS).forEach(k => delete FOTOS[k]); return adminState(); },
     admin_state: a => { pin(a); return adminState(); },
@@ -618,7 +638,7 @@
   async function bis(pruef, max = 8000) { const t0 = Date.now(); while (!pruef()) { if (Date.now() - t0 > max) return false; await warte(50); } return true; }
   async function lauf() {
     const app = () => document.getElementById("app");
-    await bis(() => app() && app().children.length && !/Lade …/.test(app().textContent));
+    await bis(() => document.getElementById("rueckblick") || (app() && app().children.length && !/Lade …/.test(app().textContent)));
     await warte(250);
     for (const s of C.steps || []) {
       try {

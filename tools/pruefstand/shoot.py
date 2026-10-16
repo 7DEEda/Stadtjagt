@@ -24,6 +24,10 @@ def bauen():
     shutil.copy(REPO / "kompass-waechter.js", HIER / "kompass-waechter.js")
     shutil.copytree(REPO / "hintergrund", HIER / "hintergrund", dirs_exist_ok=True)
     shutil.copytree(REPO / "vendor", HIER / "vendor", dirs_exist_ok=True)   # QR-Generator für den Mitlese-Link
+    # Rückblick-Show: Skript, Stylesheet und Grundkarte werden nur mit ihr nachgeladen, liegen aber neben app.html
+    for n in ("rueckblick.js", "rueckblick.css", "rueckblick-karte.js"):
+        if (REPO / n).exists():
+            shutil.copy(REPO / n, HIER / n)
 
 
 UA_IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
