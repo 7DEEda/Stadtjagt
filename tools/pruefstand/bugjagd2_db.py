@@ -154,6 +154,11 @@ end $probe$;
 
 
 def main() -> None:
+    # Historisch: Probelauf für Nachtrag 32. Seit Nachtrag 35 (eingaben_wiederholen) gibt es submit_answer mit p_position;
+    # dieser Lauf würde die alte Fassung daneben anlegen und an der Mehrdeutigkeit scheitern. Dann nicht mehr ausführen.
+    spalte = sql.ausfuehren("select 1 as da from information_schema.columns where table_name = 'progress' and column_name = 'last_wrong'", read_only=True)
+    if spalte:
+        sys.exit("Nachtrag 35 ist eingespielt: dieser Probelauf (Nachtrag 32) gilt nicht mehr. Aktuell: rechte_db.py, eingaben_db.py.")
     migration = "" if "--ohne" in sys.argv else MIGRATION.read_text(encoding="utf-8")
     assert "$mig$" not in migration and "$probe$" not in migration
     liste = lambda xs: ", ".join("'" + x + "'" for x in xs)  # noqa: E731

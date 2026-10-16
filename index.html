@@ -294,7 +294,7 @@ th{font:600 var(--fs-s) var(--body);color:var(--muted)}
 .teamliste .list-kopf{display:flex;align-items:baseline;gap:10px;padding:12px 16px 10px;border-bottom:1px solid var(--line)}
 .teamliste .list-kopf h3{margin:0}
 .teamliste .tliste{list-style:none;margin:0;padding:0}
-.teamliste .grp{position:sticky;top:0;z-index:1;padding:8px 16px;font:700 var(--fs-s)/1.3 var(--body);color:var(--muted);background:var(--paper);border-bottom:1px solid var(--line)}
+.teamliste .grp{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;gap:12px;padding:8px 16px;font:700 var(--fs-s)/1.3 var(--body);color:var(--muted);background:var(--paper);border-bottom:1px solid var(--line)}
 .teamliste .grp.err{color:var(--err);background:var(--err-bg)}
 .teamliste .row{border-bottom:1px solid var(--line);background:var(--card);transition:background-color .16s cubic-bezier(.32,.72,.4,1)}
 .teamliste .row.p-fehler{box-shadow:inset 4px 0 0 var(--err)}
@@ -2061,7 +2061,7 @@ function teamlisteHTML(st) {
   const rest = alle.filter(x => !x.p).sort((a, b) => (a.t.place || 99) - (b.t.place || 99) || b.t.solved - a.t.solved || a.t.name.localeCompare(b.t.name, "de"));
   const zeilen = l => l.map(x => teamZeile(x.t, x.i, st)).join("");
   return `<div class="list-kopf"><h3>Teams</h3></div><ol class="tliste">
-    ${proben.length ? `<li class="grp err">Braucht dich · ${proben.length}</li>${zeilen(proben)}<li class="grp">Alle anderen · ${rest.length}</li>` : `<li class="grp">Alle Teams · ${rest.length}</li>`}${zeilen(rest)}</ol>`;
+    ${proben.length ? `<li class="grp err"><span>Braucht dich</span><span class="gz">${proben.length}</span></li>${zeilen(proben)}<li class="grp"><span>Alle anderen</span><span class="gz">${rest.length}</span></li>` : `<li class="grp"><span>Alle Teams</span><span class="gz">${rest.length}</span></li>`}${zeilen(rest)}</ol>`;
 }
 // Zähler im Kopf: springt zum obersten Problem
 function problemKnopfHTML(st) {

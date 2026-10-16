@@ -170,6 +170,11 @@ with sync_playwright() as pw:
     pruef(BASIS in h and BASIS + "config.js" in h and BASIS + "kompass-waechter.js" in h, f"Hülle im Cache: ./, config.js, kompass-waechter.js ({h})")
     pruef(all(BASIS + "vendor/fonts/" + n in d for n in SCHRIFTEN), f"alle {len(SCHRIFTEN)} Schriften im Cache")
     pruef(all(BASIS + f"hintergrund/{x}.svg" in d for x in "abc"), "Hintergründe a, b, c im Cache")
+    # Schlussreview 16.10.2026: Leaflet (Karte der Spielleitung) und QR-Bibliothek (Mitlese-Link) liegen schon nach dem
+    # ersten Besuch im Cache, nicht erst nach der ersten Benutzung
+    vend = ["vendor/qrcode.js"] + sorted("vendor/leaflet-1.9.4/" + str(q.relative_to(REPO / "vendor" / "leaflet-1.9.4")).replace(chr(92), "/")
+                                         for q in (REPO / "vendor" / "leaflet-1.9.4").rglob("*") if q.is_file() and q.name != "LICENSE")
+    pruef(all(BASIS + v in d for v in vend), f"Leaflet und QR-Bibliothek im Cache ({len([v for v in vend if BASIS + v in d])} von {len(vend)})")
     pruef("fremd-test" in c, "fremder Cache desselben Origins bleibt")
     pruef("sj-alt-0" not in c, "alte eigene Fassung (sj-*) ist aufgeräumt")
     pruef(not any("andere.html" in u for u in h + d), "andere Seite im Ordner nicht im Cache")
