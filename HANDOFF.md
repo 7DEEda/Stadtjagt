@@ -2124,3 +2124,17 @@ Datum des Änderungsstopps. Eventdatum steht im HANDOFF noch nicht.
 
 **Weitere offene Punkte:** Positionen aus 4 älteren Geräte-Test-Läufen löschen
 (Frage an Friedrich offen); 404 beim ersten Prüfstand-Bild abstellen.
+
+## Pausenstand 16.10.2026, vormittags (zum Fortsetzen)
+
+Lokal auf master, NICHT gepusht (20 Commits): Ausfallsicherheit (Nachtrag 35), Rückblick-Show (Nachtrag 36),
+Rückblick-Mockup-Änderungen. Beide Teile gebaut und gereviewt (keine wichtigen Befunde). Nicht eingespielt:
+`20261015090000_namenssuche_grenze.sql` (Probelauf grün, Fixes vom 15.10.) und `20261016090000_eingaben_wiederholen.sql`.
+Reihenfolge: erst beide Migrationen einspielen (`python tools/sql.py <datei>`), dann pushen.
+
+Offen aus dem Schlussreview: (1) `rechte_db.py` prüft jetzt alle drei Migrationen, erledigt, 21 Prüfungen grün;
+(2) `umbau.py` und `selfie.py` laufen auf diesem Rechner bis zum Schluss ohne FEHLT, hängen aber beim Schließen
+von Chrome (bekannt, kein Code-Fehler); (3) `sw.js`: Rückblick-Karte und QR-Bibliothek erst nach erster Benutzung
+im Cache, Vorabladen in `install` ergänzen. Dann: `bugjagd2_db.py` an das neue `submit_answer(text,text,int)`
+anpassen, Mittelpunkte in `index.html` entfernen (Gruppenköpfe „Braucht dich · 3“), Regel „kein Mittelpunkt“ in
+`Claude/CLAUDE.md` (wartet auf Friedrichs Ja).

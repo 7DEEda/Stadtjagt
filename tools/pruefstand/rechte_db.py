@@ -15,7 +15,11 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 import sql  # noqa: E402
 
-MIGRATION = sql.REPO / "supabase" / "migrations" / "20261004090000_current_station_sperren.sql"
+# Die Migrationen, die diese Datenbank noch nicht (oder zuletzt neu) bekommen hat; der Probelauf spielt sie nacheinander ein.
+# Nach dem Einspielen einer Migration, die Funktionen neu anlegt, hier ergänzen (SPIEL.md §9).
+MIGRATIONEN = ["20261004090000_current_station_sperren.sql", "20261015090000_namenssuche_grenze.sql",
+               "20261016090000_eingaben_wiederholen.sql"]
+MIGRATION = [sql.REPO / "supabase" / "migrations" / n for n in MIGRATIONEN]
 
 # Interne Hilfsfunktionen: dürfen weder anon noch authenticated ausführen
 INTERN = ["norm(text)", "dist_m(double precision,double precision,double precision,double precision)",
@@ -34,9 +38,18 @@ begin
       v_n := v_n + 1;
     end loop;
   end loop;
-  -- die Spielfunktionen selbst bleiben für anon offen
-  if not has_function_privilege('anon', 'team_state(text)', 'execute') then
-    raise exception 'PROBE FEHLT: team_state für anon gesperrt'; end if;
+  -- die Spielfunktionen selbst bleiben für anon offen (jede Überladung, die es gibt)
+  foreach f in array array['team_state', 'lookup_participant', 'submit_answer', 'check_in', 'register_participant', 'submit_final'] loop
+    if not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = f) then
+      raise exception 'PROBE FEHLT: Funktion % gibt es nicht', f; end if;
+    if exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = f
+               and not has_function_privilege('anon', p.oid, 'execute')) then
+      raise exception 'PROBE FEHLT: % für anon gesperrt', f; end if;
+    v_n := v_n + 1;
+  end loop;
+  -- submit_answer gibt es nur noch mit p_position (alte Fassung weg, sonst Mehrdeutigkeit bei PostgREST)
+  if (select count(*) from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'submit_answer') <> 1 then
+    raise exception 'PROBE FEHLT: submit_answer nicht genau einmal'; end if;
   v_n := v_n + 1;
   raise exception 'PROBELAUF_OK: % Prüfungen bestanden, alles zurückgenommen', v_n;
 end $probe$;
@@ -45,7 +58,7 @@ end $probe$;
 
 def main() -> None:
     # ohne Argument mit Migration; "--ohne" zeigt den Stand der Datenbank ohne Migration (rot)
-    migration = "" if "--ohne" in sys.argv else MIGRATION.read_text(encoding="utf-8")
+    migration = "" if "--ohne" in sys.argv else "\n".join(m.read_text(encoding="utf-8") for m in MIGRATION)
     assert "$mig$" not in migration and "$probe$" not in migration
     intern = ", ".join("'" + f + "'" for f in INTERN)
     probe = PROBE.replace("__INTERN__", intern).replace(
