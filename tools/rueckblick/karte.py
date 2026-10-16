@@ -10,13 +10,13 @@ Liest `prag-karte.json` neben diesem Skript (groß, nicht im Repo; neu laden mit
          https://overpass-api.de/api/interpreter -o prag-karte.json
 Schreibt eine JS-Datei mit `window.PRAG_KARTE = { quelle, lagen: { name: "<SVG-Pfad>" } }`, ein Pfad je
 Ebene, Koordinaten in Metern im System der Show: x = (lng - LNG0) * KX, y = (LAT0 - lat) * KY (wie `P()` in
-mockups/rueckblick/index.html). Farben setzt die Seite über ihre Token (hell und dunkel), nicht diese Datei.
+rueckblick.js). Farben setzt die Seite über ihre Token (hell und dunkel), nicht diese Datei.
 Ohne Netz nutzbar, keine Kartenkacheln. Daten: © OpenStreetMap-Mitwirkende, ODbL; die Show nennt das.
 """
 import json, math, pathlib, sys
 
 HIER = pathlib.Path(__file__).resolve().parent
-ZIEL = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else HIER.parent.parent / "mockups" / "rueckblick" / "prag-karte.js"
+ZIEL = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else HIER.parent.parent / "rueckblick-karte.js"
 LAT0, LNG0, KX, KY = 50.1000, 14.4235, 71520, 111200
 
 # Ebenen in Zeichenreihenfolge, mit Vereinfachung (Meter)

@@ -1,0 +1,252 @@
+/* Rückblick-Show: Bühne, Seitenleiste, Szenen, Steuerleiste. Wird zusammen mit rueckblick.js nur beim Öffnen von
+   #/rueckblick geladen, damit die Handys im Spiel nichts davon tragen. Alle Regeln stehen unter #rueckblick, die
+   Token --park, --strasse, --fluss usw. gelten nur dort (index.html kennt --park und --strasse mit anderen Werten
+   für die Hintergründe). Gestaltung nach design-system/pages/rueckblick.md. */
+#rueckblick{
+  --park:#DFEAD6; --strasse:#FFFFFF; --strasse-rand:#D3DECF; --fluss:#C9DDEA; --flaeche:#E6EBE2;
+  --haus:#E2E8DD; --haus-rand:#D6DED0; --gruen:#E6EEDF;
+  --emoji:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;
+  /* Bühnenstufen, gemessen auf der 1920er Bühne; bei 1280x720 zwei Drittel davon */
+  --bs-xs:30px; --bs-s:36px; --bs-m:48px; --bs-l:72px; --bs-xl:120px; --bs-uhr:168px; --bs-titel:200px;
+  --kurve:cubic-bezier(.32,.72,.4,1);
+  --schatten:0 12px 32px rgba(17,17,17,.28), 0 2px 6px rgba(17,17,17,.12);
+  position:fixed;inset:0;z-index:1000;overflow:hidden;background:var(--paper);color:var(--ink);
+  font:500 16px/normal var(--body);text-align:left;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) #rueckblick{
+    --park:#13261F; --strasse:#22362F; --strasse-rand:#1B2D27; --fluss:#16303F; --flaeche:#14231E;
+    --haus:#152520; --haus-rand:#1A2C26; --gruen:#122219;
+  }
+}
+:root[data-theme="dark"] #rueckblick{
+  --park:#13261F; --strasse:#22362F; --strasse-rand:#1B2D27; --fluss:#16303F; --flaeche:#14231E;
+  --haus:#152520; --haus-rand:#1A2C26; --gruen:#122219;
+}
+#rueckblick *{box-sizing:border-box}
+#rueckblick.still{cursor:none}
+#rueckblick button{font-family:inherit}
+#rueckblick input{width:auto;padding:0;border:0;background:none;min-height:0;border-radius:0}
+#rueckblick label{margin:0}
+#rueckblick h1,#rueckblick h2,#rueckblick p{margin:0}
+#rueckblick table td{border:0;padding:9px 0}
+#rueckblick .nw{white-space:nowrap}
+#rueckblick .tab{font-variant-numeric:tabular-nums}
+#rueckblick .emo{font-family:var(--emoji);font-style:normal}
+/* ---------- Bühne: 1920x1080, skaliert auf jedes 16:9-Fenster ---------- */
+#rueckblick #rb-buehne{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:var(--paper)}
+#rueckblick #rb-welt,#rueckblick #rb-schirm{position:absolute;inset:0;width:1920px;height:1080px;display:block}
+#rueckblick #rb-buehne[data-art=titel] #rb-stationen,#rueckblick #rb-buehne[data-art=titel] #rb-namen,#rueckblick #rb-buehne[data-art=platz] #rb-stationen,#rueckblick #rb-buehne[data-art=platz] #rb-namen,#rueckblick #rb-buehne[data-art=vorbereiten] #rb-stationen{display:none}
+#rueckblick #rb-buehne[data-art=platz] #rb-grund{opacity:.32}
+#rueckblick #rb-buehne[data-art=platz] #rb-spuren{opacity:.5}
+#rueckblick #rb-buehne[data-art=platz] .radius{display:none}
+#rueckblick #rb-welt .hoehe{fill:none;stroke:var(--contour);stroke-width:1.6;vector-effect:non-scaling-stroke}
+#rueckblick #rb-welt .park{fill:var(--park)}
+#rueckblick #rb-welt .gruen{fill:var(--gruen)}
+#rueckblick #rb-welt .wasser{fill:var(--fluss)}
+#rueckblick #rb-welt .gebaeude{fill:var(--haus);stroke:var(--haus-rand);stroke-width:.8;vector-effect:non-scaling-stroke}
+#rueckblick #rb-welt .bahn{fill:none;stroke:var(--feld);stroke-width:2;stroke-dasharray:10 6;opacity:.6;vector-effect:non-scaling-stroke}
+#rueckblick #rb-welt .flusslinie{fill:none;stroke:var(--fluss);stroke-width:4;vector-effect:non-scaling-stroke}
+#rueckblick .osm{position:absolute;right:24px;bottom:calc(var(--unten, 0px) + 10px);z-index:4;font:500 var(--bs-xs) var(--body);color:var(--muted);pointer-events:none}
+#rueckblick #rb-welt .flaeche{fill:var(--flaeche)}
+#rueckblick #rb-welt .fluss{fill:none;stroke:var(--fluss);stroke-linecap:round;stroke-linejoin:round}
+#rueckblick #rb-welt .strasse-r{fill:none;stroke:var(--strasse-rand);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+#rueckblick #rb-welt .strasse{fill:none;stroke:var(--strasse);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+#rueckblick #rb-welt .neben{fill:none;stroke:var(--strasse);stroke-width:3;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#rueckblick #rb-welt .weg{fill:none;stroke:var(--feld);stroke-width:1.6;stroke-dasharray:6 7;opacity:.55;vector-effect:non-scaling-stroke}
+#rueckblick #rb-welt .radius{fill:var(--flag);fill-opacity:.09;stroke:var(--flag);stroke-width:2;stroke-opacity:.7;vector-effect:non-scaling-stroke}
+#rueckblick #rb-welt .rand{fill:none;stroke:var(--card);stroke-width:12;stroke-linecap:round;stroke-linejoin:round;opacity:.85;vector-effect:non-scaling-stroke}
+#rueckblick #rb-welt .spur{fill:none;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+#rueckblick #rb-welt .luecke{fill:none;stroke-width:4;stroke-dasharray:10 10;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#rueckblick #rb-schirm text{font-family:var(--head);font-weight:700}
+#rueckblick #rb-schirm .ortsname{font:600 var(--bs-xs) var(--body);font-style:italic;fill:var(--muted);paint-order:stroke;stroke:var(--paper);stroke-width:7px;stroke-linejoin:round}
+#rueckblick #rb-schirm .flussname{font:600 var(--bs-xs) var(--body);font-style:italic;fill:var(--water);paint-order:stroke;stroke:var(--paper);stroke-width:7px;stroke-linejoin:round}
+#rueckblick #rb-schirm .stnr{font-size:32px;fill:var(--flag-ink)}
+#rueckblick #rb-schirm .stbadge{fill:var(--flag);stroke:var(--card);stroke-width:4}
+#rueckblick #rb-schirm .startbadge{fill:var(--ink);stroke:var(--card);stroke-width:4}
+#rueckblick #rb-schirm .haus{fill:none;stroke:var(--paper);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#rueckblick #rb-schirm .kopf circle.k{stroke:var(--card);stroke-width:5}
+#rueckblick #rb-schirm .kopf circle.ohne{fill:none;stroke:var(--ink);stroke-width:2.5;stroke-dasharray:6 5}
+#rueckblick #rb-schirm .kopf text{font-family:var(--emoji);font-size:34px;font-weight:400}
+#rueckblick #rb-schirm .puls{fill:none;stroke-width:5}
+#rueckblick #rb-schirm .lueckenhinweis{font:500 var(--bs-xs) var(--body);fill:var(--muted)}
+
+/* ---------- Seitenleiste der Kartenkapitel ---------- */
+#rueckblick #rb-seite{position:absolute;top:0;right:0;bottom:0;width:600px;background:var(--card);border-left:1px solid var(--line);padding:56px 56px 48px;display:flex;flex-direction:column;opacity:0}
+#rueckblick .s-kopf{display:flex;align-items:center;gap:16px;font:600 var(--bs-s) var(--head);color:var(--muted)}
+#rueckblick .s-kopf svg{width:52px;height:52px;color:var(--ink)}
+#rueckblick .s-kapitel{margin-top:44px;font:600 var(--bs-s) var(--head);color:var(--muted)}
+#rueckblick .s-name{font:700 var(--bs-l)/1.02 var(--head);margin-top:6px;min-height:148px}
+#rueckblick .s-uhr{font:700 var(--bs-uhr)/1 var(--head);margin-top:20px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+#rueckblick .s-seit{font:500 var(--bs-s) var(--body);color:var(--muted);margin-top:4px}
+#rueckblick .s-liste{margin-top:40px;flex:1;display:flex;flex-direction:column;gap:18px;overflow:hidden}
+#rueckblick .ev{display:grid;grid-template-columns:64px 1fr auto;column-gap:16px;align-items:center}
+#rueckblick .ev .b{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font:32px/1 var(--emoji);border:4px solid var(--card);box-shadow:0 0 0 1px var(--line)}
+#rueckblick .ev .n{font:600 var(--bs-s)/1.1 var(--head)}
+#rueckblick .ev .w{font:500 var(--bs-xs)/1.15 var(--body);color:var(--muted);grid-column:2}
+#rueckblick .ev .z{font:600 var(--bs-xs) var(--head);color:var(--muted);grid-row:1;grid-column:3;font-variant-numeric:tabular-nums}
+#rueckblick .legende{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-top:-8px}
+#rueckblick .legende div{display:flex;align-items:center;gap:12px;font:600 var(--bs-xs) var(--head);white-space:nowrap}
+#rueckblick .legende i{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font:30px/1 var(--emoji);flex:none}
+#rueckblick .s-route{display:flex;align-items:center;margin-top:24px}
+#rueckblick .s-route b{width:52px;height:52px;border-radius:50%;border:4px solid var(--feld);display:grid;place-items:center;font:700 var(--bs-xs) var(--head);color:var(--muted);background:var(--card);flex:none}
+#rueckblick .s-route b.da{background:var(--flag);border-color:var(--flag);color:var(--flag-ink)}
+#rueckblick .s-route b.jetzt{border-color:var(--flag);color:var(--ink);box-shadow:0 0 0 5px color-mix(in srgb, var(--flag) 25%, transparent)}
+#rueckblick .s-route i{flex:1;height:4px;background:var(--line)}
+#rueckblick .s-route i.da{background:var(--flag)}
+
+/* ---------- Szenen über der Karte ---------- */
+#rueckblick .szene{position:absolute;inset:0;opacity:0}
+#rueckblick .schleier{position:absolute;inset:0;background:color-mix(in srgb, var(--paper) 72%, transparent)}
+#rueckblick .schleier.mittel{background:color-mix(in srgb, var(--paper) 82%, transparent)}
+#rueckblick .schleier.dicht{background:color-mix(in srgb, var(--paper) 93%, transparent)}
+
+/* Vorspann */
+#rueckblick .titel{position:absolute;left:0;right:0;top:250px;text-align:center}
+#rueckblick .titel .logo{width:150px;height:150px;margin:0 auto;color:var(--ink)}
+#rueckblick .titel h1{font:700 var(--bs-titel)/.95 var(--head);margin:28px 0 0;letter-spacing:-.01em}
+#rueckblick .titel .ort{font:700 var(--bs-xl)/1 var(--head);color:var(--flag-text);margin-top:4px}
+/* Teile mit Abstand statt Trennzeichen (kein Mittelpunkt, Entscheidung Friedrich) */
+#rueckblick .titel .fakten{font:500 var(--bs-m) var(--body);color:var(--muted);margin-top:44px;display:flex;flex-wrap:wrap;justify-content:center;column-gap:56px;row-gap:8px}
+#rueckblick .titel .fakten span{white-space:nowrap}
+
+/* Fotos einer Station */
+#rueckblick .f-kopf{position:absolute;left:80px;right:80px;top:64px;display:flex;align-items:center;gap:28px}
+#rueckblick .f-kopf .nr{width:104px;height:104px;border-radius:50%;background:var(--flag);color:var(--flag-ink);display:grid;place-items:center;font:700 64px var(--head);flex:none}
+#rueckblick .f-kopf h2{font:700 var(--bs-l)/1 var(--head);margin:0}
+#rueckblick .f-kopf .sub{font:500 var(--bs-s) var(--body);color:var(--muted);margin-top:6px}
+#rueckblick .f-kopf .zuerst{margin-left:auto;text-align:right}
+#rueckblick .f-kopf .zuerst small{display:block;font:500 var(--bs-xs) var(--body);color:var(--muted)}
+#rueckblick .f-kopf .zuerst b{font:700 var(--bs-m) var(--head);white-space:nowrap}
+#rueckblick .kachel{position:absolute;left:0;top:0;width:540px;height:720px;transform-origin:0 0;border-radius:8px;overflow:hidden;background:var(--card);will-change:transform}
+#rueckblick .kachel img{width:100%;height:100%;object-fit:cover;display:block}
+#rueckblick .kachel.gross{box-shadow:var(--schatten)}
+/* Name und Uhrzeit untereinander: auch schmale Hochformat-Kacheln stoßen nicht an den Nachbarn */
+#rueckblick .unterschrift{position:absolute;display:grid;grid-template-columns:14px auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:10px;row-gap:6px;align-items:center;font:600 var(--bs-xs)/1 var(--head);white-space:nowrap}
+#rueckblick .unterschrift i{width:14px;height:100%;min-height:62px;border-radius:3px;grid-row:1 / 3}
+#rueckblick .unterschrift .nm{overflow:hidden;text-overflow:ellipsis}
+#rueckblick .unterschrift .zt{grid-column:2 / 4;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+#rueckblick .spot{position:absolute;left:50%;top:948px;transform:translateX(-50%);z-index:6;padding:10px 28px;border-radius:12px;background:var(--card);box-shadow:var(--schatten);font:700 var(--bs-m) var(--head);white-space:nowrap}
+#rueckblick .spot .zt{color:var(--muted);font-weight:500;margin-left:16px;font-variant-numeric:tabular-nums}
+
+/* Finale: ein Koffer-Platz */
+#rueckblick .p-spalte{position:absolute;top:72px;bottom:72px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#rueckblick .p-titel{font:700 var(--bs-xl)/1 var(--head);display:flex;align-items:center;gap:28px;white-space:nowrap}
+#rueckblick .p-titel .emo{font-size:120px}
+#rueckblick .p-lbl{font:500 var(--bs-s) var(--body);color:var(--muted);margin-top:56px}
+#rueckblick .walzen{display:flex;align-items:center;gap:14px;margin-top:16px}
+#rueckblick .walze{width:128px;height:176px;border-radius:8px;background:var(--ink);overflow:hidden;position:relative}
+#rueckblick .walze .band{position:absolute;left:0;right:0;top:0}
+#rueckblick .walze .band div{height:176px;display:grid;place-items:center;font:700 136px/1 var(--head);color:var(--paper);font-variant-numeric:tabular-nums}
+#rueckblick .walze::after{content:"";position:absolute;inset:0;background:linear-gradient(var(--ink),transparent 22%,transparent 78%,var(--ink));opacity:.55}
+#rueckblick .walzen .dp{font:700 110px/1 var(--head);color:var(--muted);margin:0 2px}
+#rueckblick .p-team{display:flex;align-items:center;gap:36px;margin-top:64px}
+#rueckblick .p-team .b{width:184px;height:184px;border-radius:50%;display:grid;place-items:center;font:112px/1 var(--emoji);border:8px solid var(--card);box-shadow:0 0 0 1px var(--line);flex:none}
+#rueckblick .p-team .n{font:700 var(--bs-xl)/1 var(--head)}
+#rueckblick .p-team .m{font:500 var(--bs-xs)/1.35 var(--body);color:var(--muted);margin-top:12px;max-width:820px}
+#rueckblick .p-foto{position:absolute;left:1380px;top:250px;width:420px;height:560px;border-radius:8px;overflow:hidden;background:var(--card);border:10px solid var(--card);box-shadow:var(--schatten)}
+#rueckblick .p-foto img{width:100%;height:100%;object-fit:cover;display:block;border-radius:4px}
+#rueckblick .p-foto small{position:absolute;left:0;right:0;bottom:0;padding:14px 16px;font:600 var(--bs-xs) var(--head);color:#fff;background:linear-gradient(transparent,rgba(15,27,24,.75));white-space:nowrap}
+
+/* Alle Teams */
+#rueckblick .a-kopf{position:absolute;left:80px;top:56px;font:700 var(--bs-l)/1 var(--head)}
+#rueckblick .a-netz{position:absolute;left:80px;right:80px;top:176px;bottom:64px;display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+#rueckblick .a-karte{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 26px 20px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+#rueckblick .a-karte::before{content:"";position:absolute;left:0;right:0;top:0;height:10px;background:var(--c)}
+#rueckblick .a-karte .z1{display:flex;justify-content:space-between;align-items:baseline;font:600 var(--bs-xs) var(--head);color:var(--muted);margin-top:4px}
+#rueckblick .a-karte .z1 .pl{font:700 var(--bs-s) var(--head);color:var(--ink);white-space:nowrap}
+#rueckblick .a-karte .z1 .pl .emo{font-size:40px;vertical-align:-4px;margin-right:6px}
+#rueckblick .a-karte .z2{display:flex;align-items:center;gap:16px}
+#rueckblick .a-karte .z2 i{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;font:44px/1 var(--emoji);flex:none}
+#rueckblick .a-karte .z2 b{font:700 var(--bs-m)/1 var(--head)}
+#rueckblick .a-karte .z3{font:500 var(--bs-xs) var(--body);color:var(--muted);white-space:nowrap}
+
+/* Abspann */
+/* Abspann: alle Gruppenfotos laufen in zufälliger Reihenfolge wie ein Filmabspann durch */
+#rueckblick .rolle{position:absolute;left:0;top:0;width:1920px;will-change:transform}
+#rueckblick .rollfenster{position:absolute;inset:0 0 var(--unten, 0px) 0;overflow:hidden}
+/* weiches Ein- und Auslaufen über zwei stehende Verläufe statt einer Maske (die kostete bei jedem Bild Rechenzeit) */
+#rueckblick .rollfenster::before,#rueckblick .rollfenster::after{content:"";position:absolute;left:0;right:0;height:110px;z-index:1;pointer-events:none}
+#rueckblick .rollfenster::before{top:0;background:linear-gradient(color-mix(in srgb, var(--paper) 90%, transparent),transparent)}
+#rueckblick .rollfenster::after{bottom:0;background:linear-gradient(transparent,color-mix(in srgb, var(--paper) 90%, transparent))}
+#rueckblick .rolle .rk{position:absolute;border-radius:8px;overflow:hidden;background:var(--card);box-shadow:0 2px 10px rgba(17,17,17,.18)}
+#rueckblick .rolle .rk img{width:100%;height:100%;object-fit:cover;display:block}
+#rueckblick .rolle .ru{position:absolute;display:flex;align-items:center;gap:8px;font:600 var(--bs-xs)/1 var(--head);white-space:nowrap;overflow:hidden}
+#rueckblick .rolle .ru small{font:500 var(--bs-xs) var(--body);color:var(--muted);margin-left:auto}
+#rueckblick .ab-karte{position:absolute;z-index:3;left:64px;bottom:calc(64px + var(--unten, 0px));background:var(--card);border:1px solid var(--line);border-radius:14px;padding:36px 44px}
+#rueckblick .ab-karte h2{font:700 var(--bs-l)/1 var(--head);margin:0}
+#rueckblick .ab-karte p{font:500 var(--bs-s) var(--body);color:var(--muted);margin:12px 0 0;white-space:nowrap}
+
+/* Vorbereiten (vor dem Start, auch auf dem Beamer sichtbar) */
+/* --unten: Höhe der festen Leiste unten, in Bühnen-Pixel umgerechnet (skalieren()); die Panels bleiben darüber */
+#rueckblick .v-panel{position:absolute;left:50%;top:calc((1080px - var(--unten, 0px)) / 2);transform:translate(-50%,-50%) scale(var(--vs, 1));width:1120px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:56px 64px 52px}
+#rueckblick .v-panel h1{font:700 var(--bs-l)/1 var(--head);margin:0;display:flex;align-items:center;gap:20px}
+#rueckblick .v-panel h1 svg{width:64px;height:64px}
+#rueckblick .v-liste{margin:40px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:18px}
+#rueckblick .v-liste li{display:grid;grid-template-columns:48px 1fr;column-gap:16px;font:500 var(--bs-s)/1.25 var(--body)}
+#rueckblick .v-liste li svg{width:40px;height:40px;margin-top:2px}
+#rueckblick .v-liste li small{display:block;grid-column:2;font-size:var(--bs-xs);color:var(--muted);margin-top:2px}
+#rueckblick .v-liste .ok svg{color:var(--ok)}
+#rueckblick .v-liste .warn svg{color:var(--warn)}
+#rueckblick .v-opt{display:flex;flex-direction:column;gap:6px;margin-top:36px;border-top:1px solid var(--line);padding-top:28px}
+#rueckblick .v-opt label{display:flex;align-items:center;gap:18px;font:500 var(--bs-s) var(--body);min-height:64px;cursor:pointer}
+#rueckblick .v-opt input{width:36px;height:36px;accent-color:var(--flag);margin:0;flex:none}
+#rueckblick .v-opt .rb-link{font:600 var(--bs-xs) var(--body);color:var(--muted);text-decoration:underline;background:none;border:0;padding:12px 0;cursor:pointer;margin-left:54px;align-self:flex-start;min-height:56px}
+#rueckblick .v-fuss{display:flex;align-items:center;gap:32px;margin-top:32px}
+#rueckblick .v-fuss .start{flex:none;border:0;border-radius:10px;background:var(--flag);color:var(--flag-ink);font:700 var(--bs-m) var(--head);padding:0 48px;min-height:96px;cursor:pointer}
+#rueckblick .v-fuss .start:focus-visible{outline:4px solid var(--ink);outline-offset:4px}
+#rueckblick .v-fuss .dauer{font:500 var(--bs-s) var(--body);color:var(--muted)}
+#rueckblick .v-fuss .dauer b{color:var(--ink);font-family:var(--head);white-space:nowrap}
+#rueckblick .v-tasten{margin-top:28px;font:500 var(--bs-xs) var(--body);color:var(--muted);display:flex;flex-wrap:wrap;column-gap:40px;row-gap:10px}
+#rueckblick .v-tasten span{white-space:nowrap}
+#rueckblick .v-tasten kbd,#rueckblick .rb-hilfe kbd{font:600 1em var(--head);border:1.5px solid var(--feld);border-radius:6px;padding:0 10px;color:var(--ink);white-space:nowrap}
+
+/* Fotos durchsehen */
+#rueckblick .d-panel{position:absolute;inset:48px 48px calc(48px + var(--unten, 0px));background:var(--card);border:1px solid var(--line);border-radius:14px;padding:40px 48px;display:flex;flex-direction:column}
+#rueckblick .d-panel h2{font:700 var(--bs-m) var(--head);margin:0}
+#rueckblick .d-panel p{font:500 var(--bs-xs) var(--body);color:var(--muted);margin:8px 0 0}
+#rueckblick .d-reihen{flex:1;display:flex;flex-direction:column;gap:12px;margin-top:20px;overflow:hidden}
+#rueckblick .d-reihe{display:flex;align-items:center;gap:10px}
+#rueckblick .d-reihe .nr{width:52px;height:52px;border-radius:50%;background:var(--flag);color:var(--flag-ink);display:grid;place-items:center;font:700 var(--bs-xs) var(--head);flex:none;margin-right:10px}
+#rueckblick .d-bild{width:90px;height:120px;border-radius:8px;overflow:hidden;position:relative;border:0;padding:0;cursor:pointer;background:var(--paper);flex:none}
+#rueckblick .d-bild img{width:100%;height:100%;object-fit:cover;display:block}
+#rueckblick .d-bild span{position:absolute;left:0;right:0;bottom:0;font:30px/1.3 var(--emoji);background:color-mix(in srgb, var(--card) 85%, transparent)}
+#rueckblick .d-bild.aus img{opacity:.22}
+#rueckblick .d-bild.aus::after{content:"aus";position:absolute;inset:0;display:grid;place-items:center;font:700 var(--bs-xs) var(--head);color:var(--ink)}
+#rueckblick .d-panel .fertig{align-self:flex-end;border:0;border-radius:10px;background:var(--flag);color:var(--flag-ink);font:700 var(--bs-s) var(--head);padding:0 40px;min-height:72px;cursor:pointer;margin-top:16px}
+
+/* Tastenhilfe */
+#rueckblick .rb-hilfe{position:absolute;left:50%;top:120px;transform:translateX(-50%);width:1080px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:44px 56px;box-shadow:var(--schatten)}
+#rueckblick .rb-hilfe h2{font:700 var(--bs-m) var(--head);margin:0 0 20px}
+#rueckblick .rb-hilfe table{border-collapse:collapse;width:100%;font:500 var(--bs-s) var(--body)}
+#rueckblick .rb-hilfe td{padding:9px 0;vertical-align:top}
+#rueckblick .rb-hilfe td:first-child{width:380px;white-space:nowrap}
+
+/* ---------- Steuerleiste (Bildschirm-Pixel, nicht skaliert; nur mit Maus) ---------- */
+#rueckblick #rb-leiste{position:fixed;left:0;right:0;bottom:0;height:72px;display:flex;align-items:center;gap:8px;padding:0 16px;background:var(--card);border-top:1px solid var(--line);font:600 15px var(--head);color:var(--ink);transition:opacity .16s var(--kurve),transform .16s var(--kurve);z-index:5}
+#rueckblick #rb-leiste.weg{opacity:0;transform:translateY(8px);pointer-events:none}
+#rueckblick #rb-leiste button{min-height:48px;min-width:48px;border-radius:10px;border:1.5px solid var(--feld);background:transparent;color:var(--ink);font:700 15px var(--head);padding:0 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+#rueckblick #rb-leiste button.haupt{background:var(--flag);border-color:var(--flag);color:var(--flag-ink);min-width:116px;justify-content:center}
+#rueckblick #rb-leiste svg{width:18px;height:18px;fill:currentColor}
+#rueckblick #rb-leiste .spur{flex:1;display:flex;gap:3px;height:12px;margin:0 10px;min-width:120px}
+#rueckblick #rb-leiste .spur span{flex:var(--d);background:var(--line);border-radius:2px;position:relative;overflow:hidden;cursor:pointer}
+#rueckblick #rb-leiste .spur span i{position:absolute;inset:0 auto 0 0;width:var(--p,0%);background:var(--flag)}
+#rueckblick #rb-leiste .kap{min-width:180px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rueckblick #rb-leiste .zeit{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+#rueckblick #rb-schwarz{position:fixed;inset:0;background:#000;z-index:9;display:none}
+#rueckblick #rb-schwarz.an{display:block}
+@media (max-width:900px){ #rueckblick #rb-leiste .kap,#rueckblick #rb-leiste .zeit{display:none} }
+@media (prefers-reduced-motion:reduce){ #rueckblick #rb-leiste{transition:none} }
+/* hinter den Flächen vor der Show stehen keine Ortsnamen */
+#rueckblick #rb-buehne[data-art=vorbereiten] #rb-namen{display:none}
+
+/* ---------- PIN, Sperre, Laden (gleiche Fläche wie Vorbereiten) ---------- */
+#rueckblick .v-panel .rb-fehler{margin-top:28px;font:600 var(--bs-s) var(--body);color:var(--ink);background:var(--warn-bg);border-left:8px solid var(--warn);padding:16px 24px}
+#rueckblick .v-pin{display:flex;align-items:center;gap:24px;margin-top:40px}
+#rueckblick .v-pin input{width:420px;height:96px;border:2px solid var(--feld);border-radius:10px;padding:0 24px;background:var(--paper);color:var(--ink);font:500 var(--bs-m) var(--body)}
+#rueckblick .v-pin input:focus-visible{outline:4px solid var(--ink);outline-offset:4px}
+#rueckblick .v-pin .start{flex:none;border:0;border-radius:10px;background:var(--flag);color:var(--flag-ink);font:700 var(--bs-m) var(--head);padding:0 48px;min-height:96px;cursor:pointer}
+#rueckblick .v-zurueck{display:inline-block;margin-top:32px;font:600 var(--bs-xs) var(--body);color:var(--muted);text-decoration:underline;min-height:56px;padding:12px 0}
+#rueckblick .v-liste .nochmal{margin-left:20px;border:2px solid var(--feld);border-radius:10px;background:transparent;color:var(--ink);font:600 var(--bs-xs) var(--body);padding:0 24px;min-height:64px;cursor:pointer;vertical-align:middle}
+#rueckblick .v-balken{height:14px;border-radius:7px;background:var(--line);margin-top:36px;overflow:hidden}
+#rueckblick .v-balken i{display:block;height:100%;background:var(--flag);width:0}
