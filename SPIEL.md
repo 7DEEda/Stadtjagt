@@ -317,6 +317,8 @@ kompass-test.html          leitet auf geraete-test.html weiter
 hintergrund/a.svg, b.svg, c.svg  Hintergrund-Varianten, lädt render() nach; klassisch steht im HTML
 sw.js                      Service Worker, App startet ohne Netz aus dem Cache (§15)
 vendor/                    Leaflet 1.9.4, Schriften (woff2, OFL), QR-Generator; nichts kommt von einem CDN
+rueckblick.js, .css        Rückblick-Show (§16), wird nur beim Öffnen von #/rueckblick nachgeladen
+rueckblick-karte.js        Grundkarte von Prag aus OpenStreetMap für die Show (tools/rueckblick/karte.py)
 supabase/migrations/*.sql  Schema und Spiellogik, in Dateinamen-Reihenfolge
 supabase/seed-*.sql        Stationen der Prager Route, 100 Testpersonen
 tools/sql.py               SQL über die Supabase Management-API ausführen
@@ -800,3 +802,79 @@ mit den Änderungen aus der Gegenprüfung (gehen der Spezifikation vor).
   (Abgleich), Push und Neuladen (Version wechselt), kein
   Installieren-Hinweis, Notfallmappe am iPad als PDF; Notausgang einmal auf
   iPhone und Android proben.
+
+## 16. Rückblick-Show (Nachtrag 36, 16.10.2026)
+
+Spezifikation `docs/superpowers/specs/2026-10-15-rueckblick-show-design.md` mit
+den Nachträgen vom 16.10. und der Gegenprüfung (gehen der Spezifikation vor);
+Vorlage `mockups/rueckblick/index.html`; Gestaltung `design-system/pages/rueckblick.md`.
+Nach dem Spielende zeigt ein Beamer (16:9) in 3 bis 5 Minuten die Wege aller
+Teams als Zeitraffer, die Gruppenselfies, die Koffer-Plätze rückwärts und alle
+Teams; Abspann ist eine Fotorolle. Keine neue RPC, keine Migration.
+
+- **Dateien:** `rueckblick.js` (eine Funktion, nichts global außer
+  `RueckblickShow` und der Prüfhilfe `RB`), `rueckblick.css` (alle Regeln unter
+  `#rueckblick`, Token `--park`, `--strasse`, `--fluss` usw. und die Bühnenstufen
+  `--bs-*` gelten nur dort; `index.html` kennt `--park`/`--strasse` mit anderen
+  Werten für die Hintergründe) und `rueckblick-karte.js` (1,8 MB,
+  `window.PRAG_KARTE`). Alles lädt `rueckblickLaden()` in `index.html` erst beim
+  Öffnen, mit `?v=` aus `VERSION` (Last-Modified der Seite): GitHub Pages
+  schickt `max-age=600`, sonst träfe eine neue `index.html` bis zu 10 min auf ein
+  altes `rueckblick.js`. Zusätzlich vergleicht `host.api` (index.html,
+  `RUECKBLICK_API`) mit `API` (rueckblick.js); bei Abweichung meldet die Show
+  "Seite und Rückblick sind aus verschiedenen Fassungen" und startet nicht. Der
+  Service Worker lässt die Dateien durch (kein respondWith).
+- **Route:** `#/rueckblick` (PIN aus `sj.pin` oder eigenes PIN-Feld),
+  `#/rueckblick/probe` (Beispieldaten, keine Abrufe). Knopf "Rückblick" im
+  Admin-Kopf und unter der Zeitachse bei `finished` (`a-rueckblick`).
+- **Schutz vor dem Neuzeichnen:** Die Bühne liegt in einem eigenen Container
+  `#rueckblick` am `body`, `#app` ist solange `inert`. `render()` und `refresh()`
+  kehren bei `S.view` mit Präfix `rueckblick` sofort zurück (ohne
+  `gpsWiederStarten()`, ohne `wachHaltenPruefen()`); gefährlich waren nicht der
+  10-s-Takt (der tut dort nichts), sondern `visibilitychange` (Alt-Tab am
+  Beamer-Laptop), `hashchange` und der Klick-Handler für `[data-act]`. Die Knöpfe
+  der Show tragen kein `data-act`. `hashchange` auf eine andere Ansicht ruft
+  `RueckblickShow.beenden()` (Blob-URLs frei, Listener weg, Wake Lock frei).
+- **Laden (`laden()`):** `admin_state` (Sperre: nicht `finished` oder kein
+  `startedAt` = "Der Rückblick startet nach dem Spielende."; `testMode` =
+  Sperre), `admin_tracks` ohne `p_since`, `admin_photos` (nur `route = echt`),
+  je Foto `admin_photo(p_full = true)` drei gleichzeitig, zweimal voll, dann
+  Vorschau, sonst weg ("3 Fotos nicht geladen", "Erneut versuchen"). Blob-URL,
+  `img.decode()`, Seitenverhältnis aus `naturalWidth/Height`. "Alles geladen,
+  die Show läuft jetzt auch ohne Netz" erst, wenn zusätzlich alle Schriftschnitte
+  der Bühne per `document.fonts.load` mit dem Mustertext "Holešovice Výstaviště
+  Letná Křižík" geladen sind (unicode-range lädt Glyphen sonst erst beim ersten
+  Gebrauch, ohne Netz käme mitten in der Show die Ersatzschrift; die Schriften
+  kommen aus `vendor/fonts`, §15) und die Grundkarte gerastert ist. Fehlt die
+  Karte, bleibt Papier mit Höhenlinien und die Zeile "Grundkarte nicht geladen";
+  fehlt eine Schrift, kommt statt "Alles geladen" eine Warnung.
+- **Aufbereiten (`aufbereiten()`, reine Funktion):** GPS-Sprungfilter nur für
+  einzelne Ausreißer (ein Punkt, der zu beiden Nachbarn springt, während die
+  Nachbarn zueinander passen), sonst verwürfe ein Vergleich mit dem letzten
+  behaltenen Punkt nach einer Tram- oder Taxifahrt jeden weiteren Punkt.
+  Kapitelgrenzen: Hälfte der Teams mit Fortschritt (Teams ganz ohne Check-in
+  zählen nicht mit), mindestens 2 min nach der vorigen Grenze, nie hinter
+  `finishedAt`, monoton. Ein Team ganz ohne Check-in steht im Ring am Start, in
+  "Alle Teams" "0 von 5 Stationen". Fotokapitel nur bei vorhandenen Fotos.
+- **Ausgenommene Fotos** ("Fotos durchsehen") stehen als `teamId:position` (nie
+  Bilddaten) im `sessionStorage` (`sj.rb.aus`) und überleben ein Neuladen; es
+  zählen nur Schlüssel, zu denen es ein Foto gibt. Fotos nie in `localStorage`.
+- **Texte der App (vor dem ersten Selfie live):** Anmeldung und Album "Sehen
+  können es euer Team, die Spielleitung und beim Abendessen alle im Rückblick",
+  "werden alle Fotos gelöscht" statt "löschen wir", Selfie-Schritt, Reiter Fotos,
+  Standort-Zeile "Euer Weg erscheint beim Abendessen im Rückblick." Im Reiter
+  Fotos steht bei `selfieOn` und einem Löschdatum von heute oder früher (UTC wie
+  `current_date` in `admin_state`/`team_state`) sofort die Warnung "Ein Datum
+  nach dem Abendessen wählen, sonst fehlen die Fotos im Rückblick."; ein
+  Datum am Eventtag löscht sonst schon während des Spiels.
+- **Ablauf:** Rückblick erst nach dem Spiel; "Standortdaten löschen"
+  (`admin_clear_positions`) erst nach der Show, danach die Fotos. Vorbereiten
+  und "Fotos durchsehen" am Laptop-Bildschirm, bevor der Beamer gespiegelt wird.
+  Der Rückblick ändert `index.html` (Route, Knopf, Texte) und wird darum vor dem
+  Änderungsstopp (HANDOFF, Ablauf am Eventtag) ausgeliefert.
+- **Prüfen:** `tools/pruefstand/rueckblick.py` (zwölf Gruppen, Szenarien
+  `rueckblick*`, `admin-beendet`, `admin-fotos-heute`, `admin-fotos-spaet` in
+  `mock.js`; Schalter `window.__fotoFehler`, `__FOTO_ARGS`). `shoot.bauen()`
+  kopiert `rueckblick.js`, `.css` und die Karte neben `app.html`. Am Gerät: einmal
+  `#/rueckblick/probe` auf dem Beamer des Restaurants, Lesbarkeit aus der letzten
+  Reihe, Klicker.

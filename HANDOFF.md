@@ -146,6 +146,8 @@ sw.js                           Service Worker: App startet ohne Netz aus dem Ca
 vendor/leaflet-1.9.4/           Leaflet mit LICENSE (BSD-2), nur für die Karte der Spielleitung (Nachtrag 35)
 vendor/fonts/                   Barlow, Barlow Semi Condensed, JetBrains Mono, woff2, OFL.txt (Nachtrag 35)
 vendor/qrcode.js                QR-Code für den Mitlese-Link
+rueckblick.js, rueckblick.css   Rückblick-Show, nur beim Öffnen von #/rueckblick geladen (Nachtrag 36)
+rueckblick-karte.js             Grundkarte von Prag (OSM) für die Show, erzeugt von tools/rueckblick/karte.py
 tools/sw-aus.js                 Notausgang: nach sw.js kopieren, wenn der Service Worker Ärger macht
 tools/migration_eingaben.py     erzeugt die Migration 20261016090000 (Nachtrag 35)
 geraete-test.html               Geräte-Test: prüft auf einem Handy alles, was das Spiel braucht (Nachtrag 23)
@@ -1115,6 +1117,14 @@ oder einen Tunnel.
   neu und zeigt auf allen Handys „Neue Version laden“. Eventstand (die Zeile
   „Version …“ auf dem Tablet nach dem letzten Push) außerhalb des Repos notieren
   oder nur lokal committen und erst nach dem Event pushen.
+- **Rückblick-Show (Nachtrag 36):** Sie ändert `index.html` (Route, Knopf,
+  Datenschutztexte) und wird darum **vor dem Änderungsstopp** ausgeliefert, die
+  geänderten Texte vor dem ersten Selfie des Events. Im Reiter Fotos ein
+  Löschdatum **nach dem Abendessen** wählen (ein Datum am Eventtag löscht schon
+  während des Spiels). Nach dem Spiel: `#/rueckblick` auf dem Laptop öffnen,
+  Vorbereiten und „Fotos durchsehen“ am Laptop-Bildschirm erledigen, **dann erst
+  den Beamer spiegeln**. „Standortdaten löschen“ erst **nach der Show**, danach
+  die Fotos. Einmal vorher `#/rueckblick/probe` am Beamer des Restaurants.
 - **Link immer mit Schrägstrich:** Teams bekommen genau
   `https://7deeda.github.io/Stadtjagt/`. Ohne `/` leitet GitHub um, und
   `/Stadtjagt` liegt außerhalb des Scopes `/Stadtjagt/`: ohne Netz startet die
@@ -2022,11 +2032,38 @@ Einzelheiten und Prüfskripte: SPIEL.md §15.
   `bugjagd2_db.py` an `submit_answer(text,text)` (gibt es dann nicht mehr);
   das ist erwartet.
 
+## Rückblick-Show (Nachtrag 36, 16.10.2026, lokal, nicht gepusht)
+
+Umgesetzt nach `docs/superpowers/specs/2026-10-15-rueckblick-show-design.md`
+mit den Nachträgen vom 16.10. und der Gegenprüfung (die gehen der Spezifikation
+vor). Einzelheiten und Prüfskript: SPIEL.md §16.
+
+- `#/rueckblick` (nach dem Spielende, ohne Testmodus) und `#/rueckblick/probe`
+  (Beispieldaten); Knopf „Rückblick“ im Admin-Kopf und unter der Zeitachse.
+  Keine neue RPC, **keine Migration**.
+- Eigener Container außerhalb von `#app`; `render()` und `refresh()` kehren in
+  dieser Ansicht sofort zurück (Alt-Tab, hashchange und Klicks zerstören die Show
+  nicht). `rueckblick.js` und `.css` laden erst beim Öffnen, mit Cache-Bust aus
+  der Version der Seite; `host.api` gegen `API` verhindert gemischte Fassungen.
+- „Alles geladen“ erst nach Karte, allen Schriftschnitten (latin-ext) und Fotos.
+  Ausgenommene Fotos (`teamId:position`) überleben ein Neuladen im
+  `sessionStorage`.
+- Fünf Datenschutztexte geändert („beim Abendessen alle im Rückblick“, „werden
+  alle Fotos gelöscht“, Standort-Zeile); Warnung zum Löschdatum im Reiter Fotos
+  schon im laufenden Spiel.
+- Prüfstand: `rueckblick.py` (12 Gruppen), Szenarien in `mock.js`.
+
+**Offen für Friedrich** (Vorgabe in der Spezifikation: ja, ja, tauschen):
+Fotos im Rückblick zeigen und dafür die Zusage ändern; Halt vor jedem
+Koffer-Platz; Teamfarbe Orange (`TEAM_COLORS[8]`, `#E65100`) vor dem Auslosen
+tauschen. Eventdatum fehlt noch (der Vorspann nimmt das Datum aus `startedAt`).
+
 ## Stand zum Fortsetzen (16.10.2026)
 
 **Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test
 bis Suite 21 (https://7deeda.github.io/geraetetest/). Nachtrag 34 (Code-Review
-15.10.) und Nachtrag 35 (Ausfallsicherheit, 16.10.) liegen lokal auf master.
+15.10.), Nachtrag 35 (Ausfallsicherheit, 16.10.) und Nachtrag 36 (Rückblick-Show,
+16.10., ohne Migration) liegen lokal auf master.
 Ausliefern: erst beide Migrationen einspielen
 (`python tools/sql.py supabase/migrations/20261015090000_namenssuche_grenze.sql`,
 dann `python tools/sql.py supabase/migrations/20261016090000_eingaben_wiederholen.sql`),
@@ -2037,7 +2074,11 @@ dann pushen. Der Service Worker muss spätestens 7 Tage vor dem Event live sein
 am 05./06.10., gemerged 09.10.), siehe Nachtrag 33. Vorlagen nur lokal:
 `mockups/design-varianten/v-weiter.html` und `admin-karte.html`.
 
-**NÄCHSTER SCHRITT:** Handytest der neuen Hülle (Teamleitung, Mitlese-Ansicht,
+**NÄCHSTER SCHRITT:** Rückblick-Show: `#/rueckblick/probe` am Beamer (Lesbarkeit
+aus der letzten Reihe, Klicker, F5 und Alt-Tab), dann mit den Daten eines
+Probespiels von Start bis Abspann (Abnahme: 3 bis 5 Minuten, jede Taste wie in
+der Spezifikation 5.1, nach dem Laden Netz aus). Der Rückblick kommt vor dem
+Änderungsstopp mit den geänderten Texten live. Danach Handytest der neuen Hülle (Teamleitung, Mitlese-Ansicht,
 Spielleitung auf dem Tablet), dazu der Handytest der Ausfallsicherheit
 (SPIEL.md §15: Flugmodus, Neuladen, Eingabe, Version, kein Installieren-Hinweis,
 Notfallmappe am iPad als PDF) auf allen Geräten der Spielleitung, und die Probe

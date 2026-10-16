@@ -1,6 +1,7 @@
 # Rückblick-Show: Design
 
-Stand 15.10.2026. Entwurf, nicht gebaut. Mockup zum Anklicken:
+Stand 16.10.2026. Gebaut (SPIEL.md §16, HANDOFF Nachtrag 36), mit den Nachträgen und der
+Gegenprüfung am Ende dieser Datei, die dem Text davor vorgehen. Mockup zum Anklicken:
 `mockups/rueckblick/index.html` (eigenständig, offline, Beispieldaten Prag mit
 12 Teams und 5 Stationen; Tasten wie unten, `H` zeigt sie).
 
@@ -453,3 +454,70 @@ Stadtjagd“):
 - **Bildrate:** `zeichneKarte()` zeichnet nur neu, wenn sich Zeit, Kamera, Routen-Auswahl oder Szene ändern; vorher
   zeichnete der stillstehende Abspann die Karte mit allen Routen in jedem Bild neu (25 statt 60 Bilder pro Sekunde).
   Gemessen danach: alle Kapitelarten 51 bis 60 Bilder pro Sekunde. Gesamtdauer mit 54 Fotos 4:38 min.
+
+## Nachtrag 16.10.2026: Gegenprüfung (verbindlich, gebaut)
+
+Gehen dem Text oben vor. Die Abschnittsnummern verweisen auf ihn.
+
+- **Show vor dem Neuzeichnen schützen (6.1 und 10 korrigiert).** Der 10-s-Takt
+  tut bei `S.view = "rueckblick"` schon heute nichts; gefährlich sind
+  `refresh()` bei `visibilitychange` (Alt-Tab am Beamer-Laptop) und
+  `hashchange` sowie der Klick-Handler für `[data-act]`: alle rufen `render()`,
+  das `#app` per `innerHTML` neu setzt und bei unbekannter Ansicht auf
+  `viewPublic()` zurückfällt. Darum: eigener Container außerhalb von `#app`;
+  `render()` und `refresh()` kehren bei `S.view` mit Präfix `rueckblick` (auch
+  `rueckblick/probe`) sofort zurück, ohne `gpsWiederStarten()` und ohne
+  `wachHaltenPruefen()`; die Knöpfe der Show nutzen kein `data-act`.
+  `rueckblick.py` prüft, dass Kapitel und Zeit nach `visibilitychange`,
+  `hashchange` und einem Klick stehen bleiben.
+- **Datenschutztexte (9.) vollständig.** Fünf Stellen: Hinweis bei der
+  Anmeldung, Selfie-Schritt, Reiter Fotos (Spielleitung), Album, dazu die
+  Standort-Zeile der Teamleitung ("Standort wird mit der Spielleitung geteilt,
+  zuletzt 14:03. Euer Weg erscheint beim Abendessen im Rückblick."). "löschen
+  wir" wird "werden alle Fotos gelöscht". Alle Änderungen gehen in den ersten
+  Push zum Rückblick und müssen vor dem ersten Selfie des Events live sein.
+- **Ausgenommene Fotos überleben ein Neuladen:** die Schlüssel `teamId:position`
+  (keine Bilddaten) im `sessionStorage` (`sj.rb.aus`). Vorbereiten und "Fotos
+  durchsehen" am Laptop-Bildschirm erledigen, bevor der Beamer gespiegelt wird.
+- **"Läuft ohne Netz" wirklich herstellen:** Vorbereiten meldet "Alles geladen"
+  erst, wenn die Grundkarte geholt ist (oder die Ausweichlösung steht) und alle
+  Schriftschnitte der Bühne per `document.fonts.load` mit dem Mustertext
+  "Holešovice Výstaviště Letná Křižík" geladen sind, je Schnitt mit
+  latin-ext (`unicode-range` lädt Glyphen sonst erst beim ersten Gebrauch). Die
+  Schriften kommen aus `vendor/fonts` (Ausfallsicherheit, Abschnitt 2), nie von
+  Google Fonts; Abschnitt 2 der Ausfallsicherheit ist Voraussetzung für den Bau.
+  Die Grundkarte ist inzwischen `rueckblick-karte.js` (siehe Nachtrag zur Karte),
+  nicht mehr `hintergrund/rueckblick.svg`.
+- **Versionsgleichheit:** `rueckblick.js`, `rueckblick.css` und die Karte laden
+  mit `?v=` aus der Version der Seite (Last-Modified), sonst trifft bis zu 10 min
+  nach einem Push (`max-age=600`) eine neue `index.html` auf ein altes
+  `rueckblick.js`. Dazu die Schnittstellenzahl `RUECKBLICK_API`/`API`.
+- **GPS-Sprungfilter (6.3) kaskadiert nicht:** verworfen wird nur ein einzelner
+  Ausreißer, also ein Punkt, der zu beiden Nachbarn springt, während die
+  Nachbarn zueinander passen (15 km/h).
+- **Kapitelgrenzen klemmen:** `gk = min(finishedAt, max(g(k-1) + 2 min, ...))`,
+  monoton; liegt die Grenze hinter dem Spielende, endet das Kapitel bei
+  `finishedAt`.
+- **Bühnen-CSS gehört nicht in `index.html`:** die Token `--bs-*`, `--park`,
+  `--strasse`, `--strasse-rand`, `--fluss`, `--flaeche` (und `--haus`, `--gruen`)
+  und alle Bühnenregeln stehen in `rueckblick.css`, unter `#rueckblick`, geladen
+  nur mit der Show. `index.html` bekommt nur Route, Knopf und Texte.
+- **Prüfstand:** `shoot.bauen()` kopiert `rueckblick.js`, `rueckblick.css` und
+  `rueckblick-karte.js` neben `app.html`.
+- **Kontrast nach MASTER (4,5:1):** keine `opacity` auf Schrift (Ortsnamen
+  tragen einen Halo in Papierfarbe); orange Schrift im hellen Thema in
+  `--flag-text`, nicht in `--flag`.
+- **Löschdatum (7.):** `admin_state` und `team_state` löschen alle Fotos bei
+  jedem Abruf, sobald `photos_delete_on <= current_date` (UTC). Ein Datum am
+  Eventtag löscht also schon während des Spiels. Darum steht die Warnung im
+  Reiter Fotos immer, wenn `selfieOn` an ist und das Datum heute oder früher
+  liegt, nicht erst nach dem Spielende: "Ein Datum nach dem Abendessen wählen,
+  sonst fehlen die Fotos im Rückblick."
+- **Ablauf (auch in HANDOFF, "Ablauf am Eventtag"):** "Standortdaten löschen"
+  (`admin_clear_positions`) erst nach der Show, danach auch die Fotos. Der
+  Rückblick wird vor dem Änderungsstopp der Ausfallsicherheit ausgeliefert, weil
+  er `index.html` ändert (Route, Knopf, Datenschutztexte).
+- **Team ohne Check-in:** ein Team ganz ohne Check-in (ohne Fortschritt) steht
+  im Ring am Start, in "Alle Teams" mit "0 von 5 Stationen" und zählt bei der
+  Hälfte-Regel nicht mit. Leere Platz- und Fotokapitel gibt es schon nicht.
+  Prüffall in `rueckblick.py` (Gruppe 5).
