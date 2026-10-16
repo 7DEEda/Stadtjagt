@@ -1057,7 +1057,7 @@ function viewPublic() {
   if (!mitDa) out += msgBox();
 
   if (p.status === "registration") {
-    const fotoHinweis = p.selfieOn ? `<p class="small muted" style="margin-top:10px">An jeder Station macht ihr ein Gruppenfoto. Sehen können es nur euer Team und die Spielleitung.${p.photosDeleteOn ? ` Am ${fotoDatum(p.photosDeleteOn)} löschen wir alle Fotos.` : ""}</p>` : "";
+    const fotoHinweis = p.selfieOn ? `<p class="small muted" style="margin-top:10px">An jeder Station macht ihr ein Gruppenfoto. Sehen können es euer Team, die Spielleitung und beim Abendessen alle im Rückblick.${p.photosDeleteOn ? ` Am ${fotoDatum(p.photosDeleteOn)} werden alle Fotos gelöscht.` : ""}</p>` : "";
     out += S.myName
       ? `<div class="panel"><h2>Du bist dabei, ${esc(vorname(S.myName))}.</h2>
          <p>Sobald die Spielleitung auslost, siehst du hier dein Team.</p>
@@ -1591,7 +1591,7 @@ function teamAnsicht(st, lesen) {
         Schwenkt das Handy ein paar Mal in einer liegenden Acht, dann fängt sich der Pfeil.
         <button class="btn alt" data-act="t-kal">Jetzt einmessen</button></div>` : ""}
       ${kompassDa() && !g.kal && (g.kompass !== "kalibrieren" || kalOk) ? `<button class="link" data-act="t-kal">Kompass neu einmessen</button>` : ""}
-      ${!lesen && g.on && st.status === "running" ? `<div class="share"><span class="dot"></span><span>Standort wird mit der Spielleitung geteilt${S.gps.sentAt ? ", zuletzt " + S.gps.sentAt : ""}${S.wachHalten ? ". Der Bildschirm bleibt an." : ""}</span></div>` : ""}
+      ${!lesen && g.on && st.status === "running" ? `<div class="share"><span class="dot"></span><span>Standort wird mit der Spielleitung geteilt${S.gps.sentAt ? ", zuletzt " + S.gps.sentAt : ""}. Euer Weg erscheint beim Abendessen im Rückblick.${S.wachHalten ? " Der Bildschirm bleibt an." : ""}</span></div>` : ""}
       </div>`;
   } else {
     // Nach drei Fehlversuchen: Feld sperren und die Pause sichtbar herunterzählen, über dem Feld
@@ -1755,7 +1755,7 @@ function selfieHTML(st, lesen, leitung, ichSelbst) {
   if (!sf) return h + `<div class="msg ok">Richtig! Die Ziffer gibt es nach dem Gruppenselfie.</div>
     <p>Alle zusammen ins Bild, am besten mit der Station im Hintergrund.</p>
     <button class="btn" data-act="t-selfie">Selfie aufnehmen</button>${msgBox("selfie")}
-    <p class="small muted">Das Foto sehen nur euer Team und die Spielleitung.</p>
+    <p class="small muted">Das Foto sehen euer Team, die Spielleitung und beim Abendessen alle im Rückblick.</p>
     ${S.selfieVersucht ? `<button class="link" data-act="t-selfie-skip" data-ort="selfie">Kamera geht nicht? Ohne Foto weiter</button>` : ""}</div>`;
   if (sf.status === "fehler") return h + `<div class="msg err">Das Foto kam nicht durch: ${esc(sf.fehler || "keine Verbindung")}</div>
     <img class="foto" src="${sf.url}" alt="Euer Foto">
@@ -1780,7 +1780,7 @@ function albumHTML(st) {
   }
   return `<div class="panel"><h3>Euer Album</h3><div class="album">${k}</div>
     <p class="small muted">${(sf.photos || []).length ? "Tippt auf ein Foto, um es groß zu sehen und zu speichern." : "Noch kein Foto."}
-    ${sf.deleteOn ? ` Am ${fotoDatum(sf.deleteOn)} löschen wir alle Fotos.` : ""}</p></div>`;
+    ${sf.deleteOn ? ` Am ${fotoDatum(sf.deleteOn)} werden alle Fotos gelöscht.` : ""}</p></div>`;
 }
 // Ein Foto groß, über der Seite. S.gross = { pos, team } (team nur bei der Spielleitung)
 function fotoGrossHTML() {
@@ -2178,7 +2178,7 @@ function viewAdmin() {
   if (st.status === "registration") actions += `<button class="btn sm alt" data-act="a-draw" data-wait="Wird ausgelost …">Teams auslosen</button>`;
   if (st.status === "drawn") actions += `<button class="btn sm" data-act="a-start">Spiel starten</button>`;
   if (st.status === "running") actions += problemKnopfHTML(st) + `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
-  if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-resume" data-wait="Wird fortgesetzt …">Spiel fortsetzen</button>`;
+  if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-rueckblick">Rückblick</button><button class="btn sm alt" data-act="a-resume" data-wait="Wird fortgesetzt …">Spiel fortsetzen</button>`;
 
   let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div class="kopfchips">${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}</div></div></div><div>${actions}${themaBtn()}</div></div>${msgBox()}`;
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
@@ -2214,7 +2214,8 @@ function viewAdmin() {
       <div class="tl-rows" id="tlrows"><div class="tl-cursor" id="tlcursor"></div></div>
       <div class="tl-axis" id="tlaxis"></div>
       <div class="tl-key"><span><b></b> unterwegs</span><span><b class="solve"></b> an der Station, Rätsel lösen</span><span><b class="dot"></b> Ziffer erhalten</span></div>
-      <p class="small muted">Ein Teamname antippen blendet seine Route aus oder ein. Die Standortdaten bleiben nach dem Spielende gespeichert, bis du auf „Standortdaten löschen“ drückst.</p></div>`;
+      <p class="small muted">Ein Teamname antippen blendet seine Route aus oder ein. Die Standortdaten bleiben nach dem Spielende gespeichert, bis du auf „Standortdaten löschen“ drückst.</p>
+      ${st.status === "finished" ? `<button class="btn sm alt" data-act="a-rueckblick">Rückblick</button>` : ""}</div>`;
   }
   if (A.tab === "teams") {
     const n = (st.participants || []).length, d = A.draw;
@@ -2296,9 +2297,10 @@ function viewAdmin() {
     const fotos = A.fotos || [];
     out += `<div class="panel"><div class="bar"><h3>Gruppenselfie an jeder Station</h3><span class="chip ${st.selfieOn ? "live" : ""}">${st.selfieOn ? "an" : "aus"}</span></div>
       <p class="small muted" style="margin-top:6px">Eingeschaltet macht jedes Team nach der richtigen Antwort ein Gruppenfoto, erst danach erscheint die Ziffer.
-        Die Fotos sehen nur das eigene Team und die Spielleitung. Stationen, die beim Einschalten schon gelöst sind, brauchen kein Foto mehr.</p>
+        Die Fotos sehen das eigene Team, die Spielleitung und beim Abendessen alle im Rückblick. Stationen, die beim Einschalten schon gelöst sind, brauchen kein Foto mehr.</p>
       <div style="margin-top:12px"><label for="afdatum">Alle Fotos löschen am</label><input id="afdatum" type="date" value="${esc(st.photosDeleteOn || "")}" data-enter="none"></div>
       <p class="small muted">An diesem Tag verschwinden die Fotos von selbst, auch aus den Alben der Teams. Ohne Datum bleiben sie liegen, bis du sie löschst.</p>
+      ${st.selfieOn && st.photosDeleteOn && st.photosDeleteOn <= new Date().toISOString().slice(0, 10) ? `<div class="msg err">Dieses Datum ist heute oder schon vorbei, die Fotos werden gelöscht. Ein Datum nach dem Abendessen wählen, sonst fehlen sie im Rückblick.</div>` : ""}
       <div class="row2"><button class="btn ${st.selfieOn ? "alt" : ""}" data-act="a-selfie" data-on="${st.selfieOn ? "0" : "1"}" data-ort="fotos">${st.selfieOn ? "Ausschalten" : "Einschalten"}</button>
         <button class="btn alt" data-act="a-selfie" data-on="${st.selfieOn ? "1" : "0"}" data-ort="fotos">Datum speichern</button></div>${msgBox("fotos")}</div>`;
     out += `<div class="panel"><div class="bar"><h3>${st.photoCount || 0} ${st.photoCount === 1 ? "Foto" : "Fotos"}</h3>
@@ -2914,6 +2916,9 @@ const ACT = {
     S.admin.state = await rpc("admin_state", { p_pin: pin }); S.admin.stateAt = Date.now();
     S.admin.pin = pin; SS.setItem("sj.pin", pin); S.msg = null; kartenSicht = null;
   },
+  // Rückblick: Adresse wechseln, den Rest macht hashchange (die PIN liegt schon im sessionStorage)
+  "a-rueckblick"() { location.hash = "#/rueckblick"; return false; },
+  "rb-nochmal"() { rueckblickZeigen(); return false; },
   "a-mappe"() { S.admin.mappe = true; S.admin.edit = null; S.msg = null; window.scrollTo(0, 0); },
   "a-mappe-zu"() { S.admin.mappe = false; S.msg = null; },
   // iPad: Druckdialog, dort AirPrint oder als PDF sichern
@@ -3772,6 +3777,7 @@ function netzOk() {
   S.msg = null; return true;
 }
 async function refresh() {
+  if (imRueckblick()) return rueckblickZeigen();   // keine Abfrage, kein gpsWiederStarten(), kein wachHaltenPruefen()
   if (!cfg.url || !cfg.key) return render();
   try {
     if (S.view === "public") { S.pub = await rpc("public_state", {}); netzOk(); await nameNochDa(); teamNachziehen(); await eigenesTeam(); await mitlesen(); }
@@ -3838,10 +3844,49 @@ function neigungZeichnen() {
 }
 neigungStart();
 
+/* ---------- Rückblick-Show ---------- */
+// Die Show (rueckblick.js, rueckblick.css, rueckblick-karte.js) wird erst beim Öffnen von #/rueckblick geladen und lebt in einem
+// eigenen Container außerhalb von #app. render() und refresh() lassen sie in Ruhe: ein Neuzeichnen von #app (visibilitychange
+// beim Alt-Tab am Beamer-Laptop, hashchange, ein Klick mit data-act) würde sonst Bühne und Blob-URLs der Fotos zerstören.
+// #/rueckblick/probe spielt dieselbe Show mit Beispieldaten, ohne PIN und ohne Datenbank.
+const imRueckblick = () => String(S.view).startsWith("rueckblick");
+const RUECKBLICK_API = 1;   // muss zu API in rueckblick.js passen; stimmt es nicht, meldet die Show es und startet nicht
+let rueckblickLaedt = null, rueckblickAnsicht = null;
+// Cache-Bust über die Version der Seite: GitHub Pages schickt max-age=600, sonst träfe bis zu 10 min nach einem Push eine neue
+// index.html auf ein altes rueckblick.js, das die Schnittstelle (host) anders erwartet
+const rueckblickUrl = n => n + "?v=" + (VERSION || Date.parse(document.lastModified) || Date.now());
+const rueckblickHost = {
+  api: RUECKBLICK_API, rpc, url: rueckblickUrl, farbe: teamColor, emoji: teamEmoji,
+  pin: () => S.admin.pin,
+  pinSetzen: p => { S.admin.pin = p; try { SS.setItem("sj.pin", p); } catch { /* dann gilt sie nur bis zum Neuladen nicht */ } },
+  pinVergessen: () => { S.admin.pin = null; try { SS.removeItem("sj.pin"); } catch { /* egal */ } }
+};
+function rueckblickLaden() {
+  if (window.RueckblickShow) return Promise.resolve();
+  if (rueckblickLaedt) return rueckblickLaedt;
+  const teil = (el, ort) => new Promise((ok, nein) => { el.onload = ok; el.onerror = () => nein(new Error("Der Rückblick konnte nicht geladen werden: " + ort)); document.head.appendChild(el); });
+  const css = document.createElement("link"); css.rel = "stylesheet"; css.href = rueckblickUrl("rueckblick.css");
+  const js = document.createElement("script"); js.src = rueckblickUrl("rueckblick.js");
+  rueckblickLaedt = Promise.all([teil(css, "rueckblick.css"), teil(js, "rueckblick.js")]).then(() => { }, e => { rueckblickLaedt = null; css.remove(); js.remove(); throw e; });
+  return rueckblickLaedt;
+}
+function rueckblickZeigen() {
+  if (window.RueckblickShow && RueckblickShow.offen()) return;
+  const ansicht = S.view;
+  rueckblickLaden().then(() => {
+    if (S.view !== ansicht || RueckblickShow.offen()) return;
+    rueckblickAnsicht = ansicht;
+    RueckblickShow.oeffnen(rueckblickHost, ansicht === "rueckblick/probe" ? "probe" : "echt");
+  }).catch(e => {
+    if (S.view !== ansicht) return;
+    $("#app").innerHTML = brand("Rückblick") + `<div class="panel"><div class="msg err">${esc(e.message)}</div><button class="btn" data-act="rb-nochmal">Erneut versuchen</button></div>`;
+  });
+}
 // Welche Eingabe gehört wozu: ändert sich dieser Schlüssel, ist es ein anderes Feld (nächste Station,
 // anderer Reiter) und das Getippte darf nicht mitwandern
 const feldKontext = () => S.view + "|" + (S.view === "team" ? phaseKey(S.team.state) : S.view === "public" ? phaseKey(S.mit) + (S.pub && S.pub.status) : S.admin.tab + (S.admin.edit || "") + (S.admin.confirm ? S.admin.confirm.key : ""));
 function render() {
+  if (imRueckblick()) return rueckblickZeigen();
   const app = $("#app");
   // Getipptes und den Fokus über das Neuzeichnen retten: die 10-s-Abfrage, GPS-Meldungen und der
   // Kompass zeichnen auch dann neu, wenn die Tastatur gerade zu ist (iPhone: "Fertig" nimmt den Fokus)
@@ -4005,6 +4050,8 @@ document.addEventListener("keydown", e => {
 });
 window.addEventListener("hashchange", () => {
   if (!mitLinkPruefen()) S.view = location.hash.replace("#/", "") || "public";
+  // die Show schließt, wenn man die Ansicht verlässt oder von der Probe zur echten Show (oder zurück) wechselt
+  if (window.RueckblickShow && RueckblickShow.offen() && S.view !== rueckblickAnsicht) RueckblickShow.beenden();
   S.msg = null; refresh();
 });
 // Auswahlfelder (etwa die Teamleitung im Admin) lösen ihre Aktion beim Ändern aus
@@ -4070,7 +4117,7 @@ let fingerSeit = 0;
 let querSeit = 0, querTimer = 0;
 function querPruefen() {
   const quer = matchMedia("(orientation: landscape) and (max-height: 500px) and (pointer: coarse)").matches;
-  const egal = S.view === "admin" || S.gps.kal || S.hoch || S.gross;
+  const egal = S.view === "admin" || imRueckblick() || S.gps.kal || S.hoch || S.gross;
   const el = $("#quer"); if (!el) return;
   if (!quer || egal) { querSeit = 0; clearTimeout(querTimer); el.hidden = true; return; }
   if (!querSeit) { querSeit = Date.now(); clearTimeout(querTimer); querTimer = setTimeout(querPruefen, 520); return; }
