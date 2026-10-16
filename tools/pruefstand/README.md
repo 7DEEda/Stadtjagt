@@ -34,6 +34,15 @@ etwa `timeout 300 python tools/pruefstand/waechter.py`.
 | `bugjagd2.py` | Funde der Bugjagd vom 03.10.2026 |
 | `umbau.py` | Umbau Weiterentwicklung: Handy-Hülle, Reiter, Spielleitung mit Teamliste (Nachtrag 33) |
 | `review1510.py` | Befunde des Code-Reviews vom 15.10.2026 (Nachtrag 34) |
+| `lokal.py` | Leaflet und Schriften aus `vendor/`, keine Anfrage an unpkg oder Google (Nachtrag 35) |
+| `version.py` | Versionszeile und "Neue Version laden" (Nachtrag 35) |
+| `mappe.py` | Notfallmappe: Inhalt, hell im dunklen Design, Druck, Handy (Nachtrag 35) |
+| `funkloch.py` | Eingaben ohne Netz, Abgleich, Serverfehler wie Funkloch; Schalter `window.__netz` in `mock.js` (Nachtrag 35) |
+| `offline.py` | Service Worker: Start ohne Server, letzter Stand, Netz zuerst, Notausgang; baut eigenen Ordner mit mock.js inline (Nachtrag 35) |
+
+Chrome 155 hängt auf dem Arbeitsrechner beim `browser.close()` nach einer Seite mit Leaflet-Karte (manchmal auch
+ohne). Die neuen Skripte drucken OK oder FEHLT vorher und enden über `abschluss.py`, das nur die eigenen
+Chrome-Prozesse beendet.
 
 ## Probeläufe gegen die echte Datenbank
 
@@ -44,6 +53,6 @@ Zugang aus `tools/sql.py`.
 
 `name_db.py`, `selfie_db.py`, `teststation_db.py`, `startpunkt_db.py`,
 `waechter_db.py`, `rechte_db.py` (Rechte aller internen Hilfsfunktionen),
-`bugjagd2_db.py`, `namenssuche_db.py`, `namenssuche_grenze_db.py`. Mit `--ohne`
-zeigen `rechte_db.py`, `bugjagd2_db.py` und `namenssuche_grenze_db.py` den Stand
+`bugjagd2_db.py`, `namenssuche_db.py`, `namenssuche_grenze_db.py`, `eingaben_db.py`. Mit `--ohne`
+zeigen `rechte_db.py`, `bugjagd2_db.py`, `namenssuche_grenze_db.py` und `eingaben_db.py` den Stand
 ohne Migration.

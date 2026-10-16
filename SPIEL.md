@@ -315,6 +315,8 @@ config.js                  Supabase-URL, Publishable key, Hilfe-Nummer (support.
 geraete-test.html, geraete-tests.js  Geräte-Test und seine Suite, gehört nicht zum Spiel (HANDOFF, Nachtrag 23)
 kompass-test.html          leitet auf geraete-test.html weiter
 hintergrund/a.svg, b.svg, c.svg  Hintergrund-Varianten, lädt render() nach; klassisch steht im HTML
+sw.js                      Service Worker, App startet ohne Netz aus dem Cache (§15)
+vendor/                    Leaflet 1.9.4, Schriften (woff2, OFL), QR-Generator; nichts kommt von einem CDN
 supabase/migrations/*.sql  Schema und Spiellogik, in Dateinamen-Reihenfolge
 supabase/seed-*.sql        Stationen der Prager Route, 100 Testpersonen
 tools/sql.py               SQL über die Supabase Management-API ausführen
@@ -368,6 +370,7 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
   `sj.gps` (Standort war schon freigegeben: nach Neuladen ohne Tipp wieder
   starten, den iOS-Kompass nur per Knopf), `sj.abgemeldet` (Teamleitung hat
   sich abgemeldet: nicht still per Geräte-Schlüssel wieder einloggen),
+  `sj.letzter.team`/`sj.letzter.mit` (letzter Stand ohne Netz, §15),
   `sj.url`/`sj.key` (nur ohne `config.js`) im `localStorage`; `sj.pin` im
   `sessionStorage`. Zugriff nur über `LS`/`SS`: Blockiert der Browser
   Website-Daten, fallen beide auf eine Map im Speicher zurück, statt die
@@ -722,3 +725,78 @@ Probedaten weg, Löschdatum für Fotos).
 - **Handy:** Erfolg von Einchecken und Antwort steht in der Leiste; Hochhalten
   endet, sobald sein Fenster nicht mehr gezeichnet ist (etwa nach Spielende).
 - Prüfen: `python tools/pruefstand/review1510.py`.
+
+## 15. Ausfallsicherheit (Nachtrag 35, 16.10.2026)
+
+Spezifikation `docs/superpowers/specs/2026-10-15-ausfallsicherheit-design.md`,
+mit den Änderungen aus der Gegenprüfung (gehen der Spezifikation vor).
+
+- **Lokal statt CDN:** Leaflet 1.9.4 aus `vendor/leaflet-1.9.4/`
+  (`loadLeaflet()`), Schriften als `@font-face` mit `vendor/fonts/*.woff2`
+  (latin und latin-ext, `font-display: swap`).
+- **Service Worker `sw.js`** (Scope des Ordners, registriert am Ende des
+  App-Skripts nur auf `./` bzw. `./index.html`, über https oder lokal,
+  `updateViaCache: "none"`; der Prüfstand mit `app.html` bekommt keinen):
+  Hülle (index.html unter dem Schlüssel `./`, `config.js`,
+  `kompass-waechter.js`) Netz zuerst mit `cache: "no-cache"` und 4 s Grenze,
+  sonst der Cache, der Abruf legt im Hintergrund ab; Navigation per URL, nie
+  das Request-Objekt im Modus navigate. Schriften, Leaflet, QR Cache zuerst;
+  Hintergründe aus dem Cache und nachgeladen. Supabase, RPCs, Kacheln,
+  Nicht-GET und andere Seiten im Ordner (Geräte-Test, Mockups, tools/) gehen
+  unberührt ans Netz. Caches `sj-huelle-1`, `sj-dauer-1`; aufgeräumt werden
+  nur Caches mit `sj-*` (CacheStorage gilt für den ganzen Origin). Die Nummer
+  steigt nur, wenn sich Liste oder Strategie ändern. Dateien unter `vendor/`
+  sind über den Namen versioniert: wer eine tauscht, gibt ihr einen neuen
+  Namen. Kein Manifest, kein Installieren-Hinweis. Notausgang
+  `tools/sw-aus.js` (löscht nur `sj-*`, meldet die eigene Registrierung ab).
+- **Datenbank-Änderungen bleiben mit der vorigen App-Fassung verträglich**
+  (neue Parameter nur mit `default`, keine Felder aus Antworten entfernen):
+  alte Fassungen laufen eine Weile weiter (offener Tab, Laden im Funkloch).
+- **Letzter Stand:** `teamStandSetzen` merkt `sj.letzter.team`
+  (`{ code, at, state }`), `mitlesen()` merkt `sj.letzter.mit`
+  (`{ key, at, pub, mit }`). Scheitert beim Start der Abruf mit `netz: true`,
+  nimmt `letzterStand()` den gemerkten Stand, wenn Code bzw. Schlüssel passen,
+  er höchstens 12 h alt ist und das Spiel `drawn` oder `running` ist;
+  `S.zuletzt = at` (oben "Stand 13:27"). Gelöscht von `standVergessen()` bei
+  Abmelden, Abgeben, `codeUngueltig()`, `nameNochDa()` und `leitungNochDa()`.
+  Die Spielleitung merkt nichts (Lösungen).
+- **`rpc()`:** HTTP 5xx und Antworten, die kein JSON sind, werfen
+  `keineVerbindung()` (`netz: true`), wie ein Funkloch. `S.zuletzt` nur bei
+  einer guten Antwort.
+- **Eingaben ohne Netz** (`t-check`, `t-answer`, `t-final` über `eingabe()`):
+  Meldung "Keine Verbindung. Tippt noch mal, sobald ihr Netz habt. Doppelt
+  zählt nichts." in der Leiste, `S.offen = { act, phase }`. Der nächste
+  `team_state` gleicht in `teamStandSetzen` ab (`abgleich()`): Phase weiter
+  ergibt die Erfolgsmeldung (Angekommen, Ziffer, Platz), sonst "Wieder Netz.
+  Tippt noch mal.". Kein automatisches Nachreichen außer dem Selfie. Die
+  Antwort schickt `p_position` (Rückfall ohne bei PGRST202). Selfie: zeigt ein
+  Abruf das Foto, ist "Erneut senden" weg ("Foto ist drin.").
+- **Datenbank (Migration `20261016090000_eingaben_wiederholen.sql`, Generator
+  `tools/migration_eingaben.py`):** `progress.last_wrong`; dieselbe falsche
+  Antwort zählt nicht noch einmal und bekommt dieselbe Antwort.
+  `submit_answer(p_code, p_answer, p_position default null)` (drop + create,
+  Rechte ausdrücklich): ist das Team weiter, nie gegen das nächste Rätsel
+  prüfen ("Diese Station ist schon gelöst.", "Das Rätsel hat gewechselt. Lest
+  es noch mal."). `check_in`: schon eingecheckt gibt die Erfolgsantwort ohne
+  neue Entfernungsprüfung.
+- **Version:** `nav()` hängt `versionZeile()` an, "Version 15.10., 22:26" aus
+  `document.lastModified` (Last-Modified von Pages; weniger als 5 s vor dem
+  Laden: keine Zeile). `versionPruefen()` fragt per HEAD beim Zurückkehren in
+  die App und höchstens alle 10 Minuten aus dem 10-s-Takt; neuer: Link "Neue
+  Version laden", ohne Neuzeichnen, nie Neuladen von selbst.
+- **Notfallmappe:** Reiter Stationen, Knopf "Notfallmappe" (`S.admin.mappe`),
+  `mappeHTML()` nur aus `admin_state` im Browser. Koffer-Code aus den
+  Stationen der echten Route (`mappeCode()`, nicht `caseCode`), Haken im
+  Laufzettel nicht im Testmodus, "Daten vom" aus `S.admin.stateAt` (letzter
+  `admin_state`). `.papier` setzt helle Token, `@media print` druckt nur das
+  Blatt und jede Ansicht hell.
+- **Prüfen** (Prüfstand, im Vordergrund mit Timeout): `lokal.py` (Leaflet und
+  Schriften lokal), `version.py`, `mappe.py`, `funkloch.py` (Schalter
+  `window.__netz` in `mock.js`), `offline.py` (Service Worker, mock.js inline,
+  Prüfserver unter `/Stadtjagt/` stoppbar). Probelauf
+  `tools/pruefstand/eingaben_db.py` (`--ohne` rot). Am Handy (iPhone Safari,
+  Android Chrome, alle Geräte der Spielleitung): mit Netz laden, Flugmodus, neu
+  laden (letzter Stand), Eingabe im Flugmodus (Meldung), Flugmodus aus
+  (Abgleich), Push und Neuladen (Version wechselt), kein
+  Installieren-Hinweis, Notfallmappe am iPad als PDF; Notausgang einmal auf
+  iPhone und Android proben.

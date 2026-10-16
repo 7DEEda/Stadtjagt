@@ -1,6 +1,17 @@
 # Ausfallsicherheit für den Eventtag (Design)
 
-Stand 15.10.2026. Spezifikation, nichts davon ist gebaut. Bezug: HANDOFF.md,
+Stand 15.10.2026. **Umgesetzt am 16.10.2026 (Nachtrag 35, SPIEL.md §15)**, mit
+den Änderungen aus der Gegenprüfung, die dieser Fassung vorgehen: Aufräumen nur
+unter `sj-*`; Serverfehler (5xx, kein JSON) wie Funkloch, `S.zuletzt` nur bei
+guter Antwort; Koffer-Code der Notfallmappe aus den Stationen der echten Route,
+keine Haken im Testmodus, "Daten vom" aus dem letzten `admin_state`; Eventstand
+nicht per Push notieren; `offline.py` mit mock.js inline und RPC-Pfad am
+Prüfserver; Text "Das Foto wird nachgereicht, sobald das Netz reicht."; Abgleich
+nur mit zwei Fällen (Phase weiter oder "Wieder Netz. Tippt noch mal."); kein
+Clientzweig "Check-in tolerant"; letzter Stand auch in `leitungNochDa()`
+gelöscht; Link mit Schrägstrich; Service Worker spätestens 7 Tage vor dem
+Event live, Notausgang auf iPhone und Android geprobt; index.html gezippt etwa
+93 KB (vor dem Umbau, jetzt etwa 99 KB). Bezug: HANDOFF.md,
 "Stand zum Fortsetzen", Absatz "Weitere Punkte für die Ausfallsicherheit".
 Mockup der sichtbaren Teile: `mockups/ausfallsicherheit/index.html`
 (Funkloch-Meldung, Versionszeile, Notfallmappe; Daten erfunden).

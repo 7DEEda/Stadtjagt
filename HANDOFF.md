@@ -142,6 +142,12 @@ RPC-Endpunkte auf.
 index.html                      die komplette App, kein Build nötig
 config.js                       Supabase-Zugang und WhatsApp-Nummer
 kompass-waechter.js             Kompass-Wächter: Kompass gegen Gyroskop prüfen (Nachtrag 30)
+sw.js                           Service Worker: App startet ohne Netz aus dem Cache (Nachtrag 35)
+vendor/leaflet-1.9.4/           Leaflet mit LICENSE (BSD-2), nur für die Karte der Spielleitung (Nachtrag 35)
+vendor/fonts/                   Barlow, Barlow Semi Condensed, JetBrains Mono, woff2, OFL.txt (Nachtrag 35)
+vendor/qrcode.js                QR-Code für den Mitlese-Link
+tools/sw-aus.js                 Notausgang: nach sw.js kopieren, wenn der Service Worker Ärger macht
+tools/migration_eingaben.py     erzeugt die Migration 20261016090000 (Nachtrag 35)
 geraete-test.html               Geräte-Test: prüft auf einem Handy alles, was das Spiel braucht (Nachtrag 23)
 geraete-tests.js                die Suite dazu, ein Baustein je Test
 kompass-test.html               leitet auf geraete-test.html weiter
@@ -179,6 +185,7 @@ supabase/migrations/            Schema und Spiellogik, alle Dateien in Dateiname
   20261002160000_kompass_waechter.sql  Urteil des Kompass-Wächters mit der Position (Nachtrag 30)
   20261004090000_current_station_sperren.sql  current_station wieder gesperrt (Nachtrag 31)
   20261004100000_bugjagd2.sql     Funde der Bugjagd 03.10.: Anmeldung, Testmodus, leere Antwort, Geräte-Test (Nachtrag 32)
+  20261016090000_eingaben_wiederholen.sql  gleiche Eingabe, gleiche Antwort; nichts zählt doppelt (Nachtrag 35, nicht eingespielt)
 hintergrund/a.svg, b.svg, c.svg  die drei Hintergrund-Varianten, werden nachgeladen
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
@@ -1088,6 +1095,56 @@ oder einen Tunnel.
 
 ## Ablauf am Eventtag
 
+**Ausfallsicherheit (Nachtrag 35), vor allem anderen:**
+
+- **Änderungsstopp 3 Tage vor dem Event** (Datum eintragen, sobald das
+  Eventdatum feststeht). Bis dahin: alle Migrationen eingespielt,
+  Support-Nummer in `config.js`, lange Admin-PIN, Supabase Pro für den
+  Event-Monat (falls so entschieden), Testmodus-Fragen geklärt. Der Service
+  Worker ist **spätestens 7 Tage vor dem Event live** (Erprobungszeit): Den
+  Handytest (SPIEL.md §15) machen alle Geräte der Spielleitung, und der
+  Notausgang `tools/sw-aus.js` ist einmal auf einem echten iPhone und einem
+  Android-Handy geprobt (danach ist der Service Worker abgemeldet und die App
+  läuft wie ohne; hinterher `sw.js` zurück und wieder pushen). Ohne diese Probe
+  ist der Notausgang eine Annahme.
+- Nach dem Stopp **kein Push und keine Migration**, außer einem Notfall-Fix
+  (nur für einen Fehler, der das Spiel verhindert; Prüfstand grün mit
+  `umbau.py`, `review1510.py`, `offline.py`, `funkloch.py`, `mappe.py`; kurzer
+  Test auf einem Handy). **Auch Doku bleibt ungepusht:** jeder Push, auch nur
+  HANDOFF.md, löst ein Pages-Deployment aus, setzt `Last-Modified` aller Dateien
+  neu und zeigt auf allen Handys „Neue Version laden“. Eventstand (die Zeile
+  „Version …“ auf dem Tablet nach dem letzten Push) außerhalb des Repos notieren
+  oder nur lokal committen und erst nach dem Event pushen.
+- **Link immer mit Schrägstrich:** Teams bekommen genau
+  `https://7deeda.github.io/Stadtjagt/`. Ohne `/` leitet GitHub um, und
+  `/Stadtjagt` liegt außerhalb des Scopes `/Stadtjagt/`: ohne Netz startet die
+  App dann nicht aus dem Cache. Das gilt auch für den QR-Code am Treffpunkt.
+- Notfallmappe drucken (Reiter Stationen, „Notfallmappe“), sobald Stationen,
+  Rätsel und Lösungen fest sind, spätestens am Vorabend; nach dem Auslosen
+  noch einmal als PDF auf das Handy der Spielleitung sichern (dann mit Teams
+  und Codes). Enthält alle Lösungen: nach dem Spiel vernichten.
+- Am Vorabend oder Morgen im Hotel-WLAN: alle öffnen den Link einmal. Erst
+  danach liegt die App auf dem Handy, und iOS hält Speicher und Anmeldung 7
+  Tage. Am Treffpunkt auf zwei, drei Handys und dem Tablet die Zeile
+  „Version …“ mit dem notierten Eventstand vergleichen.
+- **Während des Spiels:** Ein Team meldet „Keine Verbindung“: weitergehen bis
+  Netz, dann nochmal tippen, nichts zählt doppelt. Notfall-Fix gepusht: in den
+  Team-Gruppen sagen „Seite neu laden oder im Tab Team unten auf ‚Neue Version
+  laden‘ tippen“, danach Version prüfen. Service Worker macht Ärger:
+  `tools/sw-aus.js` nach `sw.js` kopieren, pushen, alle laden neu.
+- **Totalausfall** (Datenbank oder App länger als 10 Minuten weg): Teams
+  melden sich per Anruf oder WhatsApp mit Teamname und Station; Ortshinweis
+  und Koordinaten der nächsten Station durchgeben, das Team läuft mit einer
+  Karten-App; am Ort Gruppenfoto schicken lassen, dann das Rätsel vorlesen;
+  Antwort mit der Lösung vergleichen, Ziffer nennen, im Laufzettel abhaken; an
+  den Koffern zählt die Ankunft, Reihenfolge im Laufzettel eintragen. Kommt die
+  Datenbank zurück: mit „Freischalten“ bzw. „Rätsel werten“ im Reiter Teams den
+  Papierstand nachtragen, Plätze an den Koffern vergibt die Aufsicht nach dem
+  Laufzettel.
+- Grenzen: Der erste Besuch braucht Netz. Privates Surfen: kein Service
+  Worker, die App läuft wie früher. Die Karte der Spielleitung zeigt ohne Netz
+  keine Kacheln, nur Marker auf grauem Grund.
+
 1. **Vorher: Testmodus aus!** Reiter Stationen, oben. Im Kopf der Spielleitung
    darf kein rotes „Testmodus an“ mehr stehen („Spiel starten“ warnt sonst
    rot). Testdaten wegräumen: „Testdaten entfernen“ im Reiter Teilnehmende.
@@ -1941,18 +1998,53 @@ Review über 3597609..fb33189, zehn Befunde, alle behoben (Auftrag:
   Schluss-"OK" fehlt dann (Timeout). `review1510.py` druckt das Ergebnis vor dem
   Schließen.
 
-## Stand zum Fortsetzen (15.10.2026)
+## Ausfallsicherheit (Nachtrag 35, 16.10.2026, lokal, nicht gepusht)
+
+Umgesetzt nach `docs/superpowers/specs/2026-10-15-ausfallsicherheit-design.md`
+mit den Änderungen aus der Gegenprüfung (die gehen der Spezifikation vor).
+Einzelheiten und Prüfskripte: SPIEL.md §15.
+
+- Leaflet 1.9.4 und die Schriften liegen in `vendor/` (keine Anfrage mehr an
+  unpkg oder Google Fonts).
+- `sw.js`: die App startet im Funkloch oder bei einem Pages-Aussetzer aus dem
+  Cache (Hülle Netz zuerst mit 4 s Grenze). Notausgang `tools/sw-aus.js`.
+- Letzter Stand der Teamleitung bzw. des Mitlesens bleibt auf dem Handy
+  (`sj.letzter.team`, `sj.letzter.mit`, höchstens 12 h).
+- Eingaben ohne Netz: „Keine Verbindung. Tippt noch mal, sobald ihr Netz habt.
+  Doppelt zählt nichts.“, Abgleich mit dem nächsten Abruf; HTTP 5xx und
+  Nicht-JSON gelten als Funkloch.
+- Version unter der Navigation, „Neue Version laden“ bei neuerer Fassung.
+- Notfallmappe im Reiter Stationen (Druck nur das Blatt, immer hell).
+- **Migration `20261016090000_eingaben_wiederholen.sql` NICHT eingespielt**
+  (Generator `tools/migration_eingaben.py`, Probelauf
+  `tools/pruefstand/eingaben_db.py`: `--ohne` rot, mit grün, 41 Prüfungen;
+  `rechte_db.py` grün). Nach dem Einspielen scheitert der alte Probelauf
+  `bugjagd2_db.py` an `submit_answer(text,text)` (gibt es dann nicht mehr);
+  das ist erwartet.
+
+## Stand zum Fortsetzen (16.10.2026)
 
 **Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test
 bis Suite 21 (https://7deeda.github.io/geraetetest/). Nachtrag 34 (Code-Review
-15.10.) liegt lokal auf master: erst die Migration einspielen, dann pushen.
+15.10.) und Nachtrag 35 (Ausfallsicherheit, 16.10.) liegen lokal auf master.
+Ausliefern: erst beide Migrationen einspielen
+(`python tools/sql.py supabase/migrations/20261015090000_namenssuche_grenze.sql`,
+dann `python tools/sql.py supabase/migrations/20261016090000_eingaben_wiederholen.sql`),
+dann pushen. Der Service Worker muss spätestens 7 Tage vor dem Event live sein
+(Erprobungszeit, siehe Ablauf am Eventtag).
 
 **Design-Variante "Weiterentwicklung": live** (entschieden 05.10.2026, Umbau
 am 05./06.10., gemerged 09.10.), siehe Nachtrag 33. Vorlagen nur lokal:
 `mockups/design-varianten/v-weiter.html` und `admin-karte.html`.
 
 **NÄCHSTER SCHRITT:** Handytest der neuen Hülle (Teamleitung, Mitlese-Ansicht,
-Spielleitung auf dem Tablet).
+Spielleitung auf dem Tablet), dazu der Handytest der Ausfallsicherheit
+(SPIEL.md §15: Flugmodus, Neuladen, Eingabe, Version, kein Installieren-Hinweis,
+Notfallmappe am iPad als PDF) auf allen Geräten der Spielleitung, und die Probe
+des Notausgangs `tools/sw-aus.js` auf einem iPhone und einem Android-Handy.
+Dabei die 4-s-Grenze bestätigen: index.html hat gezippt jetzt etwa 99 KB
+(`gzip -c index.html | wc -c`, 313.541 Byte roh, die Spezifikation rechnete mit
+93 KB vor dem Umbau).
 
 **Stresstest (13.10.2026, bestanden):** `tools/stresstest.py` (nur
 Standardbibliothek) spielte gegen ein eigenes Supabase-Projekt (Free, Frankfurt,
@@ -1985,13 +2077,9 @@ PostgREST umzieht (geht, weil die App nur `/rest/v1/rpc` nutzt; Vorteil
 Datenschutz, Nachteil eigener Betrieb): der Stresstest (13.10.) spricht für
 Supabase, schon der Free-Tarif trägt das Doppelte der Eventlast fehlerfrei.
 Empfehlung: bleiben, Pro für den Event-Monat; Friedrichs Entscheidung steht
-noch aus. Weitere Punkte für die Ausfallsicherheit, noch nicht umgesetzt:
-Leaflet lokal statt von unpkg; Service Worker, damit die App bei
-Funkloch/Pages-Aussetzer lädt; Änderungsstopp einige Tage vor dem Event und
-sichtbare Version; Verhalten ohne Netz bei Einchecken/Antwort prüfen (klare
-Meldung, nichts doppelt); Notfallplan auf Papier für die Spielleitung
-(Stationen, Rätsel, Lösungen, Koffer-Code). Eventdatum steht im HANDOFF noch
-nicht.
+noch aus. Die Punkte zur Ausfallsicherheit sind umgesetzt (Nachtrag 35, oben);
+offen ist nur, was am echten Gerät zu prüfen ist (nächster Schritt) und das
+Datum des Änderungsstopps. Eventdatum steht im HANDOFF noch nicht.
 
 **Weitere offene Punkte:** Positionen aus 4 älteren Geräte-Test-Läufen löschen
 (Frage an Friedrich offen); 404 beim ersten Prüfstand-Bild abstellen.

@@ -1,4 +1,5 @@
-/* Notausgang für den Service Worker der Stadtjagd (Ausfallsicherheit, Abschnitt 1.3). Wird NICHT ausgeliefert.
+/* Notausgang für den Service Worker der Stadtjagd (Ausfallsicherheit, Abschnitt 1.3). Nur eine Vorlage: die App
+   registriert sie nie (Pages veröffentlicht zwar den ganzen Ordner, unter tools/ wirkt sie aber nicht).
 
    Macht der Service Worker am Eventtag Ärger: diese Datei nach sw.js im Repo-Wurzelordner kopieren und pushen.
    Jedes Handy holt beim nächsten Laden mit Netz die neue sw.js (updateViaCache: "none"), sie löscht die Caches der
