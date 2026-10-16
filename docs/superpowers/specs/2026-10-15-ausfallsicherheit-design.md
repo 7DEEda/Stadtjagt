@@ -429,7 +429,7 @@ Block; die Sperre auf `game_state` hält Millisekunden.
   `status: "fehler"` daran hängt, räumt die App `S.selfie` ab und meldet
   "Foto ist drin." Die Erkennung in `t-selfie-ok` prüft `e.netz` statt des
   Meldungstexts (der Text ändert sich hier für Eingaben). Der Satz "Das Foto
-  reichen wir nach, sobald das Netz reicht." wird zu "Das Foto geht nach,
+  reichen wir nach, sobald das Netz reicht." wird zu "Das Foto wird nachgereicht,
   sobald das Netz reicht." (Tool spricht ohne "wir").
 - Zeitlimit bleibt 15 s; der Knopf sagt währenddessen "Wird geprüft …" bzw.
   "Standort wird bestimmt …" wie heute.
@@ -443,7 +443,7 @@ Block; die Sperre auf `game_state` hält Millisekunden.
 | Server, Wiederholung an gelöster Station, andere Antwort | Diese Station ist schon gelöst. |
 | Server, Station passt nicht und ist nicht gelöst (Fortschritt zurückgesetzt) | Das Rätsel hat gewechselt. Lest es noch mal. |
 | Selfie nachgereicht | Foto ist drin. |
-| Ohne Foto weiter, Foto wartet | Station 3 gelöst, eure Ziffer: 7. Das Foto geht nach, sobald das Netz reicht. |
+| Ohne Foto weiter, Foto wartet | Station 3 gelöst, eure Ziffer: 7. Das Foto wird nachgereicht, sobald das Netz reicht. |
 
 Erfolgs- und Fehlertexte im Abgleich sind wortgleich mit den heutigen.
 
