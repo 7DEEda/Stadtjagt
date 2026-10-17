@@ -113,6 +113,10 @@ body.still{cursor:none}
 .s-hinweis{display:flex;align-items:center;gap:14px;font:500 var(--bs-xs) var(--body);color:var(--muted);white-space:nowrap;margin-top:12px}
 .s-hinweis svg{width:56px;height:12px;flex:none}
 .s-hinweis[hidden]{display:none}
+.sgruppe{margin-top:22px;opacity:.55;transition:opacity .48s var(--kurve)}
+.sgruppe.los{opacity:1}
+.sg-kopf{display:flex;justify-content:space-between;align-items:baseline;font:600 var(--bs-xs) var(--body);color:var(--muted);margin-bottom:12px}
+.sg-kopf b{font:700 var(--bs-s) var(--head);color:var(--ink)}
 .legende{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-top:-8px}
 .legende div{display:flex;align-items:center;gap:12px;font:600 var(--bs-xs) var(--head);white-space:nowrap}
 .legende i{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font:28px/1 var(--emoji);flex:none}
@@ -163,6 +167,7 @@ body.still{cursor:none}
 .p-titel .emo{font-size:120px}
 .p-code{display:flex;flex-direction:column;align-items:center;transform-origin:50% 0}
 .p-lbl{font:500 var(--bs-s) var(--body);color:var(--muted);white-space:nowrap}
+.v-opt .v-hinweis{display:block;font:500 var(--bs-xs) var(--body);color:var(--muted);margin-top:4px}
 .walzen{display:flex;align-items:center;gap:16px;margin-top:18px}
 .walze{width:152px;height:208px;border-radius:8px;background:var(--ink);overflow:hidden;position:relative}
 .walze .band{position:absolute;left:0;right:0;top:0;will-change:transform}
@@ -484,11 +489,12 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const ms = iso => iso ? Date.parse(iso) : null;
 const uhr = t => new Date(t).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 const uhrS = t => new Date(t).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+function dauerGenau(m) { const s = Math.round(m / 1000); return Math.floor(s / 3600) + ":" + String(Math.floor(s / 60) % 60).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0") + " h"; }
 function dauer(m) { m = Math.round(m / 60000); return m < 60 ? m + " min" : Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0") + " h"; }
 const km = m => (m / 1000).toFixed(1).replace(".", ",") + " km";
 
 function aufbereiten(roh) {
-  const st = roh.state, t0 = ms(st.startedAt), tEnd = ms(st.finishedAt);
+  const st = roh.state, t0 = ms(st.startedAt), tEnd = ms(st.finishedAt) + 2 * GRUPPE_MS;   // letzte Gruppe läuft länger
   const stationen = st.stations.filter(s => s.lat != null && s.lng != null).map(s => ({ ...s, xy: P(s.lat, s.lng) }));
   const start = { ...st.start, xy: P(st.start.lat, st.start.lng) };
   const anker = [start.xy, ...stationen.map(s => s.xy)];
@@ -511,10 +517,16 @@ function aufbereiten(roh) {
         p.g = m > LUECKE_M || (dt > LUECKE_MS && m > 15); });
     }
     let weg = 0; if (!ohneGps) { let a = pts[0]; for (const q of pts) { const dd = dist([a.x, a.y], [q.x, q.y]); if (dd > 15) { weg += dd; a = q; } } }
-    return { id: t.id, name: t.name, emoji: teamEmoji(t.name), farbe: TEAM_COLORS[i % 16], members: t.members || [], place: t.place,
-      fertig: ms(t.finishedAt), pts, sts, ohneGps, weg, solved: sts.filter(s => s.ok).length,
-      luecken: !ohneGps && pts.some(p => p.g) };
+    // Startgruppe: im Mockup Index modulo 3, je 15 min versetzt; alle Zeiten des Teams wandern mit
+    const gruppe = t.startGroup ?? (i % 3), versatz = t.startedAt ? ms(t.startedAt) - t0 : gruppe * GRUPPE_MS;
+    pts.forEach(p => p.t += versatz); sts.forEach(x => { if (x.ein) x.ein += versatz; if (x.ok) x.ok += versatz; });
+    const fertig = t.finishedAt ? ms(t.finishedAt) + (t.startedAt ? 0 : versatz) : null;
+    return { id: t.id, name: t.name, emoji: teamEmoji(t.name), farbe: TEAM_COLORS[i % 16], members: t.members || [], place: null,
+      gruppe, startAt: t0 + versatz, fertig, netto: fertig ? fertig - (t0 + versatz) : null, pts, sts, ohneGps, weg,
+      solved: sts.filter(s => s.ok).length, luecken: !ohneGps && pts.some(p => p.g), versatz };
   });
+  // Plätze nach Gesamtzeit (vom Start der eigenen Gruppe bis zum Koffer-Code), nicht nach Uhrzeit
+  teams.filter(t => t.netto != null).sort((a, b) => a.netto - b.netto).forEach((t, n) => t.place = n + 1);
   // Reihenfolge wie die öffentliche Rangliste: Platz, dann gelöste Stationen, dann letzte Lösung
   const letzte = t => Math.max(0, ...t.sts.filter(s => s.ok).map(s => s.ok)) || Infinity;
   const rang = [...teams].sort((a, b) => (a.place || 999) - (b.place || 999) || b.solved - a.solved || letzte(a) - letzte(b));
@@ -523,7 +535,7 @@ function aufbereiten(roh) {
     if (s.ok) ereignisse.push({ t: s.ok, team: t, art: "ok", pos: s.position }); }));
   ereignisse.sort((a, b) => a.t - b.t);
   const fotos = roh.photos.filter(f => f.route === "echt" && teams.some(t => t.id === f.teamId))
-    .map(f => ({ ...f, team: teams.find(t => t.id === f.teamId), takenAt: ms(f.takenAt) }));
+    .map(f => { const team = teams.find(t => t.id === f.teamId); return { ...f, team, takenAt: ms(f.takenAt) + team.versatz }; });
   // Seitenverhältnis je Foto (Breite/Höhe). Im echten Spiel aus naturalWidth/naturalHeight des geladenen Bildes;
   // im Mockup ist jedes dritte Foto quer, damit man das Querformat sieht.
   fotos.forEach((f, i) => { f.quer = i % 3 === 1; f.ratio = f.quer ? 4 / 3 : 3 / 4; f.src = fotoBild(f.team, f.position, f.quer); });
@@ -629,13 +641,15 @@ function kapitelBauen() {
     if (x.art === "sieger") { x.kam = schluss; x.schnitt = true; } });
   K = k;
 }
+const GRUPPE_MS = 15 * MIN;   // Mockup: Abstand der drei Startgruppen
 const FOTO_TAKT = 1600;   // S1: jedes Foto gut 0,8 s groß und ruhig
 // Ein Koffer-Platz: Vorlauf, Halt (Walzen drehen), Aufdecken, Schlag, Nach-Halt (M1). Alle Zeiten in Kapitel-ms.
 function platzKapitel(t, d, uebersicht) {
   const eins = t.place === 1, halt = eins ? 3600 : 2600, schloss = halt + 300;
   // Ziffern rasten im Abstand von 350 ms ein (je 650 ms); bei Platz 1 die letzte langsam (1,2 s) und mit Pause davor
-  const rast = [0, 1, 2, 3, 4, 5].map(j => ({ ab: schloss + j * 350 + (eins && j === 5 ? 300 : 0), dauer: eins && j === 5 ? 1200 : 650 }));
-  const zuletzt = rast[5].ab + rast[5].dauer, enthuellt = zuletzt + 700 + (eins ? 400 : 0);
+  // Gesamtzeit H:MM:SS, fünf Walzen; die letzte bei Platz 1 langsam
+  const rast = [0, 1, 2, 3, 4].map(j => ({ ab: schloss + j * 350 + (eins && j === 4 ? 300 : 0), dauer: eins && j === 4 ? 1200 : 650 }));
+  const zuletzt = rast[4].ab + rast[4].dauer, enthuellt = zuletzt + 700 + (eins ? 400 : 0);
   const nach = enthuellt + (eins ? 6200 : 4200);
   // Kamera nach dem Schlag: die Route im freien Feld rechts der Textspalte, um das Foto herum; bei Platz 1 die ganze
   // Übersicht oben rechts, darunter der Fächer
@@ -848,7 +862,10 @@ function zeichneKarte(T, kam, modus) {
    ===================================================================== */
 // hNr: Index des nächsten Haltepunkts im Kapitel (k.halte); extra: Zeit im ersten Halt (die Walzen drehen weiter)
 const Z = { phase: "vorbereiten", i: 0, lokal: 0, spielt: false, haelt: false, hNr: 0, extra: 0, letzt: 0, wechsel: 0, vorSchwarz: false, szene: null, alt: null };
-const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Die Show läuft für das Publikum, nicht für den Laptop: Bewegung ist an, auch wenn der Rechner "reduzierte Bewegung"
+// meldet (16.10.: Friedrichs Chrome meldete es, die Show stand still). Abschalten nur bewusst auf der Startseite.
+const systemRuhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let ruhig = false;
 const kapitelZeit = (k, lokal) => k.von + (k.bis - k.von) * glatt(Math.min(1, lokal / k.dur));
 function kamFuer(i, lokal) {
   const k = K[i], vorher = i > 0 ? (K[i - 1].kamEnde || K[i - 1].kam) : k.kam;
@@ -991,16 +1008,17 @@ function teamFotos(t) {
 }
 function platzHTML(k) {
   const t = k.team, alle = OPT.fotos ? teamFotos(t) : [];
-  k.ziffern = uhrS(t.fertig).replace(/:/g, "");
+  const sek = Math.round(t.netto / 1000), hh = Math.min(9, Math.floor(sek / 3600));
+  k.ziffern = `${hh}${String(Math.floor(sek / 60) % 60).padStart(2, "0")}${String(sek % 60).padStart(2, "0")}`;
   k.bilder = k.eins ? alle : alle.slice(0, 1);
   k.erreicht = {};
-  const walzen = [0, 1, 2, 3, 4, 5].map(j => `${j === 2 || j === 4 ? '<span class="dp">:</span>' : ""}<div class="walze"><div class="band" data-w="${j}">${"0123456789012".split("").map(c => `<div>${c}</div>`).join("")}</div></div>`).join("");
+  const walzen = [0, 1, 2, 3, 4].map(j => `${j === 1 || j === 3 ? '<span class="dp">:</span>' : ""}<div class="walze"><div class="band" data-w="${j}">${"0123456789012".split("").map(c => `<div>${c}</div>`).join("")}</div></div>`).join("");
   // Fächer bei Platz 1: kleinere Karten, sonst ein großes Foto in seinem Format
   const foto = (f, i) => { const quer = f.ratio >= 1, gr = k.eins ? (quer ? [400, 300] : [300, 400]) : null;
     return `<div class="p-foto${quer ? " quer" : ""}" data-f="${i}"${gr ? ` style="width:${gr[0]}px;height:${gr[1]}px"` : ""}><img src="${f.src}" alt="Gruppenfoto ${esc(t.name)}">${k.eins ? "" : `<small>Station ${f.position}, ${uhr(f.takenAt)}</small>`}</div>`; };
   return `${k.eins ? `<div class="p-toen" style="background:${t.farbe}"></div>` : ""}
     <div class="p-teil p-titel"><span class="emo">${MEDAILLE[t.place - 1] || "🧳"}</span>Platz ${t.place}</div>
-    <div class="p-teil p-code"><div class="p-lbl">Koffer-Code eingegeben um</div><div class="walzen">${walzen}</div></div>
+    <div class="p-teil p-code"><div class="p-lbl">Gesamtzeit</div><div class="walzen">${walzen}</div></div>
     <div class="p-teil p-team"><div class="b" style="background:${t.farbe}">${t.emoji}</div>
       <div><div class="n">${esc(t.name)}</div><div class="m">${t.members.map(n => `<span class="nw">${esc(n)}</span>`).join(", ")}</div></div></div>
     ${k.bilder.map(foto).join("")}
@@ -1027,7 +1045,7 @@ function tafelHTML(k) {
   return `<div class="schleier dicht"></div><div class="t-kopf">${esc(k.name)}</div>
     <div class="t-netz" style="grid-template-rows:repeat(${reihen},${zeile.toFixed(0)}px);grid-template-columns:repeat(${spalten},minmax(0,1fr))">${k.teams.map(t =>
       `<div class="t-zeile"><span class="r">${t.place ? t.place + "." : ""}</span><i style="background:${t.farbe}">${t.emoji}</i>
-        <div><b>${esc(t.name)}</b><small>${t.place ? "nach " + dauer(t.fertig - D.t0) : "nicht im Ziel, " + t.solved + " von " + D.stationen.length + " Stationen"}</small></div></div>`).join("")}</div>`;
+        <div><b>${esc(t.name)}</b><small>${t.place ? "in " + dauerGenau(t.netto) : "nicht im Ziel, " + t.solved + " von " + D.stationen.length + " Stationen"}</small></div></div>`).join("")}</div>`;
 }
 function kofferHTML(k) {
   const mitte = (1080 - untenFrei()) / 2, hoehe = 120 + 72 + 240 + 18 + 58, oben = mitte - hoehe / 2;
@@ -1082,7 +1100,11 @@ function seiteZeichnen(k, T) {
   if (seiteStand.seit !== seitText) { $("#sSeit").textContent = seitText; seiteStand.seit = seitText; }
   // S19: am Start die Teams, unterwegs ein ruhiger Zähler statt wechselnder Ereigniszeilen
   let html;
-  if (k.id === "start") html = `<div class="legende">${D.teams.map(t => `<div><i style="background:${t.farbe}">${t.emoji}</i>${esc(t.name)}</div>`).join("")}</div>`;
+  // Start: Teams nach Startgruppe, je Gruppe die Startzeit; die laufende Gruppe hervorgehoben
+  if (k.id === "start") { const gr = [...new Set(D.teams.map(t => t.gruppe))].sort((a, b) => a - b);
+    html = gr.map(g => { const ts = D.teams.filter(t => t.gruppe === g), ab = ts[0].startAt, los = T >= ab;
+      return `<div class="sgruppe${los ? " los" : ""}"><div class="sg-kopf"><b>Gruppe ${g + 1}</b><span class="nw">${los ? "läuft seit" : "Start"} ${uhr(ab)}</span></div>
+        <div class="legende">${ts.map(t => `<div><i style="background:${t.farbe}">${t.emoji}</i>${esc(t.name)}</div>`).join("")}</div></div>`; }).join(""); }
   else {
     const pos = k.station, n = D.teams.length, st = t => t.sts.find(x => x.position === pos) || {};
     if (pos === D.stationen[D.stationen.length - 1].position) {
@@ -1308,6 +1330,7 @@ function vorbereitenHTML() {
       <button class="link" id="oDurch">Fotos durchsehen${OPT.aus.size ? ` (${OPT.aus.size} aus)` : ""}</button>
       <label><input type="checkbox" id="oHalt" ${OPT.anhalten ? "checked" : ""}> Vor und nach jedem Koffer-Platz anhalten</label>
       <label><input type="checkbox" id="oRand" ${OPT.rand ? "checked" : ""}> Rand für Fernseher</label>
+      <label><input type="checkbox" id="oRuhig" ${ruhig ? "checked" : ""}> Bewegung reduzieren${systemRuhig && !ruhig ? '<small class="v-hinweis">Dieser Rechner meldet reduzierte Bewegung. Die Show läuft trotzdem mit Bewegung.</small>' : ""}</label>
     </div>
     <div class="v-fuss"><button class="start" id="oStart">Rückblick starten</button><span class="dauer">Dauer etwa <b class="tab">${mmss(gesamt())} min</b></span></div>
     <div class="v-tasten"><span><kbd>Leertaste</kbd> Start und Pause</span><span><kbd>→</kbd> <kbd>←</kbd> Kapitel</span><span><kbd>F</kbd> Vollbild</span><span><kbd>H</kbd> alle Tasten</span></div>
@@ -1324,6 +1347,7 @@ function vorbereiten() {
   $("#oFotos").onchange = e => { e.target.blur(); OPT.fotos = e.target.checked; kapitelBauen(); vorbereiten(); };
   $("#oHalt").onchange = e => { e.target.blur(); OPT.anhalten = e.target.checked; kapitelBauen(); vorbereiten(); };
   $("#oRand").onchange = e => { e.target.blur(); rand(e.target.checked); };
+  $("#oRuhig").onchange = e => { e.target.blur(); ruhig = e.target.checked; vorbereiten(); };
   $("#oDurch").onclick = durchsehen;
   $("#oStart").onclick = () => starten();
   $("#ueber").querySelectorAll("[data-sprung]").forEach(b => b.onclick = () => { const s = SPRUENGE[+b.dataset.sprung]; b.blur(); starten(s[1], s[2]); });
