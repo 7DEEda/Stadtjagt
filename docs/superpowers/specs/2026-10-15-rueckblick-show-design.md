@@ -531,7 +531,8 @@ Gilt für Mockup v2 und den späteren Bau, ersetzt die Kapitelfolge oben, wo sie
    (Personenkilometer, alle zusammen), Schritte (Schätzung, ca. 1.350 je km), Kalorien (Schätzung, ca. 55 kcal je km
    und Person): erst halbe Brathähnchen (ca. 750 kcal), nach 2,5 s weicher Wechsel auf Liter Bier (ca. 430 kcal),
    Unterzeile „ca. … kcal, geschätzt“. Bei reduzierter Bewegung ohne Zählen.
-3. **Die Gruppen:** Startgruppen nebeneinander, je Startzeit, Zahl der Leute, Teams als „?“ ohne Namen.
+3. **Die Gruppen:** Startgruppen nebeneinander, je Startzeit, Zahl der Leute und die Teams der Gruppe mit Tier und Namen
+   (Friedrich 17.10.: Zusammenfassung, welches Team in welcher Gruppe war; der Zeitraffer danach bleibt anonym).
 4. **Karte:** ein durchgehender Zeitraffer (keine Kapitel je Station), Laufzeit-Timer oben (ab 0:00, alle Gruppen
    gemeinsam), Kamera passt sich laufend an, so dass alle Teams und der Start im Bild sind; anonym („?“, graue
    Routen), Kopf leuchtet beim Lösen; läuft, bis alle im Ziel sind bzw. die Spielzeit abgelaufen ist. Keine
