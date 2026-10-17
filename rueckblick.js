@@ -1660,6 +1660,7 @@ function vorbereitenHTML() {
   </div>${fernHTML()}</div>`;
 }
 function vorbereiten() {
+  fernStarten();   // ab Vorbereiten: Befehle vom Handy, Stand fürs Handy (Nachtrag 37); vor dem Block, damit er weiß, ob sie läuft
   Z.phase = "vorbereiten"; Z.spielt = false; Z.haelt = false; knopf(); $("#rb-buehne").dataset.art = "vorbereiten";
   if (Z.szene) { Z.szene.remove(); Z.szene = null; } if (Z.alt) { Z.alt.remove(); Z.alt = null; }
   $("#rb-pulse").innerHTML = ""; $("#rb-koepfe").style.opacity = ""; $("#rb-stationen").style.opacity = ""; $("#rb-grund").style.opacity = "";
@@ -1682,7 +1683,7 @@ function vorbereiten() {
   root.querySelectorAll("#rb-ueber [data-sprung]").forEach(b => b.onclick = () => { b.blur(); starten(b.dataset.sprung); });
   const li = root.querySelector("#rb-wach"); if (li) li.hidden = wachOk !== false;
   leisteSpur();
-  fernStarten();   // ab Vorbereiten: Befehle vom Handy, Stand fürs Handy (Nachtrag 37)
+  fernBinden();
 }
 function durchsehen() {
   Z.phase = "durchsehen";   // M8: solange hier gewählt wird, startet weder Leertaste noch Pfeil die Show
@@ -1718,16 +1719,20 @@ function hilfe() {
    durch dieselben Sperren (M1, M2, M3, M8). Ihren Stand meldet sie bei jeder Änderung und sonst alle 4 s
    (rb_status_setzen), mit der Moderationshilfe, die nur das Handy zeigt (Spoiler, nie am Beamer). Kein Realtime,
    eine Anfrage zugleich, nichts davon im Bild-Takt. Fehler bleiben still, der nächste Takt versucht es wieder; kennt
-   die Datenbank die Funktionen nicht (Migration fehlt), hört die Show auf zu fragen. Nur im echten Rückblick (die
-   Probe hat keine Datenbank). Ohne Handy bleibt alles wie vorher: Tastatur und Presenter.
+   die Datenbank die Funktionen nicht (Migration fehlt), hört die Show auf zu fragen. Auch in der Probe (Friedrich
+   17.10.: den Demo-Rückblick vom Handy steuern): Befehle und Stand laufen dort ebenso über die Datenbank, nur die
+   Daten der Show sind Beispieldaten. Die PIN fragt der Block im Vorbereiten beim Aktivieren ab (nur sessionStorage,
+   sj.pin); ist sie aus der Spielleitung schon da, startet die Fernbedienung gleich. Ohne Handy bleibt alles wie
+   vorher: Tastatur und Presenter.
    ===================================================================== */
 const FERN_TAKT = 1000, FERN_HERZ = 4000, FERN_HANDY = 10000, FERN_DATEI = "rueckblick-fernbedienung.html";
-// nr: letzte Befehlsnummer, die die Show kennt (null: noch nicht übernommen); handy: letztes Lebenszeichen des Handys
-const F = { an: false, gen: 0, uhr: 0, nr: null, kern: "", modFuer: "", mod: [], gesendet: 0, handy: 0, fehlt: false, qr: "" };
+// nr: letzte Befehlsnummer, die die Show kennt (null: noch nicht übernommen); handy: letztes Lebenszeichen des Handys;
+// meldung: Fehler beim Aktivieren (falsche PIN, kein Netz)
+const F = { an: false, gen: 0, uhr: 0, nr: null, kern: "", modFuer: "", mod: [], gesendet: 0, handy: 0, fehlt: false, qr: "", meldung: "" };
 const fernLink = () => new URL(FERN_DATEI, location.href).href;   // ohne Hash und Query, nie mit PIN
 const ohneFunktion = e => !!e && (e.code === "PGRST202" || /Could not find the function/i.test(e.message || ""));
 function fernStarten() {
-  if (modus !== "echt" || F.an || F.fehlt || !root || !host || !host.pin()) return;
+  if (F.an || F.fehlt || !root || !host || !host.pin()) return;
   Object.assign(F, { an: true, nr: null, kern: "", gesendet: 0 });
   fernTakt(++F.gen);
 }
@@ -1761,6 +1766,10 @@ async function fernTakt(gen) {
     }
   } catch (e) {
     if (ohneFunktion(e) && gen === F.gen) { F.fehlt = true; F.an = false; fernAnzeige(); return; }
+    // PIN falsch (in der Probe aus einer alten Sitzung, oder inzwischen geändert): aus, der Block fragt neu
+    if (/Falsche PIN/i.test(e.message || "") && gen === F.gen) {
+      F.an = false; F.meldung = "Falsche PIN."; if (modus === "probe") host.pinVergessen(); fernAnzeige(); return;
+    }
     // Netz weg, Server 5xx, Zeitlimit: still; die Show läuft, der nächste Takt fragt wieder
   }
   if (aktuell()) F.uhr = setTimeout(() => fernTakt(gen), FERN_TAKT);
@@ -1782,7 +1791,7 @@ function fernStatus() {
     spielt: show && Z.spielt, haelt: Z.haelt, hNr: Z.hNr, endHalt: Z.endHalt, nr: F.nr, i: show ? Z.i : -1, n: K.length, fotos: OPT.fotos };
   const schluessel = JSON.stringify(kern);
   if (schluessel !== F.modFuer) { F.mod = moderation().filter(Boolean); F.modFuer = schluessel; }
-  return { kern: schluessel, daten: { v: 1, ...kern, text: kapitel + (w.zustand ? ", " + w.zustand : ""), vorbei: vorbeiMs(), gesamt: gesamt(),
+  return { kern: schluessel, daten: { v: 1, ...kern, probe: modus === "probe", text: kapitel + (w.zustand ? ", " + w.zustand : ""), vorbei: vorbeiMs(), gesamt: gesamt(),
     endlos: w.endlos, mod: F.mod } };
 }
 
@@ -1871,14 +1880,36 @@ function fernQr() {
 }
 function fernInnen() {
   if (F.fehlt) return `<h2>Handy als Fernbedienung</h2><p>Die Datenbank kennt die Fernbedienung noch nicht.</p>`;
+  const kopf = `<h2>Handy als Fernbedienung</h2><div class="v-qr" role="img" aria-label="QR-Code der Fernbedienung">${fernQr()}</div>`;
+  // noch nicht aktiv (Probe ohne PIN, oder die PIN stimmt nicht mehr): PIN der Spielleitung hier eingeben
+  if (!F.an) return kopf + `<form class="v-fernpin" id="rb-fernForm"><input id="rb-fernPin" type="password" placeholder="PIN" aria-label="PIN der Spielleitung"
+      autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"><button class="start" type="submit">Aktivieren</button></form>
+    ${F.meldung ? `<p class="warn" role="alert">${esc(F.meldung)}</p>` : ""}`;
   const da = F.handy && Date.now() - F.handy < FERN_HANDY;
-  return `<h2>Handy als Fernbedienung</h2><div class="v-qr" role="img" aria-label="QR-Code der Fernbedienung">${fernQr()}</div>
-    <p>PIN am Handy eingeben</p>${da ? `<p class="da">${HAKEN}<span>Handy verbunden</span></p>` : ""}`;
+  return kopf + `<p>PIN am Handy eingeben</p>${da ? `<p class="da">${HAKEN}<span>Handy verbunden</span></p>` : ""}`;
 }
-const fernHTML = () => modus === "echt" ? `<div class="v-fern" id="rb-fern" role="group" aria-label="Handy als Fernbedienung">${fernInnen()}</div>` : "";
+const fernHTML = () => `<div class="v-fern" id="rb-fern" role="group" aria-label="Handy als Fernbedienung">${fernInnen()}</div>`;
 function fernAnzeige() {
   const box = root && root.querySelector("#rb-fern"); if (!box) return;
-  const neu = fernInnen(); if (box.dataset.innen !== neu) { box.innerHTML = neu; box.dataset.innen = neu; }
+  const neu = fernInnen(); if (box.dataset.innen !== neu) { box.innerHTML = neu; box.dataset.innen = neu; fernBinden(); }
+}
+// Aktivieren: PIN mit rb_poll prüfen, dann nur in sessionStorage merken (host.pinSetzen, sj.pin) und starten
+function fernBinden() {
+  const f = root && root.querySelector("#rb-fernForm"); if (!f) return;
+  f.onsubmit = async ev => {
+    ev.preventDefault();
+    const inp = f.querySelector("input"), knopf = f.querySelector("button"), p = inp.value.trim(); if (!p) return;
+    knopf.disabled = true;
+    try {
+      await host.rpc("rb_poll", { p_pin: p, p_seit: null });
+      if (!root) return;
+      host.pinSetzen(p); F.meldung = ""; inp.blur(); fernStarten();
+    } catch (e) {
+      if (ohneFunktion(e)) F.fehlt = true;
+      else F.meldung = /Falsche PIN/i.test(e.message || "") ? "Falsche PIN." : "Keine Verbindung zum Server.";
+    } finally { if (knopf.isConnected) knopf.disabled = false; }
+    fernAnzeige();
+  };
 }
 
 /* ---------- Bühne skalieren ---------- */
@@ -1943,7 +1974,7 @@ function oeffnen(h, art) {
   host = h; modus = art === "probe" ? "probe" : "echt";
   Object.assign(Z, { phase: "laden", i: 0, lokal: 0, spielt: false, haelt: false, hNr: 0, extra: 0, letzt: 0, wechsel: 0, vorSchwarz: false, vorFrage: false, szene: null, alt: null });
   D = null; K = []; OPT.aus = new Set(); fortStand = "";
-  Object.assign(F, { fehlt: false, handy: 0, modFuer: "" });
+  Object.assign(F, { fehlt: false, handy: 0, modFuer: "", meldung: "" });
   root = document.createElement("div");
   root.id = "rueckblick"; root.className = "still"; root.setAttribute("role", "region"); root.setAttribute("aria-label", "Rückblick");
   root.innerHTML = GERUEST;

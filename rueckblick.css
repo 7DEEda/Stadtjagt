@@ -323,6 +323,12 @@
 #rueckblick .v-fern p{font:500 var(--bs-xs)/1.25 var(--body);color:var(--muted);margin-top:20px}
 #rueckblick .v-fern p.da{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--ink);font-weight:600;margin-top:14px;white-space:nowrap}
 #rueckblick .v-fern p.da svg{width:36px;height:36px;color:var(--ok);flex:none}
+/* Probe: Aktivieren mit der PIN der Spielleitung, im Block selbst */
+#rueckblick .v-fernpin{display:flex;flex-direction:column;gap:12px;margin-top:20px}
+#rueckblick .v-fernpin input{width:100%;height:72px;border:2px solid var(--feld);border-radius:10px;padding:0 18px;background:var(--paper);color:var(--ink);font:500 var(--bs-xs) var(--body)}
+#rueckblick .v-fernpin input:focus{border-color:var(--flag);outline:none}
+#rueckblick .v-fernpin .start{border:0;border-radius:10px;background:var(--flag);color:var(--flag-ink);font:700 var(--bs-xs) var(--head);min-height:72px;cursor:pointer}
+#rueckblick .v-fern p.warn{color:var(--ink);font-weight:600;margin-top:14px}
 #rueckblick .v-zurueck{display:inline-block;margin-top:32px;font:600 var(--bs-xs) var(--body);color:var(--muted);text-decoration:underline;min-height:56px;padding:12px 0;background:none;border:0;cursor:pointer}
 /* PIN, Sperre, Laden (gleiche Fläche wie Vorbereiten) */
 #rueckblick .v-panel .rb-fehler{margin-top:28px;font:600 var(--bs-s) var(--body);color:var(--ink);background:var(--warn-bg);border-left:8px solid var(--warn);padding:16px 24px}

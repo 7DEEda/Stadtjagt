@@ -10,8 +10,8 @@ fünf RPCs rb_* laufen in beiden Seiten über page.route auf dasselbe Python-Obj
 Prüft: PIN am Handy, Start aus Vorbereiten, Weiter wie die Taste, Doppeltipp gesperrt, Zurück, Pause, Schwarzbild,
 Zum Ende (mit Rückfrage), Status am Handy folgt der Show (auch bei Tasten am Laptop), Moderation vor Platz 3 nur am
 Handy, "Handy verbunden" am Laptop, "Keine Show gefunden" nach 6 s ohne Herzschlag, alte Befehle wirken nach dem
-Öffnen nicht, rb_ende beim Verlassen, Netzfehler stören die Show nicht, Bildrate mit aktiver Fernbedienung, Probe ohne
-Fernbedienung, Handy-Seite bei 390 und 360 px ohne seitliches Scrollen, Tippziele, hell und dunkel, Texte ohne
+Öffnen nicht, rb_ende beim Verlassen, Netzfehler stören die Show nicht, Bildrate mit aktiver Fernbedienung, Probe mit
+Fernbedienung (PIN im Block aktivieren, Moderation mit den Demo-Teams, PIN geändert), Handy-Seite bei 390 und 360 px ohne seitliches Scrollen, Tippziele, hell und dunkel, Texte ohne
 Gedankenstrich und Mittelpunkt, Service Worker lässt die Seite in Ruhe.
 Port 8865. Ergebnis VOR dem Schließen (abschluss.py). Im Vordergrund mit Timeout, etwa
 `timeout 590 python tools/pruefstand/fernbedienung.py`. Bildschirmfotos nach FERN_SHOTS oder tools/pruefstand/shots.
@@ -69,10 +69,11 @@ class DB:
         self.status, self.status_um, self.handy_um = None, None, None
         self.log = []          # (Funktion, Argumente ohne PIN, Ergebnis)
         self.kaputt = set()    # Funktionen, die mit HTTP 500 antworten ("*": alle)
+        self.pin = "4711"      # admin_pin in game_state
 
     def rufen(self, fn, a):
         jetzt = time.time()
-        if str(a.get("p_pin") or "").strip() != "4711":
+        if str(a.get("p_pin") or "").strip() != self.pin:
             raise Fehler("Falsche PIN.")
         if fn == "rb_befehl":
             if a.get("p_befehl") not in ("weiter", "zurueck", "pause", "schwarz", "start", "ende"):
@@ -409,14 +410,52 @@ with sync_playwright() as pw:
         pruef(sum(1 for x in db.log if x[0] == "rb_poll") == n_poll, "nach dem Verlassen keine Abfrage mehr")
         pg.context.close()
 
-        print("Gruppe 12: Probe ohne Fernbedienung")
+        print("Gruppe 12: Probe mit Fernbedienung (Friedrich 17.10.: den Demo-Rückblick vom Handy steuern)")
         laptop = lambda: sum(1 for x in db.log if x[0] in ("rb_poll", "rb_status_setzen", "rb_ende"))  # noqa: E731 (das Handy fragt weiter)
         vor = laptop()
         pp = show_seite(b, "rueckblick-probe", rb=True)
         pp.wait_for_selector("#rb-oStart", timeout=60000)
-        pp.wait_for_timeout(2500)
-        pruef(laptop() == vor and pp.locator("#rb-fern").count() == 0, f"Probe: keine Abfrage ({laptop() - vor}), kein Block Fernbedienung")
+        pp.wait_for_timeout(2000)
+        pruef(pp.locator("#rb-fern").count() == 1 and pp.locator("#rb-fern .v-qr svg").count() == 1 and pp.locator("#rb-fernPin").count() == 1,
+              "Probe: Block mit QR-Code und PIN-Feld zum Aktivieren")
+        pruef(laptop() == vor, f"Probe vor dem Aktivieren: keine Abfrage ({laptop() - vor})")
+        pp.fill("#rb-fernPin", "0000")
+        pp.keyboard.press("Enter")
+        pruef(warte(pp, "/Falsche PIN/.test(document.querySelector('#rb-fern').textContent)", 5000) and pp.locator("#rb-fernPin").count() == 1,
+              "Probe: falsche PIN, Meldung, Feld bleibt")
+        pruef(zustand(pp)["phase"] == "vorbereiten" and pp.evaluate("sessionStorage.getItem('sj.pin')") is None, "Probe: Enter im PIN-Feld startet nichts, nichts gemerkt")
+        pp.fill("#rb-fernPin", "4711")
+        pp.click("#rb-fernForm button")
+        pruef(warte(pp, "RB.fern().an && /PIN am Handy eingeben/.test(document.querySelector('#rb-fern').textContent)", 5000), "Probe: aktiviert")
+        pruef(pp.evaluate("sessionStorage.getItem('sj.pin')") == "4711" and "4711" not in pp.url and pp.evaluate("localStorage.getItem('sj.pin')") is None,
+              "Probe: PIN nur im sessionStorage")
+        pruef(warte(ph, "/Vorbereiten/.test(document.querySelector('#kapitel').textContent) && /Probe/.test(document.querySelector('#sub').textContent)", 6000),
+              "Handy: Probe im Vorbereiten, als Probe gekennzeichnet")
+        tippen(ph, "start")
+        pruef(warte(pp, "RB.zustand().phase === 'show'", 5000), "Handy startet die Probe")
+        dritter = pp.evaluate("RB.D().rang.find(t => t.place === 3).name")
+        pp.evaluate("RB.starten('platz3', 1000)")
+        pruef(warte(ph, f"/Als Nächstes wird Platz 3 aufgedeckt: {dritter}/.test(document.querySelector('#mod').textContent)", 6000),
+              f"Probe: Moderation mit den Demo-Teams ({dritter})")
+        pp.wait_for_timeout(700)
+        tippen(ph, "weiter")
+        pruef(warte(pp, "RB.zustand().hNr === 1", 5000), "Probe: Weiter am Handy deckt Platz 3 auf")
+        pp.evaluate("location.hash = '#/'")
+        pp.wait_for_function("!document.querySelector('#rueckblick')", timeout=15000)
+        pp.wait_for_timeout(1500)
+        pruef(db.status is None, "Probe verlassen: rb_ende")
         pp.context.close()
+        # die PIN der Spielleitung ändert sich, während die Probe läuft: die Fernbedienung geht aus, der Block fragt neu
+        pf = show_seite(b, "rueckblick-probe", rb=True)
+        pf.wait_for_selector("#rb-fernPin", timeout=60000)
+        pf.fill("#rb-fernPin", "4711")
+        pf.keyboard.press("Enter")
+        warte(pf, "RB.fern().an", 5000)
+        db.pin = "neu"
+        pruef(warte(pf, "!RB.fern().an && !!document.querySelector('#rb-fernPin') && /Falsche PIN/.test(document.querySelector('#rb-fern').textContent)", 5000)
+              and pf.evaluate("sessionStorage.getItem('sj.pin')") is None, "PIN geändert: Fernbedienung aus, Block fragt neu, alte PIN vergessen")
+        db.pin = "4711"
+        pf.context.close()
         # Datenbank ohne die Migration: die Show hört auf zu fragen und sagt es im Vorbereiten
         pm = show_seite(b, "rueckblick", rb=False, extra="window.__rbFehlt = true;")
         pm.wait_for_selector("#rb-oStart", timeout=60000)

@@ -115,7 +115,7 @@ p{margin:0}
 <main id="haupt">
   <header class="kopf">
     <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></svg>
-    <div><h1>Fernbedienung</h1><div class="sub">Rückblick</div></div>
+    <div><h1>Fernbedienung</h1><div class="sub" id="sub">Rückblick</div></div>
     <button class="thema" id="thema" type="button"></button>
   </header>
 
@@ -266,6 +266,7 @@ function zeigen() {
   } else { kap.textContent = "Am Laptop den Rückblick öffnen."; kap.classList.add("hinweis"); zu.textContent = ""; }
   $("#schritt").textContent = ok && show && st.n ? `Kapitel ${st.i + 1} von ${st.n}` : "";
   $("#bedien").classList.toggle("alt", !ok);   // letzter bekannter Stand, blass
+  $("#sub").textContent = st && st.probe ? "Rückblick, Probe" : "Rückblick";   // Probe: Beispieldaten am Beamer
   $("#fort").hidden = !show; $("#zeit").hidden = !show;
   if (show) {
     $("#fort i").style.width = (st.endlos ? 100 : Math.min(100, st.gesamt ? st.vorbei / st.gesamt * 100 : 0)).toFixed(1) + "%";
