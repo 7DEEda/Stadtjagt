@@ -637,7 +637,7 @@ let radEl = [], teamEl = {}, kopfEl = {}, ankerEl = {}, stEl = [], namenEl = [];
 function kartenElemente() {
   letzteKarte = null;
   const sp = $("#rb-spuren"); sp.innerHTML = ""; teamEl = {};
-  radEl = D.stationen.filter(s => s.xy).map(s => ({ s, e: el("circle", { class: "radius", cx: s.xy[0], cy: s.xy[1], r: s.radiusM || 50, style: "opacity:0" }, sp) }));
+  radEl = [];   // kein Check-in-Umkreis auf der Karte (Friedrich 18.10.): nur die Stationen
   D.teams.forEach(t => {
     const g = el("g", {}, sp);
     // Spur in Stücken zu je STUECK Punkten: fertige Stücke bleiben stehen, je Bild wird nur das letzte neu gesetzt
@@ -705,11 +705,6 @@ function zeichneKarte(T, kam, modus) {
   });
   // Köpfe: an einem Ort stehen die Teams im Ring, in der Reihenfolge ihrer Ankunft
   const orte = [D.start.xy, ...D.stationen.map(x => x.xy)], ring = ringMass(D.teams.length);
-  // Der Check-in-Umkreis einer Station erscheint nur, solange ein Team in der Nähe ist (Friedrich 17.10.: kein Überbleibsel)
-  radEl.forEach(({ s: st, e: r }) => {
-    const da = (modus.koepfe || einzeln) && D.teams.some(t => { if (einzeln && t !== einzeln) return false;
-      const h = kopf(t, einzeln ? modus.bis ?? T : T); return h && dist(h, st.xy) < (st.radiusM || 50) * 2.4; });
-    const o = da ? "1" : "0"; if (r.style.opacity !== o) r.style.opacity = o; });
   const kk = K[Z.i], zr = kk && kk.art === "karte", tempo = zr ? Math.max(1, (kk.bis - kk.von) / kk.dur) : 1;
   D.teams.forEach(t => {
     const g = kopfEl[t.id], h = einzeln ? (einzeln === t ? kopf(t, modus.bis ?? T) : null) : modus.koepfe ? kopf(t, T) : null;

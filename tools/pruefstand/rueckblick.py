@@ -933,11 +933,7 @@ with sync_playwright() as pw:
         pg.evaluate("RB.zeige('award1', 5500)"); o2 = kop()
         pruef(o1 > .99 and o2 < .01, f"Award: Teamsymbol läuft mit der Route und blendet danach aus ({o1:.2f}, {o2:.2f})")
         pg.evaluate("RB.zeige('zeitraffer', 0)")
-        rad0 = pg.evaluate("[...document.querySelectorAll('#rb-spuren .radius')].map(r => r.style.opacity)")
-        pruef(rad0 and all(x == "0" for x in rad0), f"Check-in-Umkreise unsichtbar, solange alle am Start stehen ({rad0})")
         pg.evaluate("RB.zeige('zeitraffer', 30000)")
-        rad1 = pg.evaluate("[...document.querySelectorAll('#rb-spuren .radius')].map(r => r.style.opacity)")
-        pruef("1" in rad1 and "0" in rad1, f"Check-in-Umkreis nur an Stationen mit Teams in der Nähe ({rad1})")
         zr = pg.evaluate("[...document.querySelectorAll('#rb-koepfe .kopf')].filter(g => g.style.display !== 'none').map(g => getComputedStyle(g.querySelector('.frage')).display)")
         pruef(zr and all(x != "none" for x in zr), "Zeitraffer: alle Köpfe als '?'")
         pruef(pg.evaluate("document.querySelector('.zr-uhr').textContent") not in ("", None) and re.fullmatch(r"\d:\d\d", pg.evaluate("document.querySelector('.zr-uhr').textContent")),
