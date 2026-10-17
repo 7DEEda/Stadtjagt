@@ -546,3 +546,6 @@ Gilt für Mockup v2 und den späteren Bau, ersetzt die Kapitelfolge oben, wo sie
 
 Wertung nach Gesamtzeit (Startgruppen, virtuelles Rennen), Bewegung immer an (Schalter „Bewegung reduzieren“),
 keine Fotokapitel je Station, kein Mittelpunkt als Trenner.
+12. **Abspann (Nachtrag 17.10.):** Gruppenbilder in zufälliger Reihenfolge in Endlosschleife, deutlich langsamer
+    (ca. 35 bis 45 px/s), neu gemischt je Durchlauf, nahtlos. Der Abspann ist das Ende und läuft, bis die
+    Spielleitung etwas drückt; kein eigenes Schlussbild mehr.
