@@ -632,7 +632,7 @@ const meter = m => m >= 1000 ? km(m) : Math.round(m / 10) * 10 + " m";
 // Reihenfolge der Show: abwechselnd gut und lustig. richtung 1: kleinster Wert gewinnt, -1: größter
 const AWARDS = [
   { id: "navi", titel: "Navi auf zwei Beinen", emo: "🧭", richtung: 1, wert: z => z.faktor,
-    zeile: z => { const p = Math.round((z.faktor - 1) * 100); return p >= 1 ? `nur <b>${p} %</b> Umweg` : "<b>kaum</b> Umweg"; } },
+    zeile: z => { const p = Math.round((z.faktor - 1) * 100); return p >= 1 ? `nur <b>${p} %</b> Umweg vom idealen Weg` : "<b>kaum</b> Umweg vom idealen Weg"; } },
   { id: "sightseeing", titel: "Sightseeing-Tour", emo: "📸", richtung: -1, wert: z => z.umweg, gilt: z => z.umweg > 0,
     zeile: z => `<b>${meter(z.umweg)}</b> mehr Prag gesehen` },
   { id: "raetselfuechse", titel: "Rätselfüchse", emo: "🧩", richtung: 1, wert: z => z.raetsel,
@@ -780,7 +780,7 @@ function rangKapitel(d, top) {
   // 2) Weiter deckt Platz 12 bis 4 von unten nach oben auf (Halt); 3) Weiter lässt die Zeiten von Platz 3, 2, 1 einrasten
   // (Ende, Weiter geht zu den drei Spalten)
   const halt1 = 1900;
-  let t = halt1 + 300;
+  let t = halt1 + 1100;   // die erste Walze rastet 760 ms vor dem Aufdecken ein: erst nach dem Halt, sonst steht sie schon davor
   unten.forEach((tm, i) => { const u = unten.length > 1 ? i / (unten.length - 1) : 1;
     plan[tm.id] = { rast: tm.place ? rast(t - 760) : null, auf: t }; t += 600 + 700 * u; });
   const halt2 = t + 900;
@@ -791,7 +791,7 @@ function rangKapitel(d, top) {
   // schon aufgedeckt (versatz = Zeit am Ende von Teil 1), die Zeiten der ersten drei rattern und warten auf Weiter
   return [{ id: "rangliste", art: "rangliste", name: "Rangliste", zeilen, plan, top, dur: halt2, halte: [{ t: halt1, springe: true }] },
     { id: "rangliste2", art: "rangliste", name: "Rangliste, die ersten drei", zeilen, plan, top, versatz: halt2, dur: ende - halt2,
-      halte: [{ t: 400, springe: true }] }];
+      halte: [{ t: 250, springe: true }] }];   // Halt vor dem ersten Einrasten (bei 400), die Walzen drehen im Halt weiter
 }
 // Drei Spalten: Reihenfolge wie das Podest (2, 1, 3), ein gemeinsamer Kartenausschnitt für alle drei Wege (540 x 340)
 function spaltenBasis(d, top) {
