@@ -906,9 +906,9 @@ with sync_playwright() as pw:
         pruef(op[0] > op[-1], "Die Gruppen: die Teams steigen nacheinander ein")
         # Ausgang: die Teams drehen sich zu "?" und landen auf den Ringplätzen am Start, genau dort, wo der Zeitraffer beginnt
         pg.evaluate("RB.zeige('gruppen', 7600)"); pg.wait_for_timeout(100); pg.screenshot(path=str(SHOTS / "probe-gruppen-7600.png"))
-        pg.evaluate("RB.zeige('gruppen', 9990)"); pg.wait_for_timeout(100); pg.screenshot(path=str(SHOTS / "probe-gruppen-9990.png"))
+        pg.evaluate("RB.zeige('gruppen', 9990)"); pg.wait_for_timeout(700); pg.screenshot(path=str(SHOTS / "probe-gruppen-9990.png"))
         fl = pg.evaluate("[...document.querySelectorAll('.gr-flieger')].map(f => { const r = f.getBoundingClientRect(); return [f.textContent, r.left + r.width / 2, r.top + r.height / 2]; })")
-        pg.evaluate("RB.zeige('zeitraffer', 0)"); pg.wait_for_timeout(100)
+        pg.evaluate("RB.zeige('zeitraffer', 0)"); pg.wait_for_timeout(700)
         kp = pg.evaluate("[...document.querySelectorAll('#rb-koepfe .kopf')].map(g => { const r = g.querySelector('circle.k').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })")
         abw = max((min(math.hypot(f[1] - k[0], f[2] - k[1]) for k in kp) for f in fl), default=999)
         pruef(len(fl) == 12 and all(f[0] == "?" for f in fl) and abw < 6, f"Gruppen-Ausgang: zwölf '?' landen auf den Köpfen des Zeitraffers (Abstand höchstens {abw:.1f} px)")
