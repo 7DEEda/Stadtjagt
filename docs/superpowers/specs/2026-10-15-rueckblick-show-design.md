@@ -584,3 +584,12 @@ zeigt keinen Abstand. Die Rattelzeit der Walzen läuft im Halt weiter (`Z.extra`
 - **Fun Facts:** Die Kalorienkachel hält bei 3,6 s auf den Brathähnchen; Weiter schaltet von Hand auf Liter Bier um
   (Kachel wechselt weich und zählt neu); danach Endhalt, Weiter geht zu den Gruppen.
 
+## Nachtrag 17.10.2026 (Leiste wie ein Video, Umkreise, Friedrich)
+
+- **Leiste wie bei einem Video:** Klick oder Ziehen an jede Stelle der Fortschrittsleiste springt an diese Stelle, auch mitten
+  in ein Kapitel (Kapitel unter dem Zeiger plus Stelle darin). Im selben Kapitel wird nur die Zeit gesetzt, sonst die Szene
+  gebaut. Größere Trefferfläche (16 px über und unter der Leiste), Tooltip mit Kapitelname und Zeit beim Überfahren, kein
+  Teamname. Halte vor der Stelle gelten als erledigt.
+- **Check-in-Umkreis einer Station** (orange Kreis) erscheint nur, solange ein Team innerhalb des 2,4-fachen Radius ist, und
+  blendet sonst in 0,5 s aus (kein Überbleibsel nach dem Weitergehen der Teams).
+
