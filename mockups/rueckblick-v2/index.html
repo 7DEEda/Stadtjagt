@@ -384,7 +384,7 @@ const BEISPIEL = (() => {
   const TEMPO = { Adler: .78, Eule: .84, Tiger: .88, Fuchs: .93, Wolf: .97, Panda: 1, Delfin: 1.04, Pinguin: 1.08, Einhorn: 1.2, Flamingo: 1.3, Otter: 1.12, Igel: 1.38 };
   const GEHEN = [8, 10, 9, 10, 11], RAETSEL = [6, 9, 7, 11, 8];
   const STECKT = { Otter: 5, Igel: 4 };              // rätselt beim Spielende noch an dieser Station
-  const OHNE_GPS = new Set(["Igel"]);                 // Handy der Teamleitung hat nie gemeldet
+  const OHNE_GPS = new Set();                         // im Mockup hat jedes Team GPS (Friedrich 17.10.); der Fall bleibt im Code
   const LUECKE = { Otter: [T0 + 31 * MIN, T0 + 45 * MIN] };   // Handy in der Tasche
   const OHNE_FOTO = new Set(["Delfin:1", "Pinguin:3", "Wolf:4"]);
   const VOR = ["Anna", "Ben", "Clara", "David", "Emre", "Fatma", "Greta", "Hannes", "Ida", "Jonas", "Kira", "Lars", "Mia", "Nils", "Olga", "Paul",
