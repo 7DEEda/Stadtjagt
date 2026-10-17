@@ -540,8 +540,9 @@ Gilt für Mockup v2 und den späteren Bau, ersetzt die Kapitelfolge oben, wo sie
 7. **Top 3 verdeckt:** Zeiten von Platz 1 bis 3 sichtbar, Teams noch „?“.
 8. **Drei Spalten:** Platz 1, 2, 3 nebeneinander mit Zeit und dem Weg des Teams (anonym, zum Vergleich).
 9. **Platz 3 aufdecken** in seiner Spalte (Team, Farbe, Route), Halt für die Kofferübergabe.
-10. **Duell:** Platz 1 und 2 übrig, dramatisch aufdecken, wer Platz 1 ist (Eskalation wie bisher Platz 1), danach
-    Platz 2; je Halt für die Kofferübergabe.
+10. **Duell:** Platz 1 und 2 übrig; erst Platz 2 aufdecken (Halt für die Kofferübergabe), dann Platz 1 als eigener,
+    eskalierter Moment (Halt davor und danach). Unter den drei Spalten stehen die noch nicht aufgedeckten Teams
+    (Tier und Name, alphabetisch, ohne Überschrift); beim Aufdecken fliegt das Team in seine Spalte.
 11. **Siegerbild, Abspann (Fotorolle), Schlussbild.**
 
 Wertung nach Gesamtzeit (Startgruppen, virtuelles Rennen), Bewegung immer an (Schalter „Bewegung reduzieren“),
