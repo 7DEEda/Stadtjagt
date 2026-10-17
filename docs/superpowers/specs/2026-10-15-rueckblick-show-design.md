@@ -575,3 +575,12 @@ Die Rangliste läuft in drei Schritten, jeder mit eigenem Weiter:
 Rechts neben jeder eingerasteten Zeit steht der Abstand zum Ersten („+2:25“, ab einer Stunde „+1:02:25“); Platz 1
 zeigt keinen Abstand. Die Rattelzeit der Walzen läuft im Halt weiter (`Z.extra`, auch in Halt 2 und 3).
 
+## Nachtrag 17.10.2026 (Reihenfolge Awards, Fun Facts, Friedrich)
+
+- **Awards vor der Siegerehrung:** Die Rangliste teilt sich in zwei Kapitel. Folge jetzt: Zeitraffer, Rangliste Teil 1
+  (Platz 12 bis 4 decken sich auf, Weiter), Awards (Auftakt, sechs Awards, je Weiter), Rangliste Teil 2 (alle Plätze ab 4
+  stehen, die Zeiten von Platz 1 bis 3 rattern, Halt; Weiter lässt sie einrasten), Drei Spalten, Platz 3, 2, 1, Siegerbild,
+  Abspann. Kapitel `rangliste` und `rangliste2`; Teil 2 zeichnet den Stand nach dem Aufdecken (`versatz`).
+- **Fun Facts:** Die Kalorienkachel hält bei 3,6 s auf den Brathähnchen; Weiter schaltet von Hand auf Liter Bier um
+  (Kachel wechselt weich und zählt neu); danach Endhalt, Weiter geht zu den Gruppen.
+
