@@ -177,7 +177,7 @@ body.still{cursor:none}
    und "?" wird zum Team, bis Platz 4. Alle Maße hängen an --zh (Zeilenhöhe), rangHTML() setzt sie nach der Teamzahl */
 .rl-kopf{position:absolute;left:260px;top:44px;font:700 var(--bs-l)/1 var(--head)}
 .rl-netz{position:absolute;left:260px;right:260px;display:flex;flex-direction:column;will-change:opacity}
-.rl-zeile{height:var(--zh);display:grid;grid-template-columns:calc(var(--zh) * 1.5) calc(var(--zh) * 1.05) minmax(0,1fr) auto;column-gap:calc(var(--zh) * .3);align-items:center;border-bottom:1px solid var(--line);padding:0 calc(var(--zh) * .2)}
+.rl-zeile{height:var(--zh);display:grid;grid-template-columns:calc(var(--zh) * 1.5) calc(var(--zh) * 1.05) minmax(0,1fr) auto calc(var(--zh) * 2.2);column-gap:calc(var(--zh) * .3);align-items:center;border-bottom:1px solid var(--line);padding:0 calc(var(--zh) * .2)}
 .rl-zeile .r{font:700 calc(var(--zh) * .55)/1 var(--head);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .rl-zeile .r .emo{font-size:calc(var(--zh) * .7)}
 .rl-kreis{position:relative;width:calc(var(--zh) * .82);height:calc(var(--zh) * .82)}
@@ -186,6 +186,7 @@ body.still{cursor:none}
 .rl-kreis .ti{font:calc(var(--zh) * .48)/1 var(--emoji);border:3px solid var(--ring);opacity:0}
 .rl-zeile .n{font:700 calc(var(--zh) * .56)/1.15 var(--head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0}
 .rl-zeile .n small{font:500 calc(var(--zh) * .36) var(--body);color:var(--muted);margin-left:18px}
+.rl-zeile .dif{font:600 calc(var(--zh) * .46)/1 var(--head);color:var(--muted);white-space:nowrap;opacity:0;font-variant-numeric:tabular-nums}
 .rl-zeile .weg{font:500 calc(var(--zh) * .36)/1 var(--body);color:var(--muted);white-space:nowrap}
 .mw{display:flex;align-items:center;gap:calc(var(--zh) * .08)}
 .mw .walze{width:calc(var(--zh) * .56);height:calc(var(--zh) * .8);border-radius:4px;background:var(--ink);overflow:hidden;position:relative}
@@ -768,13 +769,19 @@ function rangKapitel(d, top) {
   const zeilen = d.rang, plan = {};
   const rast = (ab, art) => [0, 1, 2, 3, 4].map(j => ({ ab: ab + j * (art ? 200 : 90) + (art === 2 && j === 4 ? 300 : 0), dauer: art === 2 && j === 4 ? 1100 : art ? 600 : 380 }));
   const unten = zeilen.filter(t => !t.place || t.place > top).reverse();
-  let t = 1600;
+  // Friedrich 17.10.: drei Schritte, jeder mit seinem Klick. 1) alle Zeiten rattern, nichts ist aufgedeckt (Halt);
+  // 2) Weiter deckt Platz 12 bis 4 von unten nach oben auf (Halt); 3) Weiter lässt die Zeiten von Platz 3, 2, 1 einrasten
+  // (Ende, Weiter geht zu den drei Spalten)
+  const halt1 = 1900;
+  let t = halt1 + 300;
   unten.forEach((tm, i) => { const u = unten.length > 1 ? i / (unten.length - 1) : 1;
     plan[tm.id] = { rast: tm.place ? rast(t - 760) : null, auf: t }; t += 600 + 700 * u; });
-  if (unten.length) t += 800;
+  const halt2 = t + 900;
+  t = halt2 + 400;
   for (let pl = top; pl >= 1; pl--) { const tm = zeilen.find(x => x.place === pl); plan[tm.id] = { rast: rast(t, pl === 1 ? 2 : 1), auf: null }; t += 1100; }
-  const halt = t + 1200;
-  return { id: "rangliste", art: "rangliste", name: "Rangliste", zeilen, plan, top, dur: halt + 300, halte: [{ t: halt, springe: true }] };
+  const ende = t + 900;
+  return { id: "rangliste", art: "rangliste", name: "Rangliste", zeilen, plan, top, dur: ende,
+    halte: [{ t: halt1, springe: true }, { t: halt2, springe: true }] };
 }
 // Drei Spalten: Reihenfolge wie das Podest (2, 1, 3), ein gemeinsamer Kartenausschnitt für alle drei Wege (540 x 340)
 function spaltenBasis(d, top) {
@@ -1099,7 +1106,7 @@ function takt(jetzt) {
     if (Z.spielt) {
       const h = OPT.anhalten && k.halte && k.halte[Z.hNr];
       if (!Z.haelt && h && Z.lokal < h.t && Z.lokal + dt >= h.t) { Z.lokal = h.t; Z.haelt = true; }
-      if (Z.haelt) { if (Z.hNr === 0) Z.extra += dt; } else Z.lokal += dt;
+      if (Z.haelt) { if (Z.hNr === 0 || k.art === "rangliste") Z.extra += dt; } else Z.lokal += dt;
       if (Z.lokal >= k.dur && !k.endlos) {   // nichts läuft von selbst durch: das Kapitel hält am Ende, bis Weiter kommt
         Z.lokal = k.dur; if (!Z.endHalt) { Z.endHalt = true; leisteFortschritt(); } }
     }
@@ -1136,7 +1143,7 @@ function elemente(k, s) {
   if (k.art === "gruppen") return { kopf: q(".ff-kopf"), spalten: qa(".gr-spalte"), koepfe: qa(".gr-koepfe .gr-team") };
   if (k.art === "rangliste") return { kopf: q(".rl-kopf"), netz: q(".rl-netz"), zeilen: qa(".rl-zeile").map((row, i) => {
     const t = k.zeilen[i]; return { row, i, t, fr: row.querySelector(".fr"), ti: row.querySelector(".ti"), n: row.querySelector(".n"),
-      baender: [...row.querySelectorAll(".band")], z: t.place ? ziffern(t) : "", st: null }; }) };
+      baender: [...row.querySelectorAll(".band")], z: t.place ? ziffern(t) : "", st: null, dif: row.querySelector(".dif") }; }) };
   if (k.art === "spalten") return { toen: q(".sp-toen"), spalten: qa(".sp-spalte").map(c => {
     const t = k.sp.folge.find(x => x.place === +c.dataset.p), grau = c.querySelector(".grau");
     return { el: c, t, grau, len: grau.getTotalLength() || 1, farbe: c.querySelector(".farbe"), kopf: c.querySelector(".mk"), mkt: c.querySelector(".mkt"),
@@ -1225,6 +1232,9 @@ function zrHTML() {
     <div><small>im Ziel</small><b><em class="zr-ziel">0</em><span>von ${D.teams.length}</span></b></div></div>`;
 }
 const walzenHTML = () => `<div class="mw">${[0, 1, 2, 3, 4].map(j => `${j === 1 || j === 3 ? '<span class="dp">:</span>' : ""}<div class="walze"><div class="band">${"0123456789012".split("").map(c => `<div>${c}</div>`).join("")}</div></div>`).join("")}</div>`;
+// Abstand zum Ersten: m:ss, ab einer Stunde h:mm:ss
+const diffText = ms => { const s = Math.max(0, Math.round(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = String(s % 60).padStart(2, "0");
+  return h ? h + ":" + String(m).padStart(2, "0") + ":" + x : m + ":" + x; };
 function rangHTML(k) {
   const n = k.zeilen.length, oben = 140, frei = 1080 - untenFrei() - oben - 24, zh = Math.min(92, Math.floor(frei / n));
   k.zh = zh;
@@ -1233,7 +1243,8 @@ function rangHTML(k) {
       <span class="r">${t.place && t.place <= k.top ? `<span class="emo">${MEDAILLE[t.place - 1]}</span>` : t.place ? t.place + "." : ""}</span>
       <span class="rl-kreis"><span class="fr">?</span><span class="ti" style="background:${t.farbe}">${t.emoji}</span></span>
       <span class="n">${esc(t.name)}${t.place ? "" : `<small>${t.solved} von ${D.stationen.length} Stationen</small>`}</span>
-      ${t.place ? walzenHTML() : '<span class="weg">nicht im Ziel</span>'}</div>`).join("")}</div>`;
+      ${t.place ? walzenHTML() : '<span class="weg">nicht im Ziel</span>'}
+      <span class="dif">${t.place > 1 ? "+" + diffText(t.netto - k.zeilen.find(x => x.place === 1).netto) : ""}</span></div>`).join("")}</div>`;
 }
 function spaltenHTML(k) {
   const { folge, r, sc, px } = k.sp, bild = $("#grund image.karte"), erst = k.id === "spalten";
@@ -1487,11 +1498,11 @@ function awardZeichnen(k, L, kam) {
   e.kreis.style.transform = `scale(${spring((L - AW_TEAM) / 520).toFixed(4)})`;
 }
 // Walzen: drehen, bis ihre Ziffer an der Reihe ist, dann rastet sie mit Auslauf ein (wie früher im Platz-Bild)
-function walzeSetzen(bd, L, r, ziel, off, dh) {
+function walzeSetzen(bd, L, r, ziel, off, dh, ex = 0) {
   let pos;
   if (ruhig) pos = L >= r.ab ? ziel : 0;
-  else if (L < r.ab) pos = L * .014 + off;
-  else { const p0 = r.ab * .014 + off, zp = Math.ceil((p0 - ziel) / 10) * 10 + ziel + 10, u = Math.min(1, (L - r.ab) / r.dauer);
+  else if (L < r.ab) pos = (L + ex) * .014 + off;
+  else { const p0 = (r.ab + ex) * .014 + off, zp = Math.ceil((p0 - ziel) / 10) * 10 + ziel + 10, u = Math.min(1, (L - r.ab) / r.dauer);
     pos = p0 + (zp - p0) * (1 - Math.pow(1 - u, 3)); }
   const ty = (-(((pos % 10) + 10) % 10) * dh).toFixed(1);
   if (bd._ty !== ty) { bd.style.transform = `translateY(${ty}px)`; bd._ty = ty; }
@@ -1501,7 +1512,8 @@ function rangZeichnen(k, L) {
   gleitet(e.kopf, ein(L, 0)); e.netz.style.opacity = ein(L, 150, 500).toFixed(3);
   e.zeilen.forEach(z => {
     const p = k.plan[z.t.id] || {};
-    if (p.rast) z.baender.forEach((bd, j) => walzeSetzen(bd, L, p.rast[j], +z.z[j], z.i * 1.7 + j * 3.3, dh));
+    if (z.dif && p.rast) { const r4 = p.rast[4], fertig = L >= r4.ab + r4.dauer; z.dif.style.opacity = (ruhig ? +fertig : glatt((L - r4.ab - r4.dauer) / 420)).toFixed(3); }
+    if (p.rast) z.baender.forEach((bd, j) => walzeSetzen(bd, L, p.rast[j], +z.z[j], z.i * 1.7 + j * 3.3, dh, Z.extra));
     if (p.auf == null) return;
     // "?" wird zum Team: Kreis springt mit Überschwinger, Name gleitet ein, die Zeile leuchtet kurz in Teamfarbe
     const d0 = L - p.auf, st = d0 < 0 ? -1 : d0 > 950 ? 2 : Math.round(d0);
