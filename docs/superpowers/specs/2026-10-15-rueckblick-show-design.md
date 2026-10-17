@@ -553,3 +553,16 @@ keine Fotokapitel je Station, kein Mittelpunkt als Trenner.
 12. **Abspann (Nachtrag 17.10.):** Gruppenbilder in zufälliger Reihenfolge in Endlosschleife, deutlich langsamer
     (ca. 35 bis 45 px/s), neu gemischt je Durchlauf, nahtlos. Der Abspann ist das Ende und läuft, bis die
     Spielleitung etwas drückt; kein eigenes Schlussbild mehr.
+
+## Nachtrag 17.10.2026 (später): Weiter, Ausgang, Ankerlinien
+
+- **Nichts läuft von selbst durch (Friedrich):** Jedes Kapitel spielt seine Animation und hält an seinem Ende, bis
+  Weiter kommt (`Z.endHalt`; Leiste „…, wartet auf Weiter“). Leertaste im Endhalt wirkt wie Weiter. Der Abspann ist
+  endlos und läuft weiter. Die Halte vor und nach dem Aufdecken bleiben zusätzlich.
+- **Ausgang der Gruppen-Folie:** nach den Teams je Gruppe drehen sich die Teamkreise zu „?“ (gestaffelt, ca. 0,5 s
+  je Kreis), die Namen blenden aus, die „?“ fliegen auf die Ringplätze um den Start (dieselben Positionen wie die
+  Köpfe im Zeitraffer, aus der Kamera des Zeitraffers berechnet), der Schleier blendet auf, dann der Schnitt in die
+  Karte. Dauer 10 s (6,5 s Auftritt, 3,5 s Ausgang).
+- **Ankerlinien:** Stehen Teams im Ring an einer Station oder am Start, verbindet eine feine gepunktete Linie jeden
+  Kopf mit der Station; sie beginnt am Rand des Stationsabzeichens (liegt unter ihm) und endet am Rand des Kopfes.
+
