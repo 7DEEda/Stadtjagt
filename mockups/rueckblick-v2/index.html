@@ -196,6 +196,23 @@ body.still{cursor:none}
 .p-foto small{position:absolute;left:0;right:0;bottom:0;padding:14px 16px;font:600 var(--bs-xs) var(--head);color:#fff;background:linear-gradient(transparent,rgba(15,27,24,.75));white-space:nowrap}
 .p-toen,.p-blitz{position:absolute;inset:0;opacity:0;pointer-events:none}
 
+/* Awards (17.10.): Titel, Wert und Team links, die Route des Teams rechts über der blassen Karte. Nur dieses Team
+   zeigt Farbe und Tier; die anderen Routen und Köpfe sind aus (data-art ist "award", nicht "karte") */
+#buehne[data-art=award] #namen,#buehne[data-art=award] .radius{display:none}
+.aw-spalte{position:absolute;left:112px;top:0;bottom:var(--unten, 0px);width:860px;display:flex;flex-direction:column;justify-content:center}
+.aw-emo{font-size:128px;line-height:1;align-self:flex-start;transform-origin:50% 60%}
+.aw-titel{font:700 var(--bs-xl)/1 var(--head);margin-top:24px;letter-spacing:-.01em;text-wrap:balance}
+.aw-wert{font:500 var(--bs-m)/1.2 var(--body);color:var(--muted);margin-top:24px;white-space:nowrap}
+.aw-wert b{font-family:var(--head);font-weight:700;color:var(--ink)}
+.aw-team{display:flex;align-items:center;gap:40px;margin-top:64px;min-width:0}
+.aw-team .b{width:200px;height:200px;border-radius:50%;display:grid;place-items:center;font:120px/1 var(--emoji);border:8px solid var(--ring);box-shadow:0 0 0 1px var(--line);flex:none}
+.aw-team .n{font:700 128px/1.15 var(--head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.aw-auftakt{position:absolute;left:0;right:0;top:0;bottom:var(--unten, 0px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.aw-auftakt small{font:500 var(--bs-m) var(--body);color:var(--muted);white-space:nowrap}
+.aw-auftakt h2{font:700 var(--bs-titel)/1 var(--head);margin:16px 0 0;letter-spacing:-.01em;white-space:nowrap}
+.aw-reihe{display:flex;gap:56px;margin-top:56px}
+.aw-reihe span{font-size:96px;line-height:1}
+
 /* Plätze ab 4: eine Tafel, blendet auf einmal ein */
 .t-kopf{position:absolute;left:96px;top:64px;font:700 var(--bs-l)/1 var(--head)}
 .t-netz{position:absolute;left:96px;right:96px;top:184px;display:grid;grid-auto-flow:column;column-gap:72px;align-content:start}
@@ -565,7 +582,73 @@ function aufbereiten(roh) {
     if (!ok.length) break;
     grenzen.push(Math.max(ok.length >= haelfte ? ok[haelfte - 1] : ok[ok.length - 1], grenzen[grenzen.length - 1] + 2 * MIN));
   }
-  return { st, t0, tEnd, tEndUhr, start, stationen, teams, rang, ereignisse, fotos, grenzen, prizeCount: st.prizeCount ?? 3 };
+  const d = { st, t0, tEnd, tEndUhr, start, stationen, teams, rang, ereignisse, fotos, grenzen, prizeCount: st.prizeCount ?? 3 };
+  d.awards = awardsVergeben(d);
+  return d;
+}
+
+/* ---------- Awards: lustige Preise aus Spuren und Check-ins, vor den Koffern ---------- */
+// Kennzahlen je Team. Was fehlt (kein GPS, Lücke oder zu wenig Punkte auf einem Weg, keine gelöste Station), bleibt leer;
+// das Team fällt dann nur aus dieser Wertung. Weg und Gehzeit je Abschnitt: vom letzten Punkt am alten Ort (60 m) bis
+// zum ersten am neuen, an beiden Enden mit dem Ort verbunden; Rätselzeit und Warten an der Station zählen nicht. Nur bis
+// zur letzten Station, die das Team der Reihe nach gelöst hat.
+function kennzahlen(t, d) {
+  const z = {};
+  const raetsel = t.sts.filter(x => x.ein && x.ok && x.ok > x.ein).map(x => x.ok - x.ein);
+  if (raetsel.length) z.raetsel = raetsel.reduce((a, b) => a + b, 0) / raetsel.length;
+  const reihe = [];
+  for (const s of d.stationen) { const x = t.sts.find(y => y.position === s.position); if (!x || !x.ein || !x.ok) break; reihe.push({ s, x }); }
+  if (!reihe.length || t.ohneGps) return z;
+  let kurz = 0, gelaufen = 0, zeit = 0, vorXY = d.start.xy, vorT = d.t0;
+  for (const { s, x } of reihe) {
+    // Weg vollständig: genug Punkte, keine Lücke (auch nicht zum ersten Punkt danach), Anfang und Ende an den Orten
+    const i0 = t.pts.findIndex(p => p.t >= vorT), i1 = kopfIdx(t.pts, x.ein), ps = i0 < 0 ? [] : t.pts.slice(i0, i1 + 1);
+    const nach = t.pts[i1 + 1], eng = (p, xy) => dist([p.x, p.y], xy) < 100;
+    if (ps.length < 3 || ps.slice(1).some(p => p.g) || (nach && nach.g) || !eng(ps[0], vorXY) || !eng(ps[ps.length - 1], s.xy)) return z;
+    const da = p => dist([p.x, p.y], s.xy) < 60, j1 = ps.findIndex(da), j0 = j1 < 0 ? -1 : ps.slice(0, j1 + 1).findLastIndex(p => dist([p.x, p.y], vorXY) < 60);
+    if (j0 < 0 || j1 - j0 < 2) return z;
+    const geh = ps.slice(j0, j1 + 1);
+    let a = geh[0], m = dist(vorXY, [a.x, a.y]);
+    for (const q of geh) { const dd = dist([a.x, a.y], [q.x, q.y]); if (dd > 15) { m += dd; a = q; } }
+    const e = geh[geh.length - 1]; m += dist([a.x, a.y], [e.x, e.y]) + dist([e.x, e.y], s.xy);
+    gelaufen += m; zeit += e.t - geh[0].t; kurz += dist(vorXY, s.xy); vorXY = s.xy; vorT = x.ok;
+  }
+  return Object.assign(z, { kurz, gelaufen, umweg: gelaufen - kurz, faktor: gelaufen / kurz, tempo: gelaufen / 1000 / (zeit / 3600000) });
+}
+const kmh = v => v.toFixed(1).replace(".", ",") + " km/h";
+const minuten = m => Math.max(1, Math.round(m / 60000)) + " min";
+const meter = m => m >= 1000 ? km(m) : Math.round(m / 10) * 10 + " m";
+// Reihenfolge der Show: abwechselnd gut und lustig. richtung 1: kleinster Wert gewinnt, -1: größter
+const AWARDS = [
+  { id: "navi", titel: "Navi auf zwei Beinen", emo: "🧭", richtung: 1, wert: z => z.faktor,
+    zeile: z => { const p = Math.round((z.faktor - 1) * 100); return p >= 1 ? `nur <b>${p} %</b> Umweg` : "<b>kaum</b> Umweg"; } },
+  { id: "sightseeing", titel: "Sightseeing-Tour", emo: "📸", richtung: -1, wert: z => z.umweg, gilt: z => z.umweg > 0,
+    zeile: z => `<b>${meter(z.umweg)}</b> mehr Prag gesehen` },
+  { id: "raetselfuechse", titel: "Rätselfüchse", emo: "🧩", richtung: 1, wert: z => z.raetsel,
+    zeile: z => `im Schnitt <b>${minuten(z.raetsel)}</b> je Rätsel` },
+  { id: "philosophen", titel: "Die Philosophen", emo: "🤔", richtung: -1, wert: z => z.raetsel,
+    zeile: z => `im Schnitt <b>${minuten(z.raetsel)}</b> nachgedacht` },
+  { id: "sprinter", titel: "Sprinter", emo: "⚡", richtung: -1, wert: z => z.tempo,
+    zeile: z => `<b>${kmh(z.tempo)}</b> im Schnitt` },
+  { id: "flaneure", titel: "Flaneure", emo: "☕", richtung: 1, wert: z => z.tempo,
+    zeile: z => `<b>${kmh(z.tempo)}</b>, Zeit für Prag` }];
+// Jedes Team höchstens einen Award: hat der Beste schon einen, geht er an das nächstbeste Team. Haben weniger als drei
+// Teams die Kennzahl, entfällt der Award still. Die Koffer-Teams gehen leer aus: ein "Sprinter" kurz vor der
+// Siegerehrung verriete, wer vorn liegt (sie bekommen gleich ihren eigenen Auftritt)
+const AWARD_OHNE_KOFFER = true;
+function awardsVergeben(d) {
+  const alle = d.teams.map(t => ({ t, z: kennzahlen(t, d) })), vergeben = new Set(), liste = [];
+  d.kennzahlen = alle;
+  const frei = AWARD_OHNE_KOFFER ? alle.filter(x => !(x.t.place && x.t.place <= d.prizeCount)) : alle;
+  for (const a of AWARDS) {
+    const mit = frei.filter(x => Number.isFinite(a.wert(x.z)) && (!a.gilt || a.gilt(x.z)));
+    if (mit.length < 3) continue;
+    mit.sort((p, q) => (a.wert(p.z) - a.wert(q.z)) * a.richtung);
+    const sieger = mit.find(x => !vergeben.has(x.t.id)); if (!sieger) continue;
+    vergeben.add(sieger.t.id);
+    liste.push({ id: a.id, titel: a.titel, emo: a.emo, team: sieger.t, wert: a.wert(sieger.z), zeile: a.zeile(sieger.z) });
+  }
+  return liste;
 }
 
 /* ---------- Kamera: Inhalt (Meter) in einen Bühnenbereich einpassen ---------- */
@@ -633,7 +716,14 @@ function kapitelBauen() {
     k.push({ id: "ziel", art: "karte", dur: 10000, von: d.grenzen[letzte], bis: d.tEnd, station: letzte, ziel: true, name: "Bis zum Spielende",
       kam: einpassen(rahmen([stationAt(letzte).xy, ...koepfe], 160, 760), KARTE_B) });
   }
-  const koffer = d.rang.filter(t => t.place && t.place <= d.prizeCount).sort((a, b) => b.place - a.place);
+  // Awards nach dem Zeitraffer, vor der Tafel: kurzer Auftakt, dann je Award ein Kapitel, das durchläuft (kein Halt).
+  // Kamera: Start, alle Stationen und die Spur des Teams im Feld rechts der Textspalte
+  if (d.awards.length) {
+    const kams = d.awards.map(a => einpassen(rahmen([d.start.xy, ...d.stationen.map(s => s.xy), ...a.team.pts.map(p => [p.x, p.y])], 60, 700), AWARD_B, 50));
+    k.push({ id: "awards", art: "award", intro: true, dur: 2500, name: "Awards", symbole: d.awards.map(a => a.emo), kam: kams[0] });
+    d.awards.forEach((a, n) => k.push({ id: "award" + (n + 1), art: "award", dur: AWARD_MS, name: "Award " + (n + 1), award: a, team: a.team, kam: kams[n] }));
+  }
+  const koffer =d.rang.filter(t => t.place && t.place <= d.prizeCount).sort((a, b) => b.place - a.place);
   // S4: erst die Tafel mit allen anderen, dann die Zäsur, dann 3, 2, 1
   const rest = d.rang.filter(t => !koffer.includes(t));
   if (rest.length) k.push({ id: "ab4", art: "tafel", dur: 15000, name: "Plätze ab " + (koffer.length + 1), teams: rest, kam: voll });
@@ -660,6 +750,8 @@ function kapitelBauen() {
   K = k;
 }
 const GRUPPE_MS = 15 * MIN;   // Mockup: Abstand der drei Startgruppen
+// Awards: 6 s je Award; das Team springt 1,2 s nach dem Titel auf, die Route zeichnet sich in 2,8 s
+const AWARD_MS = 6000, AW_TITEL = 260, AW_TEAM = 1460, AW_ROUTE = 2800, AWARD_B = { x: 1000, w: 920, y: 0, h: 970 };
 const FOTO_TAKT = 1600;   // S1: jedes Foto gut 0,8 s groß und ruhig
 // Ein Koffer-Platz: Vorlauf, Halt (Walzen drehen), Aufdecken, Schlag, Nach-Halt (M1). Alle Zeiten in Kapitel-ms.
 function platzKapitel(t, d, uebersicht) {
@@ -828,7 +920,9 @@ function zeichneKarte(T, kam, modus) {
   // modus: { spuren: "alle" | "keine" | Team, koepfe: bool, bis: Zeit für eine einzelne Spur }
   // Steht alles still (Abspann, Alle Teams), nichts neu zeichnen: das kostete die Hälfte der Bildrate (gemessen 16.10.)
   const sp = modus.spuren && modus.spuren.id ? modus.spuren.id : modus.spuren;
-  const schluessel = [Math.round(T), kam.cx.toFixed(2), kam.cy.toFixed(2), kam.s.toFixed(5), sp, modus.koepfe, modus.bis == null ? "" : Math.round(modus.bis), Z.szene && Z.szene.dataset.k].join("|");
+  // koepfe: true (alle), false oder ein Team (Awards: nur sein Kopf, an der Spitze seiner Spur bei modus.bis, ohne Ring)
+  const einzeln = modus.koepfe && modus.koepfe.id ? modus.koepfe : null;
+  const schluessel = [Math.round(T), kam.cx.toFixed(2), kam.cy.toFixed(2), kam.s.toFixed(5), sp, einzeln ? "k" + einzeln.id : modus.koepfe, modus.bis == null ? "" : Math.round(modus.bis), Z.szene && Z.szene.dataset.k].join("|");
   if (schluessel === letzteKarte) return;
   letzteKarte = schluessel;
   const s = kam.s, vw = 1920 / s, vh = 1080 / s, vx = kam.cx - vw / 2, vy = kam.cy - vh / 2;
@@ -860,12 +954,12 @@ function zeichneKarte(T, kam, modus) {
   // Köpfe: an einem Ort stehen die Teams im Ring, in der Reihenfolge ihrer Ankunft
   const orte = [D.start.xy, ...D.stationen.map(x => x.xy)];
   D.teams.forEach(t => {
-    const g = kopfEl[t.id], h = modus.koepfe ? kopf(t, T) : null;
+    const g = kopfEl[t.id], h = einzeln ? (einzeln === t ? kopf(t, modus.bis ?? T) : null) : modus.koepfe ? kopf(t, T) : null;
     if (!h) { g.style.display = "none"; return; }
     g.style.display = "";
     let best = 0, bd = Infinity; orte.forEach((o, i) => { const dd = dist(o, h); if (dd < bd) { bd = dd; best = i; } });
     let q = sx(h);
-    const w = glatt((70 - bd) / 45);
+    const w = einzeln ? 0 : glatt((70 - bd) / 45);
     if (w > 0) {
       const key = t.id + ":" + best, platz = ringCache[key] ?? (ringCache[key] = ringPlatz(t, best));
       const a = -Math.PI / 2 + platz * (Math.PI * 2 / 12), o = sx(orte[best]);
@@ -977,8 +1071,11 @@ function szeneBauen() {
   if (k.art === "koffer") s.innerHTML = kofferHTML(k);
   if (k.art === "sieger") s.innerHTML = siegerHTML(k);
   if (k.art === "abspann") s.innerHTML = abspannHTML(k);
+  if (k.art === "award") s.innerHTML = awardHTML(k);
   box.appendChild(s); Z.szene = s; Z.altBis = 520; $("#buehne").dataset.art = k.art; $("#buehne").dataset.p1 = "";
   if (k.art === "platz") platzMessen(k, s);
+  if (k.art === "award") k.el = k.intro ? { klein: s.querySelector("small"), titel: s.querySelector("h2"), symbole: [...s.querySelectorAll(".aw-reihe span")] }
+    : { emo: s.querySelector(".aw-emo"), titel: s.querySelector(".aw-titel"), wert: s.querySelector(".aw-wert"), team: s.querySelector(".aw-team"), kreis: s.querySelector(".aw-team .b") };
   if (k.art === "karte") seiteFuellen(k);
   ringCache = {}; letzteKarte = null;
   leisteSpur();
@@ -1085,6 +1182,14 @@ function siegerHTML() {
       <div class="n">${esc(t.name)}</div><div class="stufe" style="--c:${t.farbe};height:${H[t.place]}px"><span class="emo">${MEDAILLE[t.place - 1]}</span></div></div>`).join("")}</div>
     <div class="sg-summe" style="top:${oben + block + 40}px">${D.teams.length} Teams, zusammen ${km(fakten().km)} gelaufen</div>`;
 }
+// Award: Symbol, Titel und Wert links, darunter das Team; im Auftakt die Symbole aller Awards in einer Reihe
+function awardHTML(k) {
+  if (k.intro) return `<div class="aw-auftakt"><small>Bevor es um die Koffer geht</small><h2>Die Awards</h2>
+    <div class="aw-reihe">${k.symbole.map(e => `<span class="emo">${e}</span>`).join("")}</div></div>`;
+  const a = k.award, t = k.team;
+  return `<div class="aw-spalte"><div class="aw-emo emo">${a.emo}</div><div class="aw-titel">${esc(a.titel)}</div><div class="aw-wert">${a.zeile}</div>
+    <div class="aw-team"><div class="b" style="background:${t.farbe}">${t.emoji}</div><div class="n">${esc(t.name)}</div></div></div>`;
+}
 // Zufällige Reihenfolge, bei jedem Vorbereiten neu (Fisher-Yates)
 function zufallsReihe(a) { const r = a.slice(); for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; }
 // S1: vier Spalten (breitere Unterschriften), jedes Foto in seinem Format in die kürzeste Spalte; höchstens 24 s,
@@ -1159,11 +1264,17 @@ function zeichnen() {
   leisteFortschritt();
   // Übergang: neue Szene blendet über die alte
   if (Z.szene) Z.szene.style.opacity = k.art === "karte" ? 0 : ein(L, 0);
-  if (Z.alt) { if (L > Z.altBis || k.art !== "karte" && ein(L, 0) >= 1) { Z.alt.remove(); Z.alt = null; } else if (k.art === "karte") Z.alt.style.opacity = 1 - ein(L, 0); }
+  // Award auf Award: der alte Text weicht schnell, bevor der neue Titel kommt (sonst stehen zwei Titel übereinander)
+  if (Z.alt) { if (L > Z.altBis || k.art !== "karte" && ein(L, 0) >= 1) { Z.alt.remove(); Z.alt = null; } else if (k.art === "karte") Z.alt.style.opacity = 1 - ein(L, 0);
+    else if (k.art === "award") Z.alt.style.opacity = 1 - ein(L, 0, 240); }
+  // Awards: die Karte tritt zurück (wie im Platz-Bild), danach blendet sie wieder auf
+  const gr = $("#grund"), vorAw = Z.i > 0 && K[Z.i - 1].art === "award", grO = k.art === "award" ? (vorAw ? ".28" : (1 - .72 * ein(L, 0, 700)).toFixed(3))
+    : vorAw ? (.28 + .72 * ein(L, 0, 700)).toFixed(3) : "";
+  if (gr.style.opacity !== grO) gr.style.opacity = grO;
   const seite = $("#seite"), vorKarte = Z.i > 0 && K[Z.i - 1].art === "karte";
   seite.style.opacity = k.art === "karte" ? (vorKarte ? 1 : ein(L, 0)) : (Z.alt && vorKarte ? 1 - ein(L, 0) : 0);
   const ko = $("#koepfe"); if (k.art !== "abspann" && ko.style.opacity) ko.style.opacity = "";
-  const sg = $("#stationen"); if (k.art !== "platz" && sg.style.opacity) sg.style.opacity = "";
+  const sg = $("#stationen"); if (k.art !== "platz" && k.art !== "award" && sg.style.opacity) sg.style.opacity = "";
   if (k.art === "karte") {
     const T = kapitelZeit(k, L);
     zeichneKarte(T, kam, { spuren: "alle", koepfe: true });
@@ -1182,6 +1293,7 @@ function zeichnen() {
   }
   if (k.art === "fotos") { zeichneKarte(Tfest, kam, { spuren: "alle", koepfe: true }); fotosZeichnen(k, L); }
   if (k.art === "platz") platzZeichnen(k, L, kam);
+  if (k.art === "award") awardZeichnen(k, L, kam);
   if (k.art === "tafel") {
     zeichneKarte(D.tEnd, kam, { spuren: "alle", koepfe: false });
     // auf einmal, nicht Zeile für Zeile: kein Team bekommt einen eigenen Auftritt
@@ -1245,6 +1357,30 @@ function fotosZeichnen(k, L) {
   if (sp.dataset.t !== txt) { sp.innerHTML = txt; sp.dataset.t = txt; }
   sp.style.opacity = spot ? 1 : 0;
   sp.style.top = (GY + spotH + 20) + "px";
+}
+// Überschwinger beim Aufspringen (0,85, 1,05, 1), wie der Teamkreis im Platz-Bild; b = Anteil von 520 ms
+const spring = b => ruhig || b >= 1 ? 1 : b <= 0 ? .85 : b < .6 ? .85 + .2 * (1 - Math.pow(1 - b / .6, 2)) : 1.05 - .05 * glatt((b - .6) / .4);
+const gleitet = (x, v, weg = 16) => { x.style.opacity = v.toFixed(3); x.style.transform = `translateY(${((1 - v) * weg).toFixed(1)}px)`; };
+// Ein Award läuft durch: Symbol springt auf, Titel und Wert gleiten ein, 1,2 s später springt das Team auf und seine
+// Route zeichnet sich in Teamfarbe über die Karte, sein Kopf läuft an der Spitze mit
+function awardZeichnen(k, L, kam) {
+  const e = k.el, vor = K[Z.i - 1] || {};
+  // Stationen: im Auftakt blenden sie aus, mit dem ersten Award wieder ein
+  const st = k.intro ? (vor.art === "karte" ? 1 - ein(L, 0) : 0) : vor.art === "award" && !vor.intro ? 1 : ein(L, 0);
+  $("#stationen").style.opacity = st.toFixed(3);
+  if (k.intro) {
+    zeichneKarte(D.tEnd, kam, { spuren: "keine", koepfe: false });
+    gleitet(e.klein, ein(L, 100)); gleitet(e.titel, ein(L, 300));
+    e.symbole.forEach((x, i) => { const v = ein(L, 900 + i * 140, 420); x.style.opacity = v.toFixed(3); x.style.transform = `translateY(${((1 - v) * 24).toFixed(1)}px) scale(${(.9 + .1 * v).toFixed(3)})`; });
+    return;
+  }
+  const t = k.team, da = L >= AW_TEAM, rU = ruhig ? +da : glatt((L - AW_TEAM) / AW_ROUTE);
+  const bis = D.t0 + ((t.fertig || D.tEnd) - D.t0) * rU;
+  zeichneKarte(D.tEnd, kam, { spuren: da ? t : "keine", koepfe: da ? t : false, bis });
+  e.emo.style.opacity = ein(L, 80, 240).toFixed(3); e.emo.style.transform = `scale(${spring((L - 80) / 520).toFixed(4)})`;
+  gleitet(e.titel, ein(L, AW_TITEL)); gleitet(e.wert, ein(L, AW_TITEL + 380));
+  gleitet(e.team, ruhig ? +da : glatt((L - AW_TEAM) / 200), 24);
+  e.kreis.style.transform = `scale(${spring((L - AW_TEAM) / 520).toFixed(4)})`;
 }
 // Ein Koffer-Platz: Vorlauf und Halt mittig, Weiter lässt die Ziffern einrasten, Stille, Schlag, Spalte gleitet,
 // Foto und Route rechts, Nach-Halt. Platz 1 eskaliert (langsame letzte Walze, Tönung, Name skaliert, Fächer, Puls).
@@ -1327,7 +1463,7 @@ const ACHTUNG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 function gesamt() { return K.reduce((n, k) => n + k.dur, 0); }
 function mmss(t) { t = Math.round(t / 1000); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); }
 // Nur im Mockup: Direktsprünge zu den neuen Momenten (starten() mit Kapitel und Zeit; "nach" = Nach-Halt, "ende" = Schlussbild)
-const SPRUENGE = [["Weg zu Station 3", "weg3", 0], ["Plätze ab 4", "ab4", 0], ["Die Koffer", "koffer", 0], ["Platz 3", "platz3", 0],
+const SPRUENGE = [["Weg zu Station 3", "weg3", 0], ["Awards", "awards", 0], ["Plätze ab 4", "ab4", 0], ["Die Koffer", "koffer", 0], ["Platz 3", "platz3", 0],
   ["Platz 1", "platz1", 0], ["Platz 1 aufgedeckt", "platz1", "nach"], ["Siegerbild", "sieger", 0], ["Abspann", "abspann", 0], ["Schlussbild", "abspann", "ende"]];
 function vorbereitenHTML() {
   const d = D, ohne = d.teams.filter(t => t.ohneGps);
@@ -1359,7 +1495,7 @@ function vorbereitenHTML() {
 function vorbereiten() {
   Z.phase = "vorbereiten"; Z.spielt = false; Z.haelt = false; knopf(); $("#buehne").dataset.art = "vorbereiten"; $("#buehne").dataset.p1 = "";
   if (Z.szene) { Z.szene.remove(); Z.szene = null; } if (Z.alt) { Z.alt.remove(); Z.alt = null; }
-  $("#seite").style.opacity = 0; $("#pulse").innerHTML = ""; $("#koepfe").style.opacity = ""; $("#stationen").style.opacity = "";
+  $("#seite").style.opacity = 0; $("#pulse").innerHTML = ""; $("#koepfe").style.opacity = ""; $("#stationen").style.opacity = ""; $("#grund").style.opacity = "";
   zeichneKarte(D.t0, einpassen(D.uebersicht, VOLL_B), { spuren: "keine", koepfe: false });
   $("#ueber").innerHTML = vorbereitenHTML();
   skalieren();   // das Panel ist erst jetzt da: Größe über der Leiste neu berechnen
@@ -1507,7 +1643,10 @@ skalieren();
 window.RB = { zeige: (id, lokal = 0) => { $("#ueber").innerHTML = ""; const i = K.findIndex(x => x.id === id); geheZu(i < 0 ? 0 : i, lokal); Z.spielt = false; knopf(); zeichnen(); },
   starten, kapitel: () => K.map(k => ({ id: k.id, dur: k.dur, halte: (k.halte || []).map(h => h.t), enthuellt: k.enthuellt, sperreBis: k.sperreBis })),
   zustand: () => ({ phase: Z.phase, i: Z.i, id: K[Z.i] && K[Z.i].id, lokal: Z.lokal, spielt: Z.spielt, haelt: Z.haelt, hNr: Z.hNr, leiste: $("#lKap").textContent }),
-  gesamt, D: () => D };
+  gesamt, D: () => D,
+  // Prüfhilfe: vergebene Awards und die Kennzahlen aller Teams
+  awards: () => ({ liste: D.awards.map(a => ({ id: a.id, team: a.team.name, wert: a.wert, zeile: a.zeile })),
+    kennzahlen: D.kennzahlen.map(x => ({ team: x.t.name, place: x.t.place, ...x.z })) }) };
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (!document.documentElement.dataset.theme && Z.phase !== "show") themaNeu(); });
 if (q.get("fotos") === "0") { OPT.fotos = false; kapitelBauen(); }
 vorbereiten();
