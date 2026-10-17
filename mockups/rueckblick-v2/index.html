@@ -78,7 +78,7 @@ body.still{cursor:none}
 #welt .strasse{fill:none;stroke:var(--strasse);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 #welt .neben{fill:none;stroke:var(--strasse);stroke-width:3;stroke-linecap:round;vector-effect:non-scaling-stroke}
 #welt .weg{fill:none;stroke:var(--feld);stroke-width:1.6;stroke-dasharray:6 7;opacity:.55;vector-effect:non-scaling-stroke}
-#welt .radius{fill:var(--flag);fill-opacity:.09;stroke:var(--flag);stroke-width:2;stroke-opacity:.7;vector-effect:non-scaling-stroke}
+#welt .radius{transition:opacity .5s var(--kurve);fill:var(--flag);fill-opacity:.09;stroke:var(--flag);stroke-width:2;stroke-opacity:.7;vector-effect:non-scaling-stroke}
 #welt .rand{fill:none;stroke:var(--card);stroke-width:12;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:.85;vector-effect:non-scaling-stroke}   /* stroke-opacity: opacity je Pfad kostete im Zeitraffer 15 fps */
 #welt .spur{fill:none;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 #welt .luecke{fill:none;stroke-width:4;stroke-dasharray:10 10;stroke-linecap:round;vector-effect:non-scaling-stroke}
@@ -341,6 +341,9 @@ body.still{cursor:none}
 #leiste button.haupt{background:var(--flag);border-color:var(--flag);color:var(--flag-ink);min-width:116px;justify-content:center}
 #leiste svg{width:18px;height:18px;fill:currentColor}
 #leiste .spur{flex:1;display:flex;gap:3px;height:12px;margin:0 10px;min-width:120px}
+#leiste .spur{position:relative;cursor:pointer;touch-action:none}
+#leiste .spur::before{content:"";position:absolute;left:0;right:0;top:-16px;bottom:-16px}
+#lTipp{position:absolute;bottom:calc(100% + 8px);padding:8px 14px;border-radius:8px;background:var(--card);border:1px solid var(--line);box-shadow:var(--schatten);font:600 15px var(--head);color:var(--ink);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .16s var(--kurve)}
 #leiste .spur span{flex:var(--d);background:var(--line);border-radius:2px;position:relative;overflow:hidden;cursor:pointer}
 #leiste .spur span i{position:absolute;inset:0 auto 0 0;width:var(--p,0%);background:var(--flag)}
 #leiste .kap{min-width:180px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -922,11 +925,11 @@ function karteRastern() {
   img.src = url;
 }
 
-let teamEl = {}, kopfEl = {}, ankerEl = {}, stEl = [], namenEl = [];
+let radEl = [], teamEl = {}, kopfEl = {}, ankerEl = {}, stEl = [], namenEl = [];
 function kartenElemente() {
   letzteKarte = null;
   const sp = $("#spuren"); sp.innerHTML = ""; teamEl = {};
-  D.stationen.forEach(s => el("circle", { class: "radius", cx: s.xy[0], cy: s.xy[1], r: s.radiusM || 50 }, sp));
+  radEl = D.stationen.map(s => el("circle", { class: "radius", cx: s.xy[0], cy: s.xy[1], r: s.radiusM || 50 }, sp));
   D.teams.forEach(t => {
     const g = el("g", {}, sp);
     // Spur in Stücken zu je STUECK Punkten: fertige Stücke bleiben stehen, je Bild wird nur das letzte neu gesetzt
@@ -993,6 +996,10 @@ function zeichneKarte(T, kam, modus) {
   });
   // Köpfe: an einem Ort stehen die Teams im Ring, in der Reihenfolge ihrer Ankunft
   const orte = [D.start.xy, ...D.stationen.map(x => x.xy)];
+  // Der Check-in-Umkreis einer Station erscheint nur, solange ein Team in der Nähe ist (Friedrich 17.10.: kein Überbleibsel)
+  if (modus.koepfe || einzeln) D.stationen.forEach((st, i) => { const r = radEl[i]; if (!r) return;
+    const da = D.teams.some(t => { const h = kopf(t, T); return h && dist(h, st.xy) < (st.radiusM || 50) * 2.4; });
+    r.style.opacity = da ? 1 : 0; });
   D.teams.forEach(t => {
     const g = kopfEl[t.id], h = einzeln ? (einzeln === t ? kopf(t, modus.bis ?? T) : null) : modus.koepfe ? kopf(t, T) : null;
     if (!h) { g.style.display = "none"; if (ankerEl[t.id]) ankerEl[t.id].style.opacity = 0; return; }
@@ -1681,12 +1688,41 @@ function leisteZeigen() {
 function leisteWeg() { clearTimeout(leisteUhr); $("#leiste").classList.add("weg"); document.body.classList.add("still"); }
 function leisteSpur() {
   $("#lSpur").innerHTML = K.map((k, i) => `<span style="--d:${k.dur}" data-i="${i}" title="${esc(k.name)}"><i></i></span>`).join("");
-  $("#lSpur").querySelectorAll("span").forEach(s => s.onclick = () => {
-    if (Z.phase === "durchsehen") return;
-    if (Z.phase !== "show") { $("#ueber").innerHTML = ""; }
-    Z.spielt = true; geheZu(+s.dataset.i); knopf(); });
   leisteFortschritt();
 }
+// Wie bei einem Video: an jede Stelle der Leiste klicken oder ziehen (Friedrich 17.10.). Das Kapitel unter dem Zeiger und
+// die Stelle darin ergeben sich aus der Lage; innerhalb eines Kapitels wird die Zeit gesetzt, ohne die Szene neu zu bauen.
+function leistePos(e) {
+  const segs = [...$("#lSpur").querySelectorAll("span")]; if (!segs.length) return null;
+  let best = segs[0], bd = Infinity;
+  segs.forEach(sg => { const r = sg.getBoundingClientRect(), d = e.clientX < r.left ? r.left - e.clientX : e.clientX > r.right ? e.clientX - r.right : 0; if (d < bd) { bd = d; best = sg; } });
+  const r = best.getBoundingClientRect(), i = +best.dataset.i, k = K[i];
+  return { i, lok: Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (k.endlos ? Math.min(k.dur, 240000) : k.dur) * (k.endlos ? 1 : .999)) };
+}
+function leisteSuche(e) {
+  if (Z.phase === "durchsehen") return;
+  const q = leistePos(e); if (!q) return;
+  if (Z.phase !== "show") $("#ueber").innerHTML = "";
+  Z.spielt = Z.spielt || Z.phase !== "show";
+  if (Z.phase === "show" && q.i === Z.i) {   // im selben Kapitel: nur die Zeit setzen
+    const h = K[q.i].halte || [];
+    Z.lokal = q.lok; Z.haelt = false; Z.endHalt = false; Z.hNr = h.filter(x => x.t < q.lok).length; Z.extra = 0; Z.wechsel = performance.now();
+    zeichnen(); leisteFortschritt();
+  } else geheZu(q.i, q.lok);
+  knopf();
+}
+(function leisteBedienen() {
+  const sp = $("#lSpur"); let zieht = false, tipp = $("#lTipp");
+  if (!tipp) { tipp = document.createElement("div"); tipp.id = "lTipp"; $("#leiste").appendChild(tipp); }
+  sp.addEventListener("pointerdown", e => { zieht = true; sp.setPointerCapture(e.pointerId); leisteSuche(e); });
+  sp.addEventListener("pointermove", e => {
+    if (zieht) leisteSuche(e);
+    const q = leistePos(e); if (!q) return;
+    const k = K[q.i]; tipp.textContent = k.name + (k.endlos ? "" : "  " + mmss(q.lok)); tipp.style.left = Math.max(8, Math.min(innerWidth - 160, e.clientX - 60)) + "px"; tipp.style.opacity = 1; });
+  sp.addEventListener("pointerleave", () => { if (!zieht) tipp.style.opacity = 0; });
+  const ende = () => { zieht = false; tipp.style.opacity = 0; };
+  sp.addEventListener("pointerup", ende); sp.addEventListener("pointercancel", ende);
+})();
 let fortStand = "";
 // Leiste nennt nur Kapitel und Zustand, nie ein Team
 function leisteFortschritt() {
