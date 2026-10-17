@@ -527,8 +527,10 @@ Gehen dem Text oben vor. Die Abschnittsnummern verweisen auf ihn.
 Gilt für Mockup v2 und den späteren Bau, ersetzt die Kapitelfolge oben, wo sie abweicht.
 
 1. **Splash:** Vorspann mit Kompass, der sich einnordet (hält als Startbild).
-2. **Fun Facts:** eine Folie, vier Zahlen nebeneinander, zum Wiedererkennen: Kilometer (Personenkilometer, alle
-   zusammen), Kalorien (Schätzung, als Trdelník umgerechnet), Schritte (Schätzung), Rätsel gelöst und Fotos.
+2. **Fun Facts:** eine Folie, drei Zahlen nebeneinander, mittig mit gleichem Abstand, zählen hoch: Kilometer
+   (Personenkilometer, alle zusammen), Schritte (Schätzung, ca. 1.350 je km), Kalorien (Schätzung, ca. 55 kcal je km
+   und Person): erst halbe Brathähnchen (ca. 750 kcal), nach 2,5 s weicher Wechsel auf Liter Bier (ca. 430 kcal),
+   Unterzeile „ca. … kcal, geschätzt“. Bei reduzierter Bewegung ohne Zählen.
 3. **Die Gruppen:** Startgruppen nebeneinander, je Startzeit, Zahl der Leute, Teams als „?“ ohne Namen.
 4. **Karte:** ein durchgehender Zeitraffer (keine Kapitel je Station), Laufzeit-Timer oben (ab 0:00, alle Gruppen
    gemeinsam), Kamera passt sich laufend an, so dass alle Teams und der Start im Bild sind; anonym („?“, graue
