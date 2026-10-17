@@ -41,6 +41,8 @@ etwa `timeout 300 python tools/pruefstand/waechter.py`.
 | `offline.py` | Service Worker: Start ohne Server, letzter Stand, Netz zuerst, Notausgang; baut eigenen Ordner mit mock.js inline (Nachtrag 35) |
 | `rueckblick.py` | Rückblick-Show: Texte der App, Sperren und PIN, Laden und Vorbereiten, Kapitel, Aufbereiten, Tasten, Schutz vor dem Neuzeichnen, ohne Netz, Fotoauswahl, Bühne (Schrift, Rand, Striche, Bildschirmfotos `shots/rueckblick-*.png`), Probe (Nachtrag 36). Szenarien `rueckblick*` in `mock.js`; mit Gruppennummern aufrufbar (`rueckblick.py 6 7`), gesamt etwa 8 Minuten, also in zwei Läufen |
 
+| `fernbedienung.py` | Handy als Fernbedienung der Rückblick-Show: Show (`app.html`) und `rueckblick-fernbedienung.html` zugleich, rb_* über `page.route` auf ein gemeinsames Python-Objekt; PIN, Befehle wie die Tasten, Doppeltipp, Stand, Moderation, „Keine Show gefunden“, Netzfehler, Bildrate, Probe, 390/360 px, hell/dunkel (Nachtrag 37). `mock.js`: rb_* im Speicher der Seite, `__rbEcht` ans Netz, `__rbFehlt` wie ohne Migration, nicht in `__RPC_LOG` |
+
 Chrome 155 hängt auf dem Arbeitsrechner beim `browser.close()` nach einer Seite mit Leaflet-Karte (manchmal auch
 ohne). Die neuen Skripte drucken OK oder FEHLT vorher und enden über `abschluss.py`, das nur die eigenen
 Chrome-Prozesse beendet.
@@ -54,6 +56,6 @@ Zugang aus `tools/sql.py`.
 
 `name_db.py`, `selfie_db.py`, `teststation_db.py`, `startpunkt_db.py`,
 `waechter_db.py`, `rechte_db.py` (Rechte aller internen Hilfsfunktionen),
-`bugjagd2_db.py`, `namenssuche_db.py`, `namenssuche_grenze_db.py`, `eingaben_db.py`. Mit `--ohne`
-zeigen `rechte_db.py`, `bugjagd2_db.py`, `namenssuche_grenze_db.py` und `eingaben_db.py` den Stand
-ohne Migration.
+`bugjagd2_db.py`, `namenssuche_db.py`, `namenssuche_grenze_db.py`, `eingaben_db.py`,
+`rueckblick_steuerung_db.py` (Fernbedienung, Nachtrag 37). Mit `--ohne` zeigen `rechte_db.py`, `bugjagd2_db.py`,
+`namenssuche_grenze_db.py`, `eingaben_db.py` und `rueckblick_steuerung_db.py` den Stand ohne Migration.

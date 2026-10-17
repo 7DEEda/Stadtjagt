@@ -148,6 +148,8 @@ vendor/fonts/                   Barlow, Barlow Semi Condensed, JetBrains Mono, w
 vendor/qrcode.js                QR-Code für den Mitlese-Link
 rueckblick.js, rueckblick.css   Rückblick-Show, nur beim Öffnen von #/rueckblick geladen (Nachtrag 36)
 rueckblick-karte.js             Grundkarte von Prag (OSM) für die Show, erzeugt von tools/rueckblick/karte.py
+rueckblick-fernbedienung.html   Handy der Spielleitung als Fernbedienung der Show, mit Moderation (Nachtrag 37)
+tools/migration_rueckblick_steuerung.py  erzeugt die Migration 20261017090000 (Nachtrag 37)
 tools/sw-aus.js                 Notausgang: nach sw.js kopieren, wenn der Service Worker Ärger macht
 tools/migration_eingaben.py     erzeugt die Migration 20261016090000 (Nachtrag 35)
 geraete-test.html               Geräte-Test: prüft auf einem Handy alles, was das Spiel braucht (Nachtrag 23)
@@ -188,6 +190,7 @@ supabase/migrations/            Schema und Spiellogik, alle Dateien in Dateiname
   20261004090000_current_station_sperren.sql  current_station wieder gesperrt (Nachtrag 31)
   20261004100000_bugjagd2.sql     Funde der Bugjagd 03.10.: Anmeldung, Testmodus, leere Antwort, Geräte-Test (Nachtrag 32)
   20261016090000_eingaben_wiederholen.sql  gleiche Eingabe, gleiche Antwort; nichts zählt doppelt (Nachtrag 35, nicht eingespielt)
+  20261017090000_rueckblick_steuerung.sql  Fernbedienung der Rückblick-Show: Tabelle und rb_* (Nachtrag 37, nicht eingespielt)
 hintergrund/a.svg, b.svg, c.svg  die drei Hintergrund-Varianten, werden nachgeladen
 supabase/seed-stationen-prag.sql  die fünf Prager Stationen (Route Holešovice, Letná)
 supabase/seed-personen.sql      100 erfundene Teilnehmende, nur zum Proben
@@ -1125,6 +1128,19 @@ oder einen Tunnel.
   Vorbereiten und „Fotos durchsehen“ am Laptop-Bildschirm erledigen, **dann erst
   den Beamer spiegeln**. „Standortdaten löschen“ erst **nach der Show**, danach
   die Fotos. Einmal vorher `#/rueckblick/probe` am Beamer des Restaurants.
+- **Handy als Fernbedienung (Nachtrag 37):** Migration
+  `20261017090000_rueckblick_steuerung.sql` muss eingespielt sein. Im
+  Vorbereiten steht rechts „Handy als Fernbedienung“ mit QR-Code; Link ohne PIN:
+  `https://7deeda.github.io/Stadtjagt/rueckblick-fernbedienung.html`. Am Handy
+  die Admin-PIN eingeben, „Show verbunden“ abwarten (am Laptop erscheint
+  „Handy verbunden“). In der Probe (`#/rueckblick/probe`) fragt der Block selbst
+  nach der PIN („Aktivieren“). **Test am Beamer** beim Probedurchlauf: Start,
+  Weiter, Zurück, Pause, Schwarzbild, Zum Ende (zweimal tippen) vom Handy, dazu
+  einmal das Handy-WLAN aus und wieder an (die Show läuft weiter, das Handy zeigt
+  „Keine Verbindung zum Server“). Befehle brauchen bis zu 1 s plus Netz; der
+  Presenter am Laptop bleibt der Notweg und wirkt immer. Moderationskarte am
+  Handy nennt vor jedem Aufdecken Team, Leute, Zeit und Abstand: das Handy nicht
+  auf den Beamer spiegeln.
 - **Link immer mit Schrägstrich:** Teams bekommen genau
   `https://7deeda.github.io/Stadtjagt/`. Ohne `/` leitet GitHub um, und
   `/Stadtjagt` liegt außerhalb des Scopes `/Stadtjagt/`: ohne Netz startet die
@@ -2074,15 +2090,51 @@ Auslosen tauschen. Eventdatum fehlt noch (der Splash nimmt das Datum aus
 `startedAt`). `admin_tracks` liefert keine Genauigkeit der Punkte; die Awards
 nutzen sie, sobald sie mitkommt (bräuchte eine Migration, bewusst nicht gebaut).
 
+## Handy als Fernbedienung der Rückblick-Show (Nachtrag 37, 17.10.2026, lokal, nicht gepusht)
+
+Friedrich: „kleine Companion-Seite auf dem Telefon für die Präsentation“, dazu
+am selben Tag: auch im Probe-Rückblick. Einzelheiten: SPIEL.md §17,
+Spezifikation (Nachtrag „Fernbedienung“).
+
+- `rueckblick-fernbedienung.html` (eigene Seite, mobile first): PIN der
+  Spielleitung (nur `sessionStorage`, `sj.pin`), Stand der Show
+  („Show verbunden“, Kapitel und Zustand, Fortschritt), Moderationskarte (nur
+  am Handy: wer als Nächstes aufgedeckt wird mit Leuten, Zeit und Abstand,
+  Award mit Team und Wert, Kofferübergabe, „Danach: …“), großer Weiter (im
+  Vorbereiten Start), Zurück, Pause/Abspielen, Schwarzbild, Zum Ende (zweiter
+  Tipp nötig, springt wie die Taste Ende zur Rangliste). Vibrieren, Wake Lock,
+  hell/dunkel wie die App.
+- Kein Realtime: Befehle gehen über die Datenbank (`rb_befehl`), die Show holt
+  sie im 1-s-Takt (`rb_poll`) und führt sie aus wie die Tasten (dieselben
+  Sperren); Stand bei jeder Änderung und alle 4 s (`rb_status_setzen`); das
+  Handy liest ihn im 1-s-Takt (`rb_status_holen`, verdeckt alle 5 s), ab 6 s
+  ohne Meldung „Keine Show gefunden“. Beim Öffnen übernimmt die Show den
+  Befehlszähler (alte Befehle wirken nicht), beim Verlassen löscht `rb_ende`
+  Stand und Moderation. Netzfehler bleiben still, die Show läuft weiter.
+- Vorbereiten: Block „Handy als Fernbedienung“ mit QR-Code rechts neben dem
+  Panel, „Handy verbunden“, sobald das Handy abfragt; in der Probe ein PIN-Feld
+  „Aktivieren“ im Block. Ohne die Migration: „Die Datenbank kennt die
+  Fernbedienung noch nicht.“, die Show fragt dann nicht weiter.
+- **Migration `20261017090000_rueckblick_steuerung.sql` NICHT eingespielt**
+  (Generator `tools/migration_rueckblick_steuerung.py`, Probelauf
+  `tools/pruefstand/rueckblick_steuerung_db.py`: `--ohne` rot, mit grün,
+  90 Prüfungen; `rechte_db.py` um Migration und rb_* erweitert, 28 grün).
+- Prüfstand: `tools/pruefstand/fernbedienung.py` (Show und Handy zugleich,
+  rb_* über `page.route` auf ein gemeinsames Python-Objekt). `mock.js`: rb_* im
+  Speicher der Seite, mit `__rbEcht` ans Netz (für `page.route`), mit
+  `__rbFehlt` wie ohne Migration; rb_* zählen nicht in `__RPC_LOG`.
+
 ## Stand zum Fortsetzen (16.10.2026, Rückblick v2 am 17.10.2026)
 
 **Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test
 bis Suite 21 (https://7deeda.github.io/geraetetest/). Nachtrag 34 (Code-Review
 15.10.), Nachtrag 35 (Ausfallsicherheit, 16.10.) und Nachtrag 36 (Rückblick-Show,
-16.10., ohne Migration) liegen lokal auf master.
-Ausliefern: erst beide Migrationen einspielen
+16.10., ohne Migration) und Nachtrag 37 (Fernbedienung am Handy, 17.10.) liegen
+lokal auf master.
+Ausliefern: erst die drei Migrationen einspielen
 (`python tools/sql.py supabase/migrations/20261015090000_namenssuche_grenze.sql`,
-dann `python tools/sql.py supabase/migrations/20261016090000_eingaben_wiederholen.sql`),
+dann `python tools/sql.py supabase/migrations/20261016090000_eingaben_wiederholen.sql`,
+dann `python tools/sql.py supabase/migrations/20261017090000_rueckblick_steuerung.sql`),
 dann pushen. Der Service Worker muss spätestens 7 Tage vor dem Event live sein
 (Erprobungszeit, siehe Ablauf am Eventtag).
 
@@ -2093,9 +2145,14 @@ am 05./06.10., gemerged 09.10.), siehe Nachtrag 33. Vorlagen nur lokal:
 **Rückblick v2 (17.10.2026):** gebaut nach Mockup v2 und den Nachträgen vom
 17.10., lokal auf master (siehe Nachtrag 36, Fassung v2; SPIEL.md §16).
 
+**Fernbedienung (Nachtrag 37, 17.10.2026):** gebaut, lokal auf master; braucht
+die Migration 20261017090000 (siehe oben). Zum Ausprobieren vor dem Einspielen
+gibt es nur den Prüfstand (`fernbedienung.py`).
+
 **NÄCHSTER SCHRITT:** Rückblick-Show v2: `#/rueckblick/probe` am Beamer (Lesbarkeit
 aus der letzten Reihe, Klicker: jedes Kapitel wartet auf Weiter, F5, B, Alt-Tab,
-Zurück im Browser fragt), dann mit den Daten eines Probespiels von Splash bis
+Zurück im Browser fragt; dazu die Fernbedienung vom Handy, siehe Ablauf am
+Eventtag), dann mit den Daten eines Probespiels von Splash bis
 Abspann (jede Taste wie im Mockup, nach dem Laden Netz aus, ein Team mit
 GPS-Abbruch und eines, das nach dem Koffer weiterläuft). Der Rückblick kommt vor dem
 Änderungsstopp mit den geänderten Texten live. Danach Handytest der neuen Hülle (Teamleitung, Mitlese-Ansicht,

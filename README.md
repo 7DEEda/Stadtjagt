@@ -22,6 +22,8 @@ HANDOFF unter "Umbau Weiterentwicklung (Nachtrag 33)" und "Stand zum Fortsetzen"
 | `#/public` | alle Teilnehmenden: anmelden, Team nachschlagen, Rangliste |
 | `#/team` | Handy der Teamleitung, erkannt am eigenen Handy (ohne Code) |
 | `#/admin` | Spielleitung, Login per PIN |
+| `#/rueckblick`, `#/rueckblick/probe` | Rückblick-Show nach dem Spiel am Beamer (Probe mit Beispieldaten) |
+| `rueckblick-fernbedienung.html` | Handy der Spielleitung: Fernbedienung und Moderation der Rückblick-Show, PIN |
 
 Die PIN steht in `game_state.admin_pin` und bewusst nicht in diesem Repo, weil
 es öffentlich ist. Ändern über den Endpunkt `admin_set_pin` oder direkt, seit
@@ -58,6 +60,8 @@ config.js                      Supabase-Zugang und WhatsApp-Nummer
 geraete-test.html              Geräte-Test: prüft auf einem Handy alles, was das Spiel braucht
 geraete-tests.js               die Suite dazu, ein Baustein je Test
 kompass-test.html              leitet auf geraete-test.html weiter
+rueckblick.js, rueckblick.css  Rückblick-Show, nur mit #/rueckblick geladen
+rueckblick-fernbedienung.html  Fernbedienung der Show fürs Handy (Migration 20261017090000)
 tools/testlaeufe.py            Läufe des Geräte-Tests nach testlaeufe/ holen
 vendor/qrcode.js               QR-Generator für den Mitlese-Link, lokal
 tools/sql.py                   SQL an die Datenbank schicken, ohne den SQL-Editor
@@ -88,8 +92,9 @@ supabase/seed-*.sql            Prager Stationen und Testpersonen
 
 Prüfen ohne Datenbank: `python tools/pruefstand/selfie.py`, `name.py`,
 `geraetetest.py`, `kritik.py`, `ziffer.py`, `teststation.py` (Probelauf `teststation_db.py`),
-`waechter.py` (Kompass-Wächter, Probelauf `waechter_db.py`). Einzelheiten in `HANDOFF.md`, geordnet in `SPIEL.md`
-Abschnitt 11 und 12.
+`waechter.py` (Kompass-Wächter, Probelauf `waechter_db.py`), `rueckblick.py` (Rückblick-Show),
+`fernbedienung.py` (Handy als Fernbedienung der Show, Probelauf `rueckblick_steuerung_db.py`). Einzelheiten in
+`HANDOFF.md`, geordnet in `SPIEL.md` Abschnitt 11 bis 17.
 
 ## SQL ausführen
 

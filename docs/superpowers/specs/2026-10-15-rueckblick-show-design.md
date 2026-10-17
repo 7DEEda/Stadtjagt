@@ -627,3 +627,29 @@ Was über das Mockup hinausgeht oder bewusst abweicht:
 - **Datenschutztexte** in `index.html` am neuen Ablauf geprüft (Fotos im Abspann; Wege im Zeitraffer anonym, in Awards,
   Spalten, Siegerbild und Abspann in Teamfarbe): „beim Abendessen alle im Rückblick“ und „Euer Weg erscheint beim
   Abendessen im Rückblick.“ stimmen, unverändert.
+
+## Nachtrag 17.10.2026: Fernbedienung (Friedrich: „kleine Companion-Seite auf dem Telefon für die Präsentation“)
+
+Gebaut als Nachtrag 37 (SPIEL.md §17, HANDOFF). Das Handy der Spielleitung ist Fernbedienung und Moderationskarte;
+die Show bleibt ohne Handy voll bedienbar.
+
+- **Seite** `rueckblick-fernbedienung.html` (mobile first, 390 px, Look der App, hell/dunkel, Schriften aus
+  `vendor/fonts`, Zugang aus `config.js`): PIN der Spielleitung (nur `sessionStorage`), Statuskarte (Kapitel, Zustand,
+  Fortschritt, „Show verbunden“ / „Keine Show gefunden“ ab 6 s ohne Meldung / „Keine Verbindung zum Server“),
+  Moderationskarte, Bedienfeld unten: großer Weiter (im Vorbereiten Start), Zurück, Pause/Abspielen, Schwarzbild,
+  Zum Ende (zweiter Tipp). Vibrieren, Druckzustand, Wake Lock.
+- **Weg:** kein Realtime und kein Peer-to-Peer. Befehle in die Datenbank (`rb_befehl`), der Laptop holt im 1-s-Takt
+  (`rb_poll`) und führt sie aus wie die Tasten, durch dieselben Sperren (M1, M2, M3, M8). Stand der Show bei Änderung
+  und als Herzschlag alle 4 s (`rb_status_setzen`), das Handy liest im 1-s-Takt (`rb_status_holen`, verdeckt seltener).
+  Zähler beim Öffnen übernehmen (alte Befehle wirken nicht), `rb_ende` beim Verlassen. Fehler der Abrufe bleiben still.
+- **Moderation** rechnet die Show aus ihren Daten (wer als Nächstes aufgedeckt wird, mit Leuten, Zeit, Abstand;
+  Award mit Team und Wert; Kofferübergabe; „Danach: …“) und schickt sie mit dem Stand. Spoiler nur am Handy.
+- **Probe** (Friedrich, später am 17.10.): die Fernbedienung gilt auch für `#/rueckblick/probe`, mit den Demo-Teams;
+  Befehle und Stand laufen dort ebenso über rb_*, der Block im Vorbereiten fragt die PIN beim Aktivieren ab.
+- **Datenbank:** Migration `20261017090000_rueckblick_steuerung.sql` (Tabelle mit einer Zeile, fünf Funktionen mit PIN,
+  RLS, Tabelle für anon gesperrt), Probelauf `tools/pruefstand/rueckblick_steuerung_db.py`. Abweichung von der ersten
+  Beschreibung: eine Spalte `handy_um` mehr, damit der Laptop „Handy verbunden“ zeigen kann (`rb_status_setzen`
+  antwortet `handy_alter_s`); `rb_befehl` weist einen zu schnellen zweiten Befehl mit `ok false` ab, statt einen Fehler
+  zu werfen.
+- **Grenze:** eine Zeile, kein Puffer: zwei Befehle innerhalb derselben Sekunde, dann wirkt nur der letzte. Das Handy
+  sperrt Tipps, solange ein Befehl unterwegs ist und 400 ms danach.

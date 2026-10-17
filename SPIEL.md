@@ -854,8 +854,9 @@ den Rückblick, gesteuert von der Spielleitung. Keine neue RPC, keine Migration.
   Öffnen, mit `?v=` aus `VERSION`; `host.api` gegen `API` verhindert gemischte
   Fassungen. Nicht im Service Worker (die Handys tragen nichts davon).
 - **Route:** `#/rueckblick` (PIN aus `sj.pin` oder eigenes PIN-Feld),
-  `#/rueckblick/probe` (Beispieldaten mit drei Startgruppen, keine Abrufe,
-  „Probe“ im Splash und in der Leiste). Knopf „Rückblick“ im Admin-Kopf und
+  `#/rueckblick/probe` (Beispieldaten mit drei Startgruppen, keine Abrufe von
+  Spieldaten, „Probe“ im Splash und in der Leiste; die Fernbedienung, §17,
+  geht nach dem Aktivieren mit PIN auch hier über die Datenbank). Knopf „Rückblick“ im Admin-Kopf und
   unter der Zeitachse bei `finished`.
 - **Schutz vor dem Neuzeichnen:** eigener Container `#rueckblick` am `body`,
   `#app` ist `inert`; `render()` und `refresh()` kehren bei `S.view` mit Präfix
@@ -914,3 +915,82 @@ den Rückblick, gesteuert von der Spielleitung. Keine neue RPC, keine Migration.
   `window.__fotoFehler`, `__haengt`, `__netz`, `__rbGeduld`. Am Gerät: einmal
   `#/rueckblick/probe` auf dem Beamer des Restaurants, Lesbarkeit aus der letzten
   Reihe, Klicker.
+
+## 17. Handy als Fernbedienung der Rückblick-Show (Nachtrag 37, 17.10.2026)
+
+Spezifikation: `docs/superpowers/specs/2026-10-15-rueckblick-show-design.md`,
+Nachtrag „Fernbedienung“. Die Show läuft am Laptop wie in §16; das Handy der
+Spielleitung steuert sie zusätzlich und zeigt eine Moderationshilfe. Die Show
+bleibt ohne Handy voll bedienbar (Tastatur, Presenter).
+
+- **Seite:** `rueckblick-fernbedienung.html` im Repo-Wurzelordner, mobile first
+  (390 px Hochformat, auch 360 px ohne seitliches Scrollen), Farben und Schriften
+  der App (`vendor/fonts`), hell/dunkel über `sj.thema` wie die App, Zugang aus
+  `config.js`. PIN der Spielleitung, nur in `sessionStorage` (`sj.pin`), nie in
+  der Adresse. Bedienfeld unten: großer „Weiter“ (104 px, im Vorbereiten
+  „Start“), daneben „Zurück“, darüber „Pause“/„Abspielen“, „Schwarzbild“/„Bild
+  zeigen“, „Zum Ende“ (erst der zweite Tipp binnen 4 s wirkt: „Springt zur
+  Rangliste. Noch einmal tippen.“, wie die Taste Ende). Kurzes Vibrieren und
+  sichtbarer Druck, Rahmen am Knopf, bis die Show den Befehl ausgeführt hat.
+  Doppeltipp: solange ein Befehl unterwegs ist und 400 ms danach zählt kein
+  Tipp. Wake Lock, solange die Seite offen ist. Ohne verbundene Show sind die
+  Knöpfe gesperrt.
+- **Statuskarte:** „Show verbunden“ (letzte Meldung der Show höchstens 6 s alt),
+  „Keine Show gefunden“, „Keine Verbindung zum Server“; Kapitel, Zustand
+  („wartet auf Weiter“, „Pause“, „Schwarzbild an“, „läuft“), „Kapitel 7 von 18“,
+  Fortschritt und Zeit wie in der Leiste. In der Probe heißt der Kopf
+  „Rückblick, Probe“.
+- **Moderationskarte (nur am Handy, nie am Beamer):** die Show berechnet je
+  Kapitel kurze Bausteine (`moderation()` in `rueckblick.js`) und schickt sie mit
+  dem Stand: vor dem Aufdecken „Als Nächstes wird Platz 3 aufgedeckt: Tiger,
+  8 Leute (Anna Kaya, Elif Keller, …), Zeit 1:30:20, 6:47 hinter dem Ersten.“ und
+  „Danach: Platz 2.“; nach dem Aufdecken Zeit, „Kofferübergabe an Tiger,
+  Teamleitung …“ und alle Namen; Awards „Navi auf zwei Beinen: Delfin, nur 8 %
+  Umweg vom idealen Weg.“ (schon am Ende des Kapitels davor als „Danach: …“);
+  Fun Facts mit den Zahlen und „Weiter schaltet auf … Liter Bier.“; Rangliste,
+  Zeitraffer („Läuft. Gleich: Rangliste.“), Siegerbild, Abspann („Läuft
+  endlos.“). Texte ohne Gedankenstrich und Mittelpunkt, Teamnamen am Handy nur
+  als Text (nie HTML).
+- **Weg der Befehle (kein Realtime, nur Abfragen):** das Handy schreibt
+  (`rb_befehl`), der Laptop holt im 1-s-Takt (`rb_poll`, eine Anfrage zugleich,
+  nichts im Bild-Takt) und führt den Befehl aus wie die Taste (`fernBefehl`:
+  `weiter`, `zurueck`, `spielPause`, `schwarz`, `zumEnde`, `starten` nur im
+  Vorbereiten; dieselben Sperren M1, M2, M3, M8; im Schwarzbild holt jeder
+  Befehl außer Schwarzbild erst das Bild zurück; bei offener Rückfrage
+  „verlassen?“ nichts). Stand der Show (`rb_status_setzen`) bei jeder Änderung
+  von Kapitel, Zustand oder Befehlsnummer und sonst alle 4 s; das Handy liest im
+  1-s-Takt (`rb_status_holen`), verdeckt alle 5 s. Beim Öffnen übernimmt die Show
+  den Zähler (`p_seit = null`): ein Befehl von vorher wirkt nicht. Beim
+  Verlassen löscht `rb_ende` Stand, Moderation und Befehl. Fehler der Abrufe
+  bleiben still (nächster Takt); ohne die Migration (PGRST202) fragt die Show
+  nicht weiter und das Vorbereiten sagt es; falsche PIN schaltet die
+  Fernbedienung aus.
+- **Vorbereiten:** Block „Handy als Fernbedienung“ rechts neben dem Panel (nicht
+  darin, das Panel wird nicht kleiner): QR-Code des Links (ohne PIN),
+  „PIN am Handy eingeben“, „Handy verbunden“, sobald das Handy in den letzten
+  10 s abgefragt oder einen Befehl geschickt hat. **Probe:** dieselbe
+  Fernbedienung über die Datenbank, mit den Demo-Teams in der Moderation; der
+  Block fragt beim Aktivieren die PIN der Spielleitung ab (nur
+  `sessionStorage`), ist sie aus der Spielleitung schon da, läuft sie gleich.
+- **Datenbank (Migration `20261017090000_rueckblick_steuerung.sql`):** Tabelle
+  `rueckblick_steuerung` (eine Zeile, `id = 1`: `nr`, `befehl`, `befehl_um`,
+  `status` jsonb, `status_um`, `handy_um`), RLS an, für anon und authenticated
+  gesperrt. Funktionen, alle `security definer` mit `require_admin` und
+  ausdrücklichen Rechten: `rb_befehl(p_pin, p_befehl)` (feste Liste weiter,
+  zurueck, pause, schwarz, start, ende; 250 ms Mindestabstand, sonst `ok false`),
+  `rb_poll(p_pin, p_seit)` (`{nr, befehl}`; älter als 30 s: `befehl null`;
+  nichts Neues: `null`), `rb_status_setzen(p_pin, p_status)` (Objekt, höchstens
+  20 KB; antwortet `handy_alter_s`), `rb_status_holen(p_pin)` (`{status,
+  alter_s}`, merkt `handy_um`), `rb_ende(p_pin)`. Die Nummer bleibt bei
+  `rb_ende`. Keine Spielfunktion und nicht die Sicht `stations` berührt.
+- **Service Worker:** lässt die Seite in Ruhe (Navigation nur auf `./` und
+  `index.html` abgefangen); sie braucht Netz.
+- **Prüfen:** `tools/pruefstand/fernbedienung.py` (Show und Handy zugleich, rb_*
+  über `page.route` auf ein gemeinsames Python-Objekt nach der Migration; PIN,
+  Start, Weiter, Doppeltipp, Zurück, Pause, Schwarzbild, Zum Ende, Stand folgt
+  auch Tasten am Laptop, Moderation vor Platz 3, „Keine Show gefunden“ nach
+  6 s, alte Befehle, `rb_ende`, Server 500, Bildrate, Probe, 390 und 360 px,
+  Tippziele, hell und dunkel; Bildschirmfotos `fern-*.png` nach `FERN_SHOTS`).
+  Probelauf `tools/pruefstand/rueckblick_steuerung_db.py` (mit `--ohne` rot).
+  Bekannte Grenze: zwei Befehle innerhalb derselben Sekunde, dann wirkt nur der
+  letzte (eine Zeile, kein Puffer).
