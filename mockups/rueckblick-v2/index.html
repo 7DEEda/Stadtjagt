@@ -700,7 +700,8 @@ function kapitelBauen() {
   k.push(halt ? { id: "vorspann", art: "titel", dur: 3600, halte: [{ t: 3000 }], kam: voll, name: "Vorspann" }
     : { id: "vorspann", art: "titel", dur: 7500, kam: voll, name: "Vorspann" });
   // 2. Fun Facts, 3. die Startgruppen
-  k.push({ id: "fakten", art: "fakten", dur: 9000, name: "Fun Facts", kam: voll });
+  // Halt bei 3,6 s: die Brathähnchen stehen, Weiter schaltet von Hand auf Bier um (Friedrich 17.10.), danach Endhalt
+  k.push({ id: "fakten", art: "fakten", dur: 7500, halte: [{ t: 3600, springe: true }], name: "Fun Facts", kam: voll });
   // 6,5 s Auftritt, dann der Ausgang: Teams drehen sich zu "?" und fliegen zum Start (Friedrich 17.10.), insgesamt 10 s
   k.push({ id: "gruppen", art: "gruppen", dur: 10000, name: "Die Gruppen", kam: voll });
   // 4. ein Zeitraffer über das ganze Spiel; die Kamera folgt allen Köpfen und dem Start
@@ -709,16 +710,19 @@ function kapitelBauen() {
   zr.bahn = kameraBahn(zr, d); zr.kam = zr.bahn[0]; zr.kamEnde = zr.bahn[zr.bahn.length - 1];
   zr.schnitt = true;   // harter Schnitt auf die Bahn: der Schleier der Gruppen deckt ihn, sonst fährt die Kamera aus der Übersicht
   k.push(zr);
-  // 5. Bonusrunde: Awards. Kurzer Auftakt, dann je Award ein Kapitel, das durchläuft (kein Halt).
+  // 5. Rangliste, Teil 1: Platz 12 bis 4 decken sich auf; 6. dann die Bonusrunde Awards (Friedrich 17.10.: vor der
+  // Siegerehrung); 7. Rangliste, Teil 2: die Zeiten der ersten drei rasten ein.
+  const top = [1, 2, 3].slice(0, d.prizeCount).map(p => d.rang.find(t => t.place === p)).filter(Boolean);
+  const [rang1, rang2] = rangKapitel(d, top.length);
+  k.push(rang1);
+  // Awards: kurzer Auftakt, dann je Award ein Kapitel, das (wie jedes Kapitel) am Ende auf Weiter wartet.
   // Kamera: Start, alle Stationen und die Spur des Teams im Feld rechts der Textspalte
   if (d.awards.length) {
     const kams = d.awards.map(a => einpassen(rahmen([d.start.xy, ...d.stationen.map(s => s.xy), ...a.team.pts.map(p => [p.x, p.y])], 60, 700), AWARD_B, 50));
     k.push({ id: "awards", art: "award", intro: true, dur: 2500, name: "Awards", symbole: d.awards.map(a => a.emo), kam: kams[0] });
     d.awards.forEach((a, n) => k.push({ id: "award" + (n + 1), art: "award", dur: AWARD_MS, name: "Award " + (n + 1), award: a, team: a.team, kam: kams[n] }));
   }
-  // 6./7. Rangliste von unten bis Platz 4, dann rasten die Zeiten der ersten drei ein, die Teams bleiben verdeckt
-  const top = [1, 2, 3].slice(0, d.prizeCount).map(p => d.rang.find(t => t.place === p)).filter(Boolean);
-  k.push(rangKapitel(d, top.length));
+  k.push(rang2);
   // 8. Drei Spalten, 9. Platz 3 aufdecken, 10. Duell: erst Platz 2 (damit steht Platz 1 fest), dann Platz 1 als eigener,
   // eskalierter Moment (Friedrich 17.10.); Halt vor und nach jedem Aufdecken
   if (top.length) {
@@ -780,8 +784,11 @@ function rangKapitel(d, top) {
   t = halt2 + 400;
   for (let pl = top; pl >= 1; pl--) { const tm = zeilen.find(x => x.place === pl); plan[tm.id] = { rast: rast(t, pl === 1 ? 2 : 1), auf: null }; t += 1100; }
   const ende = t + 900;
-  return { id: "rangliste", art: "rangliste", name: "Rangliste", zeilen, plan, top, dur: ende,
-    halte: [{ t: halt1, springe: true }, { t: halt2, springe: true }] };
+  // Teil 1 endet nach dem Aufdecken bis Platz 4 (Endhalt, danach die Awards); Teil 2 beginnt mit allen Plätzen ab 4
+  // schon aufgedeckt (versatz = Zeit am Ende von Teil 1), die Zeiten der ersten drei rattern und warten auf Weiter
+  return [{ id: "rangliste", art: "rangliste", name: "Rangliste", zeilen, plan, top, dur: halt2, halte: [{ t: halt1, springe: true }] },
+    { id: "rangliste2", art: "rangliste", name: "Rangliste, die ersten drei", zeilen, plan, top, versatz: halt2, dur: ende - halt2,
+      halte: [{ t: 400, springe: true }] }];
 }
 // Drei Spalten: Reihenfolge wie das Podest (2, 1, 3), ein gemeinsamer Kartenausschnitt für alle drei Wege (540 x 340)
 function spaltenBasis(d, top) {
@@ -1401,14 +1408,14 @@ function zeichnen() {
     zeichneKarte(D.t0, kam, { spuren: "keine", koepfe: false });
     gleitet(e.kopf, ein(L, 0));
     // Zahlen zählen hoch (1,6 s, zum Ende langsamer), die Kacheln kommen nacheinander. Kalorien: die Brathähnchen stehen
-    // 2,5 s, dann wechselt die Kachel weich auf Liter Bier und zählt neu (ruhig: ohne Zählen, harter Wechsel)
+    // bis zum Halt bei 3,6 s, dann schaltet Weiter die Kachel weich auf Liter Bier um und sie zählt neu (ruhig: ohne Zählen, harter Wechsel)
     const zaehle = (b, wert, von) => { const u = ruhig ? +(L >= von) : Math.min(1, Math.max(0, (L - von) / 1600)), w = zahl(wert * (1 - Math.pow(1 - u, 3)));
       if (b.textContent !== w) b.textContent = w; };
     e.kacheln.forEach((x, i) => { const ab = 300 + i * 250, w = k.werte[i], lg = e.lagen[i]; gleitet(x, ein(L, ab, 520), 30);
       zaehle(lg[0].b, w.wert, ab + 150);
       if (!lg[1]) return;
       // erst weicht das Huhn (260 ms), dann kommt das Bier (320 ms), nie beide zugleich
-      const um = ab + 150 + 1600 + 2500, raus = ein(L, um, 260), rein = ein(L, um + 260, 320);
+      const um = 3900, raus = ein(L, um, 260), rein = ein(L, um + 260, 320);
       lg[0].el.style.opacity = (1 - raus).toFixed(3); lg[0].el.style.transform = `translateY(${(-raus * 24).toFixed(1)}px)`;
       lg[1].el.style.opacity = rein.toFixed(3); lg[1].el.style.transform = `translateY(${((1 - rein) * 24).toFixed(1)}px)`;
       zaehle(lg[1].b, w.wechsel.wert, um + 260); });
@@ -1507,9 +1514,9 @@ function walzeSetzen(bd, L, r, ziel, off, dh, ex = 0) {
   const ty = (-(((pos % 10) + 10) % 10) * dh).toFixed(1);
   if (bd._ty !== ty) { bd.style.transform = `translateY(${ty}px)`; bd._ty = ty; }
 }
-function rangZeichnen(k, L) {
-  const e = k.el, dh = k.zh * .8;
-  gleitet(e.kopf, ein(L, 0)); e.netz.style.opacity = ein(L, 150, 500).toFixed(3);
+function rangZeichnen(k, L0) {
+  const e = k.el, dh = k.zh * .8, L = L0 + (k.versatz || 0);   // Teil 2 zeichnet den Stand nach dem Aufdecken, Ein- und Ausblenden laufen mit L0
+  gleitet(e.kopf, ein(L0, 0)); e.netz.style.opacity = ein(L0, 150, 500).toFixed(3);
   e.zeilen.forEach(z => {
     const p = k.plan[z.t.id] || {};
     if (z.dif && p.rast) { const r4 = p.rast[4], fertig = L >= r4.ab + r4.dauer; z.dif.style.opacity = (ruhig ? +fertig : glatt((L - r4.ab - r4.dauer) / 420)).toFixed(3); }
@@ -1590,7 +1597,7 @@ function gesamt() { return K.reduce((n, k) => n + (k.endlos ? 0 : k.dur), 0); }
 function mmss(t) { t = Math.round(t / 1000); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); }
 // Nur im Mockup: Direktsprünge zu den neuen Momenten (starten() mit Kapitel und Zeit; "nach" = Nach-Halt, "ende" = Schlussbild)
 const SPRUENGE = [["Fun Facts", "fakten", 0], ["Gruppen", "gruppen", 0], ["Karte", "zeitraffer", 0], ["Karte, Ende", "zeitraffer", 64000],
-  ["Awards", "awards", 0], ["Rangliste", "rangliste", 0], ["Drei Spalten", "spalten", 0], ["Platz 3", "platz3", 0], ["Platz 2", "platz2", 0],
+  ["Rangliste", "rangliste", 0], ["Awards", "awards", 0], ["Rangliste, Top 3", "rangliste2", 0], ["Drei Spalten", "spalten", 0], ["Platz 3", "platz3", 0], ["Platz 2", "platz2", 0],
   ["Platz 1", "platz1", 0], ["Platz 1 aufgedeckt", "platz1", "nach"], ["Siegerbild", "sieger", 0], ["Abspann", "abspann", 0], ["Abspann nach 4 min", "abspann", 240000]];
 function vorbereitenHTML() {
   const d = D, ohne = d.teams.filter(t => t.ohneGps);
