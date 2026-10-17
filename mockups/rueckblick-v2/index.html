@@ -783,15 +783,15 @@ function rangKapitel(d, top) {
   let t = halt1 + 1100;   // die erste Walze rastet 760 ms vor dem Aufdecken ein: erst nach dem Halt, sonst steht sie schon davor
   unten.forEach((tm, i) => { const u = unten.length > 1 ? i / (unten.length - 1) : 1;
     plan[tm.id] = { rast: tm.place ? rast(t - 760) : null, auf: t }; t += 600 + 700 * u; });
-  const halt2 = t + 900;
+  const halt2 = t + 1500;   // der letzte Aufdeck-Schritt ist bis zum Ende von Teil 1 ganz fertig (Teil 2 setzt 500 ms früher an)
   t = halt2 + 400;
   for (let pl = top; pl >= 1; pl--) { const tm = zeilen.find(x => x.place === pl); plan[tm.id] = { rast: rast(t, pl === 1 ? 2 : 1), auf: null }; t += 1100; }
   const ende = t + 900;
   // Teil 1 endet nach dem Aufdecken bis Platz 4 (Endhalt, danach die Awards); Teil 2 beginnt mit allen Plätzen ab 4
   // schon aufgedeckt (versatz = Zeit am Ende von Teil 1), die Zeiten der ersten drei rattern und warten auf Weiter
   return [{ id: "rangliste", art: "rangliste", name: "Rangliste", zeilen, plan, top, dur: halt2, halte: [{ t: halt1, springe: true }] },
-    { id: "rangliste2", art: "rangliste", name: "Rangliste, die ersten drei", zeilen, plan, top, versatz: halt2, dur: ende - halt2,
-      halte: [{ t: 250, springe: true }] }];   // Halt vor dem ersten Einrasten (bei 400), die Walzen drehen im Halt weiter
+    { id: "rangliste2", art: "rangliste", name: "Rangliste, die ersten drei", zeilen, plan, top, versatz: halt2 - 500, dur: ende - halt2 + 500,
+      halte: [{ t: 800, springe: true }] }];   // Einblenden bis 650 ms, Halt bei 800, erstes Einrasten bei 900   // Halt vor dem ersten Einrasten (bei 400), die Walzen drehen im Halt weiter
 }
 // Drei Spalten: Reihenfolge wie das Podest (2, 1, 3), ein gemeinsamer Kartenausschnitt für alle drei Wege (540 x 340)
 function spaltenBasis(d, top) {
@@ -1139,7 +1139,7 @@ function szeneBauen() {
   const html = { titel: vorspannHTML, fotos: fotosHTML, fakten: faktenHTML, gruppen: gruppenHTML, karte: zrHTML, award: awardHTML,
     rangliste: rangHTML, spalten: spaltenHTML, sieger: siegerHTML, abspann: abspannHTML }[k.art];
   if (html) s.innerHTML = html(k);
-  box.appendChild(s); Z.szene = s; Z.altBis = 520; $("#buehne").dataset.art = k.art;
+  box.appendChild(s); Z.szene = s; Z.altBis = 520; Z.szeneAb = performance.now(); $("#buehne").dataset.art = k.art;
   k.el = elemente(k, s);
   ringCache = {}; letzteKarte = null;
   leisteSpur();
@@ -1389,8 +1389,11 @@ function zeichnen() {
   leisteFortschritt();
   // Übergang: neue Szene blendet über die alte; Karte und Award lassen die alte zugleich weichen
   if (s) s.style.opacity = ein(L, 0);
-  if (Z.alt) { if (L > Z.altBis || ein(L, 0) >= 1) { Z.alt.remove(); Z.alt = null; }
-    else if (k.art === "karte" || k.art === "award") Z.alt.style.opacity = 1 - ein(L, 0, k.art === "award" ? 240 : 480); }
+  // Die alte Szene blendet nach echter Zeit aus, nicht nach der Kapitelzeit: ein früher Halt friert die Kapitelzeit ein und
+  // ließ die Überblendung sonst auf halber Strecke stehen (Fehler 17.10., Award zu Rangliste Teil 2)
+  if (Z.alt) { const dtS = performance.now() - (Z.szeneAb || 0);
+    if (dtS > Z.altBis) { Z.alt.remove(); Z.alt = null; }
+    else if (k.art === "karte" || k.art === "award") Z.alt.style.opacity = (1 - glatt(dtS / (k.art === "award" ? 240 : 480))).toFixed(3); }
   // Awards: die Karte tritt zurück (wie früher im Platz-Bild), danach blendet sie wieder auf
   const gr = $("#grund"), vorAw = Z.i > 0 && K[Z.i - 1].art === "award", grO = k.art === "award" ? (vorAw ? ".28" : (1 - .72 * ein(L, 0, 700)).toFixed(3))
     : vorAw ? (.28 + .72 * ein(L, 0, 700)).toFixed(3) : "";
