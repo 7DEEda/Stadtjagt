@@ -18,6 +18,7 @@
   --ok:#25683F; --ok-bg:#E3F1E7; --warn:#8A5A00; --warn-bg:#FBF0D9;
   --park:#DFEAD6; --strasse:#FFFFFF; --strasse-rand:#D3DECF; --fluss:#C9DDEA; --flaeche:#E6EBE2;
   --haus:#E2E8DD; --haus-rand:#D6DED0; --gruen:#E6EEDF;
+  --anon:#3E5A52; --anon-linie:#3E5A52;
   --head:'Barlow Semi Condensed', 'Arial Narrow', sans-serif; --body:'Barlow', Arial, sans-serif;
   --emoji:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;
   /* Bühnenstufen, gemessen auf der 1920er Bühne; bei 1280x720 zwei Drittel davon */
@@ -33,7 +34,9 @@
     --contour:#1C312B; --flag:#FF7A3A; --flag-ink:#0F1B18; --flag-text:#FF7A3A; --water:#6FA8D6;
     --ok:#6CCB8E; --ok-bg:#16332A; --warn:#E8B75A; --warn-bg:#33290F;
     --park:#13261F; --strasse:#22362F; --strasse-rand:#1B2D27; --fluss:#16303F; --flaeche:#14231E;
-    --haus:#152520; --haus-rand:#1A2C26; --gruen:#122219; --ring:var(--ink);
+    --haus:#152520; --haus-rand:#1A2C26; --gruen:#122219;
+  --anon:#5E786F; --anon-linie:#9BB1A9;
+    --anon:#5E786F; --anon-linie:#9BB1A9; --ring:var(--ink);
     color-scheme: dark;
   }
 }
@@ -92,6 +95,15 @@ body.still{cursor:none}
 #schirm .kopf circle.k{stroke:var(--ring);stroke-width:5}
 #schirm .kopf circle.ohne{fill:none;stroke:var(--ink);stroke-width:2.5;stroke-dasharray:6 5}
 #schirm .kopf text{font-family:var(--emoji);font-size:34px;font-weight:400}
+#schirm .kopf .frage{display:none;font:700 38px var(--head);fill:var(--paper)}
+/* Zeitraffer anonym (17.10.): wer führt, soll erst die Siegerehrung zeigen. Alle Köpfe gleich mit "?", alle Routen in
+   einer Farbe; Teamfarben und Tiere erst bei den Plätzen, im Abspann und im Schlussbild */
+#buehne[data-art="karte"] #schirm .kopf circle.k{fill:var(--anon)}
+#buehne[data-art="karte"] #schirm .kopf .tier{display:none}
+#buehne[data-art="karte"] #schirm .kopf .frage{display:block}
+#buehne[data-art="karte"] #welt .spur,#buehne[data-art="karte"] #welt .luecke{stroke:var(--anon-linie);opacity:.5}
+
+#pulse .kpuls{fill:none;stroke:var(--flag);stroke-width:5}
 #schirm .puls{fill:none;stroke-width:5}
 #schirm .lueckenhinweis{font:500 var(--bs-xs) var(--body);fill:var(--muted)}
 
@@ -604,10 +616,10 @@ function kapitelBauen() {
     const koepfe = d.teams.map(t => kopf(t, bis)).filter(Boolean);
     // S1: Wege nach Dramaturgie, der erste und der letzte länger
     const erster = i === 1, letzter = i === d.grenzen.length - 1;
-    const wegDauer = (erster ? 18000 : letzter ? 20000 : 12000) * (mitFotos ? 1 : 4 / 3);
+    const wegDauer = (erster ? 18000 : letzter ? 20000 : 12000) * 1.2;   // ohne Fotokapitel etwas mehr Zeit für den Weg
     k.push({ id: "weg" + i, art: "karte", dur: wegDauer, von: d.grenzen[i - 1], bis, station: i, name: "Weg zu Station " + i,
       kam: einpassen(rahmen([vor, s.xy, ...koepfe], 140, 760), KARTE_B) });
-    let fotos = mitFotos ? d.fotos.filter(f => f.position === i && !OPT.aus.has(f.teamId + ":" + i)) : [];
+    let fotos = [];   // Fotokapitel je Station entfallen (17.10.); der alte Block bleibt für einen Rückweg stehen
     if (fotos.length) {
       // S2: Stationen 1 bis 4 in fester Teamreihenfolge; M4: an der letzten Station gemischt, sonst stünde dort die Rangfolge
       const istLetzte = i === letzteSt;
@@ -791,7 +803,8 @@ function kartenElemente() {
   D.teams.forEach(t => { const g = el("g", { class: "kopf" }, kg);
     if (t.ohneGps) el("circle", { class: "ohne", r: 38 }, g);
     el("circle", { class: "k", r: 30, fill: t.farbe }, g);
-    const tx = el("text", { "text-anchor": "middle", y: 12 }, g); tx.textContent = t.emoji; kopfEl[t.id] = g; });
+    const tx = el("text", { class: "tier", "text-anchor": "middle", y: 12 }, g); tx.textContent = t.emoji;
+    const fr = el("text", { class: "frage", "text-anchor": "middle", y: 12 }, g); fr.textContent = "?"; kopfEl[t.id] = g; });
   const ng = $("#namen"); ng.innerHTML = ""; namenEl = D.namen.map(n => { const tx = el("text", { class: n[3], "text-anchor": "middle" }, ng); tx.textContent = n[0]; return { tx, xy: P(n[1], n[2]) }; });
 }
 
@@ -859,9 +872,15 @@ function zeichneKarte(T, kam, modus) {
       const z = [o[0] + Math.cos(a) * 116, o[1] + Math.sin(a) * 116];
       q = [q[0] + (z[0] - q[0]) * w, q[1] + (z[1] - q[1]) * w];
     }
-    g.setAttribute("transform", `translate(${q[0].toFixed(1)} ${q[1].toFixed(1)})`);
+    // Station gelöst: der Kopf springt kurz auf (1,4 s Kapitelzeit nach dem Lösen), der Ring dazu kommt aus pulse()
+    const kk = K[Z.i], tempo = kk && kk.art === "karte" ? Math.max(1, (kk.bis - kk.von) / kk.dur) : 1;
+    const geloest = !ruhig && kk && kk.art === "karte" ? t.sts.map(x => x.ok).filter(o => o && o <= T).pop() : null;
+    const u = geloest ? (T - geloest) / tempo / 1400 : 1, hoch = u < 1 ? 1 + .45 * Math.sin(Math.PI * Math.min(1, u * 1.6)) * (1 - u) : 1;
+    kopfPos[t.id] = u < 1 ? { q, u } : null;
+    g.setAttribute("transform", `translate(${q[0].toFixed(1)} ${q[1].toFixed(1)})${hoch !== 1 ? ` scale(${hoch.toFixed(3)})` : ""}`);
   });
 }
+let kopfPos = {};
 
 /* =====================================================================
    Ablauf: Kapitel, Zeit, Pause, Halt vor dem Aufdecken
@@ -1120,7 +1139,7 @@ function seiteZeichnen(k, T) {
     } else {
       const ok = D.teams.filter(t => st(t).ok && st(t).ok <= T).sort((a, b) => st(a).ok - st(b).ok);
       html = `<div class="z-lbl">Station ${pos} gelöst</div><div class="z-zahl">${ok.length}<small>von ${n}</small></div>`
-        + (ok.length ? `<div class="z-erst">zuerst <i style="background:${ok[0].farbe}">${ok[0].emoji}</i>${esc(ok[0].name)} <span class="tab">${lauf(st(ok[0]).ok)} h</span></div>` : "");
+        + "";   // kein "zuerst" mit Name (17.10.): im Zeitraffer bleibt offen, wer führt
     }
   }
   if (seiteStand.liste !== html) { $("#sListe").innerHTML = html; seiteStand.liste = html; }
@@ -1195,14 +1214,9 @@ function zeichnen() {
 function pulse(k, T) {
   const g = $("#pulse"), tempo = Math.max(1, (k.bis - k.von) / k.dur), letzte = D.stationen[D.stationen.length - 1].position;
   let html = "";
-  // Puls beim Lösen nur an den Stationen 1 bis 4; an der letzten verriete er die Zielreihenfolge (S3)
-  if (!ruhig) D.ereignisse.forEach(e => {
-    if (e.art !== "ok" || e.t > T || e.pos === letzte) return;
-    const alter = (T - e.t) / tempo; if (alter > 1400) return;
-    const s = D.stationen.find(x => x.position === e.pos), u = alter / 1400;
-    const kam = kamFuer(Z.i, Z.lokal), q = [(s.xy[0] - kam.cx) * kam.s + 960, (s.xy[1] - kam.cy) * kam.s + 540];
-    html += `<circle class="puls" cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${(30 + u * 110).toFixed(1)}" stroke="${linie(e.team)}" opacity="${(1 - u).toFixed(2)}"/>`;
-  });
+  // Station gelöst: Ring um den Kopf des Teams statt Ping an der Station (17.10.); anonym, darum an jeder Station
+  if (!ruhig) D.teams.forEach(t => { const kp = kopfPos[t.id]; if (!kp) return;
+    html += `<circle class="kpuls" cx="${kp.q[0].toFixed(1)}" cy="${kp.q[1].toFixed(1)}" r="${(34 + kp.u * 46).toFixed(1)}" opacity="${(1 - kp.u).toFixed(2)}"/>`; });
   if (html || g.firstChild) g.innerHTML = html;
 }
 function fotosZeichnen(k, L) {
@@ -1313,7 +1327,7 @@ const ACHTUNG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 function gesamt() { return K.reduce((n, k) => n + k.dur, 0); }
 function mmss(t) { t = Math.round(t / 1000); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); }
 // Nur im Mockup: Direktsprünge zu den neuen Momenten (starten() mit Kapitel und Zeit; "nach" = Nach-Halt, "ende" = Schlussbild)
-const SPRUENGE = [["Fotos Station 5", "fotos5", 0], ["Plätze ab 4", "ab4", 0], ["Die Koffer", "koffer", 0], ["Platz 3", "platz3", 0],
+const SPRUENGE = [["Weg zu Station 3", "weg3", 0], ["Plätze ab 4", "ab4", 0], ["Die Koffer", "koffer", 0], ["Platz 3", "platz3", 0],
   ["Platz 1", "platz1", 0], ["Platz 1 aufgedeckt", "platz1", "nach"], ["Siegerbild", "sieger", 0], ["Abspann", "abspann", 0], ["Schlussbild", "abspann", "ende"]];
 function vorbereitenHTML() {
   const d = D, ohne = d.teams.filter(t => t.ohneGps);
