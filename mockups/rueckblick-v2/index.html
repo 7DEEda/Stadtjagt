@@ -90,6 +90,7 @@ body.still{cursor:none}
 #schirm .startbadge{fill:var(--ink);stroke:var(--ring);stroke-width:4}
 #schirm .haus{fill:none;stroke:var(--paper);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 #schirm .kopf circle.k{stroke:var(--ring);stroke-width:5}
+#schirm .anker{stroke:var(--anon-linie);stroke-width:2.5;stroke-dasharray:3 7;stroke-linecap:round;opacity:0}
 #schirm .kopf circle.ohne{fill:none;stroke:var(--ink);stroke-width:2.5;stroke-dasharray:6 5}
 #schirm .kopf text{font-family:var(--emoji);font-size:34px;font-weight:400}
 #schirm .kopf .frage{display:none;font:700 38px var(--head);fill:var(--paper)}
@@ -132,6 +133,10 @@ body.still{cursor:none}
 .gr-spalte .leute{font:500 var(--bs-s)/1 var(--body);color:var(--muted);margin-top:12px;white-space:nowrap}
 .gr-koepfe{display:flex;flex-direction:column;gap:14px;margin-top:28px}
 .gr-team{display:flex;align-items:center;gap:18px;font:700 var(--bs-s)/1 var(--head);white-space:nowrap;min-width:0}
+.gr-team{--namen:1}
+.gr-team .gr-name{opacity:var(--namen)}
+.gr-flieger{position:absolute;z-index:6;border-radius:50%;background:var(--c);display:grid;place-items:center;font:38px/1 var(--emoji);border:4px solid var(--ring);box-sizing:border-box;will-change:transform}
+.gr-flieger.frage{background:var(--anon);color:var(--paper);font:700 38px/1 var(--head)}
 .gr-team i{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font:38px/1 var(--emoji);flex:none;border:4px solid var(--ring)}
 .anon{width:88px;height:88px;border-radius:50%;background:var(--anon);color:var(--paper);display:grid;place-items:center;font:700 48px/1 var(--head);border:5px solid var(--ring);flex:none}
 
@@ -695,7 +700,8 @@ function kapitelBauen() {
     : { id: "vorspann", art: "titel", dur: 7500, kam: voll, name: "Vorspann" });
   // 2. Fun Facts, 3. die Startgruppen
   k.push({ id: "fakten", art: "fakten", dur: 9000, name: "Fun Facts", kam: voll });
-  k.push({ id: "gruppen", art: "gruppen", dur: 6500, name: "Die Gruppen", kam: voll });
+  // 6,5 s Auftritt, dann der Ausgang: Teams drehen sich zu "?" und fliegen zum Start (Friedrich 17.10.), insgesamt 10 s
+  k.push({ id: "gruppen", art: "gruppen", dur: 10000, name: "Die Gruppen", kam: voll });
   // 4. ein Zeitraffer über das ganze Spiel; die Kamera folgt allen Köpfen und dem Start
   const fertig = d.teams.map(t => t.fertig), alleDa = fertig.every(Boolean);
   const zr = { id: "zeitraffer", art: "karte", dur: ZR_MS, von: d.t0, bis: alleDa ? Math.min(d.tEnd, Math.max(...fertig) + 2 * MIN) : d.tEnd, name: "Zeitraffer" };
@@ -902,7 +908,7 @@ function karteRastern() {
   img.src = url;
 }
 
-let teamEl = {}, kopfEl = {}, stEl = [], namenEl = [];
+let teamEl = {}, kopfEl = {}, ankerEl = {}, stEl = [], namenEl = [];
 function kartenElemente() {
   letzteKarte = null;
   const sp = $("#spuren"); sp.innerHTML = ""; teamEl = {};
@@ -919,6 +925,8 @@ function kartenElemente() {
   D.stationen.forEach(s => { const g = el("g", {}, sg); el("circle", { class: "stbadge", r: 28 }, g);
     const tx = el("text", { class: "stnr", "text-anchor": "middle", y: 11 }, g); tx.textContent = s.position; stEl.push({ g, xy: s.xy }); });
   const kg = $("#koepfe"); kg.innerHTML = ""; kopfEl = {};
+  let ag = $("#anker"); if (!ag) { ag = document.createElementNS(NS, "g"); ag.id = "anker"; kg.parentNode.insertBefore(ag, $("#stationen")); } ag.innerHTML = ""; ankerEl = {};
+  D.teams.forEach(t => { ankerEl[t.id] = el("line", { class: "anker" }, ag); });
   D.teams.forEach(t => { const g = el("g", { class: "kopf" }, kg);
     if (t.ohneGps) el("circle", { class: "ohne", r: 38 }, g);
     el("circle", { class: "k", r: 30, fill: t.farbe }, g);
@@ -973,7 +981,7 @@ function zeichneKarte(T, kam, modus) {
   const orte = [D.start.xy, ...D.stationen.map(x => x.xy)];
   D.teams.forEach(t => {
     const g = kopfEl[t.id], h = einzeln ? (einzeln === t ? kopf(t, modus.bis ?? T) : null) : modus.koepfe ? kopf(t, T) : null;
-    if (!h) { g.style.display = "none"; return; }
+    if (!h) { g.style.display = "none"; if (ankerEl[t.id]) ankerEl[t.id].style.opacity = 0; return; }
     g.style.display = "";
     let best = 0, bd = Infinity; orte.forEach((o, i) => { const dd = dist(o, h); if (dd < bd) { bd = dd; best = i; } });
     let q = sx(h);
@@ -983,7 +991,9 @@ function zeichneKarte(T, kam, modus) {
       const a = -Math.PI / 2 + platz * (Math.PI * 2 / 12), o = sx(orte[best]);
       const z = [o[0] + Math.cos(a) * 116, o[1] + Math.sin(a) * 116];
       q = [q[0] + (z[0] - q[0]) * w, q[1] + (z[1] - q[1]) * w];
-    }
+      const an = ankerEl[t.id], dl = Math.hypot(q[0] - o[0], q[1] - o[1]) || 1, ab = 38;   // Linie beginnt am Rand des Abzeichens, nicht in seiner Mitte
+      an.setAttribute("x1", (o[0] + (q[0] - o[0]) / dl * ab).toFixed(1)); an.setAttribute("y1", (o[1] + (q[1] - o[1]) / dl * ab).toFixed(1)); an.setAttribute("x2", (q[0] - (q[0] - o[0]) / dl * 32).toFixed(1)); an.setAttribute("y2", (q[1] - (q[1] - o[1]) / dl * 32).toFixed(1)); an.style.opacity = w.toFixed(2);   // Linie endet am Rand des Kopfes
+    } else if (ankerEl[t.id]) ankerEl[t.id].style.opacity = 0;
     // Station gelöst: der Kopf springt kurz auf (1,4 s Kapitelzeit nach dem Lösen), der Ring dazu kommt aus pulse()
     const kk = K[Z.i], tempo = kk && kk.art === "karte" ? Math.max(1, (kk.bis - kk.von) / kk.dur) : 1;
     const geloest = !ruhig && kk && kk.art === "karte" ? t.sts.map(x => x.ok).filter(o => o && o <= T).pop() : null;
@@ -1016,7 +1026,7 @@ function spurSetzen(t, e, bis) {
    Ablauf: Kapitel, Zeit, Pause, Halt vor dem Aufdecken
    ===================================================================== */
 // hNr: Index des nächsten Haltepunkts im Kapitel (k.halte); extra: Zeit im ersten Halt (die Walzen drehen weiter)
-const Z = { phase: "vorbereiten", i: 0, lokal: 0, spielt: false, haelt: false, hNr: 0, extra: 0, letzt: 0, wechsel: 0, vorSchwarz: false, szene: null, alt: null };
+const Z = { endHalt: false, phase: "vorbereiten", i: 0, lokal: 0, spielt: false, haelt: false, hNr: 0, extra: 0, letzt: 0, wechsel: 0, vorSchwarz: false, szene: null, alt: null };
 // Die Show läuft für das Publikum, nicht für den Laptop: Bewegung ist an, auch wenn der Rechner "reduzierte Bewegung"
 // meldet (16.10.: Friedrichs Chrome meldete es, die Show stand still). Abschalten nur bewusst auf der Startseite.
 const systemRuhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1033,7 +1043,7 @@ function letzteKarteVor(i) { for (let j = i; j >= 0; j--) if (K[j].art === "kart
 function geheZu(i, lokal = 0) {
   i = Math.max(0, Math.min(K.length - 1, i));
   const h = K[i].halte || [];
-  Z.phase = "show"; Z.i = i; Z.lokal = lokal; Z.extra = 0; Z.wechsel = performance.now();
+  Z.phase = "show"; Z.i = i; Z.lokal = lokal; Z.extra = 0; Z.wechsel = performance.now(); Z.endHalt = false;
   Z.hNr = h.filter(x => x.t < lokal).length;
   Z.haelt = OPT.anhalten && h.some(x => x.t === lokal);   // Sprung genau auf einen Halt (Prüfungen, ?k=&t=)
   szeneBauen();
@@ -1051,6 +1061,7 @@ function weiter() {
   const k = K[Z.i], h = OPT.anhalten && k.halte && k.halte[Z.hNr];
   Z.spielt = true; knopf();   // M3: Weiter setzt fort, auch aus der Pause und nach dem Schwarzbild
   if (Z.haelt) { Z.haelt = false; Z.hNr++; leisteFortschritt(); return; }
+  if (Z.endHalt) { Z.endHalt = false; if (Z.i < K.length - 1) geheZu(Z.i + 1); return; }   // Kapitel zu Ende gespielt: Weiter geht ins nächste
   // M2: zu frühes Weiter im Platz-Kapitel springt auf den nächsten Halt, statt den Platz zu überspringen
   // (ein prellender zweiter Druck deckt dann nicht gleich auf: dieselbe 600-ms-Sperre wie nach einem Kapitelwechsel)
   if (h && h.springe && Z.lokal < h.t) { Z.lokal = h.t; Z.haelt = true; Z.wechsel = performance.now(); leisteFortschritt(); return; }
@@ -1064,7 +1075,7 @@ function zurueck() {
 function spielPause(perTaste) {
   if (Z.phase === "durchsehen") return;
   if (Z.phase !== "show") return starten();
-  if (Z.haelt) return weiter();
+  if (Z.haelt || Z.endHalt) return weiter();
   if (amEnde()) return;   // S11: das Schlussbild bleibt; neu nur mit Pos1 oder über die Leiste
   Z.spielt = !Z.spielt; knopf();
   // S9: pausiert bleibt die Leiste stehen; per Taste fortgesetzt ist sie sofort weg
@@ -1089,7 +1100,8 @@ function takt(jetzt) {
       const h = OPT.anhalten && k.halte && k.halte[Z.hNr];
       if (!Z.haelt && h && Z.lokal < h.t && Z.lokal + dt >= h.t) { Z.lokal = h.t; Z.haelt = true; }
       if (Z.haelt) { if (Z.hNr === 0) Z.extra += dt; } else Z.lokal += dt;
-      if (Z.lokal >= k.dur && !k.endlos) { if (Z.i < K.length - 1) geheZu(Z.i + 1); else { Z.lokal = k.dur; Z.spielt = false; knopf(); } }
+      if (Z.lokal >= k.dur && !k.endlos) {   // nichts läuft von selbst durch: das Kapitel hält am Ende, bis Weiter kommt
+        Z.lokal = k.dur; if (!Z.endHalt) { Z.endHalt = true; leisteFortschritt(); } }
     }
     zeichnen();
   }
@@ -1170,7 +1182,42 @@ function gruppenHTML() {
     <div class="gr-netz" style="top:${oben + 140}px">${gr.map(g => { const ts = D.teams.filter(t => t.gruppe === g);
       return `<div class="gr-spalte"><h3>Gruppe ${g + 1}</h3><div class="zeit">Start ${uhr(ts[0].startAt)} Uhr</div>
         <div class="leute">${ts.reduce((n, t) => n + t.members.length, 0)} Leute</div>
-        <div class="gr-koepfe">${ts.map(t => `<div class="gr-team"><i style="background:${t.farbe}">${t.emoji}</i>${esc(t.name)}</div>`).join("")}</div></div>`; }).join("")}</div>`;
+        <div class="gr-koepfe">${ts.map(t => `<div class="gr-team"><i style="background:${t.farbe}">${t.emoji}</i><span class="gr-name">${esc(t.name)}</span></div>`).join("")}</div></div>`; }).join("")}</div>`;
+}
+// Ausgang der Gruppen-Folie: die Teams drehen sich zu "?" und landen genau an den Stellen, an denen der Zeitraffer
+// die anonymen Köpfe am Start zeigt (Ring um den Start, Plätze in Teamreihenfolge). Danach der Schnitt auf die Karte.
+function gruppenAusgang(k, L, e, kam) {
+  const AUS = 6500, FLIP = 520, VERSATZ = 70, FLUG = 1500, abFlug = AUS + FLIP + (D.teams.length - 1) * VERSATZ + 300;
+  const zr = K.find(x => x.id === "zeitraffer"), s = Z.szene;
+  const kz = zr ? zr.kam : kam;
+  if (L > abFlug - 300) {   // Karte hinter dem Schleier schon in der Kamera des Zeitraffers, der Schleier blendet auf
+    zeichneKarte(D.t0, kz, { spuren: "keine", koepfe: false });
+    const sch = s.querySelector(".schleier"); if (sch) sch.style.opacity = (1 - ein(L, abFlug, FLUG - 200)).toFixed(3);
+  }
+  if (L < AUS) return;
+  if (!e.flug) {   // Flieger einmal anlegen, an der Stelle des Teamkreises (Bühnen-Pixel)
+    const bu = $("#buehne").getBoundingClientRect(), sk = bu.width / 1920; e.flug = [];
+    D.teams.forEach(t => {
+      const kreis = [...s.querySelectorAll(".gr-team")].find(x => x.querySelector(".gr-name").textContent === t.name); if (!kreis) return;
+      const i = kreis.querySelector("i"), r = i.getBoundingClientRect();
+      const f = document.createElement("div"); f.className = "gr-flieger";
+      f.style.cssText = `left:${((r.left - bu.left) / sk).toFixed(1)}px;top:${((r.top - bu.top) / sk).toFixed(1)}px;width:${(r.width / sk).toFixed(1)}px;height:${(r.height / sk).toFixed(1)}px`;
+      f.style.setProperty("--c", t.farbe); f.textContent = t.emoji; s.appendChild(f); i.style.visibility = "hidden";
+      const o = [(D.start.xy[0] - kz.cx) * kz.s + 960, (D.start.xy[1] - kz.cy) * kz.s + 540], a = -Math.PI / 2 + D.teams.indexOf(t) * (Math.PI * 2 / 12);
+      e.flug.push({ t, f, kreis, von: [(r.left - bu.left + r.width / 2) / sk, (r.top - bu.top + r.height / 2) / sk], nach: [o[0] + Math.cos(a) * 116, o[1] + Math.sin(a) * 116], d: r.width / sk });
+    });
+  }
+  e.flug.forEach((z, n) => {
+    const t0 = AUS + n * VERSATZ, fl = Math.min(1, Math.max(0, (L - t0) / FLIP));
+    z.kreis.style.setProperty("--namen", (1 - ein(L, t0 + FLIP * .5, 300)).toFixed(3));
+    const q = ruhig ? (L >= t0 + FLIP ? 1 : 0) : fl, zeigtFrage = q >= .5;
+    if (z.f.dataset.f !== (zeigtFrage ? "1" : "0")) { z.f.dataset.f = zeigtFrage ? "1" : "0"; z.f.textContent = zeigtFrage ? "?" : z.t.emoji; z.f.classList.toggle("frage", zeigtFrage); }
+    const sx = ruhig ? 1 : Math.max(.02, Math.abs(Math.cos(Math.PI * fl)));
+    const u = ruhig ? 0 : glatt((L - abFlug) / FLUG), x = z.von[0] + (z.nach[0] - z.von[0]) * u, y = z.von[1] + (z.nach[1] - z.von[1]) * u;
+    const gr = (60 / z.d) * u + (1 - u);   // vom Kartenkreis (64) auf Kopfgröße (60)
+    z.f.style.transform = `translate(${(x - z.von[0]).toFixed(1)}px,${(y - z.von[1]).toFixed(1)}px) scale(${(sx * gr).toFixed(3)},${gr.toFixed(3)})`;
+    z.f.style.opacity = "1";
+  });
 }
 // Zeitraffer: oben Laufzeit und wie viele schon im Ziel sind
 function zrHTML() {
@@ -1357,10 +1404,12 @@ function zeichnen() {
   }
   if (k.art === "gruppen") {
     zeichneKarte(D.t0, kam, { spuren: "keine", koepfe: false });
-    gleitet(e.kopf, ein(L, 0));
-    e.spalten.forEach((x, i) => gleitet(x, ein(L, 300 + i * 250, 520), 30));
-    let n = 0; e.spalten.forEach((x, i) => x.querySelectorAll(".anon").forEach((a, j) => { const ab = 800 + i * 250 + j * 90;
-      a.style.opacity = ein(L, ab, 200).toFixed(3); a.style.transform = `scale(${spring((L - ab) / 520).toFixed(4)})`; n++; }));
+    gleitet(e.kopf, Math.min(ein(L, 0), 1 - ein(L, 6500 + 1000, 700)));
+    const AUS = 6500;   // ab hier der Ausgang in die Karte
+    e.spalten.forEach((x, i) => gleitet(x, Math.min(ein(L, 300 + i * 250, 520), 1 - ein(L, AUS + 1400, 900)), 30));
+    e.spalten.forEach((x, i) => x.querySelectorAll(".gr-team").forEach((a, j) => { const ab = 800 + i * 250 + j * 90;
+      a.style.opacity = ein(L, ab, 200).toFixed(3); a.style.transform = `translateX(${((1 - ein(L, ab, 320)) * 18).toFixed(1)}px)`; }));
+    gruppenAusgang(k, L, e, kam);
   }
   if (k.art === "award") awardZeichnen(k, L, kam);
   if (k.art === "rangliste") { zeichneKarte(D.tEnd, kam, { spuren: "keine", koepfe: false }); rangZeichnen(k, L); }
@@ -1625,7 +1674,7 @@ function leisteFortschritt() {
   const show = Z.phase === "show", k = K[Z.i], endlos = show && k.endlos;
   const vorbei = K.slice(0, Z.i).reduce((n, x) => n + (x.endlos ? 0 : x.dur), 0) + (show ? (endlos ? Z.lokal : Math.min(Z.lokal, k.dur)) : 0);
   const h = show && k.halte && k.halte[Z.hNr];
-  const zustand = !show ? "" : Z.haelt ? (h && h.art === "nach" ? ", aufgedeckt, wartet auf Weiter" : ", wartet auf Weiter")
+  const zustand = !show ? "" : Z.endHalt && !Z.haelt && !(K[Z.i].endlos) ? ", wartet auf Weiter" : Z.haelt ? (h && h.art === "nach" ? ", aufgedeckt, wartet auf Weiter" : ", wartet auf Weiter")
     : !Z.spielt && !amEnde() ? ", Pause" : endlos ? ", läuft endlos" : "";
   const txt = (show ? k.name + zustand : Z.phase === "durchsehen" ? "Fotos durchsehen" : "Vorbereiten") + "|" + (endlos ? mmss(vorbei) : mmss(vorbei) + " / " + mmss(gesamt()));
   $("#lSpur").querySelectorAll("span").forEach((x, i) => x.style.setProperty("--p", (i < Z.i ? 100 : i > Z.i || !show ? 0 : K[i].endlos ? 100 : Math.min(100, Z.lokal / K[i].dur * 100)) + "%"));
