@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Probelauf für Nachtrag 31 (current_station sperren) gegen die echte Datenbank, ohne Spuren.
+Probelauf für Nachtrag 31 (current_station sperren) gegen die echte Datenbank, ohne Spuren. Seitdem um jede neue
+Migration mit Funktionen ergänzt (zuletzt Nachtrag 37, Fernbedienung der Rückblick-Show).
 
     python tools/pruefstand/rechte_db.py
 
@@ -18,7 +19,7 @@ import sql  # noqa: E402
 # Die Migrationen, die diese Datenbank noch nicht (oder zuletzt neu) bekommen hat; der Probelauf spielt sie nacheinander ein.
 # Nach dem Einspielen einer Migration, die Funktionen neu anlegt, hier ergänzen (SPIEL.md §9).
 MIGRATIONEN = ["20261004090000_current_station_sperren.sql", "20261015090000_namenssuche_grenze.sql",
-               "20261016090000_eingaben_wiederholen.sql"]
+               "20261016090000_eingaben_wiederholen.sql", "20261017090000_rueckblick_steuerung.sql"]
 MIGRATION = [sql.REPO / "supabase" / "migrations" / n for n in MIGRATIONEN]
 
 # Interne Hilfsfunktionen: dürfen weder anon noch authenticated ausführen
@@ -39,7 +40,8 @@ begin
     end loop;
   end loop;
   -- die Spielfunktionen selbst bleiben für anon offen (jede Überladung, die es gibt)
-  foreach f in array array['team_state', 'lookup_participant', 'submit_answer', 'check_in', 'register_participant', 'submit_final'] loop
+  foreach f in array array['team_state', 'lookup_participant', 'submit_answer', 'check_in', 'register_participant', 'submit_final',
+                           'rb_befehl', 'rb_poll', 'rb_status_setzen', 'rb_status_holen', 'rb_ende'] loop
     if not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = f) then
       raise exception 'PROBE FEHLT: Funktion % gibt es nicht', f; end if;
     if exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = f
@@ -51,6 +53,13 @@ begin
   if (select count(*) from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'submit_answer') <> 1 then
     raise exception 'PROBE FEHLT: submit_answer nicht genau einmal'; end if;
   v_n := v_n + 1;
+  -- Nachtrag 37: die Tabelle der Fernbedienung ist für anon und authenticated gesperrt, der Weg sind die rb_*-Funktionen
+  if to_regclass('public.rueckblick_steuerung') is null then raise exception 'PROBE FEHLT: Tabelle rueckblick_steuerung gibt es nicht'; end if;
+  foreach r in array array['anon', 'authenticated'] loop
+    if has_table_privilege(r, 'public.rueckblick_steuerung', 'select') or has_table_privilege(r, 'public.rueckblick_steuerung', 'update') then
+      raise exception 'PROBE FEHLT: % darf rueckblick_steuerung lesen oder ändern', r; end if;
+    v_n := v_n + 1;
+  end loop;
   raise exception 'PROBELAUF_OK: % Prüfungen bestanden, alles zurückgenommen', v_n;
 end $probe$;
 """
