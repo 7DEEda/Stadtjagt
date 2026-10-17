@@ -566,3 +566,12 @@ keine Fotokapitel je Station, kein Mittelpunkt als Trenner.
 - **Ankerlinien:** Stehen Teams im Ring an einer Station oder am Start, verbindet eine feine gepunktete Linie jeden
   Kopf mit der Station; sie beginnt am Rand des Stationsabzeichens (liegt unter ihm) und endet am Rand des Kopfes.
 
+## Nachtrag 17.10.2026 (Rangliste in drei Klicks, Friedrich)
+
+Die Rangliste läuft in drei Schritten, jeder mit eigenem Weiter:
+1. Alle Plätze stehen da, alle Zeiten rattern (auch während des Halts), nichts ist aufgedeckt, alle Köpfe „?“.
+2. Weiter: Platz 12 bis 4 decken sich von unten nach oben auf (Zeit rastet ein, „?“ wird zum Team); Halt.
+3. Weiter: die Zeiten von Platz 3, 2, 1 rasten ein (Teams bleiben „?“); Kapitelende, Weiter geht zu den drei Spalten.
+Rechts neben jeder eingerasteten Zeit steht der Abstand zum Ersten („+2:25“, ab einer Stunde „+1:02:25“); Platz 1
+zeigt keinen Abstand. Die Rattelzeit der Walzen läuft im Halt weiter (`Z.extra`, auch in Halt 2 und 3).
+
