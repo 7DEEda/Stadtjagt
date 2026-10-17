@@ -1003,7 +1003,7 @@ function zeichneKarte(T, kam, modus) {
   D.teams.forEach(t => {
     const g = kopfEl[t.id], h = einzeln ? (einzeln === t ? kopf(t, modus.bis ?? T) : null) : modus.koepfe ? kopf(t, T) : null;
     if (!h) { g.style.display = "none"; if (ankerEl[t.id]) ankerEl[t.id].style.opacity = 0; return; }
-    g.style.display = "";
+    g.style.display = ""; g.style.opacity = "";
     let best = 0, bd = Infinity; orte.forEach((o, i) => { const dd = dist(o, h); if (dd < bd) { bd = dd; best = i; } });
     let q = sx(h);
     const w = einzeln ? 0 : glatt((70 - bd) / 45);
@@ -1506,6 +1506,8 @@ function awardZeichnen(k, L, kam) {
   const t = k.team, da = L >= AW_TEAM, rU = ruhig ? +da : glatt((L - AW_TEAM) / AW_ROUTE);
   const bis = D.t0 + ((t.fertig || D.tEnd) - D.t0) * rU;
   zeichneKarte(D.tEnd, kam, { spuren: da ? t : "keine", koepfe: da ? t : false, bis });
+  // Ist die Route fertig gezeichnet, blendet das Teamsymbol am Ende der Route aus (Friedrich 17.10.)
+  if (da && kopfEl[t.id]) kopfEl[t.id].style.opacity = (ruhig ? 0 : 1 - glatt((L - AW_TEAM - AW_ROUTE - 100) / 450)).toFixed(3);
   e.emo.style.opacity = ein(L, 80, 240).toFixed(3); e.emo.style.transform = `scale(${spring((L - 80) / 520).toFixed(4)})`;
   gleitet(e.titel, ein(L, AW_TITEL)); gleitet(e.wert, ein(L, AW_TITEL + 380));
   gleitet(e.team, ruhig ? +da : glatt((L - AW_TEAM) / 200), 24);
