@@ -2053,12 +2053,28 @@ vor). Einzelheiten und Prüfskript: SPIEL.md §16.
   schon im laufenden Spiel.
 - Prüfstand: `rueckblick.py` (12 Gruppen), Szenarien in `mock.js`.
 
-**Offen für Friedrich** (Vorgabe in der Spezifikation: ja, ja, tauschen):
-Fotos im Rückblick zeigen und dafür die Zusage ändern; Halt vor jedem
-Koffer-Platz; Teamfarbe Orange (`TEAM_COLORS[8]`, `#E65100`) vor dem Auslosen
-tauschen. Eventdatum fehlt noch (der Vorspann nimmt das Datum aus `startedAt`).
+**Fassung v2 (17.10.2026, lokal, nicht gepusht):** neuer Ablauf nach Friedrichs
+Nachträgen vom 17.10. (Spezifikation) und dem abgenommenen Mockup
+`mockups/rueckblick-v2/index.html`, gebaut in `rueckblick.js` und `rueckblick.css`
+(index.html unverändert, keine Migration). Splash, Fun Facts, Die Gruppen (nur
+bei mehr als einer Startgruppe), ein anonymer Zeitraffer, Rangliste Teil 1,
+Awards, Rangliste Teil 2, Drei Spalten, Platz 3, 2, 1, Siegerbild, endloser
+Abspann; jedes Kapitel hält am Ende bis Weiter. Dazu die Muss-Befunde der Kritik
+(`docs/superpowers/specs/2026-10-17-rueckblick-kritik.md`), die im Mockup nur
+über Beispieldaten gelöst waren: Wege enden am Koffer (M6), Check-ins bei
+GPS-Abbruch und Spätstart (M7), Ausdünnen (S14), Ausreißer (S15), niemand im
+Ziel (S17), mehr als 12 Teams (K11), Gleichstand (K12), Prager Zeit (K14),
+Verlassen nur nach Rückfrage (M5), Lade- und Fehlertexte. Startgruppen sind
+vorbereitet (`startedAt`/`startGroup` je Team in `admin_state`), die echten Daten
+kennen sie noch nicht. Einzelheiten: SPIEL.md §16. Prüfstand `rueckblick.py`
+neu (14 Gruppen, Bildrate mit 6.000 Punkten je Team: 60 Bilder/s).
 
-## Stand zum Fortsetzen (16.10.2026)
+**Offen für Friedrich:** Teamfarbe Orange (`TEAM_COLORS[8]`, `#E65100`) vor dem
+Auslosen tauschen. Eventdatum fehlt noch (der Splash nimmt das Datum aus
+`startedAt`). `admin_tracks` liefert keine Genauigkeit der Punkte; die Awards
+nutzen sie, sobald sie mitkommt (bräuchte eine Migration, bewusst nicht gebaut).
+
+## Stand zum Fortsetzen (16.10.2026, Rückblick v2 am 17.10.2026)
 
 **Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test
 bis Suite 21 (https://7deeda.github.io/geraetetest/). Nachtrag 34 (Code-Review
@@ -2074,10 +2090,14 @@ dann pushen. Der Service Worker muss spätestens 7 Tage vor dem Event live sein
 am 05./06.10., gemerged 09.10.), siehe Nachtrag 33. Vorlagen nur lokal:
 `mockups/design-varianten/v-weiter.html` und `admin-karte.html`.
 
-**NÄCHSTER SCHRITT:** Rückblick-Show: `#/rueckblick/probe` am Beamer (Lesbarkeit
-aus der letzten Reihe, Klicker, F5 und Alt-Tab), dann mit den Daten eines
-Probespiels von Start bis Abspann (Abnahme: 3 bis 5 Minuten, jede Taste wie in
-der Spezifikation 5.1, nach dem Laden Netz aus). Der Rückblick kommt vor dem
+**Rückblick v2 (17.10.2026):** gebaut nach Mockup v2 und den Nachträgen vom
+17.10., lokal auf master (siehe Nachtrag 36, Fassung v2; SPIEL.md §16).
+
+**NÄCHSTER SCHRITT:** Rückblick-Show v2: `#/rueckblick/probe` am Beamer (Lesbarkeit
+aus der letzten Reihe, Klicker: jedes Kapitel wartet auf Weiter, F5, B, Alt-Tab,
+Zurück im Browser fragt), dann mit den Daten eines Probespiels von Splash bis
+Abspann (jede Taste wie im Mockup, nach dem Laden Netz aus, ein Team mit
+GPS-Abbruch und eines, das nach dem Koffer weiterläuft). Der Rückblick kommt vor dem
 Änderungsstopp mit den geänderten Texten live. Danach Handytest der neuen Hülle (Teamleitung, Mitlese-Ansicht,
 Spielleitung auf dem Tablet), dazu der Handytest der Ausfallsicherheit
 (SPIEL.md §15: Flugmodus, Neuladen, Eingabe, Version, kein Installieren-Hinweis,

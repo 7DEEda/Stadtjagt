@@ -803,78 +803,114 @@ mit den Änderungen aus der Gegenprüfung (gehen der Spezifikation vor).
   Installieren-Hinweis, Notfallmappe am iPad als PDF; Notausgang einmal auf
   iPhone und Android proben.
 
-## 16. Rückblick-Show (Nachtrag 36, 16.10.2026)
+## 16. Rückblick-Show (Nachtrag 36, 16.10.2026; Fassung v2 vom 17.10.2026)
 
 Spezifikation `docs/superpowers/specs/2026-10-15-rueckblick-show-design.md` mit
-den Nachträgen vom 16.10. und der Gegenprüfung (gehen der Spezifikation vor);
-Vorlage `mockups/rueckblick/index.html`; Gestaltung `design-system/pages/rueckblick.md`.
-Nach dem Spielende zeigt ein Beamer (16:9) in 3 bis 5 Minuten die Wege aller
-Teams als Zeitraffer, die Gruppenselfies, die Koffer-Plätze rückwärts und alle
-Teams; Abspann ist eine Fotorolle. Keine neue RPC, keine Migration.
+allen Nachträgen (die vom 17.10. ersetzen den alten Ablauf); Vorlage für Aussehen
+und Verhalten `mockups/rueckblick-v2/index.html`; Kritik und Muss-Befunde
+`docs/superpowers/specs/2026-10-17-rueckblick-kritik.md`; Gestaltung
+`design-system/pages/rueckblick.md`. Nach dem Spielende zeigt ein Beamer (16:9)
+den Rückblick, gesteuert von der Spielleitung. Keine neue RPC, keine Migration.
 
+- **Ablauf:** Splash mit Kompass (hält als Startbild), Fun Facts (drei Kacheln:
+  Personenkilometer, Schritte, Kalorien; Halt auf den Brathähnchen, Weiter
+  schaltet auf Liter Bier), Die Gruppen (nur bei mehr als einer Startgruppe:
+  Teams je Gruppe mit Tier und Namen, Ausgang: die Kreise drehen sich zu „?“ und
+  fliegen auf die Ringplätze am Start), ein anonymer Zeitraffer (70 s, Laufzeit
+  ab 0:00, „im Ziel x von n“, Kamera um alle Köpfe und den Start, „?“-Köpfe,
+  graue Routen, Kopf springt beim Lösen, Ankerlinien im Ring, Check-in-Umkreis
+  nur bei Teams in der Nähe), Rangliste Teil 1 (alles rattert, Halt; Weiter
+  deckt die Plätze ab 4 von unten auf, rechts der Abstand zum Ersten), Awards
+  (Auftakt, bis zu sechs, Koffer-Teams ohne Award), Rangliste Teil 2 (die
+  Zeiten der ersten drei rasten ein), Drei Spalten (Platz 2, 1, 3 mit Zeit und
+  Weg, verdeckte Teams als Reihe darunter), Platz 3, Platz 2, Platz 1 (je Halt
+  davor und danach, Platz 1 eskaliert), Siegerbild, Abspann (zufällige
+  Fotorolle, endlos, 40 px/s, OSM-Nennung klein). **Nichts läuft von selbst
+  durch:** jedes Kapitel hält am Ende („…, wartet auf Weiter“), nur der Abspann
+  ist endlos. Weiter am letzten Halt kurz vor dem Kapitelende (Splash, nach dem
+  Aufdecken, Siegerbild) geht gleich ins nächste Kapitel.
+- **Steuerung:** Tasten wie im Mockup (Leertaste, K, F5, Pfeile, Bild auf/ab,
+  Enter, N, P, Pos1, Ende = Rangliste, F, B/., T, R = Rand für Fernseher, H).
+  Schutz: Weiter in den ersten 600 ms nach einem Wechsel und gehaltene Tasten
+  wirken nicht, zu frühes Weiter springt auf den Halt, während des Aufdeckens
+  wirken Weiter und Zurück nicht (M2), Weiter setzt aus Pause und Schwarzbild
+  fort (M3), im Durchsehen startet nichts, Starten baut die Kapitel neu (M8).
+  Leiste unten nur bei Mausbewegung, pausiert bleibt sie stehen; Klick und
+  Ziehen an jede Stelle wie bei einem Video, Tooltip mit Kapitel und Zeit.
+  Schalter im Vorbereiten: Gruppenfotos, Halt vor und nach jedem Koffer-Platz,
+  Rand für Fernseher, Bewegung reduzieren (Bewegung ist immer an, auch wenn der
+  Laptop reduzierte Bewegung meldet). Direktsprünge zu jedem Kapitel.
+- **Verlassen (M5):** Zurück im Browser, Maus-Seitentaste und „Zur
+  Spielleitung“ fragen erst („Rückblick verlassen? Die Fotos werden danach neu
+  geladen.“, Bleiben/Verlassen; Verlassen schaltet erst schwarz), Neuladen
+  fragt der Browser (`beforeunload`). Das zuletzt gezeigte Kapitel steht in
+  `sessionStorage` (`sj.rb.kapitel`); nach einem Neuladen bietet Vorbereiten
+  „Weiter bei …“ an. Eine direkt geänderte Adresse schließt die Show ohne Frage.
 - **Dateien:** `rueckblick.js` (eine Funktion, nichts global außer
   `RueckblickShow` und der Prüfhilfe `RB`), `rueckblick.css` (alle Regeln unter
-  `#rueckblick`, Token `--park`, `--strasse`, `--fluss` usw. und die Bühnenstufen
-  `--bs-*` gelten nur dort; `index.html` kennt `--park`/`--strasse` mit anderen
-  Werten für die Hintergründe) und `rueckblick-karte.js` (1,8 MB,
-  `window.PRAG_KARTE`). Alles lädt `rueckblickLaden()` in `index.html` erst beim
-  Öffnen, mit `?v=` aus `VERSION` (Last-Modified der Seite): GitHub Pages
-  schickt `max-age=600`, sonst träfe eine neue `index.html` bis zu 10 min auf ein
-  altes `rueckblick.js`. Zusätzlich vergleicht `host.api` (index.html,
-  `RUECKBLICK_API`) mit `API` (rueckblick.js); bei Abweichung meldet die Show
-  "Seite und Rückblick sind aus verschiedenen Fassungen" und startet nicht. Der
-  Service Worker lässt die Dateien durch (kein respondWith).
+  `#rueckblick`, Token `--park`, `--strasse`, `--fluss`, `--anon`, `--ring` und
+  die Bühnenstufen `--bs-*` gelten nur dort) und `rueckblick-karte.js` (1,8 MB,
+  `window.PRAG_KARTE`). `rueckblickLaden()` in `index.html` lädt alles erst beim
+  Öffnen, mit `?v=` aus `VERSION`; `host.api` gegen `API` verhindert gemischte
+  Fassungen. Nicht im Service Worker (die Handys tragen nichts davon).
 - **Route:** `#/rueckblick` (PIN aus `sj.pin` oder eigenes PIN-Feld),
-  `#/rueckblick/probe` (Beispieldaten, keine Abrufe). Knopf "Rückblick" im
-  Admin-Kopf und unter der Zeitachse bei `finished` (`a-rueckblick`).
-- **Schutz vor dem Neuzeichnen:** Die Bühne liegt in einem eigenen Container
-  `#rueckblick` am `body`, `#app` ist solange `inert`. `render()` und `refresh()`
-  kehren bei `S.view` mit Präfix `rueckblick` sofort zurück (ohne
-  `gpsWiederStarten()`, ohne `wachHaltenPruefen()`); gefährlich waren nicht der
-  10-s-Takt (der tut dort nichts), sondern `visibilitychange` (Alt-Tab am
-  Beamer-Laptop), `hashchange` und der Klick-Handler für `[data-act]`. Die Knöpfe
-  der Show tragen kein `data-act`. `hashchange` auf eine andere Ansicht ruft
-  `RueckblickShow.beenden()` (Blob-URLs frei, Listener weg, Wake Lock frei).
-- **Laden (`laden()`):** `admin_state` (Sperre: nicht `finished` oder kein
-  `startedAt` = "Der Rückblick startet nach dem Spielende."; `testMode` =
-  Sperre), `admin_tracks` ohne `p_since`, `admin_photos` (nur `route = echt`),
-  je Foto `admin_photo(p_full = true)` drei gleichzeitig, zweimal voll, dann
-  Vorschau, sonst weg ("3 Fotos nicht geladen", "Erneut versuchen"). Blob-URL,
-  `img.decode()`, Seitenverhältnis aus `naturalWidth/Height`. "Alles geladen,
-  die Show läuft jetzt auch ohne Netz" erst, wenn zusätzlich alle Schriftschnitte
-  der Bühne per `document.fonts.load` mit dem Mustertext "Holešovice Výstaviště
-  Letná Křižík" geladen sind (unicode-range lädt Glyphen sonst erst beim ersten
-  Gebrauch, ohne Netz käme mitten in der Show die Ersatzschrift; die Schriften
-  kommen aus `vendor/fonts`, §15) und die Grundkarte gerastert ist. Fehlt die
-  Karte, bleibt Papier mit Höhenlinien und die Zeile "Grundkarte nicht geladen";
-  fehlt eine Schrift, kommt statt "Alles geladen" eine Warnung.
-- **Aufbereiten (`aufbereiten()`, reine Funktion):** GPS-Sprungfilter nur für
-  einzelne Ausreißer (ein Punkt, der zu beiden Nachbarn springt, während die
-  Nachbarn zueinander passen), sonst verwürfe ein Vergleich mit dem letzten
-  behaltenen Punkt nach einer Tram- oder Taxifahrt jeden weiteren Punkt.
-  Kapitelgrenzen: Hälfte der Teams mit Fortschritt (Teams ganz ohne Check-in
-  zählen nicht mit), mindestens 2 min nach der vorigen Grenze, nie hinter
-  `finishedAt`, monoton. Ein Team ganz ohne Check-in steht im Ring am Start, in
-  "Alle Teams" "0 von 5 Stationen". Fotokapitel nur bei vorhandenen Fotos.
-- **Ausgenommene Fotos** ("Fotos durchsehen") stehen als `teamId:position` (nie
-  Bilddaten) im `sessionStorage` (`sj.rb.aus`) und überleben ein Neuladen; es
-  zählen nur Schlüssel, zu denen es ein Foto gibt. Fotos nie in `localStorage`.
-- **Texte der App (vor dem ersten Selfie live):** Anmeldung und Album "Sehen
-  können es euer Team, die Spielleitung und beim Abendessen alle im Rückblick",
-  "werden alle Fotos gelöscht" statt "löschen wir", Selfie-Schritt, Reiter Fotos,
-  Standort-Zeile "Euer Weg erscheint beim Abendessen im Rückblick." Im Reiter
-  Fotos steht bei `selfieOn` und einem Löschdatum von heute oder früher (UTC wie
-  `current_date` in `admin_state`/`team_state`) sofort die Warnung "Ein Datum
-  nach dem Abendessen wählen, sonst fehlen die Fotos im Rückblick."; ein
-  Datum am Eventtag löscht sonst schon während des Spiels.
-- **Ablauf:** Rückblick erst nach dem Spiel; "Standortdaten löschen"
-  (`admin_clear_positions`) erst nach der Show, danach die Fotos. Vorbereiten
-  und "Fotos durchsehen" am Laptop-Bildschirm, bevor der Beamer gespiegelt wird.
-  Der Rückblick ändert `index.html` (Route, Knopf, Texte) und wird darum vor dem
-  Änderungsstopp (HANDOFF, Ablauf am Eventtag) ausgeliefert.
-- **Prüfen:** `tools/pruefstand/rueckblick.py` (zwölf Gruppen, Szenarien
-  `rueckblick*`, `admin-beendet`, `admin-fotos-heute`, `admin-fotos-spaet` in
-  `mock.js`; Schalter `window.__fotoFehler`, `__FOTO_ARGS`). `shoot.bauen()`
-  kopiert `rueckblick.js`, `.css` und die Karte neben `app.html`. Am Gerät: einmal
+  `#/rueckblick/probe` (Beispieldaten mit drei Startgruppen, keine Abrufe,
+  „Probe“ im Splash und in der Leiste). Knopf „Rückblick“ im Admin-Kopf und
+  unter der Zeitachse bei `finished`.
+- **Schutz vor dem Neuzeichnen:** eigener Container `#rueckblick` am `body`,
+  `#app` ist `inert`; `render()` und `refresh()` kehren bei `S.view` mit Präfix
+  `rueckblick` sofort zurück; die Knöpfe der Show tragen kein `data-act`.
+- **Laden (`laden()`):** `admin_state` (Sperre vor dem Spielende und im
+  Testmodus), `admin_tracks` ohne `p_since`, `admin_photos` (nur `route =
+  echt`), je Foto `admin_photo` drei gleichzeitig: erster Versuch voll mit 20 s
+  Zeitlimit, dann noch einmal voll, dann Vorschau. Nach 20 s erscheint „Ohne die
+  restlichen Fotos weiter“; Vorbereiten nennt fehlende Fotos mit Team und
+  Station und bietet „Erneut versuchen“. Ladezeile ohne Listenraster. „Alles
+  geladen“ erst nach Karte und allen Schriftschnitten (Mustertext mit
+  latin-ext); scheitert das Rastern der Karte, warnt eine Zeile („Karte nicht
+  vorbereitet, die Kartenkapitel ruckeln“, Erneut versuchen). Ohne Netz:
+  „Keine Verbindung zum Server. Prüfe das WLAN und versuche es erneut.“
+- **Aufbereiten (`aufbereiten()`, reine Funktion):** Startgruppen vorbereitet:
+  liefern die Daten je Team `startedAt` (oder `startGroup`), gilt dessen Start,
+  alle Zeiten wandern auf 0:00 und gewertet wird nach Gesamtzeit; heute starten
+  alle mit dem Spiel (eine Gruppe, Kapitel „Die Gruppen“ entfällt, Wertung wie
+  `finishedAt` minus Spielstart). Je Team: Punkte nur bis 2 min nach dem
+  Koffer-Code (M6, auch für die Kilometer), Ausreißer aus einem bis drei Punkten
+  fallen weg (S15, eine Tramfahrt bleibt), Lücken gestrichelt, Ausdünnen auf
+  8 m (S14; im Stand bleibt der letzte Punkt vor dem Aufbruch, damit der Kopf
+  steht), Check-ins und Lösungen ohne GPS-Punkt innerhalb von 3 min und ein
+  Startpunkt vor einem GPS-Beginn später als 5 min kommen als gestrichelte
+  Punkte dazu (M7; Vorbereiten: „Tiger: GPS nur bis 14:25, danach aus den
+  Check-ins“). Gleichstand in derselben Sekunde: „0,3 s vor Platz 2“ (K12). Ab
+  13 Teams Ring mit 16 Plätzen, ab 14 Rangliste in zwei Spalten (K11).
+  Uhrzeiten in `Europe/Prague` (K14).
+- **Awards:** aus Spuren und Check-ins (Navi, Sightseeing, Rätselfüchse,
+  Philosophen, Sprinter, Flaneure), je Team höchstens einer, ein Award fällt
+  weg, wenn weniger als drei Teams die Kennzahl haben. Tempo nur aus Stücken von
+  mindestens 60 s und 100 m, Weg und Zeit desselben Stücks; Punkte mit
+  Genauigkeit über 25 m zählen nicht, falls die Daten sie tragen
+  (`admin_tracks` liefert heute keine Genauigkeit).
+- **Bildrate:** Karte einmal gerastert, `zeichneKarte()` nur bei Änderung,
+  Spuren in Stücken zu 16 Punkten (mit 48 und spärlichen Punkten 31 bis 41
+  Bilder/s), Überblendung nach echter Zeit (kein Halt friert sie ein). Gemessen
+  17.10.: 60 Bilder/s in allen Kapiteln, auch mit 6.000 Punkten je Team.
+- **Ausgenommene Fotos** stehen als `teamId:position` im `sessionStorage`
+  (`sj.rb.aus`); Fotos nur als Blob-URL im Speicher, nie in `localStorage`.
+- **Texte der App:** Anmeldung und Album „Sehen können es euer Team, die
+  Spielleitung und beim Abendessen alle im Rückblick“, Selfie-Schritt, Reiter
+  Fotos, Standort-Zeile „Euer Weg erscheint beim Abendessen im Rückblick.“; am
+  17.10. gegen den neuen Ablauf geprüft (Fotos im Abspann, Wege im Zeitraffer
+  anonym, in Awards, Spalten und Abspann in Teamfarbe): passen, unverändert.
+  Warnung zum Löschdatum im Reiter Fotos schon im laufenden Spiel.
+- **Ablauf am Abend:** Vorbereiten und „Fotos durchsehen“ am Laptop, bevor der
+  Beamer gespiegelt wird; Rückblick vor dem Essen mit Netz laden, Tab offen
+  lassen; „Standortdaten löschen“ erst nach der Show, danach die Fotos.
+- **Prüfen:** `tools/pruefstand/rueckblick.py` (14 Gruppen: Texte, Sperren und
+  PIN, Laden, Kapitel, Aufbereiten, Tasten und Schutz, Neuzeichnen, ohne Netz,
+  Fotos, Bühne 1920x1080 und 1280x720 hell und dunkel, Probe, Verlassen,
+  Bildrate, Awards gegen eine Rechnung in Python; Bildschirmfotos nach `RB_SHOTS`
+  oder `tools/pruefstand/shots`). Szenarien `rueckblick*` in `mock.js`, darunter
+  `rueckblick-dicht` (6.000 Punkte je Team) und `rueckblick-niemand`; Schalter
+  `window.__fotoFehler`, `__haengt`, `__netz`, `__rbGeduld`. Am Gerät: einmal
   `#/rueckblick/probe` auf dem Beamer des Restaurants, Lesbarkeit aus der letzten
   Reihe, Klicker.

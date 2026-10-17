@@ -593,3 +593,37 @@ zeigt keinen Abstand. Die Rattelzeit der Walzen läuft im Halt weiter (`Z.extra`
 - **Check-in-Umkreis einer Station** (orange Kreis) erscheint nur, solange ein Team innerhalb des 2,4-fachen Radius ist, und
   blendet sonst in 0,5 s aus (kein Überbleibsel nach dem Weitergehen der Teams).
 
+
+## Nachtrag 17.10.2026 (Bau v2 in der echten Show)
+
+Gebaut in `rueckblick.js` und `rueckblick.css` nach Mockup v2 und allen Nachträgen vom 17.10. (index.html unverändert,
+keine RPC, keine Migration); Beschreibung SPIEL.md §16, Prüfstand `tools/pruefstand/rueckblick.py` (14 Gruppen).
+Was über das Mockup hinausgeht oder bewusst abweicht:
+
+- **Echte Daten statt Beispieldaten:** Startgruppen vorbereitet (`startedAt` oder `startGroup` je Team in `admin_state`);
+  heute eine Gruppe, Wertung `finishedAt` minus Spielstart, Kapitel „Die Gruppen“ entfällt. Die Probe
+  (`#/rueckblick/probe`) liefert drei Gruppen über genau diese Felder. Plätze nach Gesamtzeit, bei gleicher Zeit der Platz
+  aus der Datenbank.
+- **Kritik-Befunde mit echten Daten:** M6 (Schnitt 2 min nach dem Koffer-Code, auch für Kilometer), M7 (Check-in und
+  Lösung ohne GPS-Punkt innerhalb von 3 min als gestrichelter Punkt an der Station, Startpunkt bei 0:00 vor einem
+  GPS-Beginn nach mehr als 5 min; Vorbereiten nennt „Tiger: GPS nur bis 14:25, danach aus den Check-ins“), S14
+  (Ausdünnen auf 8 m, im Stand bleibt der Punkt vor dem Aufbruch), S15 (Ausreißer aus bis zu drei Punkten), S16/S17
+  (Zeitraffer bis Spielende, ohne Team im Ziel keine Rangliste und kein Finale, Vorwarnung im Vorbereiten, Halt-Schalter
+  fehlt), K11 (Ring mit 16 Plätzen ab 13 Teams, Rangliste ab 14 in zwei Spalten), K12 („0,3 s vor Platz 2“ in der
+  Rangliste ab Platz 4 und in den Spalten, ohne Teamnamen), K14 (`Europe/Prague`), M5 (Rückfrage beim Verlassen,
+  `beforeunload`, „Weiter bei …“ nach dem Neuladen), S21, S22, S23, K3, K4, K5 (Lade- und Fehlertexte).
+- **Awards:** Tempo nur aus Stücken von mindestens 60 s und 100 m und mit Weg und Zeit desselben Stücks (das Mockup
+  rechnete die Verbindungen zu den Orten zum Weg, nicht zur Zeit, und überschätzte das Tempo kurzer Abschnitte). Punkte
+  über 25 m Ungenauigkeit zählen nicht fürs Tempo, sobald die Daten die Genauigkeit tragen; `admin_tracks` liefert sie
+  heute nicht (dafür bräuchte es eine Migration, bewusst nicht gebaut).
+- **Weiter am letzten Halt kurz vor dem Kapitelende** (Splash, nach dem Aufdecken, Siegerbild) geht gleich ins nächste
+  Kapitel; sonst bräuchte es nach dem Endhalt ein zweites Weiter.
+- **Bildrate:** Spuren in Stücken zu 16 statt 48 Punkten. Mit spärlichen Punkten (einer je Minute) spannte ein Stück
+  Kilometer, und der breite weiße Rand darunter kostete im späten Zeitraffer 31 bis 41 Bilder pro Sekunde; mit 16 Punkten
+  60, auch mit 6.000 Punkten je Team.
+- **Kleinste Schrift:** Zeilen der Rangliste („nicht im Ziel“, „4 von 5 Stationen“, Abstand zum Ersten) mindestens
+  `--bs-xs`, damit bei 1280x720 nichts unter 20 px fällt; Ortsnamen mit Halo statt Deckkraft (Gegenprüfung 16.10.).
+  Ausgenommen bleiben OSM-Nennung (bewusst klein) und die kleinen Karten der Spalten.
+- **Datenschutztexte** in `index.html` am neuen Ablauf geprüft (Fotos im Abspann; Wege im Zeitraffer anonym, in Awards,
+  Spalten, Siegerbild und Abspann in Teamfarbe): „beim Abendessen alle im Rückblick“ und „Euer Weg erscheint beim
+  Abendessen im Rückblick.“ stimmen, unverändert.
