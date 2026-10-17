@@ -4,7 +4,9 @@
    - Supabase und alle RPCs: nie aus dem Cache, ein Spielstand aus dem Cache wäre falsch;
    - Kartenkacheln und alles von fremden Rechnern;
    - alles, was nicht GET ist (auch der HEAD der Versionsprüfung);
-   - andere Seiten im selben Ordner: geraete-test.html, kompass-test.html, design-system/, mockups/, tools/.
+   - andere Seiten im selben Ordner: geraete-test.html, kompass-test.html, design-system/, mockups/, tools/, und die
+     Fernbedienung der Rückblick-Show fürs Handy (Nachtrag 37): ihre Navigation geht unberührt ans Netz, sie braucht
+     ohnehin Netz; Schriften und config.js teilt sie mit der App (dafür gelten die Regeln unten).
    Hülle (index.html, config.js, kompass-waechter.js): Netz zuerst mit 4 s Grenze, sonst der Cache. Ein Fix ist
    also beim nächsten Laden mit Netz da. Schriften, Leaflet, QR: Cache zuerst (Dateinamen tragen die Fassung).
    Hintergründe: aus dem Cache, im Hintergrund nachgeladen.

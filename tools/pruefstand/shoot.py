@@ -25,7 +25,8 @@ def bauen():
     shutil.copytree(REPO / "hintergrund", HIER / "hintergrund", dirs_exist_ok=True)
     shutil.copytree(REPO / "vendor", HIER / "vendor", dirs_exist_ok=True)   # QR-Generator für den Mitlese-Link
     # Rückblick-Show: Skript, Stylesheet und Grundkarte werden nur mit ihr nachgeladen, liegen aber neben app.html
-    for n in ("rueckblick.js", "rueckblick.css", "rueckblick-karte.js"):
+    # dazu die Fernbedienung fürs Handy (fernbedienung.py)
+    for n in ("rueckblick.js", "rueckblick.css", "rueckblick-karte.js", "rueckblick-fernbedienung.html"):
         if (REPO / n).exists():
             shutil.copy(REPO / n, HIER / n)
 

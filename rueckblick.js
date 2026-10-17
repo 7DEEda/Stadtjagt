@@ -279,7 +279,7 @@ function aufbereiten(roh) {
     const versatz = tStart - t0;
     if (versatz) { pts.forEach(p => p.t -= versatz); sts.forEach(x => { if (x.ein) x.ein -= versatz; if (x.ok) x.ok -= versatz; }); }
     const fertig = fertigUhr != null ? fertigUhr - versatz : null;
-    return { id: t.id, name: t.name, emoji: host.emoji(t.name), farbe: host.farbe(i), members: t.members || [], dbPlace: t.place ?? null, place: null,
+    return { id: t.id, name: t.name, emoji: host.emoji(t.name), farbe: host.farbe(i), members: t.members || [], leitung: t.leaderName || null, dbPlace: t.place ?? null, place: null,
       gruppe: t.startGroup ?? starts.indexOf(tStart), startAt: tStart, versatz, fertig, netto: fertig != null ? fertig - t0 : null,
       pts, sts, ohneGps, weg, gpsHinweis, gleich: [], solved: sts.filter(s => s.ok).length, luecken: !ohneGps && pts.some(p => p.g) };
   });
@@ -1325,15 +1325,23 @@ function leisteBedienen() {
   sp.addEventListener("pointerup", ende); sp.addEventListener("pointercancel", ende);
 }
 let fortStand = "";
+// Kapitel und Zustand in Worten, nie ein Team: für die Leiste und den Stand der Fernbedienung
+function zustandWorte() {
+  const show = Z.phase === "show", k = K[Z.i], endlos = show && k && k.endlos, h = show && k.halte && k.halte[Z.hNr];
+  const zustand = !show ? "" : Z.endHalt && !Z.haelt && !k.endlos ? "wartet auf Weiter" : Z.haelt ? (h && h.art === "nach" ? "aufgedeckt, wartet auf Weiter" : "wartet auf Weiter")
+    : !Z.spielt && !amEnde() ? "Pause" : endlos ? "läuft endlos" : "";
+  return { name: show ? k.name : Z.phase === "durchsehen" ? "Fotos durchsehen" : "Vorbereiten", zustand, endlos: !!endlos };
+}
+// Gespielte Zeit bis zur Stelle im aktuellen Kapitel (der endlose Abspann zählt nicht zur Gesamtdauer)
+function vorbeiMs() {
+  const show = Z.phase === "show", k = K[Z.i], endlos = show && k && k.endlos;
+  return K.slice(0, Z.i).reduce((n, x) => n + (x.endlos ? 0 : x.dur), 0) + (show ? (endlos ? Z.lokal : Math.min(Z.lokal, k.dur)) : 0);
+}
 // Leiste nennt nur Kapitel und Zustand, nie ein Team
 function leisteFortschritt() {
-  const show = Z.phase === "show", k = K[Z.i], endlos = show && k && k.endlos;
-  const vorbei = K.slice(0, Z.i).reduce((n, x) => n + (x.endlos ? 0 : x.dur), 0) + (show ? (endlos ? Z.lokal : Math.min(Z.lokal, k.dur)) : 0);
-  const h = show && k.halte && k.halte[Z.hNr];
-  const zustand = !show ? "" : Z.endHalt && !Z.haelt && !k.endlos ? ", wartet auf Weiter" : Z.haelt ? (h && h.art === "nach" ? ", aufgedeckt, wartet auf Weiter" : ", wartet auf Weiter")
-    : !Z.spielt && !amEnde() ? ", Pause" : endlos ? ", läuft endlos" : "";
+  const show = Z.phase === "show", w = zustandWorte(), endlos = w.endlos, vorbei = vorbeiMs();
   const vorn = modus === "probe" ? "Probe: " : "";
-  const txt = vorn + (show ? k.name + zustand : Z.phase === "durchsehen" ? "Fotos durchsehen" : "Vorbereiten") + "|" + (endlos ? mmss(vorbei) : mmss(vorbei) + " / " + mmss(gesamt()));
+  const txt = vorn + w.name + (w.zustand ? ", " + w.zustand : "") + "|" + (endlos ? mmss(vorbei) : mmss(vorbei) + " / " + mmss(gesamt()));
   $("#rb-lSpur").querySelectorAll("span").forEach((x, i) => x.style.setProperty("--p", (i < Z.i ? 100 : i > Z.i || !show ? 0 : K[i].endlos ? 100 : Math.min(100, Z.lokal / K[i].dur * 100)) + "%"));
   if (txt !== fortStand) { const [a, b] = txt.split("|"); $("#rb-lKap").textContent = a; $("#rb-lZeit").textContent = b; fortStand = txt; }
 }
@@ -1649,7 +1657,7 @@ function vorbereitenHTML() {
       <span class="dauer">bis zum Abspann etwa <b class="tab">${mmss(gesamt())} min</b></span></div>
     <div class="v-tasten"><span><kbd>Leertaste</kbd> Start und Pause</span><span><kbd>→</kbd> <kbd>←</kbd> Kapitel</span><span><kbd>F</kbd> Vollbild</span><span><kbd>H</kbd> alle Tasten</span></div>
     ${modus === "probe" ? "" : `<button class="v-zurueck" id="rb-oZurueck">Zur Spielleitung</button>`}
-  </div></div>`;
+  </div>${fernHTML()}</div>`;
 }
 function vorbereiten() {
   Z.phase = "vorbereiten"; Z.spielt = false; Z.haelt = false; knopf(); $("#rb-buehne").dataset.art = "vorbereiten";
@@ -1674,6 +1682,7 @@ function vorbereiten() {
   root.querySelectorAll("#rb-ueber [data-sprung]").forEach(b => b.onclick = () => { b.blur(); starten(b.dataset.sprung); });
   const li = root.querySelector("#rb-wach"); if (li) li.hidden = wachOk !== false;
   leisteSpur();
+  fernStarten();   // ab Vorbereiten: Befehle vom Handy, Stand fürs Handy (Nachtrag 37)
 }
 function durchsehen() {
   Z.phase = "durchsehen";   // M8: solange hier gewählt wird, startet weder Leertaste noch Pfeil die Show
@@ -1703,6 +1712,175 @@ function hilfe() {
   $("#rb-buehne").appendChild(d);
 }
 
+/* =====================================================================
+   Fernbedienung (Nachtrag 37, SPIEL.md §17). Das Handy der Spielleitung (rueckblick-fernbedienung.html) schreibt
+   Befehle in die Datenbank (rb_befehl); die Show holt sie im 1-s-Takt ab (rb_poll) und führt sie aus wie die Tasten,
+   durch dieselben Sperren (M1, M2, M3, M8). Ihren Stand meldet sie bei jeder Änderung und sonst alle 4 s
+   (rb_status_setzen), mit der Moderationshilfe, die nur das Handy zeigt (Spoiler, nie am Beamer). Kein Realtime,
+   eine Anfrage zugleich, nichts davon im Bild-Takt. Fehler bleiben still, der nächste Takt versucht es wieder; kennt
+   die Datenbank die Funktionen nicht (Migration fehlt), hört die Show auf zu fragen. Nur im echten Rückblick (die
+   Probe hat keine Datenbank). Ohne Handy bleibt alles wie vorher: Tastatur und Presenter.
+   ===================================================================== */
+const FERN_TAKT = 1000, FERN_HERZ = 4000, FERN_HANDY = 10000, FERN_DATEI = "rueckblick-fernbedienung.html";
+// nr: letzte Befehlsnummer, die die Show kennt (null: noch nicht übernommen); handy: letztes Lebenszeichen des Handys
+const F = { an: false, gen: 0, uhr: 0, nr: null, kern: "", modFuer: "", mod: [], gesendet: 0, handy: 0, fehlt: false, qr: "" };
+const fernLink = () => new URL(FERN_DATEI, location.href).href;   // ohne Hash und Query, nie mit PIN
+const ohneFunktion = e => !!e && (e.code === "PGRST202" || /Could not find the function/i.test(e.message || ""));
+function fernStarten() {
+  if (modus !== "echt" || F.an || F.fehlt || !root || !host || !host.pin()) return;
+  Object.assign(F, { an: true, nr: null, kern: "", gesendet: 0 });
+  fernTakt(++F.gen);
+}
+function fernStoppen() {
+  if (!F.an) return;
+  F.an = false; F.gen++; clearTimeout(F.uhr);
+  // Stand mit der Moderation (Teamnamen) löschen; das Handy zeigt dann "Keine Show gefunden"
+  const pin = host && host.pin();
+  if (pin) host.rpc("rb_ende", { p_pin: pin }).catch(() => { /* still: verfällt nach 6 s am Handy */ });
+}
+async function fernTakt(gen) {
+  const aktuell = () => F.an && gen === F.gen && !!root && !!D;
+  if (!aktuell()) return;
+  const pin = host.pin();
+  try {
+    const r = await host.rpc("rb_poll", { p_pin: pin, p_seit: F.nr });
+    if (!aktuell()) return;
+    if (r && r.nr != null) {
+      // erster Abruf: nur die Nummer übernehmen, ein Befehl von vorher wirkt nicht
+      const tun = F.nr != null && r.befehl;
+      F.nr = r.nr;
+      if (tun) { F.handy = Date.now(); fernBefehl(r.befehl); }
+    }
+    const st = fernStatus();
+    if (st.kern !== F.kern || Date.now() - F.gesendet >= FERN_HERZ) {
+      const a = await host.rpc("rb_status_setzen", { p_pin: pin, p_status: st.daten });
+      if (!aktuell()) return;
+      F.kern = st.kern; F.gesendet = Date.now();
+      if (a && a.handy_alter_s != null) F.handy = Math.max(F.handy, Date.now() - a.handy_alter_s * 1000);
+      fernAnzeige();
+    }
+  } catch (e) {
+    if (ohneFunktion(e) && gen === F.gen) { F.fehlt = true; F.an = false; fernAnzeige(); return; }
+    // Netz weg, Server 5xx, Zeitlimit: still; die Show läuft, der nächste Takt fragt wieder
+  }
+  if (aktuell()) F.uhr = setTimeout(() => fernTakt(gen), FERN_TAKT);
+}
+// Ein Befehl vom Handy wirkt wie die Taste: dieselben Funktionen, dieselben Sperren
+function fernBefehl(b) {
+  if (!root || !D || frageOffen()) return;   // Rückfrage "verlassen?" offen: das entscheidet der Laptop
+  // wie jede Taste außer B: im Schwarzbild holt sie erst das Bild zurück (M3)
+  if (b !== "schwarz" && $("#rb-schwarz").classList.contains("an")) { schwarz(); return; }
+  const tat = { weiter, zurueck, pause: () => spielPause(true), schwarz, ende: zumEnde,
+    start: () => { if (Z.phase === "vorbereiten") starten(); } }[b];
+  if (tat) tat();
+}
+// Stand für das Handy. kern ändert sich nur mit Kapitel, Zustand oder Befehl (nicht mit jedem Bild): dann gleich senden
+function fernStatus() {
+  const show = Z.phase === "show", k = show ? K[Z.i] : null, w = zustandWorte();
+  const kapitel = ["laden", "pin", "sperre"].includes(Z.phase) ? "Rückblick wird geladen" : w.name;
+  const kern = { phase: Z.phase, id: k ? k.id : null, kapitel, zustand: w.zustand, schwarz: !!root.querySelector("#rb-schwarz.an"),
+    spielt: show && Z.spielt, haelt: Z.haelt, hNr: Z.hNr, endHalt: Z.endHalt, nr: F.nr, i: show ? Z.i : -1, n: K.length, fotos: OPT.fotos };
+  const schluessel = JSON.stringify(kern);
+  if (schluessel !== F.modFuer) { F.mod = moderation().filter(Boolean); F.modFuer = schluessel; }
+  return { kern: schluessel, daten: { v: 1, ...kern, text: kapitel + (w.zustand ? ", " + w.zustand : ""), vorbei: vorbeiMs(), gesamt: gesamt(),
+    endlos: w.endlos, mod: F.mod } };
+}
+
+/* ---------- Moderation: kurze Bausteine je Kapitelart, du-Form, nur fürs Handy ---------- */
+const ohneTags = s => String(s).replace(/<[^>]+>/g, "");
+const hms = m => { const s = Math.round(m / 1000); return Math.floor(s / 3600) + ":" + String(Math.floor(s / 60) % 60).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+const abstand = m => Math.round(m / 1000) >= 3600 ? hms(m) : mmss(m);
+const leuteText = t => { const m = t.members, n = m.length;
+  return `${n} ${n === 1 ? "Person" : "Leute"}${n ? ` (${m.slice(0, 2).join(", ")}${n > 2 ? ", …" : ""})` : ""}`; };
+const platzTeam = p => D.rang.find(t => t.place === p);
+function platzText(t) {
+  const erster = platzTeam(1), zweiter = platzTeam(2);
+  const ab = t.place === 1 ? (zweiter ? `, ${abstand(zweiter.netto - t.netto)} vor Platz 2` : "") : erster ? `, ${abstand(t.netto - erster.netto)} hinter dem Ersten` : "";
+  return `${t.name}, ${leuteText(t)}, Zeit ${hms(t.netto)}${ab}${t.gleich.length ? ` (${t.gleich.join(", ")})` : ""}`;
+}
+const awardText = a => `${a.titel}: ${a.team.name}, ${ohneTags(a.zeile)}.`;
+function kapitelKurz(k) {
+  if (!k) return null;
+  if (k.art === "award" && !k.intro) return k.award.titel;
+  return k.name;
+}
+// was nach diesem Kapitel kommt; beim nächsten Award gleich mit Team und Wert
+function danach(i) {
+  const n = K[i + 1]; if (!n) return null;
+  return n.art === "award" && !n.intro ? `Danach: ${awardText(n.award)}` : `Danach: ${kapitelKurz(n)}.`;
+}
+function moderation() {
+  if (!D) return [];
+  const leute = D.teams.reduce((n, t) => n + t.members.length, 0);
+  if (Z.phase === "vorbereiten" || Z.phase === "durchsehen")
+    return [`${D.teams.length} Teams, ${leute} Leute, ${D.stationen.length} Stationen.`, `Gleich: ${kapitelKurz(K[0])}.`];
+  if (Z.phase !== "show") return ["Der Rückblick wird am Laptop geladen."];
+  const k = K[Z.i], nach = danach(Z.i);
+  if (k.art === "titel") return [`Begrüßen: Stadtjagd Prag, ${D.teams.length} Teams, ${leute} Leute, ${D.stationen.length} Stationen.`, nach];
+  if (k.art === "fakten") {
+    const w = faktenWerte(), bier = w[2].wechsel;
+    return Z.hNr >= 1 ? [`${zahl(bier.wert)} Liter Bier verbrannt.`, nach]
+      : [`${zahl(w[0].wert)} Personenkilometer, etwa ${zahl(w[1].wert)} Schritte, ${zahl(w[2].wert)} halbe Brathähnchen verbrannt.`, `Weiter schaltet auf ${zahl(bier.wert)} Liter Bier.`];
+  }
+  if (k.art === "gruppen") {
+    const gr = [...new Set(D.teams.map(t => t.gruppe))].sort((a, b) => a - b).map(g => uhr(D.teams.find(t => t.gruppe === g).startAt));
+    return [`${gr.length} Startgruppen, Start ${gr.join(", ")} Uhr. Gewertet wird die Zeit ab dem eigenen Start.`, nach];
+  }
+  if (k.art === "karte") {
+    const im = D.teams.filter(t => t.place).length;
+    return Z.endHalt ? [`Zeitraffer zu Ende: ${im} von ${D.teams.length} Teams im Ziel.`, nach] : [`Läuft. Gleich: ${kapitelKurz(K[Z.i + 1]) || "Abspann"}.`];
+  }
+  if (k.art === "rangliste") {
+    const oben = [...Array(k.top)].map((_, j) => platzTeam(j + 1)).filter(Boolean);
+    if (k.id === "rangliste") {
+      const unten = k.zeilen.filter(t => !t.place || t.place > k.top), vierter = platzTeam(k.top + 1);
+      if (!unten.length) return [`Weiter zeigt die Rangliste ohne die ersten ${k.top}.`, nach];
+      if (Z.hNr === 0) return ["Alle Zeiten rattern, aufgedeckt ist noch nichts.",
+        `Weiter deckt ${unten.length} Teams von unten auf${vierter ? `, zuletzt Platz ${vierter.place}: ${vierter.name}, ${hms(vierter.netto)}` : ""}.`];
+      return [Z.endHalt ? `Die Plätze ab ${k.top + 1} stehen.` : `Die Plätze ab ${k.top + 1} decken sich auf.`, nach];
+    }
+    if (Z.hNr === 0) return [`Weiter lässt die Zeiten der ersten ${oben.length} einrasten, die Teams bleiben verdeckt: ${oben.slice().reverse().map(t => `Platz ${t.place} ${hms(t.netto)}`).join(", ")}.`];
+    return [`Die Zeiten der ersten ${oben.length} stehen, die Teams sind noch verdeckt.`, nach];
+  }
+  if (k.art === "award") {
+    if (k.intro) return [`${D.awards.length} ${D.awards.length === 1 ? "Award" : "Awards"}, die Koffer-Teams gehen dabei leer aus.`, nach];
+    return [awardText(k.award), nach];
+  }
+  if (k.art === "spalten") {
+    if (!k.auf.length) return [`${kapitelKurz(k)}: Platz ${k.sp.folge.map(t => t.place).join(", ")} mit Zeit und Weg, die Teams verdeckt.`, nach];
+    const p = k.auf[0].platz, t = platzTeam(p), weiterNach = p > 1 ? `Danach: Platz ${p - 1}.` : nach;
+    if (Z.hNr === 0) return [`Als Nächstes wird Platz ${p} aufgedeckt: ${platzText(t)}.`, weiterNach];
+    const koffer = `Kofferübergabe an ${t.name}${t.leitung ? `, Teamleitung ${t.leitung}` : ""}.`;
+    if (!Z.haelt && !Z.endHalt) return [`Platz ${p}: ${t.name} wird aufgedeckt.`, koffer];
+    return [`Platz ${p}: ${t.name}, Zeit ${hms(t.netto)}.`, koffer, `Alle: ${t.members.join(", ")}.`, weiterNach];
+  }
+  if (k.art === "sieger") return [`Siegerbild: ${[1, 2, 3].map(platzTeam).filter(Boolean).map(t => `Platz ${t.place} ${t.name}`).join(", ")}.`, nach];
+  if (k.art === "abspann") return ["Läuft endlos."];
+  return [k.name];
+}
+
+/* ---------- Block im Vorbereiten: Link als QR-Code, ob ein Handy da ist ---------- */
+let qrLaedt = null;
+function fernQr() {
+  if (F.qr) return F.qr;
+  if (window.qrcode) { const q = window.qrcode(0, "M"); q.addData(fernLink()); q.make(); return F.qr = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); }
+  // vendor/qrcode.js (MIT) lädt erst beim ersten Gebrauch, wie beim Mitlese-Link in index.html
+  if (!qrLaedt) qrLaedt = new Promise((ok, nein) => { const s = document.createElement("script"); s.src = "vendor/qrcode.js"; s.onload = ok; s.onerror = nein; document.head.appendChild(s); })
+    .then(() => fernAnzeige(), () => { qrLaedt = null; });
+  return "";
+}
+function fernInnen() {
+  if (F.fehlt) return `<h2>Handy als Fernbedienung</h2><p>Die Datenbank kennt die Fernbedienung noch nicht.</p>`;
+  const da = F.handy && Date.now() - F.handy < FERN_HANDY;
+  return `<h2>Handy als Fernbedienung</h2><div class="v-qr" role="img" aria-label="QR-Code der Fernbedienung">${fernQr()}</div>
+    <p>PIN am Handy eingeben</p>${da ? `<p class="da">${HAKEN}<span>Handy verbunden</span></p>` : ""}`;
+}
+const fernHTML = () => modus === "echt" ? `<div class="v-fern" id="rb-fern" role="group" aria-label="Handy als Fernbedienung">${fernInnen()}</div>` : "";
+function fernAnzeige() {
+  const box = root && root.querySelector("#rb-fern"); if (!box) return;
+  const neu = fernInnen(); if (box.dataset.innen !== neu) { box.innerHTML = neu; box.dataset.innen = neu; }
+}
+
 /* ---------- Bühne skalieren ---------- */
 function skalieren() {
   if (!root) return;
@@ -1727,6 +1905,13 @@ function skalieren() {
    ===================================================================== */
 let abhoerer = [], mqDunkel = null, mqFn = null;
 function hoere(ziel, typ, fn) { ziel.addEventListener(typ, fn); abhoerer.push([ziel, typ, fn]); }
+// Notbremse (Taste Ende, "Zum Ende" am Handy): springt zur Rangliste
+function zumEnde() {
+  if (!startbar()) return;
+  const ziel = K.find(x => x.id === "rangliste") || K[Math.max(0, K.length - 2)];
+  if (Z.phase !== "show") return starten(ziel.id);
+  Z.spielt = true; geheZu(K.indexOf(ziel)); knopf();
+}
 function taste(e) {
   if (!root) return;
   const k = e.key;
@@ -1743,9 +1928,7 @@ function taste(e) {
     ArrowRight: weiter, PageDown: weiter, Enter: weiter, n: weiter, N: weiter,
     ArrowLeft: zurueck, PageUp: zurueck, Backspace: zurueck, p: zurueck, P: zurueck,
     Home: nur(() => { if (Z.phase !== "show") return starten(); Z.spielt = true; geheZu(0); knopf(); }),
-    // Notbremse: Ende springt zur Rangliste
-    End: nur(() => { const ziel = K.find(x => x.id === "rangliste") || K[Math.max(0, K.length - 2)];
-      if (Z.phase !== "show") return starten(ziel.id); Z.spielt = true; geheZu(K.indexOf(ziel)); knopf(); }),
+    End: zumEnde,
     f: vollbild, F: vollbild, t: thema, T: thema, b: schwarz, B: schwarz, ".": schwarz, r: () => rand(), R: () => rand(),
     h: hilfe, H: hilfe, "?": hilfe, Escape: () => { const h = root.querySelector("#rb-hilfeBox"); if (h) h.remove(); }
   }[k];
@@ -1760,6 +1943,7 @@ function oeffnen(h, art) {
   host = h; modus = art === "probe" ? "probe" : "echt";
   Object.assign(Z, { phase: "laden", i: 0, lokal: 0, spielt: false, haelt: false, hNr: 0, extra: 0, letzt: 0, wechsel: 0, vorSchwarz: false, vorFrage: false, szene: null, alt: null });
   D = null; K = []; OPT.aus = new Set(); fortStand = "";
+  Object.assign(F, { fehlt: false, handy: 0, modFuer: "" });
   root = document.createElement("div");
   root.id = "rueckblick"; root.className = "still"; root.setAttribute("role", "region"); root.setAttribute("aria-label", "Rückblick");
   root.innerHTML = GERUEST;
@@ -1790,6 +1974,7 @@ function oeffnen(h, art) {
 }
 function beenden() {
   if (!root) return;
+  fernStoppen();   // Fernbedienung aus, Stand mit der Moderation in der Datenbank löschen (rb_ende)
   ladeNr++; rasterNr++;   // laufende Ladevorgänge und Rasterungen verlaufen im Sand (K3)
   if (fotoStopp) fotoStopp();
   cancelAnimationFrame(rafId);
@@ -1813,6 +1998,8 @@ window.RB = {
     fotos: k.roll ? k.roll.fotos.length : 0 })),
   zustand: () => ({ phase: Z.phase, i: Z.i, id: K[Z.i] && K[Z.i].id, lokal: Z.lokal, spielt: Z.spielt, haelt: Z.haelt, hNr: Z.hNr, leiste: root ? $("#rb-lKap").textContent : "" }),
   gesamt, D: () => D, vorbereiten, opt: () => ({ fotos: OPT.fotos, anhalten: OPT.anhalten, rand: OPT.rand, ruhig }),
+  // Fernbedienung (fernbedienung.py)
+  fern: () => ({ an: F.an, nr: F.nr, fehlt: F.fehlt, handy: F.handy, link: fernLink() }), fernStatus: () => D ? fernStatus().daten : null,
   kartenZaehler: () => kartenZaehler, rohPunkte: () => D ? D.rohPunkte : 0,
   awards: () => ({ liste: D.awards.map(a => ({ id: a.id, team: a.team.name, wert: a.wert, zeile: a.zeile })),
     kennzahlen: D.kennzahlen.map(x => ({ team: x.t.name, place: x.t.place, ...x.z })) }),

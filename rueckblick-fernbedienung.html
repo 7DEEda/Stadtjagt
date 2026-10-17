@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Fernbedienung Rückblick</title>
+<!--
+  Fernbedienung der Rückblick-Show fürs Handy der Spielleitung (Nachtrag 37, SPIEL.md §17). Die Show läuft am Laptop
+  (index.html, #/rueckblick); dieses Handy schickt Befehle über die Datenbank (rb_befehl) und liest den Stand der Show
+  (rb_status_holen, im 1-s-Takt, verdeckt seltener). Kein Realtime, nur Abfragen; die Show holt die Befehle im
+  1-s-Takt ab. Die Moderationshilfe (wer als Nächstes aufgedeckt wird, Awards, Kofferübergabe) steht nur hier, nie
+  am Beamer. PIN nur im sessionStorage (sj.pin), nie in der Adresse. Nicht im Service Worker: braucht Netz.
+  Schriften aus vendor/fonts, Zugang aus config.js, keine Anfrage an fremde Rechner außer Supabase.
+-->
+<script>
+// Hell oder dunkel wie in der App (sj.thema); ohne Wahl folgt die Seite dem Gerät
+try { const t = localStorage.getItem("sj.thema"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch { /* privater Modus */ }
+</script>
+<style>
+/* Schriften wie in index.html (vendor/fonts, SIL OFL 1.1), nur die Schnitte, die diese Seite braucht */
+@font-face{font-family:"Barlow";font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/barlow-500-latin-ext.woff2) format("woff2");unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:"Barlow";font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/barlow-500-latin.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Barlow";font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/barlow-600-latin-ext.woff2) format("woff2");unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:"Barlow";font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/barlow-600-latin.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Barlow Semi Condensed";font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/barlow-semi-condensed-600-latin-ext.woff2) format("woff2");unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:"Barlow Semi Condensed";font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/barlow-semi-condensed-600-latin.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Barlow Semi Condensed";font-style:normal;font-weight:700;font-display:swap;src:url(vendor/fonts/barlow-semi-condensed-700-latin-ext.woff2) format("woff2");unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:"Barlow Semi Condensed";font-style:normal;font-weight:700;font-display:swap;src:url(vendor/fonts/barlow-semi-condensed-700-latin.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+/* Farben der App (index.html), hell und dunkel */
+:root{
+  --paper:#F1F5EE; --card:#FFFFFF; --ink:#17302A; --muted:#5B6F68; --line:#D3DECF; --feld:#7D9189;
+  --flag:#EE5F1B; --flag-ink:#0F1B18; --ok:#25683F; --err:#B3261E; --warn:#8A5A00; --dran-bg:#FDEEE4;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --kurve:cubic-bezier(.32,.72,.4,1);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38; --feld:#5E786F;
+  --flag:#FF7A3A; --flag-ink:#0F1B18; --ok:#6CCB8E; --err:#FF8A80; --warn:#E8B75A; --dran-bg:#2E2119;}}
+:root[data-theme="dark"]{
+  --paper:#0F1B18; --card:#16261F; --ink:#E4EEE8; --muted:#9BB1A9; --line:#2A3F38; --feld:#5E786F;
+  --flag:#FF7A3A; --flag-ink:#0F1B18; --ok:#6CCB8E; --err:#FF8A80; --warn:#E8B75A; --dran-bg:#2E2119;}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:500 17px/1.45 var(--body);min-height:100vh;min-height:100dvh;
+  transition:background-color .16s var(--kurve),color .16s var(--kurve);-webkit-tap-highlight-color:transparent}
+main{max-width:480px;margin:0 auto;padding:max(14px, env(safe-area-inset-top)) 16px calc(232px + env(safe-area-inset-bottom))}
+main.ohne{padding-bottom:32px}
+h1,h2{font-family:var(--head);margin:0;line-height:1.1}
+p{margin:0}
+.nw{white-space:nowrap}
+/* Kopf wie in der App: Kompass, Titel, Schalter hell/dunkel */
+.kopf{display:flex;align-items:center;gap:12px}
+.kopf svg.logo{width:34px;height:34px;flex:none}
+.kopf h1{font-size:24px;font-weight:700}
+.kopf .sub{font:500 15px var(--body);color:var(--muted)}
+.thema{display:inline-grid;place-items:center;width:48px;height:48px;flex:none;margin-left:auto;padding:0;border-radius:10px;border:1.5px solid var(--feld);background:var(--card);color:var(--ink);cursor:pointer}
+.thema svg{width:22px;height:22px}
+.karte{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+/* PIN */
+.pin label{display:block;font:600 15px var(--body);margin-bottom:8px}
+.pinzeile{display:flex;gap:10px}
+.pinzeile input{flex:1;min-width:0;height:56px;font:500 19px var(--body);padding:0 14px;border-radius:10px;border:1.5px solid var(--feld);background:var(--paper);color:var(--ink)}
+.pinzeile input:focus{border-color:var(--flag);outline:2px solid transparent}
+.fehler{margin-top:12px;font:600 15px var(--body);color:var(--err)}
+/* Stand der Show */
+.verb{display:flex;align-items:center;gap:8px;font:600 15px var(--body);color:var(--muted)}
+.verb .punkt{width:10px;height:10px;border-radius:50%;background:var(--feld);flex:none}
+.verb .schritt{margin-left:auto;font-weight:500}
+.status[data-verb="ok"] .punkt{background:var(--ok)}
+.status[data-verb="ok"] .verb{color:var(--ink)}
+.status[data-verb="weg"] .punkt,.status[data-verb="netz"] .punkt{background:var(--err)}
+.kap{font:700 30px/1.1 var(--head);margin-top:12px;overflow-wrap:anywhere}
+.kap.hinweis{font:600 19px/1.3 var(--body);color:var(--muted)}
+.zust{font:600 19px/1.25 var(--head);margin-top:4px;color:var(--muted)}
+.zust.halt{color:var(--ink)}
+.status:not([data-verb="ok"]) .kap,.status:not([data-verb="ok"]) .zust{opacity:.55}
+.fort{height:8px;border-radius:4px;background:var(--line);margin-top:14px;overflow:hidden}
+.fort i{display:block;height:100%;width:0;background:var(--flag);transition:width .3s var(--kurve)}
+.zeit{font:500 15px var(--body);color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+/* Moderation: nur hier, nie am Beamer */
+.mod{border-left:4px solid var(--flag)}
+.mod h2{font:600 15px var(--body);color:var(--muted)}
+.mod p{font:500 19px/1.4 var(--body);margin-top:8px}
+.mod p:first-of-type{font-weight:600}
+.mod p.danach{font-size:17px;color:var(--muted);font-weight:500}
+.mod p.koffer{background:var(--dran-bg);border-radius:8px;padding:8px 12px;font-weight:600}
+.alt .mod,.alt .fort,.alt .zeit{opacity:.55}
+/* Bedienfeld unten im Daumenbereich */
+.bedien{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--paper);border-top:1px solid var(--line);
+  padding:12px 16px max(14px, env(safe-area-inset-bottom))}
+.bedien .innen{position:relative;max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.reihe{display:flex;gap:10px}
+.knopf{flex:1 1 0;min-width:0;min-height:56px;padding:0 8px;border-radius:12px;border:1.5px solid var(--feld);background:var(--card);color:var(--ink);
+  font:700 17px/1.1 var(--head);cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;
+  transition:transform .08s var(--kurve),filter .08s var(--kurve),opacity .16s var(--kurve)}
+.knopf:active:not(:disabled),.knopf.druck:not(:disabled){transform:scale(.96);filter:brightness(.9)}
+.knopf:disabled{opacity:.4;cursor:not-allowed}
+.knopf.gross{min-height:104px}
+.knopf.zurueck{flex:1 1 0}
+.knopf.haupt{flex:2.4 1 0;border:0;background:var(--flag);color:var(--flag-ink);font-size:32px;letter-spacing:.01em}
+.knopf.wartet{outline:3px solid var(--ink);outline-offset:2px}
+.frage{position:absolute;left:0;right:0;bottom:calc(100% + 22px);background:var(--ink);color:var(--paper);border-radius:10px;padding:12px 14px;
+  font:600 17px/1.3 var(--body);box-shadow:0 4px 12px rgba(17,17,17,.18)}
+#pinOk{flex:none;min-height:56px;min-width:120px;border:0;border-radius:10px;background:var(--flag);color:var(--flag-ink);font:700 19px var(--head);cursor:pointer}
+#pinOk:disabled{opacity:.5}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+<main id="haupt">
+  <header class="kopf">
+    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></svg>
+    <div><h1>Fernbedienung</h1><div class="sub">Rückblick</div></div>
+    <button class="thema" id="thema" type="button"></button>
+  </header>
+
+  <form class="karte pin" id="anmelden" autocomplete="on">
+    <label for="pin">PIN der Spielleitung</label>
+    <div class="pinzeile"><input id="pin" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" required>
+      <button id="pinOk" type="submit">Verbinden</button></div>
+    <p class="fehler" id="pinFehler" role="alert" hidden></p>
+  </form>
+
+  <section id="bedien" hidden>
+    <div class="karte status" id="status" data-verb="weg">
+      <div class="verb"><i class="punkt"></i><span id="verbindung" role="status">Verbinde …</span><span class="schritt nw" id="schritt"></span></div>
+      <div class="kap" id="kapitel"></div>
+      <div class="zust" id="zustand"></div>
+      <div class="fort" id="fort"><i></i></div>
+      <div class="zeit nw" id="zeit"></div>
+    </div>
+    <div class="karte mod" id="mod" hidden><h2>Moderation</h2><div id="modText"></div></div>
+    <div class="bedien">
+      <div class="innen">
+        <p class="frage" id="endeFrage" role="alert" hidden>Springt zur Rangliste. Noch einmal tippen.</p>
+        <div class="reihe">
+          <button class="knopf" type="button" data-befehl="pause">Pause</button>
+          <button class="knopf" type="button" data-befehl="schwarz">Schwarzbild</button>
+          <button class="knopf" type="button" data-befehl="ende">Zum Ende</button>
+        </div>
+        <div class="reihe">
+          <button class="knopf gross zurueck" type="button" data-befehl="zurueck">Zurück</button>
+          <button class="knopf gross haupt" type="button" data-befehl="weiter">Weiter</button>
+          <button class="knopf gross haupt" type="button" data-befehl="start" hidden>Start</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+"use strict";
+const cfg = window.SJ_CONFIG || {};
+const $ = s => document.querySelector(s);
+const TAKT = 1000, TAKT_VERDECKT = 5000, ALT_S = 6, SPERRE_MS = 400, ENDE_MS = 4000;
+// stand: letzter Stand der Show; alter: Sekunden seit ihrer letzten Meldung; netz: Server erreichbar
+const E = { pin: null, stand: null, alter: null, netz: true, laeuft: false, uhr: 0, sendet: false, zuletzt: 0, warte: null, endeBis: 0, endeUhr: 0 };
+try { E.pin = sessionStorage.getItem("sj.pin"); } catch { /* ohne Speicher: PIN nach jedem Neuladen */ }
+
+// Aufruf einer Datenbankfunktion wie rpc() in index.html: Zeitlimit, Netzfehler und HTTP 5xx gelten als "keine Verbindung"
+const keinNetz = () => Object.assign(new Error("Keine Verbindung zum Server."), { netz: true });
+const ohneFunktion = e => !!e && (e.code === "PGRST202" || /Could not find the function/i.test(e.message || ""));
+async function rpc(fn, args) {
+  if (!cfg.url || !cfg.key) throw new Error("Die Seite ist nicht mit Supabase verbunden (config.js).");
+  const abbruch = new AbortController(), uhr = setTimeout(() => abbruch.abort(), 8000);
+  let res, text;
+  try {
+    res = await fetch(cfg.url.replace(/\/$/, "") + "/rest/v1/rpc/" + fn, { method: "POST", signal: abbruch.signal,
+      headers: { "Content-Type": "application/json", apikey: cfg.key, Authorization: "Bearer " + cfg.key }, body: JSON.stringify(args || {}) });
+    text = await res.text();
+  } catch { throw keinNetz(); } finally { clearTimeout(uhr); }
+  if (res.status >= 500) throw keinNetz();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { throw keinNetz(); }
+  if (!res.ok) { const e = new Error((data && data.message) || "Fehler " + res.status); e.code = data && data.code; throw e; }
+  return data;
+}
+
+/* ---------- hell/dunkel wie in der App ---------- */
+const SONNE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7L7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const MOND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+const themaJetzt = () => document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+function themaKnopf() { const b = $("#thema"), d = themaJetzt() === "dark", t = d ? "Helle Darstellung" : "Dunkle Darstellung";
+  b.innerHTML = d ? SONNE : MOND; b.title = t; b.setAttribute("aria-label", t); }
+$("#thema").addEventListener("click", () => {
+  const neu = themaJetzt() === "dark" ? "light" : "dark"; document.documentElement.dataset.theme = neu;
+  try { localStorage.setItem("sj.thema", neu); } catch { /* gilt bis zum Neuladen */ }
+  themaKnopf();
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themaKnopf);
+themaKnopf();
+
+/* ---------- Bildschirm wach halten, solange die Seite offen ist ---------- */
+let wachSperre = null;
+async function wach() {
+  if (document.hidden) return;
+  try { if (navigator.wakeLock && (!wachSperre || wachSperre.released)) wachSperre = await navigator.wakeLock.request("screen"); }
+  catch { /* ohne Wake Lock: Bildschirmsperre am Handy länger stellen */ }
+}
+
+/* ---------- PIN ---------- */
+function fehlerText(e) {
+  if (/Falsche PIN/i.test(e.message || "")) return "Falsche PIN.";
+  if (e.netz) return "Keine Verbindung zum Server. Prüfe das Netz.";
+  if (ohneFunktion(e)) return "Die Datenbank kennt die Fernbedienung noch nicht.";
+  return e.message || "Das ging nicht.";
+}
+function abmelden(meldung) {
+  E.pin = null; E.stand = null; clearTimeout(E.uhr);
+  try { sessionStorage.removeItem("sj.pin"); } catch { /* egal */ }
+  $("#bedien").hidden = true; $("#anmelden").hidden = false; $("#haupt").classList.add("ohne");
+  const f = $("#pinFehler"); f.textContent = meldung || ""; f.hidden = !meldung;
+}
+$("#anmelden").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const p = $("#pin").value.trim(); if (!p) return;
+  const b = $("#pinOk"), f = $("#pinFehler");
+  b.disabled = true; f.hidden = true;
+  try {
+    const r = await rpc("rb_status_holen", { p_pin: p });
+    E.pin = p;
+    try { sessionStorage.setItem("sj.pin", p); } catch { /* gilt bis zum Neuladen */ }
+    $("#pin").value = ""; $("#pin").blur();
+    aufnehmen(r, true); bedienfeld(); wach(); planen(TAKT);
+  } catch (e) { f.textContent = fehlerText(e); f.hidden = false; }
+  finally { b.disabled = false; }
+});
+function bedienfeld() { $("#anmelden").hidden = true; $("#bedien").hidden = false; $("#haupt").classList.remove("ohne"); zeigen(); }
+
+/* ---------- Stand der Show abfragen: eine Anfrage zugleich, sichtbar jede Sekunde, verdeckt alle 5 s ---------- */
+function aufnehmen(r, ok) {
+  E.netz = ok;
+  if (ok) { E.stand = r && r.status ? r.status : null; E.alter = r ? r.alter_s : null; }
+  if (E.warte && (E.stand && E.stand.nr != null && E.stand.nr >= E.warte.nr || Date.now() > E.warte.bis)) { E.warte.knopf.classList.remove("wartet"); E.warte = null; }
+  zeigen();
+}
+function planen(ms) { clearTimeout(E.uhr); E.uhr = setTimeout(abfragen, ms); }
+async function abfragen() {
+  if (!E.pin || E.laeuft) return;
+  E.laeuft = true;
+  try { aufnehmen(await rpc("rb_status_holen", { p_pin: E.pin }), true); }
+  catch (e) {
+    if (/Falsche PIN/i.test(e.message || "")) { E.laeuft = false; return abmelden("Falsche PIN."); }
+    aufnehmen(null, false);
+  } finally { E.laeuft = false; }
+  if (E.pin) planen(document.hidden ? TAKT_VERDECKT : TAKT);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { wach(); if (E.pin) abfragen(); } });
+
+/* ---------- Anzeige ---------- */
+const mmss = ms => { const s = Math.max(0, Math.round((ms || 0) / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+function verbunden() { return E.netz && !!E.stand && E.alter != null && E.alter <= ALT_S; }
+function zeigen() {
+  const st = E.stand, ok = verbunden(), box = $("#status");
+  box.dataset.verb = !E.netz ? "netz" : ok ? "ok" : "weg";
+  $("#verbindung").textContent = !E.netz ? "Keine Verbindung zum Server" : ok ? "Show verbunden" : "Keine Show gefunden";
+  const kap = $("#kapitel"), zu = $("#zustand"), show = !!st && st.phase === "show";
+  if (st) {
+    kap.textContent = st.kapitel || ""; kap.classList.remove("hinweis");
+    zu.textContent = st.schwarz ? "Schwarzbild an" : st.zustand || (show ? "läuft" : "");
+    zu.classList.toggle("halt", !!st.schwarz || /wartet/.test(st.zustand || ""));
+  } else { kap.textContent = "Am Laptop den Rückblick öffnen."; kap.classList.add("hinweis"); zu.textContent = ""; }
+  $("#schritt").textContent = ok && show && st.n ? `Kapitel ${st.i + 1} von ${st.n}` : "";
+  $("#bedien").classList.toggle("alt", !ok);   // letzter bekannter Stand, blass
+  $("#fort").hidden = !show; $("#zeit").hidden = !show;
+  if (show) {
+    $("#fort i").style.width = (st.endlos ? 100 : Math.min(100, st.gesamt ? st.vorbei / st.gesamt * 100 : 0)).toFixed(1) + "%";
+    $("#zeit").textContent = st.endlos ? mmss(st.vorbei) : mmss(st.vorbei) + " / " + mmss(st.gesamt);
+  }
+  // Moderation: Zeilen als Text (Teamnamen nie als HTML)
+  const mod = st && Array.isArray(st.mod) ? st.mod.filter(x => typeof x === "string" && x) : [];
+  const mt = $("#modText"), schluessel = JSON.stringify(mod);
+  if (mt.dataset.s !== schluessel) {
+    mt.replaceChildren(...mod.map(z => { const p = document.createElement("p"); p.textContent = z;
+      if (/^(Danach|Gleich):/.test(z)) p.className = "danach"; else if (/^Kofferübergabe/.test(z)) p.className = "koffer"; return p; }));
+    mt.dataset.s = schluessel;
+  }
+  $("#mod").hidden = !mod.length;
+  // Knöpfe: nur mit verbundener Show; Start nur im Vorbereiten, sonst Weiter
+  const vorb = !!st && st.phase === "vorbereiten";
+  $("[data-befehl=start]").hidden = !vorb; $("[data-befehl=weiter]").hidden = vorb;
+  const an = { weiter: ok, start: ok && vorb, zurueck: ok && show, pause: ok && show, schwarz: ok, ende: ok && (show || vorb) };
+  document.querySelectorAll("[data-befehl]").forEach(b => { b.disabled = !an[b.dataset.befehl]; });
+  $("[data-befehl=pause]").textContent = show && !st.spielt ? "Abspielen" : "Pause";
+  $("[data-befehl=schwarz]").textContent = st && st.schwarz ? "Bild zeigen" : "Schwarzbild";
+  if (!ok) endeFrage(false);
+}
+
+/* ---------- Befehle ---------- */
+function endeFrage(an) { clearTimeout(E.endeUhr); E.endeBis = an ? Date.now() + ENDE_MS : 0; $("#endeFrage").hidden = !an;
+  if (an) E.endeUhr = setTimeout(() => endeFrage(false), ENDE_MS); }
+async function senden(b, knopf) {
+  if (!E.pin || !verbunden() || knopf.disabled) return;
+  const jetzt = Date.now();
+  // Doppeltipp: solange ein Befehl unterwegs ist und 400 ms danach zählt kein weiterer Tipp
+  if (E.sendet || jetzt - E.zuletzt < SPERRE_MS) return;
+  if (b === "ende" && jetzt > E.endeBis) { if (navigator.vibrate) navigator.vibrate(12); return endeFrage(true); }
+  endeFrage(false);
+  E.sendet = true; E.zuletzt = jetzt;
+  if (navigator.vibrate) navigator.vibrate(15);
+  if (E.warte) E.warte.knopf.classList.remove("wartet");
+  knopf.classList.add("wartet");
+  try {
+    const r = await rpc("rb_befehl", { p_pin: E.pin, p_befehl: b });
+    if (r && r.ok) E.warte = { nr: r.nr, knopf, bis: Date.now() + 4000 }; else knopf.classList.remove("wartet");
+  } catch (e) {
+    knopf.classList.remove("wartet");
+    if (/Falsche PIN/i.test(e.message || "")) return abmelden("Falsche PIN.");
+    if (e.netz) aufnehmen(null, false);
+  } finally { E.sendet = false; }
+  if (!E.laeuft) abfragen();   // Stand gleich nachfragen
+}
+document.querySelectorAll("[data-befehl]").forEach(b => {
+  b.addEventListener("click", () => senden(b.dataset.befehl, b));
+  // sichtbarer Druck auch dort, wo :active beim Tippen nicht greift (iOS)
+  b.addEventListener("pointerdown", () => b.classList.add("druck"));
+  ["pointerup", "pointercancel", "pointerleave"].forEach(t => b.addEventListener(t, () => b.classList.remove("druck")));
+});
+
+/* ---------- Start ---------- */
+if (E.pin) { bedienfeld(); wach(); abfragen(); } else { abmelden(""); $("#pin").focus(); }
+wach();
+</script>
+</body>
+</html>

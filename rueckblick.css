@@ -313,6 +313,16 @@
 #rueckblick .v-opt label .v-hinweis{display:block;font-size:var(--bs-xs);color:var(--muted);margin-top:4px}
 #rueckblick .v-fuss .weiter-bei{flex:none;border:2px solid var(--feld);border-radius:10px;background:transparent;color:var(--ink);font:700 var(--bs-s) var(--head);padding:0 32px;min-height:96px;cursor:pointer}
 #rueckblick .v-fuss .weiter-bei:focus-visible{outline:4px solid var(--ink);outline-offset:4px}
+/* Handy als Fernbedienung (Nachtrag 37): rechts neben dem Vorbereiten-Panel, nicht darin (das Panel bleibt so groß
+   wie vorher und wird nicht kleiner). QR-Code immer dunkel auf Weiß, sonst liest ihn im Dunkeln keine Kamera. */
+#rueckblick .v-fern{position:absolute;right:36px;top:calc((1080px - var(--unten, 0px) + 168px) / 2);transform:translateY(-50%);width:340px;
+  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:32px 30px 30px;text-align:center}
+#rueckblick .v-fern h2{font:700 var(--bs-s)/1.12 var(--head);text-wrap:balance}
+#rueckblick .v-fern .v-qr{background:#fff;border-radius:10px;padding:12px;margin:22px auto 0;width:240px;min-height:240px}
+#rueckblick .v-fern .v-qr svg{display:block;width:100%;height:auto}
+#rueckblick .v-fern p{font:500 var(--bs-xs)/1.25 var(--body);color:var(--muted);margin-top:20px}
+#rueckblick .v-fern p.da{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--ink);font-weight:600;margin-top:14px;white-space:nowrap}
+#rueckblick .v-fern p.da svg{width:36px;height:36px;color:var(--ok);flex:none}
 #rueckblick .v-zurueck{display:inline-block;margin-top:32px;font:600 var(--bs-xs) var(--body);color:var(--muted);text-decoration:underline;min-height:56px;padding:12px 0;background:none;border:0;cursor:pointer}
 /* PIN, Sperre, Laden (gleiche Fläche wie Vorbereiten) */
 #rueckblick .v-panel .rb-fehler{margin-top:28px;font:600 var(--bs-s) var(--body);color:var(--ink);background:var(--warn-bg);border-left:8px solid var(--warn);padding:16px 24px}

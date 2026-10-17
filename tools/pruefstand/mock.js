@@ -552,16 +552,30 @@
     admin_delete_test_participants: a => { pin(a); return { deleted: 0, state: adminState() }; },
     admin_add_participants: a => { pin(a); return { added: 0, duplicates: 0, invalid: 0, state: adminState() }; },
     admin_unlock_station: a => { pin(a); window.__UNLOCK = a; return adminState(); },
-    admin_start: a => { pin(a); return { state: adminState() }; }
+    admin_start: a => { pin(a); return { state: adminState() }; },
+    // Fernbedienung der Rückblick-Show (Nachtrag 37), wie die Migration 20261017090000: eine Zeile im Speicher der Seite.
+    // fernbedienung.py setzt __rbEcht, dann gehen rb_* ans Netz und page.route teilt den Zustand mit der Handy-Seite.
+    rb_befehl: a => { pin(a); if (!["weiter", "zurueck", "pause", "schwarz", "start", "ende"].includes(a.p_befehl)) fehler("Unbekannter Befehl.");
+      if (RBD.um && RBD.um > Date.now() - 250) return { ok: false, nr: RBD.nr };
+      RBD.nr++; RBD.befehl = a.p_befehl; RBD.um = Date.now(); return { ok: true, nr: RBD.nr }; },
+    rb_poll: a => { pin(a); if (a.p_seit == null || RBD.nr < a.p_seit) return { nr: RBD.nr, befehl: null }; if (RBD.nr === a.p_seit) return null;
+      return { nr: RBD.nr, befehl: RBD.um && RBD.um >= Date.now() - 30000 ? RBD.befehl : null }; },
+    rb_status_setzen: a => { pin(a); if (!a.p_status || typeof a.p_status !== "object" || Array.isArray(a.p_status)) fehler("Der Status fehlt.");
+      RBD.status = a.p_status; RBD.statusUm = Date.now(); return { ok: true, handy_alter_s: RBD.handyUm ? (Date.now() - RBD.handyUm) / 1000 : null }; },
+    rb_status_holen: a => { pin(a); RBD.handyUm = Date.now(); return { status: RBD.status, alter_s: RBD.statusUm ? (Date.now() - RBD.statusUm) / 1000 : null }; },
+    rb_ende: a => { pin(a); Object.assign(RBD, { befehl: null, um: null, status: null, statusUm: null, handyUm: null }); return { ok: true }; }
   };
+  const RBD = window.__RBD = { nr: 0, befehl: null, um: null, status: null, statusUm: null, handyUm: null };
 
   /* ---------- fetch abfangen ---------- */
   const echtFetch = window.fetch.bind(window);
   const LOG = window.__RPC_LOG = [];
   window.fetch = async function (input, init) {
     const url = typeof input === "string" ? input : (input && input.url) || String(input);
-    if (/supabase\.co/i.test(url)) throw new TypeError("Prüfstand: Anfragen an die Live-Datenbank sind gesperrt.");
     const m = url.match(/\/rest\/v1\/rpc\/([A-Za-z0-9_]+)/);
+    // fernbedienung.py: die Fernbedienung geht ans "Netz", dort beantwortet page.route sie (nie die Live-Datenbank)
+    if (m && m[1].startsWith("rb_") && window.__rbEcht) return echtFetch(input, init);
+    if (/supabase\.co/i.test(url)) throw new TypeError("Prüfstand: Anfragen an die Live-Datenbank sind gesperrt.");
     if (!m) return echtFetch(input, init);
     let args = {};
     try { args = init && init.body ? JSON.parse(init.body) : {}; } catch { }
@@ -574,12 +588,15 @@
     if (netz === "weg") throw new TypeError("Prüfstand: Funkloch");
     if (netz === "503") return new Response("<html><body>503 Service Unavailable</body></html>", { status: 503, headers: { "Content-Type": "text/html" } });
     if (netz === "html") return new Response("<!DOCTYPE html><title>Anmelden</title>", { status: 200, headers: { "Content-Type": "text/html" } });
-    LOG.push(fn);
+    // Die Fernbedienung fragt laufend ab; __RPC_LOG zählt nur, was Seite und Show an Daten holen (__RB_LOG: die Fernbedienung)
+    if (fn.startsWith("rb_")) (window.__RB_LOG = window.__RB_LOG || []).push(fn); else LOG.push(fn);
     // __haengt: Verbindung steht, aber es kommt keine Antwort (nur ein Abbruch über das Signal beendet die Anfrage)
     const passt = w => w === true || (Array.isArray(w) && w.includes(fn));
     if (passt(window.__haengt)) await new Promise((_, nein) => { const s = init && init.signal;
       if (s) s.addEventListener("abort", () => nein(new DOMException("Abgebrochen", "AbortError"))); });
     const antwort = (status, data) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
+    // __rbFehlt: Datenbank ohne die Migration 20261017090000 (PostgREST PGRST202)
+    if (fn.startsWith("rb_") && window.__rbFehlt) return antwort(404, { code: "PGRST202", message: "Could not find the function public." + fn + " in the schema cache" });
     try {
       // unbekannte Admin-Aufrufe: nichts tun, Stand zurückgeben
       const h = RPC[fn] || (fn.startsWith("admin_") ? (a => { pin(a); return adminState(); }) : null);
