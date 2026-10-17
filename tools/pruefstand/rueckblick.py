@@ -912,6 +912,18 @@ with sync_playwright() as pw:
         kp = pg.evaluate("[...document.querySelectorAll('#rb-koepfe .kopf')].map(g => { const r = g.querySelector('circle.k').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })")
         abw = max((min(math.hypot(f[1] - k[0], f[2] - k[1]) for k in kp) for f in fl), default=999)
         pruef(len(fl) == 12 and all(f[0] == "?" for f in fl) and abw < 6, f"Gruppen-Ausgang: zwölf '?' landen auf den Köpfen des Zeitraffers (Abstand höchstens {abw:.1f} px)")
+        # 17.10. Friedrich: das Drehen beginnt erst auf Weiter; Hotel (Start) und Laufzeit-Kasten stehen am Ende schon da
+        st = pg.evaluate("RB.kapitel().find(k => k.id === 'gruppen')")
+        pruef(st.get("halte") == [6500], f"Die Gruppen: Halt vor dem Drehen auf Weiter ({st.get('halte')})")
+        pg.evaluate("RB.zeige('gruppen', 6500)"); pg.wait_for_timeout(200)
+        pruef(pg.evaluate("RB.zustand().haelt") is True and pg.locator(".gr-flieger").count() == 0
+              and pg.evaluate("[...document.querySelectorAll('.gr-team')].every(e => getComputedStyle(e).opacity > .99)"), "Die Gruppen: im Halt stehen die Teams noch, nichts dreht sich")
+        pg.evaluate("RB.zeige('gruppen', 9990)"); pg.wait_for_timeout(700)
+        hot = pg.evaluate("(() => { const g = document.querySelector('#rb-stationen g'); const r = g.getBoundingClientRect(); const n = [...document.querySelectorAll('#rb-stationen g')].filter(x => getComputedStyle(x).display !== 'none').length; return [getComputedStyle(g).display, r.width, n]; })()")
+        pruef(hot[0] != "none" and hot[1] > 20 and hot[2] == 1, f"Gruppen-Ausgang: nur das Hotel Mama Shelter steht auf der Karte ({hot})")
+        kz = pg.evaluate("(() => { const k = document.querySelector('.gr-zr'), b = document.querySelector('#rb-buehne').getBoundingClientRect(), r = k.getBoundingClientRect(); return [+getComputedStyle(k).opacity, (r.left + r.width / 2 - b.left) / b.width, (r.top - b.top) / b.height, k.textContent]; })()")
+        pruef(kz[0] > .99 and kz[1] > .7 and kz[2] < .1 and "Laufzeit" in kz[3] and "im Ziel" in kz[3], f"Gruppen-Ausgang: Laufzeit und im Ziel stehen oben rechts ({kz})")
+        pg.evaluate("RB.zeige('zeitraffer', 0)"); pg.wait_for_timeout(700)
         n_anker = pg.evaluate("[...document.querySelectorAll('#rb-anker line')].filter(l => +getComputedStyle(l).opacity > .5).length")
         pruef(n_anker >= 10, f"Ankerlinien: Köpfe im Ring am Start sind mit dem Start verbunden ({n_anker})")
         lage = pg.evaluate("(() => { const a = document.querySelector('#rb-anker'), s = document.querySelector('#rb-stationen'); return !!(a.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING); })()")

@@ -43,7 +43,7 @@
 /* ---------- Bühne: 1920x1080, skaliert auf jedes 16:9-Fenster ---------- */
 #rueckblick #rb-buehne{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:var(--paper)}
 #rueckblick #rb-welt,#rueckblick #rb-schirm{position:absolute;inset:0;width:1920px;height:1080px;display:block}
-#rueckblick #rb-buehne[data-art=titel] #rb-stationen,#rueckblick #rb-buehne[data-art=titel] #rb-namen,#rueckblick #rb-buehne[data-art=vorbereiten] #rb-stationen,#rueckblick #rb-buehne[data-art=fakten] #rb-stationen,#rueckblick #rb-buehne[data-art=fakten] #rb-namen,#rueckblick #rb-buehne[data-art=gruppen] #rb-stationen,#rueckblick #rb-buehne[data-art=gruppen] #rb-namen,#rueckblick #rb-buehne[data-art=rangliste] #rb-stationen,#rueckblick #rb-buehne[data-art=rangliste] #rb-namen,#rueckblick #rb-buehne[data-art=spalten] #rb-stationen,#rueckblick #rb-buehne[data-art=spalten] #rb-namen,#rueckblick #rb-buehne[data-art=sieger] #rb-stationen,#rueckblick #rb-buehne[data-art=sieger] #rb-namen{display:none}
+#rueckblick #rb-buehne[data-art=titel] #rb-stationen,#rueckblick #rb-buehne[data-art=titel] #rb-namen,#rueckblick #rb-buehne[data-art=vorbereiten] #rb-stationen,#rueckblick #rb-buehne[data-art=fakten] #rb-stationen,#rueckblick #rb-buehne[data-art=fakten] #rb-namen,#rueckblick #rb-buehne[data-art=gruppen] #rb-namen,#rueckblick #rb-buehne[data-art=rangliste] #rb-stationen,#rueckblick #rb-buehne[data-art=rangliste] #rb-namen,#rueckblick #rb-buehne[data-art=spalten] #rb-stationen,#rueckblick #rb-buehne[data-art=spalten] #rb-namen,#rueckblick #rb-buehne[data-art=sieger] #rb-stationen,#rueckblick #rb-buehne[data-art=sieger] #rb-namen{display:none}
 #rueckblick #rb-buehne[data-art=titel] .radius{display:none}
 #rueckblick #rb-welt .hoehe{fill:none;stroke:var(--contour);stroke-width:1.6;vector-effect:non-scaling-stroke}
 #rueckblick #rb-welt .park{fill:var(--park)}
@@ -85,7 +85,7 @@
 #rueckblick #rb-schirm .puls{fill:none;stroke-width:5}
 
 /* ---------- Zeitraffer (Nachtrag 17.10.): ein Kapitel, oben Laufzeit und "im Ziel", keine Seitenleiste ---------- */
-#rueckblick .zr-kopf{position:absolute;left:50%;top:28px;transform:translateX(-50%);display:flex;align-items:center;gap:48px;padding:16px 44px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(17,17,17,.08);white-space:nowrap}
+#rueckblick .zr-kopf{position:absolute;right:40px;top:28px;display:flex;align-items:center;gap:36px;padding:14px 32px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(17,17,17,.08);white-space:nowrap}
 #rueckblick .zr-kopf small{display:block;font:600 var(--bs-xs)/1 var(--head);color:var(--muted)}
 #rueckblick .zr-kopf b{display:block;font:700 var(--bs-l)/1 var(--head);font-variant-numeric:tabular-nums;margin-top:8px}
 #rueckblick .zr-kopf b em{font-style:normal}
@@ -349,3 +349,7 @@
 #rueckblick #rb-frage button.haupt{background:var(--flag);border-color:var(--flag);color:var(--flag-ink)}
 #rueckblick #rb-frage button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){ #rueckblick #rb-leiste{transition:none} }
+
+/* Gruppen-Ausgang: nur das Hotel (Start) steht schon auf der Karte, die Stationen kommen mit dem Zeitraffer; der Kasten blendet mit ein */
+#rueckblick #rb-buehne[data-art=gruppen] #rb-stationen g:nth-child(n+2){display:none}
+#rueckblick .gr-zr{opacity:0}

@@ -432,7 +432,8 @@ function kapitelFuer(d, opt) {
   // Halt bei 3,6 s: die Brathähnchen stehen, Weiter schaltet von Hand auf Bier um (Friedrich 17.10.), danach Endhalt
   k.push({ id: "fakten", art: "fakten", dur: 7500, halte: [{ t: 3600, springe: true }], name: "Fun Facts", kam: voll });
   // 6,5 s Auftritt, dann der Ausgang: die Teams drehen sich zu "?" und fliegen zum Start (Friedrich 17.10.), zusammen 10 s
-  if (new Set(d.teams.map(t => t.gruppe)).size > 1) k.push({ id: "gruppen", art: "gruppen", dur: 10000, name: "Die Gruppen", kam: voll });
+  if (new Set(d.teams.map(t => t.gruppe)).size > 1) k.push({ id: "gruppen", art: "gruppen", dur: 10000, name: "Die Gruppen", kam: voll,
+    ...(halt ? { halte: [{ t: GR_AUS, springe: true }] } : {}) });   // Halt vor dem Drehen: das Mischen beginnt auf Weiter (Friedrich 17.10.)
   // 4. ein Zeitraffer über das ganze Spiel; die Kamera folgt allen Köpfen und dem Start
   const fertig = d.teams.map(t => t.fertig), alleDa = fertig.length && fertig.every(Boolean);
   const bis = alleDa ? Math.min(d.tEnd, Math.max(...fertig) + 2 * MIN) : d.tEnd;
@@ -929,7 +930,7 @@ function gruppenHTML() {
     <div class="gr-netz" style="top:${oben + 140}px;--zh:${zh}px">${gr.map(g => { const ts = D.teams.filter(t => t.gruppe === g);
       return `<div class="gr-spalte"><h3>Gruppe ${g + 1}</h3><div class="zeit">Start ${uhr(ts[0].startAt)} Uhr</div>
         <div class="leute">${ts.reduce((n, t) => n + t.members.length, 0)} Leute</div>
-        <div class="gr-koepfe">${ts.map(t => `<div class="gr-team" data-id="${t.id}"><i style="background:${t.farbe}">${t.emoji}</i><span class="gr-name">${esc(t.name)}</span></div>`).join("")}</div></div>`; }).join("")}</div>`;
+        <div class="gr-koepfe">${ts.map(t => `<div class="gr-team" data-id="${t.id}"><i style="background:${t.farbe}">${t.emoji}</i><span class="gr-name">${esc(t.name)}</span></div>`).join("")}</div></div>`; }).join("")}</div>${zrHTML().replace('class="zr-kopf"', 'class="zr-kopf gr-zr"')}`;
 }
 // Ausgang der Gruppen-Folie (17.10.): die Teams drehen sich zu "?" und landen genau an den Stellen, an denen der
 // Zeitraffer die anonymen Köpfe am Start zeigt (Ring um den Start, Plätze in Teamreihenfolge, aus der Kamera des
@@ -938,11 +939,12 @@ const GR_AUS = 6500;
 function gruppenAusgang(L, e, kam) {
   const FLIP = 520, VERSATZ = 70, FLUG = 1500, abFlug = GR_AUS + FLIP + (D.teams.length - 1) * VERSATZ + 300;
   const zr = K.find(x => x.id === "zeitraffer"), s = Z.szene, kz = zr ? zr.kam : kam, sch = s.querySelector(".schleier");
+  const zk = s.querySelector(".gr-zr"); if (zk) zk.style.opacity = (ein(L, abFlug, FLUG - 200)).toFixed(3);   // Laufzeit-Kasten wie im Zeitraffer
   if (L > abFlug - 300) {   // Karte hinter dem Schleier schon in der Kamera des Zeitraffers, der Schleier blendet auf
     zeichneKarte(D.t0, kz, { spuren: "keine", koepfe: false });
     if (sch) sch.style.opacity = (1 - ein(L, abFlug, FLUG - 200)).toFixed(3);
   } else if (sch && sch.style.opacity) sch.style.opacity = "";
-  if (L < GR_AUS) {   // zurückgesprungen: Flieger weg, Kreise wieder da
+  if (L <= GR_AUS) {   // vor dem Drehen und im Halt (zurückgesprungen): Flieger weg, Kreise wieder da
     if (e.flug) { e.flug.forEach(z => { z.f.remove(); z.i.style.visibility = ""; z.kreis.style.removeProperty("--namen"); }); e.flug = null; }
     return;
   }
