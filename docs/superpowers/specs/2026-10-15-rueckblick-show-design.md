@@ -521,3 +521,28 @@ Gehen dem Text oben vor. Die Abschnittsnummern verweisen auf ihn.
   im Ring am Start, in "Alle Teams" mit "0 von 5 Stationen" und zählt bei der
   Hälfte-Regel nicht mit. Leere Platz- und Fotokapitel gibt es schon nicht.
   Prüffall in `rueckblick.py` (Gruppe 5).
+
+## Nachtrag 17.10.2026: neuer Ablauf (Friedrich)
+
+Gilt für Mockup v2 und den späteren Bau, ersetzt die Kapitelfolge oben, wo sie abweicht.
+
+1. **Splash:** Vorspann mit Kompass, der sich einnordet (hält als Startbild).
+2. **Fun Facts:** eine Folie, vier Zahlen nebeneinander, zum Wiedererkennen: Kilometer (Personenkilometer, alle
+   zusammen), Kalorien (Schätzung, als Trdelník umgerechnet), Schritte (Schätzung), Rätsel gelöst und Fotos.
+3. **Die Gruppen:** Startgruppen nebeneinander, je Startzeit, Zahl der Leute, Teams als „?“ ohne Namen.
+4. **Karte:** ein durchgehender Zeitraffer (keine Kapitel je Station), Laufzeit-Timer oben (ab 0:00, alle Gruppen
+   gemeinsam), Kamera passt sich laufend an, so dass alle Teams und der Start im Bild sind; anonym („?“, graue
+   Routen), Kopf leuchtet beim Lösen; läuft, bis alle im Ziel sind bzw. die Spielzeit abgelaufen ist. Keine
+   Seitenleiste, oben Timer und „x von 12 im Ziel“.
+5. **Awards (Bonusplatzierungen):** lustige Preise aus den Spieldaten, vor jeder Platzierung.
+6. **Rangliste von unten:** alle Plätze untereinander, Zeiten rattern (Walzen); von unten nach oben rastet je Platz die
+   Zeit ein und „?“ wird zum Team, bis Platz 4.
+7. **Top 3 verdeckt:** Zeiten von Platz 1 bis 3 sichtbar, Teams noch „?“.
+8. **Drei Spalten:** Platz 1, 2, 3 nebeneinander mit Zeit und dem Weg des Teams (anonym, zum Vergleich).
+9. **Platz 3 aufdecken** in seiner Spalte (Team, Farbe, Route), Halt für die Kofferübergabe.
+10. **Duell:** Platz 1 und 2 übrig, dramatisch aufdecken, wer Platz 1 ist (Eskalation wie bisher Platz 1), danach
+    Platz 2; je Halt für die Kofferübergabe.
+11. **Siegerbild, Abspann (Fotorolle), Schlussbild.**
+
+Wertung nach Gesamtzeit (Startgruppen, virtuelles Rennen), Bewegung immer an (Schalter „Bewegung reduzieren“),
+keine Fotokapitel je Station, kein Mittelpunkt als Trenner.
