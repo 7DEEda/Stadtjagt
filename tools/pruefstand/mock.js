@@ -176,6 +176,10 @@
     "rueckblick-probe": { welt: "finished", view: "rueckblick/probe" },
     "rueckblick-ohne-fotos": { welt: "finished", view: "rueckblick", ss: { "sj.pin": "4711" }, fuchs: { solved: 4 } },
     "rueckblick-station3-leer": { welt: "finished", view: "rueckblick", ss: { "sj.pin": "4711" }, fuchs: { solved: 4 }, selfie: {}, keinFoto: [3] },
+    // Rückblick v2: echte GPS-Dichte (6.000 Punkte je Team, Bildrate) und ein Spiel, in dem niemand den Koffer öffnete (S17)
+    "rueckblick-dicht": { welt: "finished", view: "rueckblick", ss: { "sj.pin": "4711" }, fuchs: { solved: 4 }, selfie: {}, hochfotos: true,
+      stand: { Delfin: [0, false, null] }, dicht: 6000 },
+    "rueckblick-niemand": { welt: "finished", view: "rueckblick", ss: { "sj.pin": "4711" }, fuchs: { solved: 4 }, fertig: [] },
     "admin-beendet": { welt: "finished", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 4 }, selfie: {} },
     "admin-fotos-heute": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 3 }, selfie: {}, loeschDatum: "heute",
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { wait: 400 }] },
@@ -288,6 +292,17 @@
       if (t.name === "Fuchs" && C.kompassFalsch) t.position.kompass = "unzuverlaessig"; }
   });
   // Delfin im laufenden Spiel: nie Standort gemeldet, aber schon an Station 1? Nein: noch unterwegs, ohne Aktivität.
+  // Rückblick mit echter GPS-Dichte (C.dicht Punkte je Team, rueckblick.py Gruppe 13): zwischen den Punkten auffüllen,
+  // mit 2 m Zittern, so wie ein Handy im Stand und beim Gehen meldet
+  if (C.dicht) TEAMS.forEach(t => {
+    const p = t.points; if (p.length < 2) return;
+    const je = Math.max(1, Math.ceil(C.dicht / (p.length - 1))), neu = [];
+    for (let i = 0; i < p.length - 1; i++) { const a = p[i], b = p[i + 1];
+      for (let j = 0; j < je; j++) { const f = j / je;
+        neu.push([+(a[0] + (b[0] - a[0]) * f + (rnd() - .5) * 0.00004).toFixed(6), +(a[1] + (b[1] - a[1]) * f + (rnd() - .5) * 0.00006).toFixed(6),
+          Math.round(a[2] + (b[2] - a[2]) * f)]); } }
+    neu.push(p[p.length - 1]); t.points = neu;
+  });
 
   const doneCount = () => TEAMS.filter(t => t.place).length;
   const members = t => t.members.slice();
