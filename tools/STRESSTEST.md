@@ -22,8 +22,11 @@ auf einen eigenen Server umzieht. Die App selbst bleibt auf GitHub Pages
 
 ## Testprojekt
 
-**Stand 13.10.2026: Der Stresstest ist bestanden und aufgeräumt, das
-Testprojekt `stadtjagd-stresstest` ist gelöscht.** Für einen neuen Lauf:
+**Stand 19.10.2026: Der Stresstest ist bestanden und aufgeräumt. Das
+Testprojekt `stadtjagd-stresstest` ist im Supabase-Dashboard pausiert, nicht
+gelöscht** (Friedrich, um den Free-Tier-Platz freizugeben). Für einen neuen
+Lauf: das pausierte Projekt wiederherstellen (Zugangsdaten und Ref stehen
+nur im Dashboard) oder:
 
 - Supabase-Projekt neu anlegen, Region Central EU (Frankfurt), Postgres
   (Standard), gleiche Einstellungen wie das Live-Projekt.
