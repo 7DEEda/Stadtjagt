@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stadtjagd Leitstand</title>
+<link rel="stylesheet" href="fonts.css">
+<script src="data.js"></script>
+<style>
+/* Variante "Leitstand": Navigations-App am Handy, Einsatzzentrale bei der Spielleitung.
+   Farbwelt: Nachtblau als Bedienfläche, Signal-Limette nur für Handlung,
+   Bernstein = Warnung, Hellrot = Fehler, Türkis = erledigt/Ziffer erhalten.
+   Handy: helle Karte (spiegelt in der Sonne weniger als dunkle Flächen),
+   alle Bedienelemente dunkel mit heller Schrift (starker Kontrast auf jedem Kartengrund). */
+:root{
+  --hud:#0B1220; --hud2:#131C2D; --hud3:#1B2740; --hline:#2A3854; --hline2:#3A4B6E;
+  --tx:#F1F5FA; --tx2:#B3BFD0; --tx3:#8593AA;
+  --act:#C6F432; --act-ink:#0B1220; --act-press:#B0DD1F;
+  --ok:#3DDBC0; --warn:#FFB224; --err:#FF5D5D;
+  --warn-bg:rgba(255,178,36,.13); --err-bg:rgba(255,93,93,.14); --ok-bg:rgba(61,219,192,.13);
+  --map-ink:#0B1220; --map-err:#C21D1D;
+  --mono: ui-monospace, "Cascadia Mono", "Consolas", monospace;
+  --ui: 'Archivo', 'Barlow', system-ui, sans-serif;
+  --ease: cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--hud);color:var(--tx);font-family:var(--ui);-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+.nw{white-space:nowrap}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+:focus-visible{outline:3px solid var(--act);outline-offset:2px}
+
+/* ============ Buttons ============ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 16px;border-radius:6px;
+  border:1.5px solid var(--hline2);background:var(--hud2);color:var(--tx);font-weight:600;font-size:15px;white-space:nowrap}
+.btn:active{background:var(--hud3)}
+.btn svg{width:20px;height:20px;flex:none}
+.btn-act{background:var(--act);border-color:var(--act);color:var(--act-ink);font-weight:700}
+.btn-act:active{background:var(--act-press)}
+.btn-ghost{background:transparent}
+.btn-danger{border-color:var(--err);color:var(--err);background:transparent}
+.btn-danger-fill{background:var(--err);border-color:var(--err);color:#16070A;font-weight:700}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+
+/* ============ Handy ============ */
+body.handy{overflow:hidden}
+.phone{position:fixed;inset:0;overflow:hidden;background:#DDE3E8}
+#map{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scrim{position:absolute;inset:0;background:#0B1220;opacity:0;pointer-events:none;transition:opacity .28s var(--ease)}
+.hud{position:absolute;left:12px;right:12px;top:max(12px, env(safe-area-inset-top));background:var(--hud);border-radius:10px;
+  padding:12px 14px 12px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 6px 20px rgba(11,18,32,.35)}
+.hud-dist{display:flex;align-items:baseline;gap:4px;font-family:var(--mono);font-weight:700;white-space:nowrap}
+.hud-dist .n{font-size:46px;line-height:1;letter-spacing:-.03em}
+.hud-dist .u{font-size:22px;color:var(--tx2)}
+.hud-state{display:flex;flex-direction:column;gap:5px;min-width:0;margin-left:auto;align-items:flex-end;text-align:right}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:4px 9px;border-radius:4px;background:var(--hud3);color:var(--tx);white-space:nowrap;font-stretch:90%}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--tx2);display:block}
+.chip.go i{background:var(--act)}
+.chip.ok{background:var(--ok-bg);color:var(--ok)} .chip.ok i{background:var(--ok)}
+.chip.near{background:var(--act);color:var(--act-ink)} .chip.near i{background:var(--act-ink)}
+.hud-sub{font-size:14px;color:var(--tx2);line-height:1.3}
+.mapctl{position:absolute;right:12px;display:flex;flex-direction:column;gap:8px}
+.mapbtn{display:flex;align-items:center;gap:8px;min-height:48px;padding:0 14px 0 12px;border-radius:24px;border:0;background:var(--hud);color:var(--tx);
+  font-weight:600;font-size:14px;box-shadow:0 4px 14px rgba(11,18,32,.3)}
+.mapbtn svg{width:22px;height:22px}
+
+.sheet{position:absolute;left:0;right:0;top:0;background:var(--hud);border-radius:14px 14px 0 0;
+  box-shadow:0 -8px 28px rgba(11,18,32,.35);display:flex;flex-direction:column;will-change:transform;touch-action:none}
+.grip{flex:none;height:30px;border:0;background:transparent;display:flex;align-items:center;justify-content:center;width:100%;padding:0;touch-action:none}
+.grip span{width:44px;height:5px;border-radius:3px;background:var(--hline2)}
+.sheet-scroll{position:relative;flex:1;overflow:hidden;padding:0 18px 120px;overscroll-behavior:contain}
+.sheet[data-snap="full"] .sheet-scroll{overflow-y:auto;touch-action:pan-y}
+.sh-head{display:flex;align-items:flex-end;gap:12px;padding:2px 0 10px;touch-action:none;cursor:grab}
+.eyebrow{font-size:12.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--tx3);font-stretch:90%;white-space:nowrap}
+.sh-head h1{margin:2px 0 0;font-size:28px;line-height:1.05;font-weight:800;font-stretch:85%;letter-spacing:-.01em}
+.rest{margin-left:auto;text-align:right;flex:none}
+.rest b{display:block;font-family:var(--mono);font-size:19px;color:var(--tx);white-space:nowrap}
+.hint{font-size:18px;line-height:1.42;margin:0 0 6px;color:var(--tx)}
+.riddle{font-size:19px;line-height:1.45;margin:4px 0 14px;padding-left:12px;border-left:3px solid var(--act)}
+.sec{border-top:1px solid var(--hline);padding:16px 0}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 12px;gap:8px}
+.sec-h h2{margin:0;font-size:13px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--tx2);font-stretch:90%}
+.sec-h span{font-size:14px;color:var(--tx3);white-space:nowrap}
+.sec p{margin:0 0 12px;color:var(--tx2);font-size:15px;line-height:1.45}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.slots{display:flex;gap:7px;align-items:center}
+.slot{width:46px;height:58px;border-radius:6px;background:var(--hud3);border:1.5px solid var(--hline2);display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:28px;font-weight:700;color:var(--tx3);flex:none}
+.slot.has{background:var(--tx);color:var(--hud);border-color:var(--tx)}
+.slot.now{border-color:var(--act);color:var(--act)}
+.slot.sum{border-style:dashed;margin-left:auto;background:transparent}
+.slot.new{background:var(--ok);border-color:var(--ok);color:var(--hud);box-shadow:0 0 0 4px var(--ok-bg)}
+.slotnote{font-size:13.5px !important;margin:10px 0 0 !important}
+.members{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;padding:0;list-style:none}
+.members li{font-size:14px;padding:5px 9px;border-radius:4px;background:var(--hud2);border:1px solid var(--hline);color:var(--tx2)}
+.members li.lead{color:var(--tx);border-color:var(--hline2)}
+.members li.lead b{color:var(--act);font-weight:700}
+.linkbox{font-family:var(--mono);font-size:14px;padding:12px;border-radius:6px;background:var(--hud2);border:1px dashed var(--hline2);
+  margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx)}
+.listbtn{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;border:0;border-top:1px solid var(--hline);background:transparent;padding:0;text-align:left;font-size:16px;font-weight:600}
+.listbtn:first-child{border-top:0}
+.listbtn svg{width:22px;height:22px;color:var(--tx2)}
+.listbtn small{display:block;font-weight:400;color:var(--tx3);font-size:13.5px}
+.listbtn .chev{margin-left:auto;color:var(--tx3)}
+.note{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--tx3);line-height:1.4;margin-top:6px}
+.note i{width:9px;height:9px;border-radius:50%;background:var(--act);margin-top:5px;flex:none}
+
+.actionbar{position:absolute;left:0;right:0;bottom:0;padding:12px 16px max(14px, env(safe-area-inset-bottom));background:var(--hud);border-top:1px solid var(--hline);z-index:3}
+.main{position:relative;width:100%;min-height:58px;border-radius:8px;border:0;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px;overflow:hidden}
+.main.wait{background:var(--hud2);color:var(--tx);border:1.5px solid var(--hline2)}
+.main.wait .pbar{position:absolute;left:0;bottom:0;height:4px;background:var(--act)}
+.main.go{background:var(--act);color:var(--act-ink)}
+.main.go:active{background:var(--act-press)}
+.main[disabled]{background:var(--hud2);color:var(--tx3);border:1.5px solid var(--hline)}
+.main svg{width:22px;height:22px}
+
+.answer{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.answer label{font-size:14px;color:var(--tx2);font-weight:600}
+.answer input{height:64px;border-radius:8px;border:2px solid var(--hline2);background:var(--hud2);color:var(--tx);font-family:var(--mono);
+  font-size:32px;font-weight:700;letter-spacing:.18em;padding:0 16px;width:100%}
+.answer input:focus{outline:none;border-color:var(--act);box-shadow:0 0 0 3px rgba(198,244,50,.25)}
+.answer input.bad{border-color:var(--err)}
+.tries{display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--tx2)}
+.pips{display:flex;gap:5px}
+.pips b{width:22px;height:8px;border-radius:2px;background:var(--hud3);border:1px solid var(--hline2)}
+.pips b.x{background:var(--warn);border-color:var(--warn)}
+.fb{min-height:0;font-size:15px;line-height:1.4;margin-top:10px;border-radius:6px}
+.fb.err{padding:10px 12px;background:var(--err-bg);color:#FFC4C4;border-left:3px solid var(--err)}
+.reveal{text-align:center;padding:10px 0 18px}
+.reveal .eyebrow{color:var(--ok)}
+.bigdigit{margin:14px auto 12px;width:118px;height:150px;border-radius:12px;background:var(--ok);color:var(--hud);font-family:var(--mono);font-size:112px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 6px var(--ok-bg),0 0 48px rgba(61,219,192,.35)}
+.reveal p{margin:0;font-size:17px;color:var(--tx2);line-height:1.45}
+.reveal p b{color:var(--tx)}
+@keyframes flip{0%{transform:perspective(500px) rotateX(-95deg);opacity:0}60%{transform:perspective(500px) rotateX(12deg);opacity:1}100%{transform:none}}
+@keyframes pop{0%{transform:scale(.6)}70%{transform:scale(1.12)}100%{transform:none}}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.anim-flip{animation:flip .7s var(--ease) both}
+.anim-pop{animation:pop .5s var(--ease) both .45s}
+.anim-shake{animation:shake .3s ease 2}
+
+/* ============ Dialog + Toast ============ */
+dialog{border:1px solid var(--hline2);border-radius:8px;background:var(--hud2);color:var(--tx);padding:22px;max-width:min(440px, calc(100vw - 32px));width:100%;
+  box-shadow:0 18px 50px rgba(0,0,0,.5)}
+dialog::backdrop{background:rgba(4,8,15,.6)}
+dialog[open]{animation:dlg .18s var(--ease)}
+@keyframes dlg{from{opacity:0;transform:translateY(-6px) scale(.98)}}
+dialog h3{margin:0 0 8px;font-size:21px;font-weight:800;font-stretch:88%}
+dialog p{margin:0 0 18px;color:var(--tx2);font-size:15.5px;line-height:1.45}
+.dlg-act{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.dlg-list{display:flex;flex-direction:column;gap:6px;margin:0 0 18px;max-height:46vh;overflow:auto}
+.dlg-list label{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 12px;border:1px solid var(--hline);border-radius:6px;font-size:16px}
+.dlg-list input{accent-color:var(--act);width:18px;height:18px}
+#toast{position:fixed;left:0;right:0;margin:0 auto;width:max-content;bottom:24px;transform:translateY(12px);opacity:0;pointer-events:none;z-index:50;background:#F1F5FA;color:#0B1220;
+  border-radius:6px;padding:12px 14px 12px 16px;font-size:15px;font-weight:500;box-shadow:0 10px 30px rgba(0,0,0,.4);display:flex;gap:14px;align-items:center;
+  max-width:min(520px, calc(100vw - 32px));transition:opacity .18s var(--ease),transform .18s var(--ease)}
+#toast.on{opacity:1;transform:none;pointer-events:auto}
+#toast button{border:0;background:transparent;font-weight:700;color:#0B1220;text-decoration:underline;text-underline-offset:3px;min-height:36px;padding:0 4px;white-space:nowrap}
+body.handy #toast{bottom:104px}
+
+/* ============ Spielleitung ============ */
+body.admin{--bg:#070B12;--pan:#0D1420;--pan2:#121B2A;background:var(--bg)}
+.ls{display:grid;height:100vh;height:100dvh;grid-template-columns:292px minmax(0,1fr) 312px;grid-template-rows:auto minmax(0,1fr);
+  grid-template-areas:"bar bar bar" "teams map tick"}
+@media (min-width:1400px){.ls{grid-template-columns:330px minmax(0,1fr) 360px}}
+.bar{grid-area:bar;display:flex;align-items:center;gap:14px;padding:0 14px;min-height:56px;background:var(--pan);border-bottom:1px solid var(--hline);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;white-space:nowrap}
+.brand svg{width:26px;height:26px}
+.brand b{font-size:17px;font-weight:800;font-stretch:85%}
+.brand span{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);font-weight:700}
+.tabs{display:flex;gap:2px;align-self:stretch}
+.tabs button{border:0;background:transparent;color:var(--tx2);font-size:14px;font-weight:600;padding:0 11px;min-height:48px;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button[aria-current="page"]{color:var(--tx);border-bottom-color:var(--act)}
+.stats{display:flex;align-items:center;gap:6px;margin-left:auto}
+.live{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--act);padding:0 10px;white-space:nowrap}
+.live i{width:9px;height:9px;border-radius:50%;background:var(--act);box-shadow:0 0 0 0 rgba(198,244,50,.6);animation:live 2s infinite}
+.live.end{color:var(--tx3)} .live.end i{background:var(--tx3);animation:none}
+@keyframes live{0%{box-shadow:0 0 0 0 rgba(198,244,50,.55)}70%{box-shadow:0 0 0 8px rgba(198,244,50,0)}100%{box-shadow:0 0 0 0 rgba(198,244,50,0)}}
+.kpi{display:flex;flex-direction:column;justify-content:center;padding:0 11px;min-height:48px;border-left:1px solid var(--hline);background:transparent;border-top:0;border-right:0;border-bottom:0;text-align:left}
+.kpi small{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx3);font-weight:700;white-space:nowrap}
+.kpi b{font-family:var(--mono);font-size:17px;white-space:nowrap}
+.kpi.prob b{color:var(--err)}
+.kpi.prob{border-radius:0}
+.kpi.prob.zero b{color:var(--ok)}
+.bar .btn-danger{min-height:40px;font-size:14px}
+
+.teams{grid-area:teams;background:var(--pan);border-right:1px solid var(--hline);overflow-y:auto;min-height:0}
+.grp{position:sticky;top:0;z-index:1;background:var(--pan);display:flex;justify-content:space-between;align-items:center;padding:12px 14px 6px;
+  font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--tx3);border-bottom:1px solid var(--hline)}
+.grp.alarm{color:var(--err)}
+.trow{display:grid;grid-template-columns:4px 30px minmax(0,1fr) auto auto;align-items:center;gap:0 10px;width:100%;min-height:54px;padding:6px 12px 6px 0;
+  border:0;border-bottom:1px solid var(--hline);background:transparent;text-align:left}
+.trow .amp{align-self:stretch;width:4px;background:transparent}
+.trow.sev-err .amp{background:var(--err)} .trow.sev-warn .amp{background:var(--warn)}
+.trow.sev-err{background:linear-gradient(90deg,var(--err-bg),transparent 70%)}
+.trow.sev-warn{background:linear-gradient(90deg,var(--warn-bg),transparent 70%)}
+.trow .em{font-size:22px;text-align:center;line-height:1}
+.trow .nm{display:block;font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow .st{display:block;font-size:13px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow.sev-err .st{color:#FF9A9A;font-weight:600} .trow.sev-warn .st{color:var(--warn);font-weight:600}
+.prog{display:flex;gap:2px}
+.prog b{width:7px;height:14px;border-radius:1px;background:var(--hud3);border:1px solid var(--hline2)}
+.prog b.d{background:var(--ok);border-color:var(--ok)}
+.gps{font-family:var(--mono);font-size:13px;color:var(--tx2);white-space:nowrap;min-width:46px;text-align:right}
+.gps.w{color:var(--warn);font-weight:700} .gps.e{color:var(--err);font-weight:700}
+.trow[aria-pressed="true"]{background:var(--hud3);box-shadow:inset -3px 0 0 var(--act)}
+.trow[aria-pressed="true"] .nm{color:var(--act)}
+
+.mapwrap{grid-area:map;position:relative;min-height:0;overflow:hidden;background:#0E1520}
+#amap{position:absolute;inset:0;width:100%;height:100%;display:block}
+.ov{position:absolute;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ov-tl{left:12px;top:12px}
+.ov-tr{right:12px;top:12px}
+.pill{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 11px;border-radius:5px;background:rgba(13,20,32,.92);border:1px solid var(--hline);font-size:13px;color:var(--tx2);white-space:nowrap}
+.pill.err{color:#FFB3B3;border-color:rgba(255,93,93,.55);background:rgba(58,18,24,.92)}
+button.pill{min-height:44px;font-weight:600;color:var(--tx)}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--act)}
+.legend{right:12px;bottom:12px;flex-direction:column;align-items:flex-end;gap:6px}
+.legend .pill{gap:12px}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.lg svg{width:14px;height:14px}
+.mk{cursor:pointer}
+
+.tdetail{padding:4px 14px 14px 18px;background:var(--hud3);border-bottom:1px solid var(--hline2);box-shadow:inset -3px 0 0 var(--act)}
+.tdetail[hidden]{display:none}
+.tdetail.anim{animation:dIn .18s var(--ease)}
+@keyframes dIn{from{opacity:0;transform:translateY(-4px)}}
+.d-head{display:flex;align-items:center;gap:10px}
+.d-head h3{margin:0;font-size:22px;font-weight:800;font-stretch:88%}
+.d-head .code{font-family:var(--mono);font-size:12.5px;color:var(--tx3)}
+.d-x{margin-left:auto;width:44px;height:44px;border:0;background:transparent;color:var(--tx2);display:flex;align-items:center;justify-content:center;border-radius:6px}
+.d-x svg{width:20px;height:20px}
+.d-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:4px 0 12px;font-size:13.5px}
+.d-grid dt{color:var(--tx3)} .d-grid dd{margin:0;color:var(--tx)}
+.d-alert{padding:9px 11px;border-radius:5px;font-size:14px;font-weight:600;margin-bottom:12px}
+.d-alert.err{background:var(--err-bg);color:#FFB3B3;border-left:3px solid var(--err)}
+.d-alert.warn{background:var(--warn-bg);color:var(--warn);border-left:3px solid var(--warn)}
+.d-alert.ok{background:var(--ok-bg);color:var(--ok);border-left:3px solid var(--ok)}
+.d-main{width:100%;margin-bottom:8px;min-height:50px;font-size:16px}
+.d-sec{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.d-sec .wide{grid-column:1 / -1}
+.d-sec .btn{font-size:13.5px;padding:0 8px;min-height:48px}
+
+.tick{grid-area:tick;background:var(--pan);border-left:1px solid var(--hline);display:flex;flex-direction:column;min-height:0}
+.tick-h{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 14px;border-bottom:1px solid var(--hline)}
+.tick-h h2{margin:0;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);font-weight:700}
+.seg{margin-left:auto;display:flex;border:1px solid var(--hline2);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--tx2);font-size:13px;font-weight:600;padding:0 12px;min-height:40px;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--hud3);color:var(--tx)}
+.evs{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1}
+.ev{display:grid;grid-template-columns:46px 1fr;gap:0 10px;padding:11px 14px 11px 12px;border-bottom:1px solid var(--hline);border-left:3px solid transparent;cursor:pointer}
+.ev time{font-family:var(--mono);font-size:13px;color:var(--tx3);padding-top:1px;white-space:nowrap}
+.ev .tx{font-size:14px;line-height:1.4;color:var(--tx2)}
+.ev .tx b{color:var(--tx);font-weight:700;white-space:nowrap}
+.ev.ok .tx{color:var(--tx2)} .ev.ok time{color:var(--ok)}
+.ev.warn{border-left-color:var(--warn);background:var(--warn-bg)} .ev.warn .tx span{color:var(--warn);font-weight:600}
+.ev.err{border-left-color:var(--err);background:var(--err-bg)} .ev.err .tx span{color:#FFB3B3;font-weight:600}
+.ev.mine time{color:var(--act)}
+.ev.new{animation:evin .4s var(--ease)}
+@keyframes evin{from{background:rgba(198,244,50,.18)}}
+.ev-act{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.ev-act .btn{min-height:44px;font-size:13.5px;padding:0 12px}
+.ev .src{font-size:12px;color:var(--tx3)}
+
+/* Tablet hoch und schmale Fenster: Ticker unter die Karte */
+@media (max-width:1000px){
+  .ls{grid-template-columns:284px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) 300px;grid-template-areas:"bar bar" "teams map" "teams tick"}
+  .tick{border-left:0;border-top:1px solid var(--hline)}
+  .tabs{order:5;width:100%;border-top:1px solid var(--hline);margin:0 -14px;padding:0 6px;width:calc(100% + 28px)}
+  .kpi.since{display:none}
+}
+@media (max-width:1300px){ .brand span{display:none} }
+@media (max-width:1240px) and (min-width:1001px){ .kpi.since{display:none} .tabs button{padding:0 9px} .bar{gap:10px} .live{padding:0 6px} }
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" role="status" aria-live="polite"><span id="toastTx"></span><button id="toastBtn" hidden></button></div>
+<dialog id="dlg"><form method="dialog" id="dlgForm"><h3 id="dlgH"></h3><p id="dlgP"></p><div id="dlgBody"></div><div class="dlg-act" id="dlgAct"></div></form></dialog>
+
+<script>
+(function(){
+"use strict";
+const SJ = window.SJ;
+const Q = new URLSearchParams(location.search);
+const ANSICHT_ROH = location.hash.slice(1) || new URLSearchParams(location.search).get("ansicht"); addEventListener("hashchange", () => location.reload());
+const gehe = h => { if (location.hash.slice(1) === h) location.reload(); else location.hash = h; };
+const ANSICHT = ["unterwegs","raetsel","admin"].includes(ANSICHT_ROH) ? ANSICHT_ROH : "unterwegs";
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const app = $("#app");
+
+/* ---------- Icons ---------- */
+const I = {
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19.1L4 20z"/><path d="M9.5 9.5c.3 2 1.9 3.8 4 4.4l1.2-1.1 1.8.9"/></svg>',
+  phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>',
+  copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>',
+  compass:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>',
+  swap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>',
+  unlock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>',
+  chev:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+  mark:'<svg viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="#C6F432"/><circle cx="16" cy="16" r="9" fill="none" stroke="#0B1220" stroke-width="2.4"/><path d="M16 7.5l3.2 9.5H12.8z" fill="#0B1220"/></svg>',
+};
+
+/* ---------- Toast ---------- */
+let toastT;
+function toast(msg, actLabel, actFn){
+  const t = $("#toast"), b = $("#toastBtn");
+  $("#toastTx").textContent = msg;
+  if (actLabel){ b.hidden = false; b.textContent = actLabel; b.onclick = () => { t.classList.remove("on"); actFn(); }; } else b.hidden = true;
+  t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), actLabel ? 6000 : 3200);
+}
+const mock = what => toast(what + ": im Mockup nicht ausgebaut");
+
+/* ---------- Dialog ---------- */
+function ask({titel, text, body = "", ok, okClass = "btn-act", onOk, cancel = "Abbrechen"}){
+  const d = $("#dlg");
+  $("#dlgH").textContent = titel; $("#dlgP").textContent = text; $("#dlgBody").innerHTML = body;
+  $("#dlgAct").innerHTML = (cancel ? `<button class="btn btn-ghost" value="no">${esc(cancel)}</button>` : "") + `<button class="btn ${okClass}" value="ok">${esc(ok)}</button>`;
+  d.onclose = () => { if (d.returnValue === "ok" && onOk) onOk(new FormData($("#dlgForm"))); };
+  d.returnValue = ""; d.showModal();
+}
+
+/* ---------- Geo: alles in Metern um einen Ursprung ---------- */
+const O = {lat:50.0985, lng:14.4195};
+const KX = 111320 * Math.cos(O.lat * Math.PI / 180), KY = 110574;
+const M = p => ({x:(p.lng - O.lng) * KX, y:(p.lat - O.lat) * KY});
+const LL = a => a.map(([lat, lng]) => M({lat, lng}));
+const STA = SJ.stationen.map(s => Object.assign({}, s, M(s)));
+const START = Object.assign({}, SJ.startpunkt, M(SJ.startpunkt));
+const RIVER = LL([[50.078,14.4135],[50.087,14.414],[50.0905,14.416],[50.0925,14.420],[50.0931,14.428],[50.0926,14.436],[50.0936,14.443],[50.0975,14.4482],
+  [50.103,14.4492],[50.108,14.445],[50.1105,14.436],[50.1101,14.426],[50.111,14.418],[50.116,14.412],[50.126,14.4105]]);
+const PARKS = [
+  LL([[50.1032,14.4085],[50.1068,14.4078],[50.1085,14.4135],[50.1082,14.4255],[50.1068,14.4330],[50.1045,14.4342],[50.1030,14.4260],[50.1028,14.4160]]), // Stromovka
+  LL([[50.0942,14.4105],[50.0968,14.4102],[50.0976,14.4180],[50.0972,14.4262],[50.0950,14.4280],[50.0938,14.4200]]), // Letná
+  LL([[50.0912,14.3975],[50.0948,14.3982],[50.0952,14.4060],[50.0944,14.4102],[50.0922,14.4098],[50.0910,14.4030]]), // Burg/Chotek
+];
+const PARKPATHS = [
+  LL([[50.1036,14.4110],[50.1050,14.4150],[50.1046,14.4166],[50.1058,14.4210],[50.1062,14.4280],[50.1050,14.4330]]),
+  LL([[50.1070,14.4120],[50.1060,14.4180],[50.1046,14.4166]]),
+  LL([[50.0950,14.4120],[50.0960,14.4190],[50.0955,14.4260]]),
+];
+const ROADS = [
+  LL([[50.1001,14.398],[50.1003,14.420],[50.1000,14.446]]),
+  LL([[50.0962,14.398],[50.0985,14.425],[50.1035,14.447]]),
+  LL([[50.0905,14.4300],[50.1000,14.4310],[50.1080,14.4330]]),
+  LL([[50.0930,14.4075],[50.1000,14.4075],[50.1060,14.4050]]),
+];
+const VEC = (deg, d) => ({x: Math.sin(deg * Math.PI / 180) * d, y: Math.cos(deg * Math.PI / 180) * d});
+const add = (a, b) => ({x:a.x + b.x, y:a.y + b.y});
+
+/* Kartenzeichner: Meter -> Bildschirm, mit Drehung (Blickrichtung nach oben) */
+function projector(o){
+  const H = (o.rot || 0) * Math.PI / 180, c = Math.cos(H), sn = Math.sin(H);
+  return p => { const dx = p.x - o.cx, dy = p.y - o.cy; return [o.ox + (dx * c - dy * sn) * o.s, o.oy - (dx * sn + dy * c) * o.s]; };
+}
+function basemap(o, th){
+  const P = projector(o);
+  const pth = (pts, close) => pts.map((p, i) => { const [x, y] = P(p); return (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1); }).join("") + (close ? "Z" : "");
+  let g = `<rect x="-10" y="-10" width="${o.w + 20}" height="${o.h + 20}" fill="${th.land}"/>`;
+  // Straßenraster (leicht gedreht wie in Holešovice/Bubeneč)
+  const a = 11 * Math.PI / 180, u = {x:Math.cos(a), y:Math.sin(a)}, v = {x:-Math.sin(a), y:Math.cos(a)}, R = 4200, step = 118;
+  let d = "";
+  for (let k = -R; k <= R; k += step){
+    const p1 = {x:v.x * k - u.x * R, y:v.y * k - u.y * R}, p2 = {x:v.x * k + u.x * R, y:v.y * k + u.y * R};
+    const q1 = {x:u.x * k - v.x * R, y:u.y * k - v.y * R}, q2 = {x:u.x * k + v.x * R, y:u.y * k + v.y * R};
+    d += pth([p1, p2]) + pth([q1, q2]);
+  }
+  g += `<path d="${d}" stroke="${th.street}" stroke-width="${Math.max(1, 13 * o.s).toFixed(1)}" fill="none"/>`;
+  g += ROADS.map(r => `<path d="${pth(r)}" stroke="${th.road}" stroke-width="${Math.max(2, 24 * o.s).toFixed(1)}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`).join("");
+  g += PARKS.map(p => `<path d="${pth(p, true)}" fill="${th.park}" stroke="${th.park}" stroke-width="${(60 * o.s).toFixed(1)}" stroke-linejoin="round"/>`).join("");
+  g += PARKPATHS.map(p => `<path d="${pth(p)}" stroke="${th.path}" stroke-width="${Math.max(1, 6 * o.s).toFixed(1)}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`).join("");
+  g += `<path d="${pth(RIVER)}" stroke="${th.water}" stroke-width="${(150 * o.s).toFixed(1)}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const lp = P(LL([[50.0918, 14.4245]])[0]);
+  g += `<text x="${lp[0].toFixed(0)}" y="${lp[1].toFixed(0)}" fill="${th.waterTx}" font-size="${th.lblSize}" font-style="italic" font-weight="600" letter-spacing="2" text-anchor="middle">Vltava</text>`;
+  return {svg: g, P};
+}
+const TH_DAY = {land:"#DCE2E8", street:"#F6F8FA", road:"#FFFFFF", park:"#C3DCC7", path:"#E9F2EA", water:"#9DC3DF", waterTx:"#2A5A80", lblSize:13};
+const TH_NIGHT = {land:"#0E1520", street:"#162133", road:"#1E2C44", park:"#0D241D", path:"#163A2E", water:"#0F2E4E", waterTx:"#5C8FBF", lblSize:12};
+
+/* ---------- Ziffern-Reihe ---------- */
+function slots(z, current, neu){
+  let h = "";
+  for (let i = 0; i < 5; i++){
+    const v = z[i];
+    const cls = i === neu ? "slot new anim-flip" : v != null ? "slot has" : i === current ? "slot now" : "slot";
+    h += `<div class="${cls}" aria-label="Ziffer ${i + 1}: ${v != null ? v : "offen"}">${v != null ? v : "?"}</div>`;
+  }
+  return h + `<div class="slot sum" aria-label="Schlussziffer offen">?</div>`;
+}
+
+/* ============================================================
+   HANDY
+   ============================================================ */
+function handy(){
+  document.body.classList.add("handy");
+  const T = SJ.team, st = T.station, R = ANSICHT === "raetsel";
+  const sta = STA.find(s => s.nr === st.nr);
+  const TARGET_BRG = 290;                             // Station liegt west-nordwestlich (passt zu "Richtung Westen")
+  const HEADING = (TARGET_BRG - T.richtungGrad + 360) % 360;   // so zeigt der Pfeil 58° rechts von oben
+  const z = T.ziffern.slice();
+  const zifferIdx = st.nr - 1;
+  const done = z.filter(v => v != null).length;
+  const s = {dist: T.entfernung, near: false, tries: T.fehlversuche, solved: false, pauseUntil: 0};
+
+  app.innerHTML = `
+  <div class="phone">
+    <svg id="map" aria-label="Karte mit Richtung zur Station" role="img"></svg>
+    <div class="scrim" id="scrim"></div>
+    <div class="hud" id="hud"></div>
+    <div class="mapctl" id="mapctl">
+      <button class="mapbtn" id="calib" aria-label="Kompass einmessen">${I.compass}<span>Einmessen</span></button>
+    </div>
+    <section class="sheet" id="sheet" aria-label="Station und Team">
+      <button class="grip" id="grip" aria-label="Blatt größer oder kleiner ziehen"><span></span></button>
+      <div class="sheet-scroll" id="sc">
+        <header class="sh-head" id="head">
+          <div style="min-width:0">
+            <div class="eyebrow">Station ${st.nr} von ${SJ.spiel.stationen}${R ? " · eingecheckt" : ""}</div>
+            <h1>${esc(st.name)}</h1>
+          </div>
+          <div class="rest"><span class="eyebrow">Restzeit</span><b>${esc(SJ.spiel.rest)}</b></div>
+        </header>
+        ${R ? `
+        <div id="riddleBox">
+          <p class="riddle">${esc(st.raetsel)}</p>
+          <div class="answer">
+            <label for="ans">Eure Antwort${st.loesungIstZahl ? " (Zahl)" : ""}</label>
+            <input id="ans" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="000">
+          </div>
+          <div class="tries" id="tries"></div>
+          <div class="fb" id="fb" aria-live="polite"></div>
+        </div>` : `
+        <p class="hint">${esc(st.hinweis)}</p>`}
+        <div id="peekEnd"></div>
+        <section class="sec">
+          <div class="sec-h"><h2>Eure Ziffern</h2><span id="zcount">${done} von 5</span></div>
+          <div class="slots" id="slots">${slots(z, zifferIdx)}</div>
+          <p class="slotnote">Das abgesetzte Feld ist die Schlussziffer: die Einerstelle der Summe eurer fünf Ziffern.</p>
+        </section>
+        <section class="sec">
+          <div class="sec-h"><h2>Hilfe von der Spielleitung</h2></div>
+          <div class="row2">
+            <button class="btn" data-mock="WhatsApp an die Spielleitung">${I.chat}WhatsApp</button>
+            <button class="btn" data-mock="Anruf bei der Spielleitung">${I.phone}Anrufen</button>
+          </div>
+        </section>
+        <section class="sec">
+          <div class="sec-h"><h2>Team ${esc(T.name)} ${T.tier}</h2><span>${T.mitglieder.length} Personen</span></div>
+          <ul class="members">${T.mitglieder.map(m => m === T.leitung ? `<li class="lead">${esc(m)} <b>Leitung</b></li>` : `<li>${esc(m)}</li>`).join("")}</ul>
+          <button class="btn" id="handover" style="width:100%">${I.swap}Leitung abgeben</button>
+        </section>
+        <section class="sec">
+          <div class="sec-h"><h2>Mitlesen fürs Team</h2></div>
+          <p>Wer diesen Link öffnet, sieht auf dem eigenen Handy alles mit. Eingeben könnt nur ihr.</p>
+          <div class="linkbox" id="link">stadtjagd.app/mit/${esc(T.code)}</div>
+          <div class="row2">
+            <button class="btn" data-mock="Teilen-Menü des Handys">${I.share}Link teilen</button>
+            <button class="btn" id="copy">${I.copy}Link kopieren</button>
+          </div>
+        </section>
+        <section class="sec">
+          <button class="listbtn" id="calib2">${I.compass}<span>Kompass einmessen<small>Wenn der Pfeil hakt oder springt</small></span><span class="chev">${I.chev}</span></button>
+          <div class="note"><i></i><span>Euer Standort geht alle 10 s an die Spielleitung. Der Bildschirm bleibt an.</span></div>
+        </section>
+      </div>
+    </section>
+    <div class="actionbar" id="abar"><button class="main" id="main"></button></div>
+  </div>`;
+
+  const W = () => innerWidth, Hh = () => innerHeight;
+  const svg = $("#map");
+
+  function stationPos(){ return sta; }
+  function teamPos(){ return R ? add(sta, VEC(140, 22)) : add(sta, VEC((TARGET_BRG + 180) % 360, s.dist)); }
+
+  // Grundkarte einmal bauen (bei Layout/Größenänderung), pro Frame nur Team, Kompass und Verschiebung
+  let mc = null;
+  function buildMap(){
+    const w = W(), h = Hh();
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    const hudB = $("#hud").getBoundingClientRect().bottom;
+    const peekTop = h - snaps[0];
+    const tp0 = teamPos();
+    let o;
+    if (R){ o = {w, h, cx: sta.x, cy: sta.y, ox: w * 0.66, oy: hudB + 46, s: 1.15, rot: HEADING}; }
+    else {
+      const oy = Math.round((hudB + 24 + peekTop) / 2);
+      const ring = Math.min(w * 0.28, (peekTop - hudB) * 0.3, 108);
+      const span = Math.min(ring * 1.42, (peekTop - hudB) * 0.42);
+      o = {w, h, cx: tp0.x, cy: tp0.y, ox: w / 2, oy, s: span / T.entfernung, rot: HEADING, ring};
+    }
+    const {svg: base, P} = basemap(o, TH_DAY);
+    let g = `<rect x="-700" y="-700" width="${w + 1400}" height="${h + 1400}" fill="${TH_DAY.land}"/>` + base;
+    // alle Stationen (andere grau)
+    STA.forEach(x => { if (x.nr === st.nr) return; const [X, Y] = P(x);
+      g += `<g transform="translate(${X.toFixed(1)} ${Y.toFixed(1)})" opacity=".7"><rect x="-11" y="-11" width="22" height="22" rx="3" fill="#fff" stroke="#5B6B80" stroke-width="2"/><text y="5" text-anchor="middle" font-family="ui-monospace,Consolas,monospace" font-size="13" font-weight="700" fill="#3B4A60">${x.nr}</text></g>`; });
+    const [SX, SY] = P(sta), zr = T.checkinAb * o.s;
+    g += `<circle cx="${SX}" cy="${SY}" r="${zr}" fill="rgba(198,244,50,.32)" stroke="#0B1220" stroke-width="2" stroke-dasharray="6 5"/>`;
+    const lw = st.name.length * 8.6, lx = Math.max(8 + lw / 2, Math.min(w - 8 - lw / 2, SX));
+    const mark = `<g transform="translate(${SX.toFixed(1)} ${SY.toFixed(1)})"><rect x="-17" y="-17" width="34" height="34" rx="4" fill="#0B1220" stroke="#fff" stroke-width="3"/><text y="7" text-anchor="middle" font-family="ui-monospace,Consolas,monospace" font-size="20" font-weight="800" fill="#C6F432">${st.nr}</text></g>`
+      + `<text x="${lx.toFixed(0)}" y="${(SY + 38).toFixed(0)}" text-anchor="middle" font-size="15" font-weight="800" fill="#0B1220" stroke="#fff" stroke-width="5" paint-order="stroke" stroke-linejoin="round">${esc(st.name)}</text>`;
+    let ticks = "", lbl = "";
+    if (!R){
+      const ring = o.ring;
+      for (let a = 0; a < 360; a += 10){
+        const big = a % 90 === 0, r1 = ring - (big ? 14 : 7);
+        const sa = (a - HEADING) * Math.PI / 180;
+        ticks += `<line x1="${(Math.sin(sa) * r1).toFixed(1)}" y1="${(-Math.cos(sa) * r1).toFixed(1)}" x2="${(Math.sin(sa) * ring).toFixed(1)}" y2="${(-Math.cos(sa) * ring).toFixed(1)}" stroke="#0B1220" stroke-width="${big ? 2.5 : 1.2}"/>`;
+      }
+      lbl = [["N",0,"#C21D1D"],["O",90,"#0B1220"],["S",180,"#0B1220"],["W",270,"#0B1220"]].map(([t, a, c]) => {
+        const sa = (a - HEADING) * Math.PI / 180, r = ring - 27;
+        return `<text x="${(Math.sin(sa) * r).toFixed(1)}" y="${(-Math.cos(sa) * r + 5).toFixed(1)}" text-anchor="middle" font-size="15" font-weight="800" fill="${c}">${t}</text>`;
+      }).join("");
+    }
+    svg.innerHTML = `<g id="mBase">${g}</g><g id="mTeam"></g><g id="mMark">${mark}</g>`;
+    mc = {o, P, SX, SY, ticks, lbl, gBase: $("#mBase"), gTeam: $("#mTeam"), gMark: $("#mMark")};
+  }
+
+  function drawMap(){
+    if (!mc) buildMap();
+    const {o, P, SX, SY, gBase, gTeam, gMark} = mc;
+    const tp = teamPos();
+    const [px, py] = P(tp);                         // wo das Team in der Grundkarte läge
+    const dx = o.ox - px, dy = o.oy - py;           // Karte so schieben, dass das Team an seinem Platz bleibt
+    const tr = `translate(${dx.toFixed(1)} ${dy.toFixed(1)})`;
+    gBase.setAttribute("transform", tr); gMark.setAttribute("transform", tr);
+    const TX = o.ox, TY = o.oy, sx = SX + dx, sy = SY + dy;
+    let g = "";
+    if (!R && Math.hypot(sx - TX, sy - TY) > o.ring + 20){
+      const ring = o.ring;
+      const ang = Math.atan2(sx - TX, -(sy - TY));
+      const lx = TX + Math.sin(ang) * (ring + 4), ly = TY - Math.cos(ang) * (ring + 4);
+      g += `<line x1="${lx}" y1="${ly}" x2="${sx}" y2="${sy}" stroke="#fff" stroke-width="7" stroke-linecap="round"/><line x1="${lx}" y1="${ly}" x2="${sx}" y2="${sy}" stroke="#0B1220" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>`;
+    }
+    if (!R){
+      const ring = o.ring, L = ring * 0.78;
+      const arrow = `M0 ${-L} L${L * .52} ${L * .62} L0 ${L * .32} L${-L * .52} ${L * .62}Z`;
+      g += `<g transform="translate(${TX.toFixed(1)} ${TY.toFixed(1)})">
+        <circle r="${ring}" fill="rgba(255,255,255,.72)" stroke="#0B1220" stroke-width="2.5"/>${mc.ticks}${mc.lbl}
+        <g transform="rotate(${T.richtungGrad})"><path d="${arrow}" fill="#0B1220" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M0 ${-L + 14} L${L * .18} ${-L * .25} L${-L * .18} ${-L * .25}Z" fill="#C6F432"/></g>
+        <circle r="7" fill="${T.farbe}" stroke="#fff" stroke-width="3"/></g>`;
+    } else {
+      g += `<g transform="translate(${TX.toFixed(1)} ${TY.toFixed(1)})"><circle r="9" fill="${T.farbe}" stroke="#fff" stroke-width="3"/></g>`;
+    }
+    gTeam.innerHTML = g;
+  }
+
+  function drawHud(){
+    const hud = $("#hud");
+    if (R){
+      hud.innerHTML = `<span class="chip ok"><i></i>Eingecheckt</span><span class="hud-sub nw" style="margin-left:auto">Station ${st.nr} · GPS ±${T.gpsGenau} m</span>`;
+      return;
+    }
+    const rest = Math.max(0, Math.round(s.dist - T.checkinAb));
+    hud.innerHTML = `<div class="hud-dist" aria-label="Entfernung ${Math.round(s.dist)} Meter"><span class="n">${Math.round(s.dist)}</span><span class="u">m</span></div>
+      <div class="hud-state">${s.near ? `<span class="chip near"><i></i>Im Umkreis</span>` : `<span class="chip go"><i></i>Unterwegs</span>`}
+      <span class="hud-sub"><span class="nw">zu Station ${st.nr}</span> · <span class="nw">GPS ±${T.gpsGenau} m</span></span></div>`;
+    const m = $("#main");
+    if (s.near){ m.className = "main go"; m.innerHTML = `${I.pin}Einchecken`; }
+    else { m.className = "main wait"; m.innerHTML = `<span class="nw">Noch ${rest} m bis zum Einchecken</span><span class="pbar" style="width:${Math.min(100, 100 * (1 - rest / 400)).toFixed(0)}%"></span>`; }
+  }
+
+  /* ----- Bottom Sheet ----- */
+  const sheet = $("#sheet"), sc = $("#sc"), scrim = $("#scrim");
+  let snaps = [300, 560, 780], idx = 0, y = 0;
+  function measure(){
+    const h = Hh(), ab = $("#abar").offsetHeight;
+    const peek = $("#grip").offsetHeight + $("#peekEnd").offsetTop + ab + 6;
+    const full = h - 60;
+    if (R) snaps = [Math.min(peek, h * 0.55), h - 168, full];
+    else snaps = [Math.min(peek, h * 0.5), Math.min(Math.max(peek + 240, h * 0.62), full - 40), full];
+    sheet.style.height = full + "px";
+    sc.style.paddingBottom = (ab + 20) + "px";
+    $("#mapctl").style.top = ($("#hud").getBoundingClientRect().bottom + 10) + "px";
+  }
+  function place(Y, anim){
+    y = Y; sheet.style.transition = anim && !RM ? "transform .3s var(--ease)" : "none";
+    sheet.style.transform = `translateY(${Y}px)`;
+    const p = Math.max(0, Math.min(1, (Hh() - Y - snaps[0]) / (snaps[2] - snaps[0])));
+    scrim.style.transition = anim && !RM ? "" : "none";
+    scrim.style.opacity = (p * 0.55).toFixed(2);
+    $("#mapctl").style.opacity = p > 0.35 ? 0 : 1; $("#mapctl").style.pointerEvents = p > 0.35 ? "none" : "";
+    const fadeAt = R ? snaps[1] + 10 : (snaps[0] + snaps[2]) / 2, cur = Hh() - Y;
+    $("#hud").style.opacity = Math.max(0, Math.min(1, 1 - (cur - fadeAt) / 60)).toFixed(2);
+  }
+  function snap(i, anim = true){
+    idx = Math.max(0, Math.min(2, i)); place(Hh() - snaps[idx], anim);
+    sheet.dataset.snap = ["peek", "half", "full"][idx];
+    $("#grip").setAttribute("aria-expanded", idx > 0 ? "true" : "false");
+    if (idx < 2) sc.scrollTop = 0;
+  }
+  // Ziehen am Griff oder Kopf, Tippen auf den Griff schaltet weiter
+  let drag = null;
+  function down(e){ drag = {y0: e.clientY, s0: y, t: performance.now(), moved: false, tap: e.currentTarget.id === "grip"}; e.currentTarget.setPointerCapture(e.pointerId); }
+  function move(e){ if (!drag) return; const dy = e.clientY - drag.y0; if (Math.abs(dy) > 6) drag.moved = true;
+    if (drag.moved){ const min = Hh() - snaps[2], max = Hh() - snaps[0]; place(Math.max(min - 20, Math.min(max + 30, drag.s0 + dy)), false); } }
+  function up(e){
+    if (!drag) return; const d = drag; drag = null;
+    if (!d.moved){ if (d.tap) snap(idx === 2 ? 0 : idx + 1); return; }
+    const v = (e.clientY - d.y0) / Math.max(1, performance.now() - d.t);
+    const cur = Hh() - y; let best = 0;
+    snaps.forEach((h, i) => { if (Math.abs(h - cur) < Math.abs(snaps[best] - cur)) best = i; });
+    if (v < -0.5) best = Math.min(2, snaps.findIndex(h => h > cur + 10) === -1 ? 2 : snaps.findIndex(h => h > cur + 10));
+    if (v > 0.5){ let b = 0; snaps.forEach((h, i) => { if (h < cur - 10) b = i; }); best = b; }
+    snap(best);
+  }
+  ["grip", "head"].forEach(id => { const el = $("#" + id); el.addEventListener("pointerdown", down); el.addEventListener("pointermove", move); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up); });
+  $("#grip").addEventListener("keydown", e => { if (e.key === "ArrowUp"){ snap(idx + 1); e.preventDefault(); } if (e.key === "ArrowDown"){ snap(idx - 1); e.preventDefault(); } });
+  scrim.addEventListener("click", () => snap(0));
+
+  /* ----- Aktionen ----- */
+  document.querySelectorAll("[data-mock]").forEach(b => b.onclick = () => mock(b.dataset.mock));
+  $("#copy").onclick = () => toast("Link kopiert: " + $("#link").textContent);
+  const calib = () => ask({titel:"Kompass einmessen", text:"Handy flach halten und zwei-, dreimal eine liegende Acht in die Luft zeichnen. Weg von Autos und Metallgeländern.", ok:"Fertig", cancel:"", onOk:() => toast("Kompass eingemessen")});
+  $("#calib").onclick = calib; $("#calib2").onclick = calib;
+  $("#handover").onclick = () => ask({
+    titel:"Leitung abgeben", text:"Wer bedient ab jetzt das Spiel? Du liest danach nur noch mit.",
+    body:`<div class="dlg-list">${T.mitglieder.filter(m => m !== T.leitung).map((m, i) => `<label><input type="radio" name="wer" value="${esc(m)}" ${i ? "" : "checked"}>${esc(m)}</label>`).join("")}</div>`,
+    ok:"Leitung abgeben", onOk: fd => toast("Leitung an " + fd.get("wer") + " übergeben (im Mockup nur angedeutet)")
+  });
+
+  const main = $("#main");
+  let laeuft = false;
+  if (!R){
+    main.onclick = () => {
+      if (s.near){ gehe("raetsel"); return; }
+      if (laeuft) return;
+      laeuft = true;
+      toast("Im Mockup: Tippen simuliert, dass ihr ankommt");
+      const from = s.dist, to = 46, t0 = performance.now(), dur = RM ? 0 : 1400;
+      const step = now => {
+        const k = dur ? Math.min(1, (now - t0) / dur) : 1, e = 1 - Math.pow(1 - k, 3);
+        s.dist = from + (to - from) * e; s.near = s.dist <= T.checkinAb; drawHud(); drawMap();
+        if (k < 1) requestAnimationFrame(step); else laeuft = false;
+      };
+      requestAnimationFrame(step);
+    };
+  } else {
+    const inp = $("#ans");
+    const drawTries = () => {
+      const left = T.maxFehlversuche - s.tries;
+      $("#tries").innerHTML = `<span class="pips">${Array.from({length:T.maxFehlversuche}, (_, i) => `<b class="${i < s.tries ? "x" : ""}"></b>`).join("")}</span><span>${s.tries ? `Fehlversuch <span class="nw">${s.tries} von ${T.maxFehlversuche}</span>` : `<span class="nw">${left} Versuche</span>, danach <span class="nw">${T.pauseMin} min</span> Pause`}</span>`;
+    };
+    drawTries();
+    main.className = "main go"; main.innerHTML = `${I.check}Antwort prüfen`;
+    let pauseT;
+    main.onclick = () => {
+      if (s.solved){ toast("Im Mockup: Station 3 ist nicht ausgebaut", "Zurück zu unterwegs", () => gehe("unterwegs")); return; }
+      const v = inp.value.trim();
+      if (!v){ inp.focus(); $("#fb").className = "fb err"; $("#fb").textContent = "Bitte erst eine Zahl eingeben."; return; }
+      if (v === String(st.loesung)){
+        s.solved = true; z[zifferIdx] = st.ziffer;
+        $("#riddleBox").innerHTML = `<div class="reveal" role="status">
+          <div class="eyebrow">Richtig · Ziffer freigegeben</div>
+          <div class="bigdigit anim-flip" aria-label="Ziffer ${st.ziffer}">${st.ziffer}</div>
+          <p>Station ${st.nr} gelöst. Eure <b>${st.nr}. Ziffer ist ${st.ziffer}</b>.<br>Jetzt habt ihr <span class="nw">${z.filter(x => x != null).length} von 5</span>.</p></div>`;
+        $("#slots").innerHTML = slots(z, -1, zifferIdx);
+        $("#zcount").textContent = z.filter(x => x != null).length + " von 5";
+        main.innerHTML = `Weiter zu Station ${st.nr + 1}${I.chev}`;
+        $("#head .eyebrow").textContent = `Station ${st.nr} von ${SJ.spiel.stationen} · gelöst`;
+        snap(1); sc.scrollTop = 0;
+        return;
+      }
+      s.tries++;
+      inp.classList.add("bad"); inp.classList.remove("anim-shake"); void inp.offsetWidth; inp.classList.add("anim-shake");
+      drawTries();
+      const fb = $("#fb"); fb.className = "fb err";
+      if (s.tries >= T.maxFehlversuche){
+        let left = T.pauseMin * 60; main.disabled = true; inp.disabled = true;
+        const tick = () => { const mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, "0");
+          fb.innerHTML = `Drei Fehlversuche. Pause, dann geht es weiter.`; main.innerHTML = `<span class="nw mono">Pause ${mm}:${ss}</span>`;
+          if (left-- <= 0){ clearInterval(pauseT); s.tries = 0; drawTries(); main.disabled = false; inp.disabled = false; main.innerHTML = `${I.check}Antwort prüfen`; fb.className = "fb"; fb.textContent = ""; } };
+        tick(); pauseT = setInterval(tick, 1000);
+      } else {
+        fb.innerHTML = `„${esc(v)}“ stimmt nicht. Fehlversuch <span class="nw">${s.tries} von ${T.maxFehlversuche}</span>, danach <span class="nw">${T.pauseMin} Minuten</span> Pause.`;
+      }
+      inp.select();
+    };
+    inp.addEventListener("input", () => { inp.classList.remove("bad"); inp.value = inp.value.replace(/\D/g, ""); });
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") main.click(); });
+  }
+
+  function layout(){ measure(); drawHud(); snap(idx, false); mc = null; drawMap(); }
+  drawHud();
+  idx = R ? 1 : 0;
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(layout);
+  layout();
+  addEventListener("resize", layout);
+}
+
+/* ============================================================
+   SPIELLEITUNG
+   ============================================================ */
+function admin(){
+  document.body.classList.add("admin");
+  const teams = SJ.teams.map(t => Object.assign({}, t));
+  const evs = SJ.ereignisse.map(e => Object.assign({}, e));
+  const byName = n => teams.find(t => t.name === n);
+  const stOf = nr => STA.find(s => s.nr === nr);
+  const st = {sel: null, filter: "alle", running: true, nowMin: 6};
+
+  // erfundene Positionen nahe der Zielstation
+  const T0 = SJ.team, sta2 = stOf(T0.station.nr);
+  const groups = {};
+  teams.forEach((t, i) => {
+    if (t.name === T0.name){ t.pos = add(sta2, VEC(110, T0.entfernung)); return; }
+    if (t.gps == null){ t.pos = null; return; }
+    if (t.ort === "ziel"){ t.pos = add(stOf(5), VEC(250, 90)); return; }
+    if (t.ort === "station"){ t.pos = add(stOf(t.nr), VEC(60 + i * 47, 45)); return; }
+    const k = groups[t.nr] = (groups[t.nr] || 0) + 1;
+    const a = t.nr === 1 ? START : stOf(t.nr - 1), b = stOf(t.nr), f = 0.25 * k + 0.05;
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy), side = (k % 2 ? 1 : -1) * 70;
+    t.pos = {x: a.x + dx * f - dy / len * side, y: a.y + dy * f + dx / len * side};
+  });
+  function spur(t){
+    if (!t.pos) return [];
+    const pts = [START];
+    for (let n = 1; n <= Math.min(t.geloest, 5); n++) pts.push(stOf(n));
+    if (t.ort === "station" && !t.frei && pts[pts.length - 1] !== stOf(t.nr)) pts.push(stOf(t.nr));
+    pts.push(t.pos);
+    const out = [pts[0]];
+    for (let i = 1; i < pts.length; i++){ const a = pts[i - 1], b = pts[i], dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1, w = ((i * 37) % 5 - 2) * 28;
+      out.push({x: a.x + dx * .5 - dy / l * w, y: a.y + dy * .5 + dx / l * w}, b); }
+    return out;
+  }
+  const gpsTxt = t => t.gps == null ? "aus" : t.gps.replace(/^vor /, "");
+  const gpsMin = t => { if (t.gps == null) return 999; const m = t.gps.match(/(\d+)\s*(s|min|h)/); if (!m) return 0; return m[2] === "s" ? 0 : m[2] === "h" ? 60 * +m[1] : +m[1]; };
+  function problem(t){
+    if (t.ort === "ziel") return null;
+    const p = t.problem;                                   // Einstufung kommt aus data.js
+    return p ? {sev: p.stufe === "fehler" ? "err" : "warn", text: p.text} : null;
+  }
+  const lage = t => t.ort === "ziel" ? `im Ziel um ${t.zeit}` : t.ort === "station" ? `an Station ${t.nr}, Rätsel offen` : `unterwegs zu Station ${t.nr}`;
+  const lageKurz = t => t.ort === "ziel" ? `Ziel ${t.zeit} · Platz ${t.platz}` : t.ort === "station" ? `an St. ${t.nr} · ${t.seit}` : `→ St. ${t.nr} · ${t.seit}`;
+
+  app.innerHTML = `
+  <div class="ls">
+    <header class="bar">
+      <div class="brand">${I.mark}<b>Stadtjagd</b><span>Leitstand</span></div>
+      <nav class="tabs" aria-label="Bereiche">
+        <button aria-current="page">Live</button>
+        <button data-mock="Teilnehmende">Teilnehmende</button>
+        <button data-mock="Stationen">Stationen</button>
+        <button data-mock="Fotos">Fotos</button>
+        <button data-mock="Daten löschen">Daten löschen</button>
+      </nav>
+      <div class="stats" id="stats"></div>
+      <button class="btn btn-danger" id="end">Spiel beenden</button>
+    </header>
+    <aside class="teams" id="teams" aria-label="Teams"></aside>
+    <main class="mapwrap" id="mapwrap">
+      <svg id="amap" role="img" aria-label="Live-Karte mit Teams und Stationen"></svg>
+      <div class="ov ov-tl" id="ovtl"></div>
+      <div class="ov legend">
+        <div class="pill"><span class="lg"><svg viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="2" fill="#0D1420" stroke="#E8EEF6" stroke-width="1.6"/></svg>Station</span>
+          <span class="lg"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#3A4B6E" stroke="#E8EEF6" stroke-width="1.4"/></svg>Team</span>
+          <span class="lg"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke="#FF5D5D" stroke-width="2"/></svg>Problem</span></div>
+        <div class="pill" id="scale"></div>
+      </div>
+    </main>
+    <aside class="tick" aria-label="Ereignisse">
+      <div class="tick-h"><h2>Ereignisse</h2>
+        <div class="seg" role="group" aria-label="Filter"><button data-f="alle" aria-pressed="true">Alle</button><button data-f="prob" aria-pressed="false">Nur Probleme</button></div></div>
+      <ol class="evs" id="evs"></ol>
+    </aside>
+  </div>`;
+
+  function renderStats(){
+    const probs = teams.filter(problem).length, ziel = teams.filter(t => t.ort === "ziel").length;
+    $("#stats").innerHTML = `<span class="live ${st.running ? "" : "end"}"><i></i>${st.running ? esc(SJ.spiel.status) : "Beendet"}</span>
+      <div class="kpi"><small>Restzeit</small><b>${st.running ? esc(SJ.spiel.rest) : "0:00 h"}</b></div>
+      <div class="kpi since"><small>Seit ${esc(SJ.spiel.start)}</small><b>${esc(SJ.spiel.laeuftSeit)}</b></div>
+      <div class="kpi"><small>Im Ziel</small><b>${ziel}/${teams.length}</b></div>
+      <button class="kpi prob ${probs ? "" : "zero"}" id="probBtn" aria-label="${probs} Probleme, nur Probleme zeigen"><small>Probleme</small><b>${probs}</b></button>`;
+    $("#probBtn").onclick = () => { setFilter("prob"); $("#teams").scrollTop = 0; };
+  }
+
+  function detailHTML(t){
+    const p = problem(t);
+    let mainBtn = "";
+    if (st.running && t.ort === "unterwegs") mainBtn = `<button class="btn btn-act d-main" data-act="frei">${I.unlock}Station ${t.nr} freischalten</button>`;
+    else if (st.running && t.ort === "station") mainBtn = `<button class="btn btn-act d-main" data-act="wert">${I.check}Rätsel ${t.nr} werten</button>`;
+    return `<div class="tdetail anim" data-detail="${esc(t.name)}">
+      <dl class="d-grid"><dt>Code</dt><dd class="nw mono">${esc(t.code)}</dd>
+        <dt>Leitung</dt><dd>${esc(t.leitung)}</dd>
+        <dt>Lage</dt><dd>${esc(lage(t))}, <span class="nw">seit ${esc(t.seit)}</span></dd>
+        <dt>Ziffern</dt><dd class="nw">${t.geloest} von 5</dd>
+        <dt>GPS</dt><dd class="nw">${t.gps == null ? "keine Position" : esc(t.gps)}</dd>
+        ${t.pos ? `<dt>Ort</dt><dd class="nw mono">${(O.lat + t.pos.y / KY).toFixed(4)}, ${(O.lng + t.pos.x / KX).toFixed(4)}</dd>` : ""}</dl>
+      ${p ? `<div class="d-alert ${p.sev}">${p.sev === "err" ? (t.gps == null ? "Seit dem Start keine Position." : "Position veraltet.") + (t.ort === "unterwegs" ? " Anrufen oder Station freischalten." : " Station ist freigeschaltet, ggf. anrufen.") : `${t.fehlversuche} Fehlversuche. Anrufen oder werten.`}</div>` : t.ort === "ziel" ? `<div class="d-alert ok">Im Ziel um ${esc(t.zeit)}, Platz ${t.platz}.</div>` : ""}
+      ${mainBtn}
+      <div class="d-sec"><button class="btn" data-act="call">${I.phone}Anrufen</button><button class="btn" data-act="link">${I.copy}Mitlese-Link</button>
+        <button class="btn wide" data-act="lead">${I.swap}Teamleitung wechseln</button></div></div>`;
+  }
+  function row(t){
+    const p = problem(t), g = gpsMin(t), sel = st.sel === t.name;
+    return `<button class="trow ${p ? "sev-" + p.sev : ""}" data-team="${esc(t.name)}" aria-pressed="${sel}" aria-expanded="${sel}">
+      <span class="amp"></span><span class="em" aria-hidden="true">${t.tier}</span>
+      <span style="min-width:0"><span class="nm">${esc(t.name)}</span><span class="st">${esc(p ? p.text : lageKurz(t))}</span></span>
+      <span class="prog" aria-label="${t.geloest} von 5 gelöst">${[0,1,2,3,4].map(i => `<b class="${i < t.geloest ? "d" : ""}"></b>`).join("")}</span>
+      <span class="gps ${t.ort !== "ziel" && (t.gps == null || g >= 5) ? "e" : ""}" title="letzte Position">${esc(gpsTxt(t))}</span></button>${sel ? detailHTML(t) : ""}`;
+  }
+  function renderTeams(){
+    const prob = teams.filter(problem), aktiv = teams.filter(t => !problem(t) && t.ort !== "ziel"), ziel = teams.filter(t => t.ort === "ziel");
+    let h = "";
+    if (prob.length) h += `<div class="grp alarm"><span>Achtung</span><span>${prob.length}</span></div>` + prob.map(row).join("");
+    h += `<div class="grp"><span>Im Spiel</span><span>${aktiv.length}</span></div>` + aktiv.map(row).join("");
+    if (ziel.length) h += `<div class="grp"><span>Im Ziel</span><span>${ziel.length}</span></div>` + ziel.map(row).join("");
+    $("#teams").innerHTML = h;
+  }
+
+  let view = null;
+  function fitView(){
+    const el = $("#mapwrap"), w = el.clientWidth, h = el.clientHeight;
+    const pts = STA.concat([START]).concat(teams.filter(t => t.pos).map(t => t.pos));
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const padL = 50, padR = 90, padT = 80, padB = 80;
+    const s = Math.min((w - padL - padR) / (maxX - minX), (h - padT - padB) / (maxY - minY));
+    return {w, h, s, cx:(minX + maxX) / 2, cy:(minY + maxY) / 2, ox: padL + (w - padL - padR) / 2, oy: padT + (h - padT - padB) / 2, rot: 0};
+  }
+  // Marker auseinanderschieben, damit sich nichts verdeckt; eine Leitlinie zeigt die echte Position
+  function relax(nodes, obst){
+    for (let it = 0; it < 120; it++){
+      nodes.forEach(n => { n.x += (n.ax - n.x) * 0.03; n.y += (n.ay - n.y) * 0.03; });
+      for (let i = 0; i < nodes.length; i++){
+        const a = nodes[i];
+        for (let j = i + 1; j < nodes.length; j++){
+          const b = nodes[j]; let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+          const min = a.r + b.r + 4; if (d >= min) continue;
+          if (d < 0.01){ dx = Math.cos(i + j); dy = Math.sin(i + j); d = 1; }
+          const push = (min - d) / 2; a.x -= dx / d * push; a.y -= dy / d * push; b.x += dx / d * push; b.y += dy / d * push;
+        }
+        obst.forEach(o => { const dx = a.x - o.x, dy = a.y - o.y, d = Math.hypot(dx, dy) || 0.01; const min = a.r + o.r + 3;
+          if (d < min){ a.x += dx / d * (min - d); a.y += dy / d * (min - d); } });
+      }
+    }
+  }
+  function renderMap(){
+    view = fitView();
+    const svg = $("#amap"); svg.setAttribute("viewBox", `0 0 ${view.w} ${view.h}`);
+    const {svg: base, P} = basemap(view, TH_NIGHT);
+    let g = base;
+    const pl = pts => pts.map((p, i) => { const [x, y] = P(p); return (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1); }).join("");
+    g += `<path d="${pl([START].concat(STA))}" fill="none" stroke="#5C6E8E" stroke-width="1.5" stroke-dasharray="3 6"/>`;
+    const sel = st.sel && byName(st.sel);
+    if (sel && sel.pos){
+      const sp = spur(sel);
+      g += `<path d="${pl(sp)}" fill="none" stroke="#070B12" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" opacity=".7"/>`;
+      g += `<path d="${pl(sp)}" fill="none" stroke="#C6F432" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
+    }
+    const obst = [];
+    { const [x, y] = P(START); obst.push({x, y, r:12}, {x:x + 26, y, r:10});
+      g += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><path d="M-7 8 L0 -9 L7 8Z" fill="#E8EEF6"/><text x="12" y="5" fill="#B3BFD0" font-size="12" font-weight="600" stroke="#0E1520" stroke-width="4" paint-order="stroke">Start</text></g>`; }
+    STA.forEach(s => { const [x, y] = P(s), half = s.name.length * 3.3;
+      obst.push({x, y, r:15});
+      for (let k = -half; k <= half; k += 18) obst.push({x: x + k, y: y + 26, r: 9});
+      g += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><circle r="${Math.max(6, 60 * view.s).toFixed(1)}" fill="rgba(198,244,50,.08)" stroke="rgba(198,244,50,.35)" stroke-dasharray="3 3"/>
+        <rect x="-12" y="-12" width="24" height="24" rx="3" fill="#0D1420" stroke="#E8EEF6" stroke-width="2"/>
+        <text y="5" text-anchor="middle" font-family="ui-monospace,Consolas,monospace" font-size="14" font-weight="800" fill="#E8EEF6">${s.nr}</text>
+        <text x="0" y="30" text-anchor="middle" fill="#B3BFD0" font-size="12" font-weight="600" stroke="#0E1520" stroke-width="4" paint-order="stroke">${esc(s.name)}</text></g>`; });
+    const nodes = teams.filter(t => t.pos).map(t => { const [x, y] = P(t.pos); return {t, x, y, ax:x, ay:y, r: problem(t) ? 21 : 17}; });
+    relax(nodes, obst);
+    nodes.sort((a, b) => (a.t.name === st.sel) - (b.t.name === st.sel) || (!!problem(a.t)) - (!!problem(b.t)));
+    nodes.forEach(n => { if (Math.hypot(n.x - n.ax, n.y - n.ay) > 10)
+      g += `<line x1="${n.ax.toFixed(1)}" y1="${n.ay.toFixed(1)}" x2="${n.x.toFixed(1)}" y2="${n.y.toFixed(1)}" stroke="#8593AA" stroke-width="1"/><circle cx="${n.ax.toFixed(1)}" cy="${n.ay.toFixed(1)}" r="2.5" fill="#B3BFD0"/>`; });
+    nodes.forEach(n => {
+      const t = n.t, p = problem(t), isSel = t.name === st.sel, stale = t.gps != null && gpsMin(t) >= 5;
+      let ring = "";
+      if (p) ring = `<circle r="21" fill="none" stroke="${p.sev === "err" ? "#FF5D5D" : "#FFB224"}" stroke-width="2.5"/>` + (p.sev === "err" && !RM ? `<circle r="21" fill="none" stroke="#FF5D5D" stroke-width="2"><animate attributeName="r" values="21;32" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values=".9;0" dur="1.6s" repeatCount="indefinite"/></circle>` : "");
+      if (isSel) ring += `<circle r="25" fill="none" stroke="#C6F432" stroke-width="3"/>`;
+      const label = isSel ? t.name : p ? t.name + " · " + (p.sev === "warn" ? t.fehlversuche + " Fehlv." : stale ? gpsTxt(t) + " alt" : "") : "";
+      const lw = label.length * 7.4 + 18;
+      const tag = label ? `<g transform="translate(0 ${-37})"><rect x="${-lw / 2}" y="-12" width="${lw}" height="22" rx="3" fill="${isSel ? "#C6F432" : p.sev === "err" ? "#3A1218" : "#33260A"}" stroke="${isSel ? "none" : p.sev === "err" ? "#FF5D5D" : "#FFB224"}"/>
+        <text y="4" text-anchor="middle" font-size="12.5" font-weight="700" fill="${isSel ? "#0B1220" : p.sev === "err" ? "#FFC4C4" : "#FFB224"}">${esc(label)}</text></g>` : "";
+      g += `<g class="mk" data-team="${esc(t.name)}" transform="translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})" role="button" tabindex="0" aria-label="Team ${esc(t.name)}">
+        <circle r="24" fill="transparent"/>${ring}
+        <circle r="15" fill="${t.farbe}" stroke="#E8EEF6" stroke-width="2" ${stale ? 'stroke-dasharray="4 3" opacity=".75"' : ""}/>
+        <text y="6" text-anchor="middle" font-size="16">${t.tier}</text>${tag}</g>`;
+    });
+    svg.innerHTML = g;
+    const m200 = 200 * view.s;
+    $("#scale").innerHTML = `<svg width="${m200.toFixed(0)}" height="10"><path d="M1 2v6h${(m200 - 2).toFixed(0)}V2" fill="none" stroke="#B3BFD0" stroke-width="1.5"/></svg><span class="mono nw">200 m</span>`;
+    const ohne = teams.filter(t => !t.pos);
+    $("#ovtl").innerHTML = `<span class="pill"><i></i><span class="nw">Live · alle 10 s</span> · <span class="nw">${teams.length - ohne.length} von ${teams.length} mit Position</span></span>` +
+      ohne.map(t => `<button class="pill err" data-team="${esc(t.name)}">Ohne Position: ${t.tier} ${esc(t.name)}</button>`).join("");
+  }
+
+  function evRow(e, i){
+    const t = byName(e.team), p = t && problem(t);
+    let act = "";
+    if ((e.art === "err" || e.art === "warn") && p && st.running){
+      act = `<div class="ev-act"><button class="btn" data-act="call" data-team="${esc(t.name)}">${I.phone}Anrufen</button>` +
+        (t.ort === "unterwegs" ? `<button class="btn btn-act" data-act="frei" data-team="${esc(t.name)}">Freischalten</button>` : t.ort === "station" ? `<button class="btn btn-act" data-act="wert" data-team="${esc(t.name)}">Rätsel werten</button>` : "") + `</div>`;
+    }
+    return `<li class="ev ${e.art || ""} ${e.mine ? "mine" : ""} ${e.neu ? "new" : ""}" data-team="${esc(e.team)}"><time>${esc(e.zeit)}</time>
+      <div class="tx"><b>${t ? t.tier + " " : ""}${esc(e.team)}</b> <span>${esc(e.text)}</span>${e.mine ? `<div class="src">durch die Spielleitung</div>` : ""}${act}</div></li>`;
+  }
+  function renderTicker(){
+    const list = evs.filter(e => st.filter === "alle" || e.art === "err" || e.art === "warn");
+    $("#evs").innerHTML = list.length ? list.map(evRow).join("") : `<li class="ev"><time></time><div class="tx">Keine offenen Probleme.</div></li>`;
+    evs.forEach(e => e.neu = false);
+  }
+  function setFilter(f){ st.filter = f; document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === f)); renderTicker(); }
+
+  function renderAll(){ renderStats(); renderTeams(); renderMap(); renderTicker(); }
+  function select(n){
+    st.sel = st.sel === n ? null : n; renderTeams(); renderMap();
+    const r = st.sel && document.querySelector(`.tdetail[data-detail="${st.sel}"]`); if (r) r.scrollIntoView({block:"nearest"});
+  }
+  const clock = () => { st.nowMin++; return "00:" + String(st.nowMin).padStart(2, "0"); };
+
+  // Zustand vollständig zurücksetzen, auch Felder, die erst nach dem Kopieren dazukamen (frei, platz, zeit)
+  const zurueck = (t, prev) => { Object.keys(t).forEach(k => { if (!(k in prev)) delete t[k]; }); Object.assign(t, prev); };
+  function doAct(act, t){
+    if (act === "call") return mock("Anruf bei " + t.leitung);
+    if (act === "lead") return toast(`Leitung wechseln für ${t.name}: im Mockup nicht ausgebaut`);
+    if (act === "link") return toast(`Mitlese-Link kopiert: stadtjagd.app/mit/${t.code}`);
+    if (act === "frei") return ask({titel:`Station ${t.nr} für ${t.name} freischalten?`,
+      text:`Das ersetzt den GPS-Check-in. ${t.name} sieht sofort das Rätsel von Station ${t.nr} (${stOf(t.nr).name}).`, ok:"Freischalten",
+      onOk: () => { const prev = Object.assign({}, t); t.ort = "station"; t.frei = true; t.seit = "0 min";
+        const ev = {zeit: clock(), team: t.name, text:`Station ${t.nr} freigeschaltet`, art:"ok", mine:true, neu:true}; evs.unshift(ev); renderAll();
+        toast(`Station ${t.nr} für ${t.name} freigeschaltet`, "Rückgängig", () => { zurueck(t, prev); evs.splice(evs.indexOf(ev), 1); renderAll(); toast("Rückgängig gemacht"); }); }});
+    if (act === "wert") return ask({titel:`Rätsel ${t.nr} für ${t.name} werten?`,
+      text:`${t.name} bekommt die Ziffer von Station ${t.nr} sofort, als hätten sie richtig geantwortet.${t.fehlversuche ? ` Bisher ${t.fehlversuche} Fehlversuche.` : ""}`, ok:"Als gelöst werten",
+      onOk: () => { const prev = Object.assign({}, t); const zt = clock(); t.geloest++; if (t.fehlversuche >= 2) t.problem = null; t.fehlversuche = 0; t.seit = "0 min";
+        if (t.nr >= 5){ t.platz = teams.filter(x => x.ort === "ziel").length + 1; t.zeit = zt; t.ort = "ziel"; } else { t.ort = "unterwegs"; t.nr++; }
+        const ev = {zeit: zt, team: t.name, text:`Rätsel an Station ${prev.nr} gewertet`, art:"ok", mine:true, neu:true}; evs.unshift(ev); renderAll();
+        toast(`Rätsel ${prev.nr} für ${t.name} gewertet`, "Rückgängig", () => { zurueck(t, prev); evs.splice(evs.indexOf(ev), 1); renderAll(); toast("Rückgängig gemacht"); }); }});
+  }
+
+  // Ereignisse
+  document.querySelectorAll("[data-mock]").forEach(b => b.onclick = () => mock(b.dataset.mock));
+  $("#teams").addEventListener("click", e => { const a = e.target.closest("[data-act]"); if (a && st.sel){ doAct(a.dataset.act, byName(st.sel)); return; } const b = e.target.closest(".trow"); if (b) select(b.dataset.team); });
+  $("#amap").addEventListener("click", e => { const g = e.target.closest("[data-team]"); if (g) select(g.dataset.team); });
+  $("#amap").addEventListener("keydown", e => { const g = e.target.closest("[data-team]"); if (g && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); select(g.dataset.team); } });
+  $("#ovtl").addEventListener("click", e => { const b = e.target.closest("[data-team]"); if (b) select(b.dataset.team); });
+  $("#evs").addEventListener("click", e => {
+    const b = e.target.closest("[data-act]"); if (b){ e.stopPropagation(); return doAct(b.dataset.act, byName(b.dataset.team)); }
+    const li = e.target.closest("[data-team]"); if (li){ st.sel = null; select(li.dataset.team); }
+  });
+  document.querySelectorAll(".seg button").forEach(b => b.onclick = () => setFilter(b.dataset.f));
+  $("#end").onclick = () => {
+    if (!st.running) return toast("Das Spiel ist schon beendet");
+    ask({titel:"Spiel jetzt beenden?", text:`Alle ${teams.length} Teams sehen sofort das Ende, Eingaben sind danach gesperrt. Das lässt sich nicht rückgängig machen.`,
+      ok:"Spiel beenden", okClass:"btn-danger-fill", onOk: () => { st.running = false; evs.unshift({zeit: clock(), team:"Spielleitung", text:"Spiel beendet", art:"warn", mine:true, neu:true}); renderAll(); toast("Spiel beendet. Standortdaten bleiben bis zum Löschen gespeichert."); }});
+  };
+  renderAll();
+  if (window.ResizeObserver) new ResizeObserver(() => renderMap()).observe($("#mapwrap"));
+  else addEventListener("resize", renderMap);
+}
+
+if (ANSICHT === "admin") admin(); else handy();
+})();
+</script>
+</body>
+</html>

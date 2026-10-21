@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stadtjagd Signal</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+/* Variante "Signal": Beschilderung statt App. Schwarz auf Signalgelb fürs Handy
+   (helle Fläche überstrahlt Spiegelungen in der Sonne, Kontrast ~14:1),
+   nüchternes Weiß mit Signalfarben nur für Ausnahmen bei der Spielleitung. */
+:root {
+  --gelb: #FFD60A;
+  --gelb-hell: #FFF4B8;
+  --schwarz: #0B0B0B;
+  --rot: #C8102E;
+  --rot-hell: #FBE3E6;
+  --weiss: #FFFFFF;
+  --grau: #595959;      /* 7:1 auf Weiß */
+  --grau-2: #6B6B6B;    /* 5,3:1 auf Weiß */
+  --linie: #DADAD3;
+  --papier: #EFEFEA;
+  --ease: cubic-bezier(.32,.72,.4,1);
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font-family: 'Barlow', system-ui, sans-serif; color: var(--schwarz); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+button:focus-visible, input:focus-visible, select:focus-visible, tr:focus-visible { outline: 4px solid var(--schwarz); outline-offset: 2px; }
+.nw { white-space: nowrap; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+[hidden] { display: none !important; }
+.handy .mono, dialog .mono { font-family: 'Archivo', sans-serif; font-weight: 700; font-stretch: 85%; }
+
+/* ================= HANDY ================= */
+body.m-handy { background: var(--gelb); }
+.handy { height: 100vh; height: 100dvh; max-width: 520px; margin: 0 auto; display: grid; grid-template-rows: auto 1fr auto; background: var(--gelb); position: relative; overflow: hidden; }
+
+.kopf { background: var(--schwarz); color: var(--gelb); height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; }
+.kopf .tn { font: 700 22px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .04em; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.kopf .tn .em { font-size: 24px; }
+.mini { display: flex; gap: 4px; margin-left: auto; }
+.mini span { width: 21px; height: 27px; display: grid; place-items: center; border: 2px solid rgba(255,214,10,.5); font: 800 16px/1 'Archivo', sans-serif; }
+.mini span.voll { background: var(--gelb); border-color: var(--gelb); color: var(--schwarz); }
+.mini span.neu { animation: mini-auf .5s var(--ease); }
+@keyframes mini-auf { from { transform: scale(1.6); } }
+.kopf .rest { font: 700 19px/1 'Archivo', sans-serif; font-stretch: 85%; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 12px; border-left: 2px solid rgba(255,214,10,.5); height: 28px; display: flex; align-items: center; }
+
+.flaeche { position: relative; min-height: 0; }
+.panel { position: absolute; inset: 0; overflow-y: auto; padding: 14px 20px 16px; display: flex; flex-direction: column; }
+.label { font: 700 14px/1.1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+.stname { font: 700 32px/1.05 'Barlow Semi Condensed', sans-serif; margin: 2px 0 0; }
+
+/* Weg */
+.pfeilfeld { position: relative; display: grid; place-items: center; margin: 6px 0 0; }
+.pfeil { width: 210px; height: 210px; display: block; }
+.pfeil .dreh { transition: transform .6s var(--ease); transform-origin: 100px 100px; }
+.gps { position: absolute; left: 0; bottom: 4px; font: 700 15px/1.15 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .05em; }
+.gps b { display: block; font: 800 20px/1.2 'Archivo', sans-serif; font-stretch: 85%; text-transform: none; letter-spacing: 0; }
+.einmessen { position: absolute; right: 0; bottom: 0; min-height: 48px; min-width: 48px; padding: 4px 10px; border: 3px solid var(--schwarz); background: transparent; font: 700 14px/1.05 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .04em; text-align: center; }
+.meter { display: flex; align-items: baseline; justify-content: center; gap: 6px; margin: 2px 0 0; font-family: 'Archivo', sans-serif; font-weight: 800; font-stretch: 78%; font-variant-numeric: tabular-nums; white-space: nowrap; line-height: .82; }
+.meter .z { font-size: 172px; letter-spacing: -.02em; }
+.meter .e { font-size: 62px; }
+.zustand { text-align: center; font: 600 20px/1.25 'Barlow', sans-serif; margin: 8px 0 14px; }
+.hinweis { border-left: 6px solid var(--schwarz); padding: 1px 0 1px 12px; margin: 0 0 14px; }
+.hinweis p { margin: 3px 0 0; font: 500 18px/1.35 'Barlow', sans-serif; }
+
+.haupt { width: 100%; min-height: 68px; margin-top: auto; border: 4px solid var(--schwarz); background: var(--schwarz); color: var(--gelb); font: 700 23px/1.1 'Barlow Semi Condensed', sans-serif; padding: 8px 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.haupt.warte { background: transparent; color: var(--schwarz); }
+.haupt:active { transform: translateY(1px); }
+.haupt[disabled] { cursor: not-allowed; background: transparent; color: var(--schwarz); border-style: dashed; }
+
+/* Rätsel */
+.r-kopf { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.chip { background: var(--schwarz); color: var(--gelb); font: 700 14px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .06em; padding: 7px 9px; white-space: nowrap; }
+.frage { font: 600 21px/1.32 'Barlow', sans-serif; margin: 10px 0 12px; }
+.antwort { width: 100%; height: 80px; border: 4px solid var(--schwarz); border-radius: 0; background: var(--weiss); color: var(--schwarz); font: 800 48px/1 'Archivo', sans-serif; font-stretch: 85%; text-align: center; letter-spacing: .12em; font-variant-numeric: tabular-nums; padding: 0 12px; }
+.antwort::placeholder { color: #8A8A8A; font: 600 22px 'Barlow', sans-serif; letter-spacing: 0; }
+.antwort.wackel { animation: wackel .3s var(--ease); border-color: var(--rot); }
+@keyframes wackel { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+.r-status { min-height: 46px; margin: 8px 0; display: flex; align-items: center; font: 600 16px/1.25 'Barlow', sans-serif; padding: 0 2px; }
+.r-status.fehler { background: var(--rot); color: var(--weiss); padding: 6px 12px; }
+.r-status.pause { background: var(--schwarz); color: var(--gelb); padding: 6px 12px; }
+.tasten { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+.tasten button { min-height: 52px; border: 3px solid var(--schwarz); background: transparent; font: 800 26px/1 'Archivo', sans-serif; font-variant-numeric: tabular-nums; }
+.tasten button.klein { font: 700 16px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .05em; }
+.tasten button:active { background: var(--schwarz); color: var(--gelb); }
+.geloest { background: var(--schwarz); color: var(--gelb); padding: 18px; margin-top: 4px; }
+.geloest .gz { font: 800 96px/.9 'Archivo', sans-serif; font-stretch: 80%; }
+
+/* Ziffern / Team / Hilfe */
+.panel h2 { font: 700 28px/1.05 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .03em; margin: 0 0 14px; }
+.ziffern { display: flex; gap: 6px; align-items: flex-start; }
+.ziffern .zf { flex: 1 1 0; min-width: 0; aspect-ratio: 3 / 4; display: grid; place-items: center; border: 4px solid var(--schwarz); font: 800 44px/1 'Archivo', sans-serif; font-stretch: 85%; position: relative; }
+.ziffern .zf.voll { background: var(--schwarz); color: var(--gelb); }
+.ziffern .zf.leer { border-style: dashed; color: transparent; }
+.ziffern .zf small { position: absolute; top: 4px; left: 6px; font: 700 12px/1 'Barlow Semi Condensed', sans-serif; color: var(--schwarz); }
+.ziffern .zf.voll small { color: var(--gelb); }
+.ziffern .schluss { margin-left: 12px; outline: 3px solid var(--schwarz); outline-offset: 3px; }
+.treffer .ziffern .schluss { outline-color: var(--gelb); }
+.text { font: 500 17px/1.4 'Barlow', sans-serif; margin: 12px 0; }
+.liste { list-style: none; margin: 0; padding: 0; border-top: 3px solid var(--schwarz); }
+.liste li { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; border-bottom: 2px solid var(--schwarz); font: 600 18px/1.2 'Barlow', sans-serif; padding: 4px 0; }
+.liste li .mono { font-size: 16px; }
+.liste li.offen { opacity: .62; }
+.zweit { min-height: 56px; border: 3px solid var(--schwarz); background: transparent; font: 700 19px/1.1 'Barlow Semi Condensed', sans-serif; padding: 6px 14px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.zweit.voll { background: var(--schwarz); color: var(--gelb); }
+.reihe { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.block { margin: 0 0 22px; }
+.block > .label { margin-bottom: 8px; display: block; }
+.namen { columns: 2; column-gap: 14px; font: 500 17px/1.6 'Barlow', sans-serif; margin: 0; padding: 0; list-style: none; }
+.namen li { break-inside: avoid; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.namen li b { font-weight: 700; }
+.gross-hilfe { display: grid; gap: 10px; }
+.gross-hilfe .zweit { min-height: 76px; font-size: 24px; justify-content: flex-start; padding: 0 18px; gap: 14px; }
+.gross-hilfe svg { width: 30px; height: 30px; flex: none; }
+.leise { background: none; border: 0; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; font: 600 17px 'Barlow', sans-serif; min-height: 48px; padding: 0 4px; align-self: flex-start; }
+
+/* Tabs */
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: var(--schwarz); padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); }
+.tab { min-height: 62px; border: 0; background: transparent; color: var(--gelb); font: 700 15px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .06em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+.tab svg { width: 26px; height: 26px; }
+.tab[aria-selected="true"] { background: var(--gelb); color: var(--schwarz); }
+
+/* Treffer (richtige Antwort) */
+.treffer { position: absolute; inset: 0; z-index: 30; background: var(--schwarz); color: var(--gelb); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px; text-align: center; }
+.treffer .label { font-size: 20px; letter-spacing: .14em; }
+.klappe { width: 190px; height: 250px; margin: 18px 0 14px; background: #1E1E1E; border: 4px solid var(--gelb); position: relative; display: grid; place-items: center; perspective: 600px; overflow: hidden; }
+.klappe::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; background: var(--schwarz); }
+.klappe span { font: 800 210px/1 'Archivo', sans-serif; font-stretch: 80%; display: block; transform-origin: 50% 50%; }
+.klappe span.klapp { animation: klapp .085s linear; }
+@keyframes klapp { from { transform: rotateX(80deg); opacity: .4; } }
+.treffer p { font: 600 20px/1.3 'Barlow', sans-serif; margin: 0 0 18px; color: var(--weiss); }
+.treffer .ziffern { width: 100%; max-width: 330px; margin-bottom: 24px; }
+.treffer .ziffern .zf { border-color: var(--gelb); font-size: 34px; }
+.treffer .ziffern .zf.voll { background: var(--gelb); color: var(--schwarz); }
+.treffer .ziffern .zf.voll small { color: var(--schwarz); }
+.treffer .ziffern .zf small { color: var(--gelb); }
+.treffer .haupt { background: var(--gelb); color: var(--schwarz); border-color: var(--gelb); margin-top: 0; }
+.treffer .rest-aus { opacity: 0; transform: translateY(-6px); transition: opacity .3s var(--ease), transform .3s var(--ease); }
+.treffer.fertig .rest-aus { opacity: 1; transform: none; }
+
+/* ================= Dialog + Toast (beide) ================= */
+dialog { border: 4px solid var(--schwarz); border-radius: 0; padding: 22px; width: min(92vw, 440px); background: var(--weiss); color: var(--schwarz); box-shadow: 8px 8px 0 var(--schwarz); }
+dialog::backdrop { background: rgba(11,11,11,.55); }
+dialog[open] { animation: dlg-auf .16s var(--ease); }
+@keyframes dlg-auf { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
+dialog h3 { font: 700 26px/1.1 'Barlow Semi Condensed', sans-serif; margin: 0 0 10px; }
+dialog p { font: 500 17px/1.4 'Barlow', sans-serif; margin: 0 0 16px; }
+dialog .knoepfe { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+dialog .zweit { min-height: 56px; }
+dialog .zweit.voll { background: var(--schwarz); color: var(--weiss); }
+dialog .zweit.gefahr { background: var(--rot); border-color: var(--rot); color: var(--weiss); }
+.wahl { display: grid; gap: 6px; max-height: 50vh; overflow: auto; }
+.wahl label { display: flex; align-items: center; gap: 12px; min-height: 50px; border: 2px solid var(--schwarz); padding: 0 12px; font: 600 18px 'Barlow', sans-serif; cursor: pointer; }
+.wahl input { width: 22px; height: 22px; accent-color: var(--schwarz); }
+.wahl label:has(input:checked) { background: var(--gelb); }
+
+.toast { position: fixed; z-index: 50; left: 20px; right: 20px; top: 64px; /* oben, damit die Hauptaktion frei bleibt */ background: var(--schwarz); color: var(--weiss); border-left: 8px solid var(--gelb); padding: 14px 16px; font: 600 16px/1.35 'Barlow', sans-serif; display: flex; gap: 14px; align-items: center; justify-content: space-between; opacity: 0; transform: translateY(-6px); transition: opacity .16s var(--ease), transform .16s var(--ease); pointer-events: none; }
+.toast.zeigen { opacity: 1; transform: none; pointer-events: auto; }
+.toast button { background: none; border: 0; color: var(--gelb); font: 700 15px 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .06em; min-height: 44px; padding: 0 4px; }
+
+/* ================= SPIELLEITUNG ================= */
+body.m-admin { background: var(--papier); }
+.admin { height: 100vh; display: grid; grid-template-rows: auto auto 1fr; min-width: 0; }
+.a-kopf { background: var(--schwarz); color: var(--weiss); display: flex; align-items: center; gap: 22px; padding: 4px 20px; min-height: 56px; flex-wrap: wrap; }
+.a-marke { display: flex; align-items: center; gap: 10px; font: 700 20px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .06em; color: var(--gelb); white-space: nowrap; }
+.a-marke i { width: 26px; height: 26px; background: var(--gelb); display: grid; place-items: center; }
+.a-marke i svg { width: 18px; height: 18px; }
+.a-status { display: flex; align-items: center; gap: 8px; font: 700 15px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; border: 2px solid var(--weiss); padding: 7px 10px; }
+.a-status::before { content: ""; width: 9px; height: 9px; background: var(--weiss); border-radius: 50%; }
+.kz { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
+.kz small { font: 700 11px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .1em; color: #BDBDBD; }
+.kz b { font: 700 22px/1 var(--mono); }
+.kz.gross b { font-size: 26px; color: var(--gelb); }
+.a-probleme { min-height: 48px; border: 0; background: var(--gelb); color: var(--schwarz); font: 700 17px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .05em; padding: 0 14px; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.a-probleme b { font: 800 22px/1 var(--mono); }
+.a-probleme.null { background: transparent; color: var(--weiss); border: 2px solid #777; }
+.a-ende { margin-left: auto; min-height: 48px; border: 2px solid var(--weiss); background: transparent; color: var(--weiss); font: 600 15px/1 'Barlow', sans-serif; padding: 0 16px; white-space: nowrap; }
+
+.a-nav { display: flex; align-items: center; gap: 2px 4px; flex-wrap: wrap; padding: 0 20px; background: var(--weiss); border-bottom: 2px solid var(--schwarz); }
+.reiter { min-height: 48px; padding: 0 12px; border: 0; background: none; font: 600 16px 'Barlow', sans-serif; color: var(--grau); border-bottom: 4px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+.reiter[aria-current="page"] { color: var(--schwarz); border-bottom-color: var(--schwarz); font-weight: 700; }
+.sortierung { margin-left: auto; display: flex; border: 2px solid var(--schwarz); margin-top: 3px; margin-bottom: 3px; }
+.sortierung button { min-height: 40px; border: 0; background: var(--weiss); padding: 0 12px; font: 600 14px 'Barlow', sans-serif; white-space: nowrap; }
+.sortierung button + button { border-left: 2px solid var(--schwarz); }
+.sortierung button[aria-pressed="true"] { background: var(--schwarz); color: var(--weiss); }
+
+.a-main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px; padding: 12px 20px; min-height: 0; }
+.a-tab { background: var(--weiss); border: 2px solid var(--schwarz); overflow: auto; min-height: 0; }
+table { width: 100%; border-collapse: collapse; }
+th { position: sticky; top: 0; z-index: 1; background: var(--weiss); text-align: left; font: 700 12px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--schwarz); padding: 0 8px; height: 34px; border-bottom: 2px solid var(--schwarz); white-space: nowrap; }
+th.wrap { white-space: normal; line-height: 1.15; max-width: 76px; }
+th.r, td.r { text-align: right; }
+th.c, td.c { text-align: center; }
+td { height: 54px; padding: 0 8px; border-bottom: 1px solid var(--linie); color: var(--grau); font: 500 15px/1.15 'Barlow', sans-serif; white-space: nowrap; }
+tbody tr { cursor: pointer; }
+tbody tr:last-child td { border-bottom: 0; }
+td.c-team { padding-left: 14px; }
+.tz { display: flex; align-items: center; gap: 9px; }
+.tz .em { font-size: 24px; line-height: 1; width: 28px; text-align: center; }
+.tz b { display: block; font: 700 17px/1.1 'Barlow', sans-serif; color: var(--schwarz); }
+.tz small { display: block; font: 500 12px/1.2 var(--mono); color: var(--grau-2); margin-top: 2px; }
+.st { display: flex; align-items: center; gap: 8px; }
+.st .nr { font: 700 22px/1 var(--mono); color: var(--schwarz); min-width: 1.2ch; }
+.st .nm { color: var(--grau); }
+.pips { display: inline-flex; gap: 2px; }
+.pips i { width: 7px; height: 12px; border: 1.5px solid var(--grau-2); }
+.pips i.j { background: var(--schwarz); border-color: var(--schwarz); }
+.zahl { font: 600 17px/1 var(--mono); }
+td.zust-raetsel { color: var(--schwarz); font-weight: 700; }
+td.zust-ziel { color: var(--schwarz); }
+/* Ausnahmen */
+td.w { background: var(--gelb); color: var(--schwarz); font-weight: 800; }
+td.f { background: var(--rot); color: var(--weiss); font-weight: 800; }
+td.w .zahl, td.f .zahl { font-weight: 800; }
+td.w small, td.f small { font: 700 11px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .06em; display: block; margin-top: 3px; }
+tr.s1 td { background-color: var(--gelb-hell); }
+tr.s2 td { background-color: var(--rot-hell); }
+tr.s1 td.w { background: var(--gelb); }
+tr.s2 td.f { background: var(--rot); }
+tr.s1 td:first-child { box-shadow: inset 8px 0 0 var(--gelb), inset 9px 0 0 var(--schwarz); padding-left: 20px; }
+tr.s2 td:first-child { box-shadow: inset 8px 0 0 var(--rot); padding-left: 20px; }
+tr.ziel td { color: var(--grau-2); }
+tr.gewaehlt td { box-shadow: inset 0 3px 0 var(--schwarz), inset 0 -3px 0 var(--schwarz); }
+tr.gewaehlt td:first-child { box-shadow: inset 6px 0 0 var(--schwarz), inset 0 3px 0 var(--schwarz), inset 0 -3px 0 var(--schwarz); }
+tr.gewaehlt td:last-child { box-shadow: inset -3px 0 0 var(--schwarz), inset 0 3px 0 var(--schwarz), inset 0 -3px 0 var(--schwarz); }
+tr.neu td { animation: zeile-neu 1.2s var(--ease); }
+@keyframes zeile-neu { from { background-color: #fff; outline: 0; } 20% { background-color: #E2E2DC; } }
+.akt { min-height: 48px; min-width: 112px; border: 2px solid var(--schwarz); background: var(--weiss); color: var(--schwarz); font: 600 15px/1 'Barlow', sans-serif; padding: 0 10px; white-space: nowrap; }
+.akt:active { background: var(--schwarz); color: var(--weiss); }
+.breit { display: none; }
+
+.a-seite { display: grid; grid-template-rows: minmax(240px, 44%) 1fr; gap: 14px; min-height: 0; }
+.karte { background: var(--weiss); border: 2px solid var(--schwarz); position: relative; min-height: 0; overflow: hidden; }
+.karte svg { width: 100%; height: 100%; display: block; }
+.karte .ohne { position: absolute; left: 0; bottom: 0; background: var(--rot); color: var(--weiss); font: 700 13px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .05em; padding: 7px 10px; border: 0; min-height: 32px; white-space: nowrap; }
+.karte .leg { position: absolute; right: 8px; top: 6px; font: 600 12px 'Barlow', sans-serif; color: var(--grau); background: rgba(255,255,255,.9); padding: 2px 4px; }
+.mk { cursor: pointer; }
+.mk.gedimmt { opacity: .35; }
+.detail { background: var(--weiss); border: 2px solid var(--schwarz); overflow: auto; min-height: 0; padding: 14px 16px; }
+.detail h3 { font: 700 13px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .1em; margin: 0 0 8px; }
+.ev { list-style: none; margin: 0; padding: 0; }
+.ev li { display: grid; grid-template-columns: 50px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--linie); font: 500 15px/1.3 'Barlow', sans-serif; color: var(--grau); }
+.ev li .mono { color: var(--schwarz); font-size: 14px; padding-top: 1px; }
+.ev li b { color: var(--schwarz); }
+.ev li.warn { color: var(--schwarz); }
+.ev li.warn b { background: var(--gelb); padding: 0 3px; }
+.ev li.err { color: var(--schwarz); }
+.ev li.err b { background: var(--rot); color: var(--weiss); padding: 0 3px; }
+.d-kopf { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.d-kopf .em { font-size: 34px; line-height: 1; }
+.d-kopf b { font: 700 26px/1 'Barlow Semi Condensed', sans-serif; display: block; }
+.d-kopf small { font: 500 13px/1.2 var(--mono); color: var(--grau); }
+.d-kopf .zu { margin-left: auto; width: 48px; height: 48px; border: 2px solid var(--schwarz); background: var(--weiss); font: 700 22px/1 'Barlow', sans-serif; }
+.fakten { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 2px solid var(--schwarz); border-left: 1px solid var(--linie); margin-bottom: 12px; }
+.fakten div { padding: 7px 8px; border-right: 1px solid var(--linie); border-bottom: 1px solid var(--linie); min-width: 0; }
+.fakten small { display: block; font: 700 11px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--grau); margin-bottom: 4px; }
+.fakten b { font: 700 18px/1.1 var(--mono); white-space: nowrap; }
+.fakten .w { background: var(--gelb); }
+.fakten .f { background: var(--rot); color: var(--weiss); }
+.fakten .f small, .fakten .w small { color: inherit; }
+.d-haupt { width: 100%; min-height: 52px; border: 2px solid var(--schwarz); background: var(--schwarz); color: var(--weiss); font: 700 18px/1 'Barlow Semi Condensed', sans-serif; letter-spacing: .02em; margin-bottom: 10px; }
+.d-reihe { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 12px; align-items: end; }
+.d-reihe label { font: 700 11px/1 'Barlow Semi Condensed', sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--grau); display: block; }
+.d-reihe select { width: 100%; min-height: 48px; margin-top: 4px; border: 2px solid var(--schwarz); border-radius: 0; background: var(--weiss); font: 600 16px 'Barlow', sans-serif; padding: 0 8px; }
+.d-reihe .akt { min-width: 0; }
+.d-hinw { font: 500 14px/1.35 'Barlow', sans-serif; color: var(--grau); margin: 0 0 10px; }
+
+body.m-admin .toast { left: 20px; right: auto; top: auto; bottom: 20px; max-width: 460px; }
+
+/* PC: mehr Spalten, breitere Seite */
+@media (min-width: 1300px) {
+  .a-main { grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; padding: 14px 24px; }
+  .breit { display: table-cell; }
+  td { height: 56px; }
+}
+/* Tablet hoch: Karte und Detail oben nebeneinander, Tabelle darunter */
+@media (max-width: 999px) {
+  .admin { height: auto; min-height: 100vh; }
+  .a-main { grid-template-columns: 1fr; padding: 12px 16px; }
+  .a-seite { grid-template-rows: none; grid-template-columns: 1.1fr 1fr; order: -1; align-items: stretch; }
+  .karte { min-height: 380px; }
+  .detail { overflow: visible; }
+  .a-tab { overflow: visible; }
+  .a-kopf { gap: 16px; padding: 4px 16px; }
+  .a-nav { padding: 0 16px; }
+  .kz.opt { display: none; }
+  .sortierung { margin-left: 0; margin-bottom: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<dialog id="dlg"></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toast-text"></span><button id="toast-btn" hidden></button></div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+"use strict";
+const SJ = window.SJ;
+const T = SJ.team;
+const ANSICHT_ROH = location.hash.slice(1) || new URLSearchParams(location.search).get("ansicht"); addEventListener("hashchange", () => location.reload());
+const ansicht = ["unterwegs","raetsel","admin"].includes(ANSICHT_ROH) ? ANSICHT_ROH : "unterwegs";
+const app = document.getElementById("app");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- Toast + Dialog (gemeinsam) ---------- */
+let toastZeit;
+function toast(text, aktion, fn) {
+  const el = document.getElementById("toast"), btn = document.getElementById("toast-btn");
+  document.getElementById("toast-text").textContent = text;
+  btn.hidden = !aktion;
+  if (aktion) { btn.textContent = aktion; btn.onclick = () => { el.classList.remove("zeigen"); fn && fn(); }; }
+  el.classList.add("zeigen");
+  clearTimeout(toastZeit);
+  toastZeit = setTimeout(() => el.classList.remove("zeigen"), 4200);
+}
+const dlg = document.getElementById("dlg");
+function frage({ titel, text, ja, nein = "Abbrechen", gefahr = false, inhalt = "" }, onJa) {
+  dlg.innerHTML = `<h3>${titel}</h3>${text ? `<p>${text}</p>` : ""}${inhalt}
+    <div class="knoepfe"><button class="zweit" data-x="nein">${nein}</button><button class="zweit ${gefahr ? "gefahr" : "voll"}" data-x="ja">${ja}</button></div>`;
+  dlg.querySelector('[data-x="nein"]').onclick = () => dlg.close();
+  dlg.querySelector('[data-x="ja"]').onclick = () => { const r = onJa && onJa(dlg); if (r !== false) dlg.close(); };
+  dlg.showModal();
+}
+function info(titel, text) {
+  dlg.innerHTML = `<h3>${titel}</h3><p>${text}</p><div class="knoepfe" style="grid-template-columns:1fr"><button class="zweit voll">Fertig</button></div>`;
+  dlg.querySelector("button").onclick = () => dlg.close();
+  dlg.showModal();
+}
+async function kopieren(text) { try { await navigator.clipboard.writeText(text); } catch (e) { /* Mockup: egal */ } }
+
+/* ---------- Icons ---------- */
+const I = {
+  weg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l7.5 19L12 16.8 4.5 21z"/></svg>',
+  raetsel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><rect x="3" y="3" width="18" height="18"/><path d="M9.2 9.3a2.9 2.9 0 1 1 3.9 2.7c-.7.3-1.1.9-1.1 1.6v.9"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>',
+  ziffern: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><rect x="2.5" y="5" width="8" height="14"/><rect x="13.5" y="5" width="8" height="14" stroke-dasharray="3 2"/></svg>',
+  team: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.6 6.5-5.6s5.9 2 6.5 5.6"/><path d="M15.5 4.8a3.3 3.3 0 0 1 0 6.4M18 14.6c2 .7 3.2 2.5 3.5 5.4"/></svg>',
+  hilfe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="4"/><path d="M5.3 5.3l3.9 3.9M18.7 5.3l-3.9 3.9M5.3 18.7l3.9-3.9M18.7 18.7l-3.9-3.9"/></svg>',
+  wa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M3.5 20.5l1.3-4.2A8.6 8.6 0 1 1 8 19.4z"/><path d="M9 8.5c0 3.5 2.6 6.4 6.5 6.6l1-1.6-2-1-1 .8c-1.1-.5-2-1.4-2.5-2.5l.8-1-1-2z" fill="currentColor" stroke-width="1"/></svg>',
+  tel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/></svg>',
+  link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" width="22" height="22"><path d="M10 14a4 4 0 0 0 5.7 0l3-3A4 4 0 0 0 13 5.3l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"/></svg>',
+  marke: '<svg viewBox="0 0 24 24" fill="#0B0B0B"><path d="M12 2l7.5 19L12 16.8 4.5 21z"/></svg>',
+};
+
+/* =====================================================================
+   HANDY
+   ===================================================================== */
+function handy() {
+  document.body.className = "m-handy";
+  const st = T.station;
+  const S = {
+    phase: ansicht === "raetsel" ? "raetsel" : "weg", // weg | nah | raetsel | geloest
+    tab: "haupt",
+    meter: T.entfernung,
+    fehl: T.fehlversuche,
+    ziffern: T.ziffern.slice(),
+    pauseBis: 0,
+  };
+  const gefunden = () => S.ziffern.filter(z => z !== null).length;
+
+  app.innerHTML = `
+  <div class="handy">
+    <header class="kopf">
+      <span class="tn"><span class="em">${T.tier}</span>${esc(T.name)}</span>
+      <span class="mini" id="mini" aria-label="Eure Ziffern"></span>
+      <span class="rest" title="Restzeit">${esc(SJ.spiel.rest)}</span>
+    </header>
+    <main class="flaeche">
+      <section class="panel" id="p-haupt"></section>
+      <section class="panel" id="p-ziffern" hidden></section>
+      <section class="panel" id="p-team" hidden></section>
+      <section class="panel" id="p-hilfe" hidden></section>
+      <div class="treffer" id="treffer" hidden></div>
+    </main>
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+  </div>`;
+
+  function mini(neuIdx) {
+    document.getElementById("mini").innerHTML = S.ziffern.map((z, i) =>
+      `<span class="${z !== null ? "voll" : ""} ${i === neuIdx ? "neu" : ""}">${z !== null ? z : ""}</span>`).join("");
+  }
+
+  function tabs() {
+    const erster = (S.phase === "raetsel" || S.phase === "geloest") ? ["haupt", "Rätsel", I.raetsel] : ["haupt", "Weg", I.weg];
+    const liste = [erster, ["ziffern", "Ziffern", I.ziffern], ["team", "Team", I.team], ["hilfe", "Hilfe", I.hilfe]];
+    const nav = document.getElementById("tabs");
+    nav.innerHTML = liste.map(([id, txt, ic]) =>
+      `<button class="tab" role="tab" data-tab="${id}" aria-selected="${S.tab === id}">${ic}<span>${txt}</span></button>`).join("");
+    nav.querySelectorAll(".tab").forEach(b => b.onclick = () => { S.tab = b.dataset.tab; zeigeTab(); });
+  }
+  function zeigeTab() {
+    ["haupt", "ziffern", "team", "hilfe"].forEach(id => document.getElementById("p-" + id).hidden = id !== S.tab);
+    document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === S.tab));
+    document.getElementById("p-" + S.tab).scrollTop = 0;
+  }
+
+  /* --- Weg --- */
+  function weg() {
+    const p = document.getElementById("p-haupt");
+    const nah = S.phase === "nah";
+    const rest = Math.max(0, S.meter - T.checkinAb);
+    p.innerHTML = `
+      <span class="label">Station ${st.nr} von ${SJ.spiel.stationen}</span>
+      <h1 class="stname">${esc(st.name)}</h1>
+      <div class="pfeilfeld">
+        <svg class="pfeil" viewBox="0 0 200 200" role="img" aria-label="Richtung zur Station">
+          <circle cx="100" cy="100" r="95" fill="none" stroke="#0B0B0B" stroke-width="5"/>
+          <path d="M90 0h20l-10 14z" fill="#0B0B0B"/>
+          <g class="dreh" style="transform:rotate(${T.richtungGrad}deg)">
+            <polygon points="100,22 158,92 122,92 122,172 78,172 78,92 42,92" fill="#0B0B0B"/>
+          </g>
+        </svg>
+        <span class="gps">GPS<b>±${T.gpsGenau} m</b></span>
+        <button class="einmessen" id="einmessen">Kompass<br>einmessen</button>
+      </div>
+      <div class="meter" aria-label="${S.meter} Meter"><span class="z">${S.meter}</span><span class="e">m</span></div>
+      <p class="zustand">${nah ? "Ihr seid da. Jetzt einchecken." : `Folgt dem Pfeil. Einchecken ab <span class="nw">${T.checkinAb} m</span>.`}</p>
+      <div class="hinweis"><span class="label">Hinweis</span><p>${esc(st.hinweis)}</p></div>
+      ${nah
+        ? `<button class="haupt" id="aktion">Einchecken</button>`
+        : `<button class="haupt warte" id="aktion"><span>Noch <span class="nw">${rest} m</span> bis zum Einchecken</span></button>`}`;
+    document.getElementById("einmessen").onclick = einmessen;
+    document.getElementById("aktion").onclick = () => {
+      if (!nah) {
+        S.phase = "nah"; S.meter = 42; weg();
+        toast("Im Mockup springen wir ans Ziel: 42 m.");
+      } else {
+        S.phase = "raetsel"; S.tab = "haupt";
+        history.replaceState(null, "", "?ansicht=raetsel");
+        haupt(); tabs(); zeigeTab();
+        toast(`Eingecheckt an Station ${st.nr}.`);
+      }
+    };
+  }
+
+  /* --- Rätsel --- */
+  function raetsel() {
+    const p = document.getElementById("p-haupt");
+    if (S.phase === "geloest") {
+      p.innerHTML = `
+        <div class="r-kopf"><span class="label">Station ${st.nr} · ${esc(st.name)}</span><span class="chip">Gelöst</span></div>
+        <div class="geloest"><span class="label">Eure Ziffer</span><div class="gz">${st.ziffer}</div></div>
+        <p class="text">Weiter zu Station ${st.nr + 1}: im Mockup nicht ausgebaut.</p>`;
+      return;
+    }
+    p.innerHTML = `
+      <div class="r-kopf"><span class="label">Station ${st.nr} · ${esc(st.name)}</span><span class="chip">Eingecheckt</span></div>
+      <p class="frage">${esc(st.raetsel)}</p>
+      <input class="antwort" id="antwort" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="6" placeholder="Eure Zahl" aria-label="Eure Antwort">
+      <div class="r-status" id="rstatus" aria-live="polite"></div>
+      <div class="tasten" id="tasten">
+        ${[1,2,3,4,5,6,7,8,9].map(n => `<button data-k="${n}">${n}</button>`).join("")}
+        <button class="klein" data-k="leer">Leeren</button><button data-k="0">0</button><button class="klein" data-k="zur" aria-label="Letzte Ziffer löschen">Zurück</button>
+      </div>
+      <button class="haupt" id="pruefen">Antwort prüfen</button>`;
+    const inp = document.getElementById("antwort");
+    inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, ""); });
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") pruefen(); });
+    document.getElementById("tasten").onclick = e => {
+      const k = e.target.closest("button"); if (!k || S.pauseBis) return;
+      const v = k.dataset.k;
+      if (v === "leer") inp.value = ""; else if (v === "zur") inp.value = inp.value.slice(0, -1);
+      else if (inp.value.length < 6) inp.value += v;
+    };
+    document.getElementById("pruefen").onclick = pruefen;
+    status();
+  }
+  function status(fehler) {
+    const s = document.getElementById("rstatus"); if (!s) return;
+    s.className = "r-status";
+    if (S.pauseBis) {
+      const sek = Math.max(0, Math.ceil((S.pauseBis - Date.now()) / 1000));
+      s.classList.add("pause");
+      s.innerHTML = `Pause. Weiter in <span class="mono">&nbsp;${Math.floor(sek / 60)}:${String(sek % 60).padStart(2, "0")}</span>`;
+    } else if (fehler) {
+      s.classList.add("fehler");
+      s.textContent = `Falsch. Fehlversuch ${S.fehl} von ${T.maxFehlversuche}, danach ${T.pauseMin} Minuten Pause.`;
+    } else {
+      s.textContent = `Ihr habt ${T.maxFehlversuche} Versuche. Danach ${T.pauseMin} Minuten Pause.`;
+    }
+  }
+  function pruefen() {
+    if (S.pauseBis) return;
+    const inp = document.getElementById("antwort");
+    const v = inp.value.trim();
+    if (!v) { inp.focus(); const s = document.getElementById("rstatus"); s.className = "r-status"; s.textContent = "Erst eine Zahl eingeben."; return; }
+    if (v === String(st.loesung)) return treffer();
+    S.fehl++;
+    inp.classList.remove("wackel"); void inp.offsetWidth; inp.classList.add("wackel");
+    inp.value = "";
+    if (S.fehl >= T.maxFehlversuche) {
+      S.pauseBis = Date.now() + T.pauseMin * 60000;
+      const btn = document.getElementById("pruefen"); btn.disabled = true; btn.textContent = "Pause läuft";
+      const t = setInterval(() => {
+        if (Date.now() >= S.pauseBis) { clearInterval(t); S.pauseBis = 0; S.fehl = 0; btn.disabled = false; btn.textContent = "Antwort prüfen"; status(); }
+        else status();
+      }, 1000);
+      status();
+    } else status(true);
+  }
+  function treffer() {
+    const idx = S.ziffern.findIndex(z => z === null);
+    const tr = document.getElementById("treffer");
+    const nachher = S.ziffern.slice(); nachher[idx] = st.ziffer;
+    tr.innerHTML = `
+      <span class="label">Richtig</span>
+      <div class="klappe" aria-label="Eure Ziffer ${st.ziffer}"><span id="flap">0</span></div>
+      <div class="rest-aus" style="width:100%;display:flex;flex-direction:column;align-items:center">
+        <p>Eure Ziffer für Station ${st.nr}. Sie ist gespeichert.</p>
+        ${zifferReihe(nachher, idx)}
+        <button class="haupt" id="weiter">Weiter</button>
+      </div>`;
+    tr.hidden = false;
+    const flap = document.getElementById("flap");
+    const ende = () => {
+      tr.classList.add("fertig");
+      S.ziffern = nachher; S.phase = "geloest"; mini(idx);
+      document.getElementById("weiter").onclick = () => {
+        tr.hidden = true; tr.classList.remove("fertig");
+        S.tab = "ziffern"; haupt(); ziffern(); tabs(); zeigeTab();
+        toast(`Ziffer ${st.ziffer} gespeichert. Station ${st.nr + 1} ist im Mockup nicht hinterlegt.`);
+      };
+    };
+    if (ruhig) { flap.textContent = st.ziffer; return ende(); }
+    let n = 0;
+    const lauf = setInterval(() => {
+      n++;
+      flap.textContent = n % 10;
+      flap.classList.remove("klapp"); void flap.offsetWidth; flap.classList.add("klapp");
+      if (n >= 10 + st.ziffer) { clearInterval(lauf); ende(); }
+    }, 70);
+  }
+
+  function zifferReihe(z, neu) {
+    return `<div class="ziffern">${z.map((d, i) =>
+      `<div class="zf ${d !== null ? "voll" : "leer"}"><small>${i + 1}</small>${d !== null ? d : ""}</div>`).join("")}
+      <div class="zf leer schluss" title="Schlussziffer"><small>S</small></div></div>`;
+  }
+
+  /* --- Ziffern --- */
+  function ziffern() {
+    const p = document.getElementById("p-ziffern");
+    const n = gefunden();
+    p.innerHTML = `
+      <h2>Eure Ziffern <span class="mono" style="font-size:22px">${n}/${SJ.spiel.stationen}</span></h2>
+      ${zifferReihe(S.ziffern)}
+      <p class="text">Das Feld <b>S</b> ist die Schlussziffer: die Einerstelle der Summe eurer fünf Ziffern. Alle sechs öffnen am Ziel den Koffer.</p>
+      <ul class="liste">${SJ.stationen.map((s, i) => {
+        const z = S.ziffern[i];
+        const jetzt = s.nr === st.nr && z === null;
+        const sichtbar = z !== null || jetzt;
+        return `<li class="${sichtbar ? "" : "offen"}"><span><span class="mono">${s.nr}</span>&nbsp;&nbsp;${sichtbar ? esc(s.name) : "noch verdeckt"}</span>
+          <span class="mono">${z !== null ? "Ziffer " + z : jetzt ? "jetzt" : ""}</span></li>`;
+      }).join("")}</ul>`;
+  }
+
+  /* --- Team --- */
+  function team() {
+    const p = document.getElementById("p-team");
+    p.innerHTML = `
+      <h2>Team ${esc(T.name)}</h2>
+      <div class="block">
+        <span class="label">Mitlesen</span>
+        <p class="text" style="margin-top:0">Wer den Link öffnet, sieht alles mit. Eingeben könnt nur ihr.</p>
+        <div class="reihe"><button class="zweit voll" id="teilen">${I.link}Link teilen</button><button class="zweit" id="kopieren">Link kopieren</button></div>
+      </div>
+      <div class="block">
+        <span class="label">Teamleitung</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <span style="font:700 22px/1.2 Barlow">${esc(T.leitung)}</span>
+          <span class="mono" style="font-size:16px">${esc(T.code)}</span>
+        </div>
+      </div>
+      <div class="block">
+        <span class="label">Mitglieder <span class="mono">${T.mitglieder.length}</span></span>
+        <ul class="namen">${T.mitglieder.map(m => `<li>${m === T.leitung ? `<b>${esc(m)}</b>` : esc(m)}</li>`).join("")}</ul>
+      </div>
+      <button class="zweit" id="abgeben" style="margin-top:auto">Leitung abgeben</button>`;
+    document.getElementById("teilen").onclick = () => toast("Das Teilen-Menü des Handys öffnet sich. Im Mockup nicht ausgebaut.");
+    document.getElementById("kopieren").onclick = () => { kopieren(location.origin + location.pathname + "?mitlesen=" + T.code); toast("Mitlese-Link kopiert."); };
+    document.getElementById("abgeben").onclick = () => {
+      const andere = T.mitglieder.filter(m => m !== T.leitung);
+      frage({
+        titel: "Leitung abgeben",
+        text: "Wer bedient ab jetzt das Spiel? Ihr lest danach nur noch mit.",
+        inhalt: `<div class="wahl">${andere.map((m, i) => `<label><input type="radio" name="neu" value="${esc(m)}" ${i === 0 ? "checked" : ""}>${esc(m)}</label>`).join("")}</div>`,
+        ja: "Abgeben",
+      }, d => { const v = d.querySelector("input:checked").value; toast(`Leitung geht an ${v}. Im Mockup ohne Wirkung.`); });
+    };
+  }
+
+  /* --- Hilfe --- */
+  function hilfe() {
+    const p = document.getElementById("p-hilfe");
+    p.innerHTML = `
+      <h2>Hilfe</h2>
+      <p class="text" style="margin-top:0">Ihr kommt nicht weiter? Die Spielleitung hilft sofort.</p>
+      <div class="gross-hilfe block">
+        ${T.hilfe.whatsapp ? `<button class="zweit voll" id="wa">${I.wa}WhatsApp schreiben</button>` : ""}
+        ${T.hilfe.telefon ? `<button class="zweit" id="tel">${I.tel}Anrufen</button>` : ""}
+      </div>
+      <div class="block">
+        <span class="label">Pfeil zeigt falsch?</span>
+        <button class="zweit" id="einmessen2" style="width:100%;margin-top:8px">Kompass einmessen</button>
+      </div>
+      <p class="text" style="font-size:15px;margin-top:auto">Euer Standort geht an die Spielleitung, zuletzt <span class="mono">00:04:51</span>. Der Bildschirm bleibt an.</p>
+      <button class="leise" id="abmelden">Abmelden</button>`;
+    const wa = document.getElementById("wa"), tel = document.getElementById("tel");
+    if (wa) wa.onclick = () => toast("WhatsApp öffnet den Chat mit der Spielleitung. Im Mockup nicht ausgebaut.");
+    if (tel) tel.onclick = () => toast("Das Telefon wählt die Spielleitung. Im Mockup nicht ausgebaut.");
+    document.getElementById("einmessen2").onclick = einmessen;
+    document.getElementById("abmelden").onclick = () => frage({ titel: "Abmelden?", text: "Ihr könnt euch mit dem Team-Code wieder anmelden.", ja: "Abmelden" }, () => toast("Im Mockup nicht ausgebaut."));
+  }
+
+  function einmessen() {
+    info("Kompass einmessen", "Handy flach halten und langsam eine liegende Acht in die Luft zeichnen, zwei- bis dreimal. Danach zeigt der Pfeil wieder richtig.");
+  }
+
+  function haupt() { (S.phase === "raetsel" || S.phase === "geloest") ? raetsel() : weg(); }
+
+  mini(); haupt(); ziffern(); team(); hilfe(); tabs(); zeigeTab();
+}
+
+/* =====================================================================
+   SPIELLEITUNG
+   ===================================================================== */
+function admin() {
+  document.body.className = "m-admin";
+  const teams = SJ.teams.map(t => Object.assign({ fehlversuche: 0 }, t));
+  const ereignisse = SJ.ereignisse.slice();
+  let sel = null, sortierung = "probleme", neuMarke = null;
+
+  const minuten = g => { if (!g) return null; const m = g.match(/(\d+)\s*(s|min|h)/); if (!m) return 0; return m[2] === "s" ? +m[1] / 60 : m[2] === "h" ? +m[1] * 60 : +m[1]; };
+  function lage(t) {
+    const r = { stufe: 0, gps: "", fehl: "", gruende: [] };
+    if (t.ort === "ziel") return r;
+    const p = t.problem;                                   // Einstufung kommt aus data.js
+    if (!p) return r;
+    const f = p.stufe === "fehler";
+    r.stufe = f ? 2 : 1; r.gruende.push(p.text);
+    if (/GPS/i.test(p.text)) r.gps = f ? "f" : "w"; else r.fehl = f ? "f" : "w";
+    return r;
+  }
+  const t_max = () => T.maxFehlversuche;
+  const probleme = () => teams.filter(t => lage(t).stufe > 0);
+
+  app.innerHTML = `
+  <div class="admin">
+    <header class="a-kopf">
+      <span class="a-marke"><i>${I.marke}</i>Stadtjagd Spielleitung</span>
+      <span class="a-status">${esc(SJ.spiel.status)}</span>
+      <span class="kz gross"><small>Restzeit</small><b>${esc(SJ.spiel.rest)}</b></span>
+      <span class="kz opt"><small>Start</small><b>${esc(SJ.spiel.start)}</b></span>
+      <span class="kz opt"><small>Im Ziel</small><b id="imziel"></b></span>
+      <button class="a-probleme" id="probl"></button>
+      <button class="a-ende" id="ende">Spiel beenden</button>
+    </header>
+    <nav class="a-nav">
+      <button class="reiter" aria-current="page">Teams</button>
+      <button class="reiter" data-leer>Teilnehmende</button>
+      <button class="reiter" data-leer>Stationen</button>
+      <button class="reiter" data-leer>Fotos</button>
+      <button class="reiter" data-leer>Daten löschen</button>
+      <div class="sortierung" role="group" aria-label="Sortierung">
+        <button data-sort="probleme">Probleme zuerst</button>
+        <button data-sort="stand">Nach Stand</button>
+        <button data-sort="nur">Nur Probleme</button>
+      </div>
+    </nav>
+    <main class="a-main">
+      <section class="a-tab"><table>
+        <thead><tr>
+          <th style="padding-left:14px">Team</th><th class="breit">Leitung</th><th>Station</th><th>Zustand</th>
+          <th class="r">seit</th><th class="r">GPS</th><th class="c wrap">Fehl&shy;versuche</th><th class="r"><span style="position:absolute;left:-9999px">Aktion</span></th>
+        </tr></thead>
+        <tbody id="zeilen"></tbody>
+      </table></section>
+      <aside class="a-seite">
+        <div class="karte" id="karte"></div>
+        <div class="detail" id="detail"></div>
+      </aside>
+    </main>
+  </div>`;
+
+  document.querySelectorAll("[data-leer]").forEach(b => b.onclick = () => toast(`${b.textContent}: im Mockup nicht ausgebaut.`));
+  document.querySelectorAll("[data-sort]").forEach(b => b.onclick = () => { sortierung = b.dataset.sort; alles(); });
+  document.getElementById("probl").onclick = () => { sortierung = sortierung === "nur" ? "probleme" : "nur"; alles(); };
+  document.getElementById("ende").onclick = () => frage({
+    titel: "Spiel beenden?", text: "Alle Teams sehen sofort das Ende. Teams unterwegs bekommen keine Ziffern mehr.", ja: "Spiel beenden", gefahr: true,
+  }, () => toast("Im Mockup nicht ausgebaut."));
+
+  function sortiert() {
+    let l = teams.slice();
+    if (sortierung === "nur") l = l.filter(t => lage(t).stufe > 0);
+    if (sortierung === "probleme" || sortierung === "nur") {
+      l.sort((a, b) => (lage(b).stufe - lage(a).stufe) || ((a.ort === "ziel") - (b.ort === "ziel")) || (b.geloest - a.geloest));
+    }
+    return l;
+  }
+
+  function aktionVon(t) {
+    if (t.ort === "unterwegs") return { txt: "Freischalten", typ: "frei" };
+    if (t.ort === "station") return { txt: "Rätsel werten", typ: "werten" };
+    return null;
+  }
+  const zustand = t => t.ort === "ziel" ? `Ziel, Platz ${t.platz}` : t.ort === "station" ? "am Rätsel" : "unterwegs";
+  const pips = n => `<span class="pips" aria-label="${n} von 5 gelöst">${[0,1,2,3,4].map(i => `<i class="${i < n ? "j" : ""}"></i>`).join("")}</span>`;
+  const stName = nr => (SJ.stationen.find(s => s.nr === nr) || {}).name || "";
+
+  function zeilen() {
+    const l = sortiert();
+    const tb = document.getElementById("zeilen");
+    if (!l.length) { tb.innerHTML = `<tr><td colspan="8" style="height:80px;text-align:center;color:#0B0B0B;font-weight:600">Keine Probleme. Alle Teams senden und kommen voran.</td></tr>`; return; }
+    tb.innerHTML = l.map(t => {
+      const g = lage(t), a = aktionVon(t);
+      const gpsTxt = t.gps ? t.gps.replace(/^vor\s*/, "") : "kein GPS";
+      return `<tr data-team="${t.name}" tabindex="0" class="s${g.stufe} ${t.ort === "ziel" ? "ziel" : ""} ${sel === t.name ? "gewaehlt" : ""} ${neuMarke === t.name ? "neu" : ""}" aria-label="${t.name}${g.gruende.length ? ", " + g.gruende.join(", ") : ""}">
+        <td class="c-team"><span class="tz"><span class="em">${t.tier}</span><span><b>${t.name}</b><small>${t.code}</small></span></span></td>
+        <td class="breit">${esc(t.leitung)}</td>
+        <td><span class="st">${t.ort === "ziel" ? `<span class="nr" style="font-size:17px">Ziel</span>` : `<span class="nr">${t.nr}</span>`}${pips(t.geloest)}</span></td>
+        <td class="zust-${t.ort === "station" ? "raetsel" : t.ort}">${zustand(t)}</td>
+        <td class="r"><span class="zahl">${esc(t.seit)}</span></td>
+        <td class="r ${g.gps}">${t.gps ? `<span class="zahl">${esc(gpsTxt)}</span>` : `<span style="font:800 15px 'Barlow Semi Condensed';text-transform:uppercase;letter-spacing:.04em">kein GPS</span>`}${g.gps === "w" ? "<small>alt</small>" : ""}</td>
+        <td class="c ${g.fehl}"><span class="zahl">${t.ort === "station" || t.fehlversuche ? `${t.fehlversuche}/${T.maxFehlversuche}` : `<span style="color:#6B6B6B">0</span>`}</span></td>
+        <td class="r">${a ? `<button class="akt" data-akt="${a.typ}" data-team="${t.name}">${a.txt}</button>` : `<span style="color:#6B6B6B">fertig</span>`}</td>
+      </tr>`;
+    }).join("");
+    tb.querySelectorAll("tr[data-team]").forEach(tr => {
+      tr.onclick = e => { if (e.target.closest(".akt")) return; waehle(tr.dataset.team); };
+      tr.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); waehle(tr.dataset.team); } };
+    });
+    tb.querySelectorAll(".akt").forEach(b => b.onclick = () => handeln(b.dataset.akt, b.dataset.team));
+  }
+
+  function waehle(name) { sel = sel === name ? null : name; alles(); }
+
+  function handeln(typ, name) {
+    const t = teams.find(x => x.name === name);
+    if (typ === "frei") {
+      frage({ titel: `Station ${t.nr} für ${t.tier} ${t.name} freischalten?`, text: "Das ersetzt den GPS-Check-in. Das Rätsel muss das Team trotzdem lösen.", ja: "Freischalten" }, () => {
+        t.ort = "station"; t.seit = "0 min"; if (t.fehlversuche >= 2) t.problem = null; t.fehlversuche = 0;
+        ereignis(t.name, `Station ${t.nr} freigeschaltet von der Spielleitung`);
+        neuMarke = t.name; alles();
+        toast(`${t.name}: Station ${t.nr} freigeschaltet. Das Rätsel ist offen.`);
+      });
+    } else {
+      frage({ titel: `Rätsel an Station ${t.nr} für ${t.tier} ${t.name} werten?`, text: "Das Team bekommt die Ziffer, die Station zählt als gelöst.", ja: "Als gelöst werten" }, () => {
+        const alt = t.nr;
+        t.geloest++; if (t.fehlversuche >= 2) t.problem = null; t.fehlversuche = 0; t.seit = "0 min";
+        const fertig = t.nr >= SJ.spiel.stationen;
+        if (fertig) { t.platz = teams.filter(x => x.ort === "ziel").length + 1; t.zeit = "00:07"; t.ort = "ziel"; } else { t.ort = "unterwegs"; t.nr++; }
+        ereignis(t.name, fertig ? `Rätsel an Station ${alt} gewertet, Ziel erreicht, Platz ${t.platz}` : `Rätsel an Station ${alt} gewertet`, "ok");
+        neuMarke = t.name; alles();
+        toast(fertig ? `${t.name}: Station ${alt} gewertet. Im Ziel, Platz ${t.platz}.` : `${t.name}: Station ${alt} gewertet. Weiter zu Station ${t.nr}.`);
+      });
+    }
+  }
+  function ereignis(team, text, art) { ereignisse.unshift({ zeit: "00:07", team, text, art }); }
+
+  function kopf() {
+    const n = probleme().length;
+    const b = document.getElementById("probl");
+    b.className = "a-probleme" + (n ? "" : " null");
+    b.innerHTML = `<b>${n}</b> ${n === 1 ? "Problem" : "Probleme"}`;
+    b.setAttribute("aria-pressed", sortierung === "nur");
+    document.getElementById("imziel").textContent = `${teams.filter(t => t.ort === "ziel").length}/${teams.length}`;
+    document.querySelectorAll("[data-sort]").forEach(x => x.setAttribute("aria-pressed", x.dataset.sort === sortierung));
+  }
+
+  /* --- Detail / Ereignisse --- */
+  function detail() {
+    const d = document.getElementById("detail");
+    const t = teams.find(x => x.name === sel);
+    if (!t) {
+      d.innerHTML = `<h3>Zuletzt</h3><ul class="ev">${ereignisse.map(e => {
+        const tm = teams.find(x => x.name === e.team) || {};
+        return `<li class="${e.art || ""}"><span class="mono">${e.zeit}</span><span><b>${tm.tier || ""} ${esc(e.team)}</b> ${esc(e.text)}</span></li>`;
+      }).join("")}</ul>`;
+      return;
+    }
+    const g = lage(t), a = aktionVon(t);
+    const leute = t.name === T.name ? T.mitglieder : [t.leitung];
+    const eig = ereignisse.filter(e => e.team === t.name);
+    d.innerHTML = `
+      <div class="d-kopf"><span class="em">${t.tier}</span><span><b>${t.name}</b><small>${t.code}</small></span><button class="zu" id="zu" aria-label="Auswahl aufheben">×</button></div>
+      <div class="fakten">
+        <div><small>Station</small><b>${t.ort === "ziel" ? "Ziel" : t.nr}</b></div>
+        <div><small>Gelöst</small><b>${t.geloest}/5</b></div>
+        <div><small>seit</small><b>${esc(t.seit)}</b></div>
+        <div class="${g.gps}"><small>GPS</small><b>${t.gps ? esc(t.gps.replace(/^vor\s*/, "")) : "kein"}</b></div>
+        <div class="${g.fehl}"><small>Fehlversuche</small><b>${t.fehlversuche}/${T.maxFehlversuche}</b></div>
+        <div><small>Zustand</small><b style="font:700 15px Barlow">${zustand(t)}</b></div>
+      </div>
+      ${t.ort !== "ziel" ? `<p class="d-hinw">${t.ort === "station" ? "Eingecheckt an" : "Unterwegs zu"} <b>${esc(stName(t.nr))}</b>.${!t.gps ? " Ohne GPS kann das Team nicht einchecken: anrufen oder freischalten." : g.gps ? " Letzter Standort ist alt, kurz nachfragen." : ""}</p>` : ""}
+      ${a ? `<button class="d-haupt" id="d-akt">${a.txt}</button>` : ""}
+      <div class="d-reihe">
+        <div><label for="leitung">Teamleitung</label>
+          <select id="leitung">${leute.map(m => `<option ${m === t.leitung ? "selected" : ""}>${esc(m)}</option>`).join("")}${leute.length < 2 ? `<option disabled>weitere Namen im Mockup nicht hinterlegt</option>` : ""}</select></div>
+        <button class="akt" id="mitlesen">Mitlese-Link</button>
+      </div>
+      ${eig.length ? `<h3>Verlauf</h3><ul class="ev">${eig.map(e => `<li class="${e.art || ""}"><span class="mono">${e.zeit}</span><span>${esc(e.text)}</span></li>`).join("")}</ul>` : ""}`;
+    document.getElementById("zu").onclick = () => waehle(t.name);
+    if (a) document.getElementById("d-akt").onclick = () => handeln(a.typ, t.name);
+    document.getElementById("mitlesen").onclick = () => { kopieren(location.origin + location.pathname + "?mitlesen=" + t.code); toast(`Mitlese-Link für ${t.name} kopiert.`); };
+    document.getElementById("leitung").onchange = e => {
+      t.leitung = e.target.value;
+      toast(`${t.name}: neue Leitung ist ${t.leitung}. Sie ist auf ihrem Handy gleich drin.`);
+      zeilen();
+    };
+  }
+
+  /* --- Karte (stilisiert, aus Koordinaten) --- */
+  // Projektion in Pixel des Kartenkastens: 1 SVG-Einheit = 1 px, Marker bleiben gleich groß
+  const B = { lng0: 14.3975, lng1: 14.4420, lat0: 50.0905, lat1: 50.1065 };
+  const C = Math.cos(50.1 * Math.PI / 180);
+  let W = 400, H = 300, K = 1, OX = 0, OY = 0;
+  function masse(w, h) {
+    W = w; H = h; const pad = 34;
+    const bw = (B.lng1 - B.lng0) * C, bh = B.lat1 - B.lat0;
+    K = Math.min((W - 2 * pad) / bw, (H - 2 * pad - 20) / bh);
+    OX = (W - bw * K) / 2; OY = (H - bh * K) / 2 - 6;
+  }
+  const P = (lat, lng) => [OX + (lng - B.lng0) * C * K, OY + (B.lat1 - lat) * K];
+  const station = nr => SJ.stationen.find(s => s.nr === nr);
+  const ORTE = { // erfundene Positionen nahe der Zielstation: Anteil des Wegs + seitlicher Versatz (Grad)
+    Eule: [.5, .0005], Panda: [.5, -.0006], Einhorn: [.3, .0006], Pinguin: [.58, -.0006], Wolf: [.82, .0007], Igel: [.55, -.0013],
+  };
+  const AN_STATION = { Tiger: [-24, -20], Otter: [22, -26], Flamingo: [0, 32] }; // Pixelversatz für Teams am Rätsel
+  // liefert Pixelkoordinaten
+  function teamPos(t) {
+    if (!t.gps) return null;
+    if (t.name === T.name) { const s = station(t.nr); return P(s.lat - .0012, s.lng + .0028); }
+    if (t.ort === "ziel") { const s = station(5), q = P(s.lat, s.lng); return [q[0] - 6, q[1] - 32]; }
+    const z = station(t.nr);
+    if (t.ort === "station") { const q = P(z.lat, z.lng), d = AN_STATION[t.name] || [-22, -24]; return [q[0] + d[0], q[1] + d[1]]; }
+    const v = t.nr === 1 ? SJ.startpunkt : station(t.nr - 1);
+    const [f, q] = ORTE[t.name] || [.5, .0006];
+    const dLat = z.lat - v.lat, dLng = z.lng - v.lng, len = Math.hypot(dLat, dLng * C) || 1;
+    return P(v.lat + dLat * f + (dLng * C / len) * q, v.lng + dLng * f - (dLat / len) * q / C);
+  }
+  function glatt(pts) {
+    let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2;
+      d += ` Q${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)}`;
+    }
+    const l = pts[pts.length - 1]; return d + ` L${l[0].toFixed(1)} ${l[1].toFixed(1)}`;
+  }
+  const MOLDAU_GEO = [[50.070, 14.400], [50.089, 14.412], [50.0925, 14.418], [50.0945, 14.430], [50.0965, 14.442], [50.100, 14.452], [50.106, 14.459], [50.1115, 14.452], [50.1135, 14.433], [50.1145, 14.415], [50.125, 14.392]];
+  const LABEL = { 1: ["end", -24, 5], 2: ["end", -24, 5], 3: ["start", 24, 5], 4: ["middle", 0, 38], 5: ["start", -14, 38] }; // Name nur am Ziel des gewählten Teams
+
+  function karte() {
+    const k = document.getElementById("karte");
+    masse(Math.max(200, k.clientWidth), Math.max(160, k.clientHeight));
+    const MOLDAU = MOLDAU_GEO.map(([a, b]) => P(a, b));
+    const halo = 'paint-order="stroke" stroke="#fff" stroke-width="4" stroke-linejoin="round"';
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Karte mit Stationen und Teams">`;
+    s += `<rect x="-400" y="-400" width="${W + 800}" height="${H + 800}" fill="#fff"/>`;
+    s += `<path d="${glatt(MOLDAU)}" fill="none" stroke="#DDE3E6" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const ml = P(50.0948, 14.436);
+    s += `<text x="${ml[0]}" y="${ml[1] + 5}" font-family="Barlow Semi Condensed" font-weight="700" font-size="13" letter-spacing="2" fill="#6B6B6B" text-anchor="middle" transform="rotate(12 ${ml[0]} ${ml[1]})">MOLDAU</text>`;
+    // Weg der gewählten Mannschaft
+    const tSel = teams.find(t => t.name === sel);
+    // Start
+    const sp = P(SJ.startpunkt.lat, SJ.startpunkt.lng);
+    s += `<g><path d="M${sp[0]} ${sp[1] - 13}l11 20h-22z" fill="#fff" stroke="#0B0B0B" stroke-width="3"/><text x="${sp[0]}" y="${sp[1] + 24}" font-family="Barlow Semi Condensed" font-weight="700" font-size="13" text-anchor="middle" ${halo}>START</text></g>`;
+    // Stationen
+    SJ.stationen.forEach(st => {
+      const [x, y] = P(st.lat, st.lng), [anc, dx, dy] = LABEL[st.nr];
+      const ziel = tSel && tSel.ort !== "ziel" && tSel.nr === st.nr;
+      s += `<g><rect x="${x - 14}" y="${y - 14}" width="28" height="28" fill="#0B0B0B" />
+        <text x="${x}" y="${y + 6.5}" font-family="Archivo" font-weight="800" font-size="19" fill="#FFD60A" text-anchor="middle">${st.nr}</text>
+        ${ziel ? `<text x="${x + dx}" y="${y + dy}" font-family="Barlow" font-weight="700" font-size="14" fill="#0B0B0B" text-anchor="${anc}" ${halo}>${esc(st.name)}</text>` : ""}</g>`;
+    });
+    if (tSel) {
+      const a0 = teamPos(tSel);
+      const z = tSel.ort === "ziel" ? null : station(tSel.nr);
+      if (a0 && z && tSel.ort === "unterwegs") { const a = a0, b = P(z.lat, z.lng); s += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="#0B0B0B" stroke-width="3" stroke-dasharray="6 5"/>`; }
+      if (z) { const b = P(z.lat, z.lng); s += `<rect x="${b[0] - 19}" y="${b[1] - 19}" width="38" height="38" fill="none" stroke="#0B0B0B" stroke-width="3"/>`; }
+    }
+    // Teams (ausgewähltes zuletzt, damit es oben liegt)
+    const reihen = teams.map((t, i) => [t, i]).sort((a, b) => (a[0].name === sel) - (b[0].name === sel) || lage(a[0]).stufe - lage(b[0]).stufe);
+    reihen.forEach(([t, i]) => {
+      const p = teamPos(t); if (!p) return;
+      const [x, y] = p, g = lage(t), ist = t.name === sel;
+      let m = `<g class="mk ${sel && !ist ? "gedimmt" : ""}" data-team="${t.name}" tabindex="0" role="button" aria-label="${t.name}">`;
+      m += `<circle cx="${x}" cy="${y}" r="24" fill="transparent"/>`;
+      if (g.stufe === 1) m += `<circle cx="${x}" cy="${y}" r="21" fill="#FFD60A" stroke="#0B0B0B" stroke-width="1.5"/>`;
+      if (g.stufe === 2) m += `<circle cx="${x}" cy="${y}" r="21" fill="#C8102E"/>`;
+      if (ist) m += `<circle cx="${x}" cy="${y}" r="21" fill="#0B0B0B"/>`;
+      m += `<circle cx="${x}" cy="${y}" r="14.5" fill="#fff" stroke="#0B0B0B" stroke-width="2"/>`;
+      m += `<text x="${x}" y="${y + 6}" font-size="16" text-anchor="middle">${t.tier}</text>`;
+      if (ist || g.stufe) {
+        const txt = ist ? t.name : `${t.name} ${g.gps === "w" ? (t.gps || "").replace(/^vor\s*/, "") : g.fehl ? t.fehlversuche + "/" + T.maxFehlversuche : ""}`.trim();
+        const w = txt.length * 7.6 + 12, lx = Math.min(Math.max(x - w / 2, 2), W - w - 2), ly = y - 46;
+        m += `<rect x="${lx}" y="${ly}" width="${w}" height="20" fill="${ist ? "#0B0B0B" : g.stufe === 2 ? "#C8102E" : "#FFD60A"}" ${g.stufe === 1 && !ist ? 'stroke="#0B0B0B" stroke-width="1.5"' : ""}/>
+              <text x="${lx + w / 2}" y="${ly + 15}" font-family="Barlow" font-weight="700" font-size="13.5" text-anchor="middle" fill="${ist || g.stufe === 2 ? "#fff" : "#0B0B0B"}">${esc(txt)}</text>`;
+      }
+      s += m + "</g>";
+    });
+    s += "</svg>";
+    const ohne = teams.filter(t => !t.gps && t.ort !== "ziel");
+    k.innerHTML = s + (ohne.length ? `<button class="ohne" id="ohne">Ohne Standort: ${ohne.map(t => t.tier + " " + t.name).join(", ")}</button>` : "")
+      + `<span class="leg">Stationen ■ &nbsp;Teams ●</span>`;
+    k.querySelectorAll(".mk").forEach(g => {
+      g.onclick = () => waehle(g.dataset.team);
+      g.onkeydown = e => { if (e.key === "Enter") waehle(g.dataset.team); };
+    });
+    const o = document.getElementById("ohne"); if (o) o.onclick = () => waehle(ohne[0].name);
+  }
+
+  function alles() { kopf(); zeilen(); detail(); karte(); neuMarke = null; }
+  let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(karte, 80); });
+  alles();
+  // für Prüfläufe: ?team=Igel wählt ein Team vor
+  const vor = new URLSearchParams(location.search).get("team");
+  if (vor && teams.some(t => t.name === vor)) waehle(vor);
+}
+
+if (ansicht === "admin") admin(); else handy();
+})();
+</script>
+</body>
+</html>

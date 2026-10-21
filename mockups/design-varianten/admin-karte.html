@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stadtjagd Spielleitung Karte</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+/* Vergleich Spielleitung, Karte mit Teams: heute (echte App im Prüfstand, Szenario admin-karte / admin-teams)
+   gegen geplant (Variante Weiterentwicklung, v-weiter.html#admin). Gleicher Spielmoment: 1:12 h nach Start. */
+:root{--paper:#F1F5EE;--card:#FFFFFF;--ink:#17302A;--muted:#5B6F68;--line:#D3DECF;--flag:#EE5F1B;--flag-text:#C2410C;
+  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;--body:"Barlow",system-ui,sans-serif;--ease:cubic-bezier(.32,.72,.4,1)}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:16px/1.5 var(--body)}
+.seite{max-width:1560px;margin:0 auto;padding:20px 24px 48px}
+h1{font-family:var(--head);font-size:30px;margin:0 0 4px}
+.unter{color:var(--muted);margin:0 0 16px;max-width:90ch}
+.leiste{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;margin-bottom:14px}
+.gruppe{display:inline-flex;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:3px;gap:3px}
+.gruppe button{border:0;background:none;font:600 15px/1 var(--body);color:var(--muted);min-height:40px;padding:0 14px;border-radius:7px;cursor:pointer;transition:background .16s var(--ease),color .16s var(--ease)}
+.gruppe button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+.gruppe button:focus-visible{outline:3px solid color-mix(in srgb,var(--flag) 55%,transparent);outline-offset:2px}
+.lbl{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.buehne{position:relative;background:#E7ECE4;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.buehne iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:#fff}
+.quelle{font-size:13px;color:var(--muted);margin:8px 2px 0}
+.quelle code{font-size:12px}
+.liste{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:22px;padding:0;list-style:none;counter-reset:n}
+.liste li{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px 14px 52px;position:relative;counter-increment:n}
+.liste li::before{content:counter(n);position:absolute;left:14px;top:14px;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--card);font:700 14px/26px var(--body);text-align:center}
+.liste b{display:block;font-family:var(--head);font-size:18px;margin-bottom:2px}
+.liste p{margin:0;color:var(--muted);font-size:15px}
+.liste .heute{display:block;margin-top:6px;font-size:14px;color:var(--ink)}
+.liste .heute::before{content:"Heute: ";font-weight:600}
+h2{font-family:var(--head);font-size:22px;margin:28px 0 0}
+.bleibt{margin:8px 0 0;padding-left:20px;color:var(--muted);columns:2 360px}
+.bleibt li{margin-bottom:4px;break-inside:avoid}
+</style>
+</head>
+<body>
+<div class="seite">
+  <h1>Spielleitung: Karte mit Teams</h1>
+  <p class="unter">Beide Ansichten zeigen denselben Moment: 12 Teams, 1:12 h nach dem Start. Heute ist die echte App aus dem Prüfstand (zum Anklicken), geplant ist die Variante Weiterentwicklung (ebenfalls klickbar: Team in Liste oder Karte antippen, Freischalten, Rätsel werten).</p>
+  <div class="leiste">
+    <span class="lbl">Ansicht</span>
+    <span class="gruppe" role="group" aria-label="Ansicht">
+      <button type="button" data-v="jetzt-karte" aria-pressed="true">Heute: Reiter Karte</button>
+      <button type="button" data-v="jetzt-teams" aria-pressed="false">Heute: Reiter Teams</button>
+      <button type="button" data-v="geplant" aria-pressed="false">Geplant</button>
+    </span>
+    <span class="lbl">Gerät</span>
+    <span class="gruppe" role="group" aria-label="Gerät">
+      <button type="button" data-g="1440x900" aria-pressed="true">PC</button>
+      <button type="button" data-g="1180x820" aria-pressed="false">Tablet quer</button>
+      <button type="button" data-g="820x1180" aria-pressed="false">Tablet hoch</button>
+    </span>
+  </div>
+  <div class="buehne" id="buehne"><iframe id="f" title="Spielleitung"></iframe></div>
+  <p class="quelle" id="quelle"></p>
+
+  <h2>Was sich ändert</h2>
+  <ol class="liste">
+    <li><b>Karte und Teams auf einem Bildschirm</b><p>Links die Karte, rechts die Teamliste. Wer ein Team antippt, sieht es auf der Karte markiert und die Liste springt zur Zeile, umgekehrt genauso.</p><span class="heute">zwei Reiter, Karte und Teams getrennt.</span></li>
+    <li><b>Volle Breite</b><p>Die Spielleitung nutzt den ganzen Bildschirm (Tablet quer, PC). Auf Tablet hoch stehen Karte und Liste untereinander.</p><span class="heute">schmale Spalte in der Mitte, viel leerer Rand.</span></li>
+    <li><b>"Braucht dich" zuerst</b><p>Teams mit Problem (kein Standort, Standort alt, viele Fehlversuche) stehen oben in einem eigenen Block, mit Grund als Chip. Oben rechts zählt ein Knopf sie und springt zum ersten.</p><span class="heute">Liste nach Fortschritt; ein altes GPS steht nur als graue Zeile "GPS vor 7 min" in der Zeile.</span></li>
+    <li><b>Handeln direkt in der Zeile</b><p>Je Team ein Knopf: unterwegs "Freischalten", an der Station "Rätsel werten", im Ziel der Platz. Aufgeklappt: Teamleitung wechseln, Code, Mitlese-Link, anrufen, die letzten Ereignisse.</p><span class="heute">dieselben Knöpfe stehen schon in der Zeile, aber im Reiter Teams ohne Karte; Teamleitung als Auswahlfeld, Code und Mitlese-Link immer offen in jeder Zeile.</span></li>
+    <li><b>"Zuletzt" als laufende Liste</b><p>Unter der Karte die letzten Ereignisse aller Teams (Check-in, gelöst, Fehlversuch, Standort weg). Antippen wählt das Team.</p><span class="heute">keine gemeinsame Ereignisliste; was passiert ist, zeigen die Zeitleisten unter der Karte.</span></li>
+    <li><b>Zeitachse als eigener Reiter</b><p>Die Zeitleisten mit Abspielen bekommen einen eigenen Reiter. Teilnehmende, Stationen und Fotos bleiben Reiter, "Daten löschen" steht abgesetzt rechts. Der Kopf zeigt Status, Restzeit, Startzeit und den Problem-Zähler dauerhaft.</p><span class="heute">Zeitleisten stehen unter der Karte im Reiter Karte; Reiter Karte, Teams, Teilnehmende, Stationen, Fotos, Daten löschen.</span></li>
+  </ol>
+
+  <h2>Was bleibt</h2>
+  <ul class="bleibt">
+    <li>Die echte Karte mit OpenStreetMap und Leaflet; das gezeichnete Kartenbild im Mockup ist nur Platzhalter.</li>
+    <li>Gelaufene Routen je Team, gestrichelt ohne GPS, und das Ein- und Ausblenden einzelner Teams.</li>
+    <li>"Alle zeigen" und "Vollbild" für die Karte.</li>
+    <li>Aktualisierung alle 10 Sekunden, Teamfarben und Tiere wie heute.</li>
+    <li>Look und Farben (Kartenpapier, Signalorange), Hell und Dunkel.</li>
+    <li>Alle Dialoge mit Rückfrage (Freischalten, Rätsel werten, Spiel beenden).</li>
+  </ul>
+</div>
+<script>
+const QUELLEN = {
+  "jetzt-karte": ["../../tools/pruefstand/app.html?szenario=admin-karte", "Echte App im Prüfstand, Szenario admin-karte (tools/pruefstand/app.html). Daten: tools/pruefstand/mock.js."],
+  "jetzt-teams": ["../../tools/pruefstand/app.html?szenario=admin-teams", "Echte App im Prüfstand, Szenario admin-teams."],
+  "geplant": ["v-weiter.html#admin", "Variante Weiterentwicklung, mockups/design-varianten/v-weiter.html#admin."]
+};
+let v = "jetzt-karte", g = "1440x900";
+const f = document.getElementById("f"), buehne = document.getElementById("buehne");
+function passe() {
+  const [w, h] = g.split("x").map(Number), s = Math.min(1, buehne.clientWidth / w);
+  f.style.width = w + "px"; f.style.height = h + "px"; f.style.transform = `scale(${s})`;
+  buehne.style.height = Math.round(h * s) + "px";
+}
+function lade() {
+  const [src, txt] = QUELLEN[v];
+  if (f.dataset.src !== src + g) { f.dataset.src = src + g; f.src = src; }
+  document.getElementById("quelle").textContent = txt;
+  document.querySelectorAll("[data-v]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === v)));
+  document.querySelectorAll("[data-g]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.g === g)));
+  passe();
+}
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-v]"); if (a) { v = a.dataset.v; lade(); return; }
+  const b = e.target.closest("[data-g]"); if (b) { g = b.dataset.g; f.dataset.src = ""; lade(); }
+});
+addEventListener("resize", passe);
+lade();
+</script>
+</body>
+</html>

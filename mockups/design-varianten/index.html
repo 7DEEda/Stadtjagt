@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stadtjagd Design-Varianten</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  :root { --bg: #E9ECE8; --ink: #1B1F1D; --muted: #5E6662; --line: #CDD3CF; --akzent: #1B1F1D; }
+  * { box-sizing: border-box; }
+  html { color-scheme: light; } body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Barlow', system-ui, sans-serif; }
+  header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding-block: 14px 12px; padding-inline: 24px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+  h1 { font: 700 22px 'Barlow Semi Condensed', sans-serif; margin: 0; letter-spacing: .01em; }
+  .gruppe { display: flex; flex-wrap: wrap; gap: 4px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .gruppe button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .gruppe button { font: 600 14px 'Barlow', sans-serif; border: 0; background: transparent; color: var(--ink); padding: 8px 14px; border-radius: 5px; cursor: pointer; min-height: 36px; }
+  .gruppe button[aria-pressed="true"] { background: var(--akzent); color: #fff; }
+  .hinweis { color: var(--muted); font-size: 14px; margin-left: auto; }
+  main { padding-block: 20px 48px; padding-inline: 24px; }
+  @media (max-width: 700px) { header, main { padding-inline: 16px; } .hinweis { margin-left: 0; } }
+
+  /* Handy: alle fünf nebeneinander */
+  .handys { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 20px; align-items: start; }
+  .spalte h2 { font: 700 17px 'Barlow Semi Condensed', sans-serif; margin: 0 0 2px; }
+  .spalte p { margin: 0 0 10px; font-size: 13.5px; color: var(--muted); min-height: 3.6em; line-height: 1.35; }
+  .geraet { position: relative; overflow: hidden; border-radius: 28px; border: 8px solid #1B1F1D; background: #000; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+  .spalte { min-width: 0; }
+  .geraet iframe { border: 0; display: block; transform-origin: 0 0; background: #fff; }
+  .handys .geraet iframe { position: absolute; top: 0; left: 0; }
+  .geraet.pc { border-radius: 12px; border-width: 10px; }
+
+  /* Spielleitung: eine Variante groß */
+  .admin-kopf { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: baseline; margin-bottom: 12px; }
+  .admin-kopf p { margin: 0; color: var(--muted); font-size: 15px; max-width: 70ch; }
+  .groesse { margin-left: auto; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Stadtjagd: Design-Varianten</h1>
+  <div class="gruppe" role="group" aria-label="Seite">
+    <button data-modus="handy" aria-pressed="true">Teams am Handy</button>
+    <button data-modus="admin" aria-pressed="false">Spielleitung am Tablet/PC</button>
+  </div>
+  <div class="gruppe" role="group" aria-label="Bildschirm" id="bildschirm">
+    <button data-ansicht="unterwegs" aria-pressed="true">Unterwegs</button>
+    <button data-ansicht="raetsel" aria-pressed="false">Rätsel an der Station</button>
+  </div>
+  <div class="gruppe" role="group" aria-label="Variante" id="variantenwahl" hidden></div>
+  <span class="hinweis">Alles klickbar, gleiche Daten in allen Varianten</span>
+</header>
+<main>
+  <section id="handy" class="handys"></section>
+  <section id="admin" hidden>
+    <div class="admin-kopf">
+      <p id="admin-text"></p>
+      <div class="gruppe groesse" role="group" aria-label="Gerät">
+        <button data-groesse="1180x820" aria-pressed="true">Tablet quer</button>
+        <button data-groesse="820x1180" aria-pressed="false">Tablet hoch</button>
+        <button data-groesse="1440x900" aria-pressed="false">PC</button>
+      </div>
+    </div>
+    <div class="geraet pc" id="admin-geraet"><iframe id="admin-frame" title="Spielleitung"></iframe></div>
+  </section>
+</main>
+<script>
+const VARIANTEN = [
+  { id: "aktuell", datei: "aktuell.html", name: "Aktuell",
+    handy: "Die App heute: Kartenpapier, Signalorange, alles untereinander auf einer langen Seite.",
+    admin: "Die Spielleitung heute: schmale Spalte in der Mitte, Karte und Teams auf getrennten Reitern (Bildschirmfotos der echten App)." },
+  { id: "weiter", datei: "v-weiter.html", name: "Weiterentwicklung",
+    handy: "Gleicher Look, neuer Aufbau: feste Aktionsleiste unten, Nebensachen in Tabs statt unter dem Kompass.",
+    admin: "Gleicher Look, volle Breite: Karte und Teamliste nebeneinander, Zeitachse und Verwaltung in Reitern." },
+  { id: "leitstand", datei: "v-leitstand.html", name: "Leitstand",
+    handy: "Karte und Kompass füllen den Bildschirm, alles andere in einem Blatt, das man von unten aufzieht.",
+    admin: "Kontrollraum: Teams links, Live-Karte in der Mitte, Ereignisse rechts. Dunkel, dicht, auf einen Blick." },
+  { id: "spielbrett", datei: "v-spielbrett.html", name: "Spielbrett",
+    handy: "Verspielt: ein Bildschirm pro Schritt, große Teamtiere, Fortschritt als Schatzkarte.",
+    admin: "Rennbahn: Stationen als Spalten, die Teams wandern als Karten nach rechts. Die Karte ist die zweite Ansicht." },
+  { id: "signal", datei: "v-signal.html", name: "Signal",
+    handy: "Radikal reduziert: riesiger Pfeil und Meter, Schwarz auf Signalgelb für die Sonne, Rest hinter Tabs.",
+    admin: "Dichte Tabelle und Karte nebeneinander, Zahlen groß, Ausnahmen springen ins Auge." },
+];
+const P = { w: 390, h: 844 };
+let modus = "handy", ansicht = "unterwegs", variante = "weiter", groesse = "1180x820";
+try {
+  const s = JSON.parse(localStorage.getItem("sj.dv") || "{}") || {};   // nur erlaubte Werte übernehmen
+  if (["handy", "admin"].includes(s.modus)) modus = s.modus;
+  if (["unterwegs", "raetsel"].includes(s.ansicht)) ansicht = s.ansicht;
+  if (VARIANTEN.some(v => v.id === s.variante)) variante = s.variante;
+  if (["1180x820", "820x1180", "1440x900"].includes(s.groesse)) groesse = s.groesse;
+} catch (e) {}
+const merken = () => { try { localStorage.setItem("sj.dv", JSON.stringify({ modus, ansicht, variante, groesse })); } catch (e) {} };
+
+const handy = document.getElementById("handy");
+handy.innerHTML = VARIANTEN.map(v => `<div class="spalte"><h2>${v.name}</h2><p>${v.handy}</p><div class="geraet"><iframe data-v="${v.id}" title="${v.name}" width="${P.w}" height="${P.h}"></iframe></div></div>`).join("");
+document.getElementById("variantenwahl").innerHTML = VARIANTEN.map(v => `<button data-variante="${v.id}">${v.name}</button>`).join("");
+
+function skalieren() {
+  handy.querySelectorAll(".geraet").forEach(g => {
+    const f = g.querySelector("iframe"), s = g.clientWidth / P.w;
+    f.style.transform = `scale(${s})`; g.style.height = (P.h * s + 16) + "px";
+  });
+  const [w, h] = groesse.split("x").map(Number), g = document.getElementById("admin-geraet"), f = document.getElementById("admin-frame");
+  const mn = document.querySelector("main"), cs = getComputedStyle(mn);
+  const platz = Math.min(mn.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 20, w), s = Math.min(1, platz / w, (innerHeight - 190) / h);
+  f.width = w; f.height = h; f.style.transform = `scale(${s})`;
+  g.style.width = (w * s + 20) + "px"; g.style.height = (h * s + 20) + "px";
+}
+function zeigen() {
+  document.querySelectorAll("[data-modus]").forEach(b => b.setAttribute("aria-pressed", b.dataset.modus === modus));
+  document.querySelectorAll("[data-ansicht]").forEach(b => b.setAttribute("aria-pressed", b.dataset.ansicht === ansicht));
+  document.querySelectorAll("[data-variante]").forEach(b => b.setAttribute("aria-pressed", b.dataset.variante === variante));
+  document.querySelectorAll("[data-groesse]").forEach(b => b.setAttribute("aria-pressed", b.dataset.groesse === groesse));
+  document.getElementById("handy").hidden = modus !== "handy";
+  document.getElementById("bildschirm").hidden = modus !== "handy";
+  document.getElementById("admin").hidden = modus !== "admin";
+  document.getElementById("variantenwahl").hidden = modus !== "admin";
+  if (modus === "handy") {
+    handy.querySelectorAll("iframe").forEach(f => {
+      const v = VARIANTEN.find(x => x.id === f.dataset.v), src = `${v.datei}#${ansicht}`;
+      if (f.getAttribute("src") !== src) f.setAttribute("src", src);
+    });
+  } else {
+    const v = VARIANTEN.find(x => x.id === variante), src = `${v.datei}#admin`, f = document.getElementById("admin-frame");
+    document.getElementById("admin-text").innerHTML = `<b>${v.name}:</b> ${v.admin}`;
+    if (f.getAttribute("src") !== src) f.setAttribute("src", src);
+  }
+  skalieren(); merken();
+}
+document.querySelector("header").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.modus) modus = b.dataset.modus;
+  if (b.dataset.ansicht) ansicht = b.dataset.ansicht;
+  if (b.dataset.variante) variante = b.dataset.variante;
+  zeigen();
+});
+document.querySelector(".groesse").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  groesse = b.dataset.groesse; const f = document.getElementById("admin-frame"); f.removeAttribute("src"); zeigen();
+});
+addEventListener("resize", skalieren);
+zeigen();
+</script>
+
+</body>
+</html>

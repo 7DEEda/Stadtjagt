@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spielbrett</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+/* Variante "Spielbrett": Papier, Pflaume, Senf. Verspielt wie ein Brettspiel, aber streng lesbar. */
+:root {
+  --papier: #FBF4E8;
+  --papier-2: #F4EAD8;
+  --karte: #FFFDF8;
+  --tinte: #2A2233;
+  --tinte-2: #5C5163;
+  --linie: #E2D3BB;
+  --rand: #8A7A84;
+  --pflaume: #4B2A6E;
+  --pflaume-d: #361D52;
+  --pflaume-h: #EFE7F5;
+  --senf: #F2B632;
+  --senf-h: #FCEBC2;
+  --senf-d: #845500;
+  --moos: #2F7D45;
+  --moos-h: #DDEFE1;
+  --alarm: #B42318;
+  --alarm-h: #FDE8E5;
+  --ease: cubic-bezier(.3,.7,.3,1);
+  --schatten: 0 1px 2px rgba(42,34,51,.08), 0 3px 10px rgba(42,34,51,.06);
+  --schatten-2: 0 10px 30px rgba(42,34,51,.18), 0 2px 6px rgba(42,34,51,.08);
+  --tf: #0E7C86;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--papier); color: var(--tinte); font-family: 'Barlow', system-ui, sans-serif; font-size: 16px; line-height: 1.4; -webkit-text-size-adjust: 100%; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3 { font-family: 'Archivo', sans-serif; font-stretch: 112%; margin: 0; line-height: 1.12; }
+.nw { white-space: nowrap; }
+.mono { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--pflaume); outline-offset: 2px; }
+
+/* ---------- Buttons ---------- */
+.haupt { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 56px; border: 0; border-radius: 12px; background: var(--pflaume); color: #fff; font: 800 18px 'Archivo', sans-serif; font-stretch: 108%; box-shadow: 0 4px 0 var(--pflaume-d); transition: transform .12s var(--ease), box-shadow .12s var(--ease), background .2s var(--ease); }
+.haupt:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--pflaume-d); }
+.haupt.warten { background: var(--karte); color: var(--pflaume); box-shadow: inset 0 0 0 2px var(--pflaume), 0 4px 0 var(--linie); }
+.haupt[disabled] { background: #E9E1EC; color: #5C5163; box-shadow: none; cursor: not-allowed; }
+.neben { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 16px; border-radius: 10px; border: 2px solid var(--pflaume); background: var(--karte); color: var(--pflaume); font: 700 16px 'Barlow', sans-serif; }
+.neben:active { background: var(--pflaume-h); }
+.textlink { min-height: 44px; border: 0; background: none; padding: 0 4px; color: var(--pflaume); font: 600 16px 'Barlow', sans-serif; text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- Toast ---------- */
+.toast { position: fixed; left: 50%; bottom: 104px; transform: translate(-50%, 10px); opacity: 0; pointer-events: none; z-index: 90; background: var(--tinte); color: #fff; border-radius: 10px; padding: 12px 14px 12px 16px; display: flex; align-items: center; gap: 14px; max-width: min(92vw, 460px); box-shadow: var(--schatten-2); transition: opacity .2s var(--ease), transform .2s var(--ease); font-weight: 500; }
+.toast.zeigen { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast button { border: 0; background: none; color: var(--senf); font-weight: 700; min-height: 40px; padding: 0 4px; white-space: nowrap; text-decoration: underline; text-underline-offset: 3px; }
+
+/* =================================================================
+   HANDY
+   ================================================================= */
+body.handy { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+.band { position: relative; flex: none; background: var(--tf); color: #fff; min-height: 76px; padding: 12px 12px 12px 98px; display: flex; align-items: center; gap: 8px; }
+.tierkreis { position: absolute; left: 14px; top: 10px; width: 74px; height: 74px; border-radius: 50%; background: var(--tf); border: 4px solid var(--papier); display: grid; place-items: center; font-size: 42px; line-height: 1; transform: rotate(-7deg); box-shadow: 0 3px 0 rgba(0,0,0,.12); z-index: 3; }
+.band .wer { flex: 1; min-width: 0; }
+.band h1 { font-size: 24px; font-weight: 800; white-space: nowrap; }
+.band .leitung { font-size: 14px; font-weight: 500; opacity: 1; }
+.uhr { flex: none; display: inline-flex; align-items: center; gap: 5px; color: var(--tinte); font: 700 15px 'Archivo', sans-serif; white-space: nowrap; }
+.mehr-knopf { flex: none; width: 48px; height: 48px; border-radius: 12px; border: 2px solid rgba(255,255,255,.9); background: transparent; color: #fff; display: grid; place-items: center; }
+
+/* Spielbrett-Pfad */
+.brett { flex: none; margin: 18px 16px 0; padding: 10px 10px 8px; background: var(--karte); border: 1.5px solid var(--linie); border-radius: 14px; box-shadow: var(--schatten); }
+.pfad { display: flex; align-items: flex-start; }
+.feldspalte { flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.feld { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; font: 800 17px 'Archivo', sans-serif; border: 2px solid var(--rand); background: var(--papier); color: var(--tinte-2); position: relative; transition: background .3s var(--ease), box-shadow .3s var(--ease); }
+.feld.erledigt { background: var(--moos); border-color: var(--moos); color: #fff; }
+.feld.aktuell { background: var(--senf); border-color: var(--senf-d); color: var(--tinte); box-shadow: 0 3px 0 var(--senf-d); }
+.feld.koffer { width: 42px; height: 40px; font-size: 24px; background: var(--pflaume-h); border-color: var(--pflaume); border-style: dashed; }
+.feld .figur, .verbinder .figur { position: absolute; width: 28px; height: 28px; border-radius: 50%; background: var(--tf); border: 2px solid #fff; display: grid; place-items: center; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,.25); }
+.feld .figur { top: -12px; right: -12px; }
+.verbinder { flex: 1 1 0; min-width: 12px; height: 36px; position: relative; display: flex; align-items: center; }
+.verbinder::before { content: ""; flex: 1; border-top: 3px dotted var(--rand); margin: 0 3px; }
+.verbinder.gelaufen::before { border-top-style: solid; border-color: var(--moos); }
+.verbinder.weg { flex-grow: 2.4; }
+.verbinder.weg::before { border-top: 3px dashed var(--tf); }
+.verbinder .figur { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.rad { width: 26px; height: 30px; border-radius: 6px; display: grid; place-items: center; font: 800 16px ui-monospace, Consolas, monospace; background: var(--pflaume-h); color: var(--pflaume); border: 1.5px solid #CBB9DA; }
+.rad.hat { background: var(--pflaume); color: #fff; border-color: var(--pflaume); }
+.rad.schluss { background: transparent; border: 1.5px dashed var(--pflaume); }
+.brett-unter { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--linie); font-size: 13px; color: var(--tinte-2); gap: 8px; }
+
+/* Schritte Weg / Rätsel / Ziffer */
+.schritte { flex: none; display: flex; gap: 6px; margin: 12px 16px 0; padding: 0; list-style: none; }
+.schritte li { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; border-radius: 999px; font: 700 14px 'Barlow', sans-serif; color: var(--tinte-2); border: 1.5px solid var(--linie); background: transparent; white-space: nowrap; }
+.schritte li.jetzt { background: var(--tinte); border-color: var(--tinte); color: #fff; }
+.schritte li.fertig { color: var(--moos); border-color: #A9CDB3; background: var(--moos-h); }
+
+.flaeche { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px 16px 20px; }
+.kicker { margin: 0 0 2px; font: 700 14px 'Barlow', sans-serif; color: var(--tinte-2); letter-spacing: .02em; }
+.kicker.ok { color: var(--moos); }
+.flaeche h2.titel { font-size: 30px; font-weight: 800; margin-bottom: 12px; }
+
+.hinweis { display: flex; gap: 10px; align-items: flex-start; }
+.sprecher { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--tf); display: grid; place-items: center; font-size: 22px; margin-top: 4px; }
+.blase { position: relative; flex: 1; background: var(--karte); border: 1.5px solid var(--linie); border-radius: 14px; padding: 12px 14px; font-size: 17px; line-height: 1.45; box-shadow: var(--schatten); margin: 0; }
+.blase::before { content: ""; position: absolute; left: -8px; top: 16px; width: 14px; height: 14px; background: var(--karte); border-left: 1.5px solid var(--linie); border-bottom: 1.5px solid var(--linie); transform: rotate(45deg); }
+
+.weiser { display: grid; grid-template-columns: 168px 1fr; gap: 14px; align-items: center; margin-top: 18px; }
+.kompass { width: 168px; height: 168px; position: relative; }
+.kompass svg { width: 100%; height: 100%; display: block; }
+.kompass .pfeil { transform-origin: 84px 84px; transition: transform .6s var(--ease); }
+.meter { min-width: 0; }
+.meter .zahl { display: block; font: 800 54px/1 'Archivo', sans-serif; font-stretch: 105%; white-space: nowrap; letter-spacing: -.01em; }
+.meter .bis { display: block; margin-top: 4px; font-weight: 600; font-size: 15px; }
+.meter .klein { display: flex; align-items: center; gap: 6px; margin-top: 6px; color: var(--tinte-2); font-size: 14px; white-space: nowrap; }
+.punkt { width: 9px; height: 9px; border-radius: 50%; background: var(--moos); flex: none; }
+.einmessen { margin-top: 4px; }
+
+.aktion { flex: none; padding: 10px 16px calc(14px + env(safe-area-inset-bottom)); background: var(--papier); border-top: 1.5px solid var(--linie); }
+.aktion .mock { display: block; text-align: center; font-size: 13px; color: var(--tinte-2); margin-top: 8px; }
+
+/* Rätsel */
+.raetselkarte { position: relative; background: var(--karte); border: 2px solid var(--tinte); border-radius: 14px; padding: 16px 16px 16px 18px; box-shadow: 4px 4px 0 var(--senf); font-size: 17px; line-height: 1.45; margin: 4px 4px 0 0; }
+.raetselkarte p { margin: 0; }
+.raetselkarte .ecke { position: absolute; top: -13px; right: 14px; background: var(--senf); color: var(--tinte); border: 2px solid var(--tinte); font: 800 13px 'Archivo', sans-serif; padding: 2px 8px; border-radius: 999px; }
+.antwort-label { display: block; margin: 20px 0 6px; font-weight: 700; font-size: 15px; }
+.antwort { width: 100%; min-height: 60px; border: 2px solid var(--rand); border-radius: 12px; background: #fff; padding: 0 16px; font: 800 28px ui-monospace, Consolas, monospace; letter-spacing: .12em; color: var(--tinte); }
+.antwort::placeholder { font: 500 20px 'Barlow', sans-serif; letter-spacing: 0; color: #857884; }
+.antwort:focus { outline: none; border-color: var(--pflaume); box-shadow: 0 0 0 4px rgba(75,42,110,.2); }
+.antwort.falsch { border-color: var(--alarm); }
+.versuche { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 14px; color: var(--tinte-2); }
+.steine { display: flex; gap: 5px; }
+.stein { width: 16px; height: 16px; border-radius: 50%; background: var(--pflaume); border: 2px solid var(--pflaume); }
+.stein.weg { background: transparent; border-color: var(--rand); }
+.meldung { margin-top: 12px; border-radius: 12px; padding: 10px 12px; font-weight: 600; font-size: 15px; display: none; }
+.meldung.fehler { display: block; background: var(--alarm-h); color: #8A1A12; border: 1.5px solid #E7A69E; }
+.meldung.pause { display: block; background: var(--senf-h); color: #5E3D00; border: 1.5px solid #E6C77A; }
+@keyframes wackeln { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+.wackeln { animation: wackeln .36s var(--ease); }
+
+/* Ziffer: Schloss mit Rädern */
+.schloss { position: relative; margin: 30px auto 0; width: 316px; max-width: 100%; }
+.buegel { width: 150px; height: 70px; margin: 0 auto -6px; border: 16px solid #8B7F8E; border-bottom: 0; border-radius: 75px 75px 0 0; transition: transform .4s var(--ease); }
+.koerper { background: var(--pflaume); border-radius: 18px; padding: 16px 12px 12px; box-shadow: 0 6px 0 var(--pflaume-d); }
+.raeder { display: flex; gap: 6px; justify-content: center; }
+.gross-rad { position: relative; width: 42px; height: 64px; border-radius: 8px; background: #fff; overflow: hidden; box-shadow: inset 0 8px 8px -6px rgba(0,0,0,.35), inset 0 -8px 8px -6px rgba(0,0,0,.35); }
+.gross-rad.leer { background: #DCCFE6; }
+.gross-rad.schluss { background: var(--senf-h); margin-left: 8px; }
+.streifen { display: flex; flex-direction: column; will-change: transform; }
+.streifen span { height: 64px; display: grid; place-items: center; font: 800 32px ui-monospace, Consolas, monospace; color: var(--tinte); }
+.gross-rad.leer .streifen span { color: #6B5A7A; }
+.gross-rad.rastet { box-shadow: 0 0 0 3px var(--senf), inset 0 8px 8px -6px rgba(0,0,0,.35), inset 0 -8px 8px -6px rgba(0,0,0,.35); }
+.rad-nr { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+.rad-nr span { width: 42px; text-align: center; color: #E7DDF0; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.rad-nr span:last-child { margin-left: 8px; }
+@keyframes rasten { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.gross-rad.rastet { animation: rasten .3s var(--ease); }
+@keyframes leuchten { 0% { box-shadow: 0 0 0 0 rgba(242,182,50,.9); } 100% { box-shadow: 0 0 0 12px rgba(242,182,50,0); } }
+.feld.neu { animation: leuchten .9s var(--ease) 2; outline: 3px solid var(--senf); outline-offset: 2px; }
+.rad.neu { outline: 3px solid var(--senf); outline-offset: 1px; }
+.ziffer-text { text-align: center; margin: 18px 6px 0; font-size: 16px; color: var(--tinte-2); }
+.ziffer-titel { text-align: center; }
+
+/* Blatt (Menü) */
+.schleier { position: fixed; inset: 0; background: rgba(42,34,51,.38); opacity: 0; pointer-events: none; transition: opacity .2s var(--ease); z-index: 50; }
+.schleier.offen { opacity: 1; pointer-events: auto; }
+.blatt { position: fixed; left: 0; right: 0; bottom: 0; max-height: 88vh; overflow-y: auto; background: var(--papier); border-radius: 20px 20px 0 0; padding: 8px 16px calc(20px + env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform .24s var(--ease); z-index: 60; box-shadow: var(--schatten-2); }
+.blatt.offen { transform: translateY(0); }
+.griff { width: 44px; height: 5px; border-radius: 3px; background: #CDBFAA; margin: 2px auto 10px; }
+.blatt-kopf { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.blatt-kopf h2 { flex: 1; font-size: 22px; }
+.zu { width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid var(--linie); background: var(--karte); display: grid; place-items: center; }
+.abschnitt { background: var(--karte); border: 1.5px solid var(--linie); border-radius: 14px; padding: 14px; margin-top: 12px; }
+.abschnitt h3 { font-size: 17px; margin-bottom: 4px; }
+.abschnitt p { margin: 0 0 10px; color: var(--tinte-2); font-size: 15px; }
+.zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.namen { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.namen span { background: var(--papier-2); border-radius: 999px; padding: 5px 10px; font-size: 14px; font-weight: 500; }
+.namen span.chef { background: var(--tf); color: #fff; }
+.wahl { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 12px; border: 1.5px solid var(--linie); border-radius: 10px; background: #fff; margin-top: 8px; font-weight: 600; }
+.wahl input { width: 22px; height: 22px; accent-color: var(--pflaume); }
+
+/* Dialog (beide Seiten) */
+.dialog { position: fixed; left: 50%; top: 50%; width: min(92vw, 420px); background: var(--karte); border-radius: 16px; padding: 22px; z-index: 70; box-shadow: var(--schatten-2); transform: translate(-50%, -46%) scale(.98); opacity: 0; pointer-events: none; transition: opacity .18s var(--ease), transform .18s var(--ease); }
+.dialog.offen { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+.dialog h2 { font-size: 21px; margin-bottom: 8px; }
+.dialog p { margin: 0 0 18px; color: var(--tinte-2); }
+.dialog .knoepfe { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.dialog .knoepfe .haupt { width: auto; padding: 0 20px; min-height: 48px; font-size: 16px; }
+
+/* =================================================================
+   SPIELLEITUNG
+   ================================================================= */
+body.admin { min-height: 100vh; }
+.kopf { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; padding: 10px 20px; background: var(--tinte); color: #fff; }
+.marke { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.marke .w { width: 38px; height: 38px; border-radius: 9px; background: var(--senf); color: var(--tinte); display: grid; place-items: center; font: 800 18px 'Archivo', sans-serif; transform: rotate(-6deg); box-shadow: 0 3px 0 #9C6E00; }
+.marke b { font: 800 19px 'Archivo', sans-serif; font-stretch: 112%; display: block; line-height: 1.05; }
+.marke small { color: #D9CFE0; font-size: 13px; }
+.nav { display: flex; gap: 2px; flex: 1; min-width: 0; }
+.nav button { border: 0; background: transparent; color: #E9E2EE; min-height: 48px; padding: 0 12px; border-radius: 8px; font-weight: 600; font-size: 15px; white-space: nowrap; }
+.nav button[aria-current="page"] { background: rgba(255,255,255,.14); color: #fff; box-shadow: inset 0 -3px 0 var(--senf); }
+.lage { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.status { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; white-space: nowrap; background: rgba(255,255,255,.1); padding: 6px 12px; border-radius: 999px; }
+.status .punkt { background: #6FD08C; box-shadow: 0 0 0 3px rgba(111,208,140,.25); }
+.rest { white-space: nowrap; text-align: right; line-height: 1.1; }
+.rest b { font: 800 24px 'Archivo', sans-serif; display: block; }
+.rest small { color: #D9CFE0; font-size: 12.5px; }
+.beenden { min-height: 48px; padding: 0 16px; border-radius: 10px; border: 2px solid #F4A99F; background: transparent; color: #FFD9D3; font-weight: 700; white-space: nowrap; }
+
+.leiste { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 12px 20px; }
+.umschalter { display: inline-flex; background: var(--papier-2); border: 1.5px solid var(--linie); border-radius: 12px; padding: 3px; }
+.umschalter button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 9px; background: transparent; font-weight: 700; color: var(--tinte-2); display: inline-flex; gap: 7px; align-items: center; white-space: nowrap; }
+.umschalter button[aria-pressed="true"] { background: var(--tinte); color: #fff; }
+.achtung { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.achtung > b { color: var(--alarm); font-weight: 800; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+.alarm-chip { min-height: 48px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px 0 6px; border-radius: 10px; border: 2px solid var(--alarm); background: var(--alarm-h); color: #7A1710; font-weight: 700; white-space: nowrap; }
+.alarm-chip .t { width: 32px; height: 32px; border-radius: 7px; display: grid; place-items: center; font-size: 19px; background: var(--tf); }
+.leiste .zahlen { margin-left: auto; color: var(--tinte-2); font-size: 14px; white-space: nowrap; }
+
+.haupt-bereich { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 0 20px 20px; align-items: start; }
+@media (min-width: 1360px) { .haupt-bereich { grid-template-columns: minmax(0, 1fr) 300px; } }
+
+/* Rennbahn */
+.bahn { display: grid; grid-template-columns: 30px repeat(6, minmax(0, 1fr)); gap: 8px; }
+.bahn > * { grid-column: var(--s); grid-row: var(--z); min-width: 0; }
+.ecke-l { }
+.zonen-label { display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 700; font-size: 13px; color: var(--tinte-2); letter-spacing: .03em; white-space: nowrap; border-radius: 8px; gap: 6px; }
+.zonen-label.st { background: var(--senf-h); color: var(--senf-d); }
+.spalten-kopf { display: flex; align-items: center; gap: 10px; padding: 8px 6px 4px; }
+.spalten-kopf .feld { flex: none; width: 40px; height: 40px; font-size: 19px; }
+.spalten-kopf .feld.ziel { background: var(--pflaume); border-color: var(--pflaume); color: #fff; font-size: 22px; }
+.spalten-kopf .n { font: 700 15px 'Archivo', sans-serif; line-height: 1.15; display: block; }
+.spalten-kopf small { color: var(--tinte-2); font-size: 13px; white-space: nowrap; }
+.zelle { border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 8px; min-height: 64px; }
+.zelle.uw { background: repeating-linear-gradient(90deg, transparent 0 10px, rgba(138,122,132,.0) 10px 12px), var(--papier); border: 2px dashed #D6C6AD; }
+.zelle.st { background: var(--senf-h); border: 2px solid #EBCB7C; }
+.zelle.zl { background: var(--pflaume-h); border: 2px solid #D3C1E2; }
+.zelle .leer { color: #6E6370; font-size: 13px; text-align: center; margin: auto 0; }
+
+.tk { position: relative; display: flex; flex-direction: column; width: 100%; text-align: left; padding: 8px; border-radius: 10px; border: 1.5px solid #CDBFA9; background: #fff; min-height: 56px; box-shadow: var(--schatten); transition: box-shadow .16s var(--ease), transform .16s var(--ease), outline-color .16s; outline: 3px solid transparent; outline-offset: 2px; }
+.tk.uw { border-style: dashed; border-color: var(--rand); background: var(--karte); box-shadow: none; }
+.tk.st { box-shadow: 0 3px 0 #DDB75A; }
+.tk-k { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tk-n { display: flex; flex-direction: column; min-width: 0; }
+.tk .tier { flex: none; width: 38px; height: 38px; border-radius: 9px; background: var(--tf); display: grid; place-items: center; font-size: 22px; }
+.tk .kn { font: 800 15px 'Archivo', sans-serif; font-stretch: 105%; white-space: nowrap; }
+.tk .kl { font-size: 13px; color: var(--tinte-2); line-height: 1.2; }
+.tk .kf { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; margin-top: 7px; font-size: 13px; color: var(--tinte-2); }
+.tk .kf span { white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.tk .kf b { color: var(--tinte); font-weight: 700; }
+.tk .pips { display: inline-flex; gap: 2px; }
+.tk .pips i { width: 7px; height: 9px; border-radius: 2px; background: #DCD2C2; }
+.tk .pips i.ja { background: var(--moos); }
+.tk .prob { margin: -2px -2px 7px; background: var(--alarm); color: #fff; font-weight: 800; font-size: 13px; border-radius: 6px; padding: 3px 7px; white-space: nowrap; display: flex; gap: 6px; align-items: center; }
+.tk.problem { border: 2px solid var(--alarm); background: var(--alarm-h); }
+.tk.problem.warn { border-color: #B7791F; background: #FFF4DC; }
+.tk.problem.warn .prob { background: #8A5A00; }
+.tk.gewaehlt { outline-color: var(--pflaume); transform: translateY(-2px); box-shadow: var(--schatten-2); }
+.gps-alt { color: var(--alarm) !important; font-weight: 700; }
+
+/* Tablet hoch: Spalten werden Zeilen */
+@media (max-width: 960px) {
+  .nav { order: 3; flex-basis: 100%; overflow-x: auto; }
+  .bahn { grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1fr); }
+  .bahn > * { grid-column: var(--z); grid-row: var(--s); }
+  .bahn > .zl-zelle { grid-column: 2 / span 2; }
+  .zonen-label { writing-mode: horizontal-tb; transform: none; padding: 8px; justify-content: flex-start; }
+  .zelle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
+  .zelle.zl { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .zelle .leer { grid-column: 1 / -1; }
+  .spalten-kopf { align-items: flex-start; padding: 8px 0; }
+}
+@media (min-width: 961px) { .bahn > .zl-zelle { grid-row: 2 / span 2; } }
+
+/* Karte */
+.kartenrahmen { position: relative; background: #F1EADB; border: 1.5px solid var(--linie); border-radius: 16px; overflow: hidden; }
+.kartenrahmen svg { display: block; width: 100%; height: auto; max-height: calc(100vh - 270px); }
+.marker { cursor: pointer; transition: opacity .16s var(--ease); }
+.marker.blass { opacity: .45; }
+.kartenlegende { display: flex; gap: 8px 12px; flex-wrap: wrap; align-items: center; background: var(--karte); border-top: 1.5px solid var(--linie); padding: 8px 14px; font-size: 14px; color: var(--tinte-2); }
+.kartenlegende .alarm-chip { min-height: 44px; }
+
+/* Verlauf */
+.verlauf { background: var(--karte); border: 1.5px solid var(--linie); border-radius: 16px; padding: 14px; }
+.verlauf h2 { font-size: 17px; margin-bottom: 8px; }
+.verlauf ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.verlauf li { display: grid; grid-template-columns: 46px 26px minmax(0,1fr); gap: 8px; align-items: center; font-size: 14px; padding: 6px 4px; border-bottom: 1px solid #EFE4D2; }
+.verlauf li:last-child { border-bottom: 0; }
+.verlauf .zt { font: 600 13px ui-monospace, Consolas, monospace; color: var(--tinte-2); white-space: nowrap; }
+.verlauf .ic { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; font-size: 15px; background: var(--tf); }
+.verlauf .art-err { color: #8A1A12; font-weight: 700; }
+.verlauf .art-warn { color: #7A1710; font-weight: 700; }
+.verlauf .art-ok { color: #23613A; font-weight: 600; }
+@media (max-width: 1359px) {
+  .verlauf ol { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .verlauf li { border: 1px solid #EFE4D2; border-radius: 10px; grid-template-columns: 26px minmax(0,1fr); grid-template-rows: auto auto; align-items: start; }
+  .verlauf li .zt { grid-column: 1 / -1; }
+  .verlauf li:nth-child(n+5) { display: none; }
+}
+@media (max-width: 960px) { .verlauf ol { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.platzhalter { background: var(--karte); border: 2px dashed var(--linie); border-radius: 16px; padding: 40px; text-align: center; color: var(--tinte-2); }
+.platzhalter h2 { color: var(--tinte); margin-bottom: 8px; }
+
+/* Schublade (Team-Details) */
+.schublade { position: fixed; top: 0; right: 0; bottom: 0; width: min(410px, 94vw); border-top-left-radius: 16px; background: var(--papier); z-index: 40; box-shadow: var(--schatten-2); border-left: 1.5px solid var(--linie); transform: translateX(104%); transition: transform .22s var(--ease); overflow-y: auto; display: flex; flex-direction: column; }
+.schublade.offen { transform: translateX(0); }
+.schublade.links { right: auto; left: 0; border-left: 0; border-top-left-radius: 0; border-top-right-radius: 16px; border-right: 1.5px solid var(--linie); transform: translateX(-104%); }
+.schublade.links.offen { transform: translateX(0); }
+@media (max-width: 960px) {
+  .schublade, .schublade.links { top: auto; left: 0; right: 0; width: auto; max-height: 50vh; border: 0; border-top: 1.5px solid var(--linie); border-radius: 18px 18px 0 0; transform: translateY(104%); }
+  .schublade.offen, .schublade.links.offen { transform: translateY(0); }
+  .sch-kopf { border-radius: 18px 18px 0 0; }
+  body.admin.sch-offen { padding-bottom: 50vh; }
+}
+.sch-kopf { position: relative; background: var(--tf); color: #fff; padding: 18px 70px 18px 18px; display: flex; gap: 14px; align-items: center; }
+.sch-kopf .gt { width: 64px; height: 64px; border-radius: 16px; background: rgba(255,255,255,.18); border: 3px solid #fff; display: grid; place-items: center; font-size: 38px; transform: rotate(-5deg); flex: none; }
+.sch-kopf h2 { font-size: 26px; }
+.sch-kopf .code { display: inline-block; margin-top: 4px; background: rgba(0,0,0,.28); padding: 2px 8px; border-radius: 6px; font: 600 14px ui-monospace, Consolas, monospace; white-space: nowrap; }
+.sch-kopf .zu { position: absolute; right: 12px; top: 12px; background: rgba(255,255,255,.95); color: var(--tinte); border: 0; }
+.sch-inhalt { padding: 16px 18px 24px; display: flex; flex-direction: column; gap: 12px; }
+.fakten { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; background: var(--karte); border: 1.5px solid var(--linie); border-radius: 14px; padding: 14px; margin: 0; }
+.fakten dt { color: var(--tinte-2); font-size: 14px; }
+.fakten dd { margin: 0; font-weight: 600; }
+.sch-alarm { background: var(--alarm-h); border: 2px solid var(--alarm); color: #6E140D; border-radius: 14px; padding: 12px 14px; }
+.sch-alarm b { display: flex; gap: 8px; align-items: center; font-size: 16px; color: var(--alarm); }
+.sch-alarm p { margin: 4px 0 0; font-size: 15px; }
+.sch-brett { display: flex; gap: 6px; align-items: center; }
+.sch-brett .feld { width: 32px; height: 32px; font-size: 15px; }
+.sch-aktionen { display: grid; gap: 8px; }
+.sch-aktionen .neben { width: 100%; justify-content: flex-start; }
+.sch-aktionen .haupt { min-height: 54px; font-size: 17px; }
+
+/* Bewegung nur, wenn erwünscht */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="schleier" id="schleier"></div>
+<div class="dialog" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t"><h2 id="dlg-t"></h2><p id="dlg-p"></p><div class="knoepfe"><button class="neben" id="dlg-nein">Abbrechen</button><button class="haupt" id="dlg-ja">OK</button></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toast-t"></span><button id="toast-b" hidden></button></div>
+<script src="data.js"></script>
+<script>
+(() => {
+const SJ = window.SJ;
+const ANSICHT_ROH = location.hash.slice(1) || new URLSearchParams(location.search).get("ansicht"); addEventListener("hashchange", () => location.reload());
+const ANSICHT = ["unterwegs","raetsel","admin"].includes(ANSICHT_ROH) ? ANSICHT_ROH : "unterwegs";
+const RUHIG = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const app = $("#app");
+
+/* ---------- Toast & Dialog (gemeinsam) ---------- */
+let toastZeit;
+function toast(text, aktion, fn) {
+  $("#toast-t").textContent = text;
+  const b = $("#toast-b");
+  b.hidden = !aktion; b.textContent = aktion || "";
+  b.onclick = () => { $("#toast").classList.remove("zeigen"); fn && fn(); };
+  $("#toast").classList.add("zeigen");
+  clearTimeout(toastZeit); toastZeit = setTimeout(() => $("#toast").classList.remove("zeigen"), 4200);
+}
+let dialogFn = null;
+function frage(titel, text, ja, fn) {
+  $("#dlg-t").textContent = titel; $("#dlg-p").textContent = text; $("#dlg-ja").textContent = ja;
+  dialogFn = fn; $("#dialog").classList.add("offen"); $("#schleier").classList.add("offen", "dlg");
+  setTimeout(() => $("#dlg-ja").focus(), 50);
+}
+function dialogZu() { $("#dialog").classList.remove("offen"); $("#schleier").classList.remove("dlg"); if (!document.querySelector(".blatt.offen")) $("#schleier").classList.remove("offen"); }
+$("#dlg-nein").onclick = dialogZu;
+$("#dlg-ja").onclick = () => { const f = dialogFn; dialogZu(); f && f(); };
+
+const ICON = {
+  menue: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+  zu: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  uhr: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  warn: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>',
+  bahn: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 4v16M10 4v16M16 4v16M22 4v16" opacity=".5"/><rect x="2" y="7" width="6" height="4" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="13" width="6" height="4" rx="1" fill="currentColor" stroke="none"/></svg>',
+  karte: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>',
+};
+
+/* =================================================================
+   HANDY
+   ================================================================= */
+function handy() {
+  document.body.className = "handy";
+  const T = SJ.team, S = T.station, N = SJ.spiel.stationen;
+  document.documentElement.style.setProperty("--tf", T.farbe);
+  const st = { schritt: ANSICHT === "raetsel" ? "raetsel" : "weg", da: false, fehl: T.fehlversuche, pauseBis: 0, ziffern: T.ziffern.slice(), neu: -1 };
+
+  function brett() {
+    const i = S.nr - 1; let h = "";
+    for (let k = 0; k < N; k++) {
+      const erl = st.ziffern[k] != null, akt = !erl && k === i;
+      if (k > 0) {
+        const weg = st.schritt === "weg" && k === i, weiter = st.schritt === "ziffer" && k === i + 1;
+        h += `<div class="verbinder ${erl ? "gelaufen" : ""} ${weg || weiter ? "weg" : ""}">${weg || weiter ? `<span class="figur" aria-hidden="true">${T.tier}</span>` : ""}</div>`;
+      }
+      h += `<div class="feldspalte"><div class="feld ${erl ? "erledigt" : ""} ${akt ? "aktuell" : ""} ${st.neu === k ? "neu" : ""}" aria-label="Station ${k + 1}${erl ? ", geschafft" : akt ? ", hier geht es hin" : ""}">${erl ? "✓" : k + 1}${akt && st.schritt === "raetsel" ? `<span class="figur" aria-hidden="true">${T.tier}</span>` : ""}</div>
+        <div class="rad ${erl ? "hat" : ""} ${st.neu === k ? "neu" : ""}" aria-label="Ziffer ${k + 1}: ${erl ? st.ziffern[k] : "noch offen"}">${erl ? st.ziffern[k] : "?"}</div></div>`;
+    }
+    h += `<div class="verbinder ${st.ziffern.every(z => z != null) ? "gelaufen" : ""}"></div><div class="feldspalte"><div class="feld koffer" aria-label="Koffer am Ziel">🧳</div><div class="rad schluss" aria-label="Schlussziffer, noch offen">?</div></div>`;
+    const anzahl = st.ziffern.filter(z => z != null).length;
+    return `<section class="brett" aria-label="Euer Spielbrett"><div class="pfad">${h}</div>
+      <div class="brett-unter"><span class="uhr" aria-label="Restzeit ${SJ.spiel.rest}">${ICON.uhr}noch ${SJ.spiel.rest}</span><span>Ziffern: <b class="nw">${anzahl} von ${N}</b> <span class="nw">+ Schluss</span></span></div></section>`;
+  }
+  function schritte() {
+    const L = [["weg", "🧭", "Weg"], ["raetsel", "🧩", "Rätsel"], ["ziffer", "🔑", "Ziffer"]];
+    const idx = L.findIndex(x => x[0] === st.schritt);
+    return `<ol class="schritte" aria-label="Schritte an dieser Station">${L.map((x, k) => `<li class="${k === idx ? "jetzt" : k < idx ? "fertig" : ""}" ${k === idx ? 'aria-current="step"' : ""}><span aria-hidden="true">${k < idx ? "✓" : x[1]}</span>${x[2]}</li>`).join("")}</ol>`;
+  }
+  function kompass(grad, da) {
+    let ticks = "";
+    for (let a = 0; a < 360; a += 30) ticks += `<line x1="84" y1="12" x2="84" y2="${a % 90 === 0 ? 24 : 19}" stroke="#8A7A84" stroke-width="${a % 90 === 0 ? 3 : 2}" stroke-linecap="round" transform="rotate(${a} 84 84)"/>`;
+    return `<div class="kompass" role="img" aria-label="${da ? "Ihr seid im Umkreis der Station" : `Richtung: ${grad} Grad rechts von vorne`}"><svg viewBox="0 0 168 168">
+      <circle cx="84" cy="84" r="80" fill="${da ? "#DDEFE1" : "#FFFDF8"}" stroke="${da ? "#2F7D45" : "#2A2233"}" stroke-width="4"/>
+      <circle cx="84" cy="84" r="62" fill="none" stroke="#E2D3BB" stroke-width="2" stroke-dasharray="4 6"/>${ticks}
+      <path d="M84 4 l7 9 h-14z" fill="#2A2233"/>
+      ${da ? `<text x="84" y="98" text-anchor="middle" font-size="44">${T.tier}</text>` :
+      `<g class="pfeil" style="transform: rotate(${grad}deg)"><path d="M84 30 L112 104 L84 90 L56 104 Z" fill="#4B2A6E" stroke="#361D52" stroke-width="3" stroke-linejoin="round"/><path d="M84 30 L84 90 L56 104 Z" fill="#F2B632"/></g><circle cx="84" cy="84" r="7" fill="#fff" stroke="#2A2233" stroke-width="3"/>`}
+    </svg></div>`;
+  }
+
+  function seite() {
+    let inhalt = "", aktion = "";
+    if (st.schritt === "weg") {
+      const m = st.da ? 42 : T.entfernung, rest = Math.max(0, m - T.checkinAb);
+      inhalt = `<p class="kicker">Station ${S.nr} von ${N}</p><h2 class="titel">${esc(S.name)}</h2>
+        <div class="hinweis"><span class="sprecher" aria-hidden="true">${T.tier}</span><p class="blase">${esc(S.hinweis)}</p></div>
+        <div class="weiser">${kompass(T.richtungGrad, st.da)}
+          <div class="meter"><span class="zahl">${m} m</span><span class="bis">${st.da ? "Ihr seid da!" : "bis zur Station"}</span>
+          <span class="klein"><span class="punkt"></span>GPS ±${T.gpsGenau} m</span><span class="klein">Einchecken ab ${T.checkinAb} m</span></div></div>
+        <button class="textlink einmessen" data-a="einmessen">Kompass einmessen</button>`;
+      aktion = st.da ? `<button class="haupt" data-a="einchecken">Einchecken</button>`
+        : `<button class="haupt warten" data-a="naeher"><span>Noch <span class="nw">${rest} m</span> bis zum Einchecken</span></button><span class="mock">Mockup: Tippen tut so, als wärt ihr angekommen</span>`;
+    } else if (st.schritt === "raetsel") {
+      const frei = T.maxFehlversuche - st.fehl, pause = st.pauseBis > Date.now();
+      inhalt = `<p class="kicker ok">✓ Eingecheckt an Station ${S.nr}</p><h2 class="titel">${esc(S.name)}</h2>
+        <article class="raetselkarte"><span class="ecke">Rätsel</span><p>${esc(S.raetsel)}</p></article>
+        <label class="antwort-label" for="antwort">Eure Antwort (eine Zahl)</label>
+        <input class="antwort" id="antwort" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="z. B. 120" ${pause ? "disabled" : ""}>
+        <div class="versuche"><span class="steine" aria-hidden="true">${Array.from({ length: T.maxFehlversuche }, (_, k) => `<i class="stein ${k < st.fehl ? "weg" : ""}"></i>`).join("")}</span>
+          <span>${frei} ${frei === 1 ? "Versuch" : "Versuche"} frei, danach <span class="nw">${T.pauseMin} Minuten Pause</span></span></div>
+        <div class="meldung" id="meldung" role="status"></div>`;
+      aktion = pause ? `<button class="haupt" disabled id="pause-knopf">Pause</button>` : `<button class="haupt" data-a="pruefen">Antwort prüfen</button>`;
+    } else {
+      const raeder = st.ziffern.map((z, k) => {
+        const neu = k === st.neu;
+        const streifen = neu ? [...Array(10).keys(), ...Array(10).keys(), z].map(d => `<span>${d}</span>`).join("") : `<span>${z ?? "?"}</span>`;
+        return `<div class="gross-rad ${z == null ? "leer" : ""}" ${neu ? 'id="neues-rad"' : ""}><div class="streifen">${streifen}</div></div>`;
+      }).join("") + `<div class="gross-rad leer schluss"><div class="streifen"><span>?</span></div></div>`;
+      inhalt = `<p class="kicker ok ziffer-titel">Richtig! Der Stollen ist <span class="nw">${S.loesung} m</span> lang.</p>
+        <h2 class="titel ziffer-titel">Ziffer ${S.ziffer} gehört euch</h2>
+        <div class="schloss" role="img" aria-label="Euer Schloss: ${st.ziffern.map(z => z ?? "offen").join(", ")}, Schlussziffer offen">
+          <div class="buegel"></div><div class="koerper"><div class="raeder">${raeder}</div>
+          <div class="rad-nr">${st.ziffern.map((_, k) => `<span>${k + 1}</span>`).join("")}<span>Schluss</span></div></div></div>
+        <p class="ziffer-text">Die Ziffer bleibt hier gespeichert. Die Schlussziffer ist die Einerstelle der Summe eurer fünf Ziffern.</p>`;
+      aktion = `<button class="haupt" data-a="weiter">Weiter zu Station ${S.nr + 1}</button>`;
+    }
+    app.innerHTML = `
+      <header class="band"><span class="tierkreis" aria-hidden="true">${T.tier}</span>
+        <div class="wer"><h1>Team ${esc(T.name)}</h1><div class="leitung">Leitung: ${esc(T.leitung)}</div></div>
+        <button class="mehr-knopf" data-a="mehr" aria-label="Mehr: Hilfe, Team, Mitlesen">${ICON.menue}</button></header>
+      ${brett()}${schritte()}
+      <main class="flaeche" id="flaeche">${inhalt}</main>
+      <footer class="aktion">${aktion}</footer>
+      <div class="blatt" id="blatt" role="dialog" aria-modal="true" aria-label="Mehr"></div>`;
+    if (st.schritt === "ziffer") rasten();
+    if (st.schritt === "raetsel" && st.pauseBis > Date.now()) pauseUhr();
+  }
+
+  function rasten() {
+    const rad = $("#neues-rad"); if (!rad) return;
+    const s = rad.querySelector(".streifen"), ziel = -20 * 64;
+    if (RUHIG) { s.style.transform = `translateY(${ziel}px)`; rad.classList.add("rastet"); return; }
+    s.style.transform = "translateY(0)";
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      s.style.transition = "transform 1.15s cubic-bezier(.2,.85,.25,1.08)";
+      s.style.transform = `translateY(${ziel}px)`;
+    }));
+    s.addEventListener("transitionend", () => { rad.classList.add("rastet"); if (navigator.vibrate) try { navigator.vibrate(30); } catch (e) {} }, { once: true });
+  }
+  let pauseTimer;
+  function pauseUhr() {
+    clearInterval(pauseTimer);
+    const tick = () => {
+      const r = Math.max(0, Math.ceil((st.pauseBis - Date.now()) / 1000)), k = $("#pause-knopf");
+      if (k) k.innerHTML = `Pause, noch <span class="nw">${Math.floor(r / 60)}:${String(r % 60).padStart(2, "0")}</span>`;
+      if (r <= 0) { clearInterval(pauseTimer); st.fehl = 0; st.pauseBis = 0; seite(); }
+    };
+    tick(); pauseTimer = setInterval(tick, 1000);
+  }
+
+  function blatt(inhalt) {
+    const b = $("#blatt"); b.innerHTML = `<div class="griff"></div>${inhalt}`;
+    requestAnimationFrame(() => { b.classList.add("offen"); $("#schleier").classList.add("offen"); });
+    setTimeout(() => b.querySelector(".zu")?.focus(), 60);
+  }
+  function blattZu() { $("#blatt")?.classList.remove("offen"); $("#schleier").classList.remove("offen"); }
+  $("#schleier").onclick = () => { if (!$("#dialog").classList.contains("offen")) blattZu(); };
+
+  function mehr() {
+    blatt(`<div class="blatt-kopf"><h2>Team ${esc(T.name)}</h2><button class="zu" data-a="zu" aria-label="Schließen">${ICON.zu}</button></div>
+      <section class="abschnitt"><h3>Hilfe von der Spielleitung</h3><p>Ihr kommt nicht weiter? Schreibt oder ruft an.</p>
+        <div class="zwei"><button class="neben" data-a="whatsapp">WhatsApp</button><button class="neben" data-a="anrufen">Anrufen</button></div></section>
+      <section class="abschnitt"><h3>Mitlesen fürs Team</h3><p>Wer den Link öffnet, sieht alles mit. Eingeben könnt nur ihr.</p>
+        <div class="zwei"><button class="neben" data-a="teilen">Link teilen</button><button class="neben" data-a="kopieren">Link kopieren</button></div></section>
+      <section class="abschnitt"><h3>Mitglieder <span class="nw">(${T.mitglieder.length})</span></h3>
+        <div class="namen">${T.mitglieder.map(n => `<span class="${n === T.leitung ? "chef" : ""}">${esc(n)}${n === T.leitung ? " · Leitung" : ""}</span>`).join("")}</div></section>
+      <section class="abschnitt"><div class="sch-aktionen" style="display:grid;gap:8px"><button class="neben" data-a="einmessen">Kompass einmessen</button><button class="neben" data-a="abgeben">Leitung abgeben</button></div></section>`);
+  }
+  function abgeben() {
+    blatt(`<div class="blatt-kopf"><h2>Leitung abgeben</h2><button class="zu" data-a="zu" aria-label="Schließen">${ICON.zu}</button></div>
+      <p style="margin:0 0 4px;color:var(--tinte-2)">Wer bedient ab jetzt das Spiel? Ihr lest dann nur noch mit.</p>
+      ${T.mitglieder.filter(n => n !== T.leitung).map((n, k) => `<label class="wahl"><input type="radio" name="neu" value="${esc(n)}" ${k === 0 ? "checked" : ""}>${esc(n)}</label>`).join("")}
+      <div style="margin-top:14px"><button class="haupt" data-a="abgeben-ok">Leitung abgeben</button></div>`);
+  }
+
+  app.addEventListener("click", e => {
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    const a = b.dataset.a;
+    if (a === "mehr") mehr();
+    else if (a === "zu") blattZu();
+    else if (a === "naeher") { st.da = true; seite(); toast("Ihr seid im Umkreis. Jetzt einchecken."); }
+    else if (a === "einchecken") { st.schritt = "raetsel"; seite(); toast(`Eingecheckt an Station ${S.nr}.`); }
+    else if (a === "pruefen") pruefen();
+    else if (a === "weiter") toast("Im Mockup endet die Runde hier.", "Von vorn", () => { Object.assign(st, { schritt: "weg", da: false, fehl: 0, ziffern: T.ziffern.slice(), neu: -1 }); seite(); });
+    else if (a === "einmessen") { blattZu(); frage("Kompass einmessen", "Haltet das Handy flach und zeichnet zwei-, dreimal eine liegende Acht in die Luft.", "Fertig", () => toast("Kompass eingemessen.")); }
+    else if (a === "whatsapp") toast("Öffnet WhatsApp mit der Spielleitung (im Mockup nicht ausgebaut).");
+    else if (a === "anrufen") toast("Ruft die Spielleitung an (im Mockup nicht ausgebaut).");
+    else if (a === "teilen") toast("Öffnet das Teilen-Menü des Handys (im Mockup nicht ausgebaut).");
+    else if (a === "kopieren") { try { navigator.clipboard?.writeText(location.origin + location.pathname + "?mitlesen=" + T.code).catch(() => {}); } catch (err) {} toast("Mitlese-Link kopiert."); }
+    else if (a === "abgeben") abgeben();
+    else if (a === "abgeben-ok") { const n = document.querySelector('input[name="neu"]:checked')?.value; blattZu(); toast(`Leitung geht an ${n} (im Mockup nicht ausgebaut).`); }
+  });
+  app.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "antwort") pruefen(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { blattZu(); dialogZu(); } });
+
+  function pruefen() {
+    const inp = $("#antwort"), m = $("#meldung"), wert = inp.value.trim();
+    if (!wert) { m.className = "meldung fehler"; m.textContent = "Bitte zuerst eine Zahl eingeben."; inp.focus(); return; }
+    if (wert === S.loesung) {
+      st.ziffern[S.nr - 1] = S.ziffer; st.neu = S.nr - 1; st.schritt = "ziffer"; seite(); return;
+    }
+    st.fehl++;
+    if (st.fehl >= T.maxFehlversuche) { st.pauseBis = Date.now() + T.pauseMin * 60000; seite(); const mm = $("#meldung"); mm.className = "meldung pause"; mm.textContent = `Fehlversuch ${st.fehl} von ${T.maxFehlversuche}. Jetzt ${T.pauseMin} Minuten Pause, dann habt ihr wieder drei Versuche.`; return; }
+    seite();
+    const i2 = $("#antwort"), m2 = $("#meldung");
+    i2.value = wert; i2.classList.add("falsch");
+    m2.className = "meldung fehler"; m2.textContent = `Leider nicht richtig. Fehlversuch ${st.fehl} von ${T.maxFehlversuche}, danach ${T.pauseMin} Minuten Pause.`;
+    if (!RUHIG) { i2.classList.add("wackeln"); i2.addEventListener("animationend", () => i2.classList.remove("wackeln"), { once: true }); }
+    i2.select();
+  }
+  seite();
+}
+
+/* =================================================================
+   SPIELLEITUNG
+   ================================================================= */
+function admin() {
+  document.body.className = "admin";
+  const N = SJ.spiel.stationen;
+  const teams = SJ.teams.map(t => ({ ...t }));
+  const ereignisse = SJ.ereignisse.map(e => ({ ...e }));
+  let ansicht = "bahn", gewaehlt = null, uhr = 6;
+
+  // Einstufung kommt aus data.js (t.problem): "fehler" = rot, "warnung" = gelb
+  const problem = t => t.ort !== "ziel" && t.problem ? t.problem.text : null;
+  const istFehler = t => !!problem(t) && t.problem.stufe === "fehler";
+  const problemText = t => t.gps == null ? "Das Handy der Teamleitung meldet keinen Standort. Der Check-in per GPS geht nicht: ruf an oder schalte die Station frei."
+    : istFehler(t) ? "Seit 7 Minuten kein neuer Standort. Vielleicht ist das Handy aus oder die App im Hintergrund."
+    : "Noch ein Fehlversuch, dann 2 Minuten Pause. Vielleicht braucht das Team einen Tipp.";
+  const station = nr => SJ.stationen[nr - 1];
+  const tf = t => `--tf:${t.farbe}`;
+
+  app.innerHTML = `
+    <header class="kopf">
+      <div class="marke"><span class="w" aria-hidden="true">SJ</span><span><b>Stadtjagd Prag</b><small>Spielleitung</small></span></div>
+      <nav class="nav" aria-label="Bereiche">
+        <button data-nav="spiel" aria-current="page">Spiel</button><button data-nav="Teilnehmende">Teilnehmende</button><button data-nav="Stationen">Stationen</button><button data-nav="Fotos">Fotos</button><button data-nav="Daten löschen">Daten löschen</button>
+      </nav>
+      <div class="lage">
+        <span class="status"><span class="punkt"></span>${esc(SJ.spiel.status)}</span>
+        <span class="rest"><b class="nw">noch ${esc(SJ.spiel.rest)}</b><small>Start ${esc(SJ.spiel.start)} · läuft seit ${esc(SJ.spiel.laeuftSeit)}</small></span>
+        <button class="beenden" id="beenden">Spiel beenden</button>
+      </div>
+    </header>
+    <div class="leiste" id="leiste">
+      <div class="umschalter" role="group" aria-label="Ansicht">
+        <button data-v="bahn" aria-pressed="true">${ICON.bahn}Rennbahn</button><button data-v="karte" aria-pressed="false">${ICON.karte}Karte</button>
+      </div>
+      <div class="achtung" id="achtung"></div>
+      <span class="zahlen" id="zahlen"></span>
+    </div>
+    <div class="haupt-bereich">
+      <main id="buehne"></main>
+      <aside class="verlauf" aria-label="Verlauf"><h2>Was gerade passiert</h2><ol id="verlauf"></ol></aside>
+    </div>
+    <aside class="schublade" id="schublade" aria-label="Team-Details" aria-hidden="true"></aside>`;
+
+  function karteHTML(t) {
+    const p = problem(t), uw = t.ort === "unterwegs", ziel = t.ort === "ziel";
+    const pips = `<span class="pips" aria-label="${t.geloest} von ${N} Ziffern">${Array.from({ length: N }, (_, k) => `<i class="${k < t.geloest ? "ja" : ""}"></i>`).join("")}</span>`;
+    const zeile = ziel ? `<span><b>Platz ${t.platz}</b></span><span>${t.zeit} Uhr</span>`
+      : uw ? `<span>seit <b>${t.seit}</b></span>${t.entfernung ? `<span><b>${t.entfernung} m</b></span>` : pips}`
+      : `<span>Rätsel <b>${t.seit}</b></span>${pips}`;
+    const gps = t.gps == null ? `<span class="gps-alt">GPS fehlt</span>` : `<span class="${istFehler(t) ? "gps-alt" : ""}">GPS ${t.gps}</span>`;
+    return `<button class="tk ${uw ? "uw" : ziel ? "zl" : "st"} ${p ? "problem" + (istFehler(t) ? "" : " warn") : ""} ${gewaehlt === t.name ? "gewaehlt" : ""}" style="${tf(t)}" data-team="${esc(t.name)}" aria-pressed="${gewaehlt === t.name}">
+      ${p ? `<span class="prob">${ICON.warn}${esc(p)}</span>` : ""}
+      <span class="tk-k"><span class="tier" aria-hidden="true">${t.tier}</span><span class="tk-n"><span class="kn">${esc(t.name)}</span><span class="kl">${esc(t.leitung)}</span></span></span>
+      <span class="kf">${zeile}${!ziel ? gps : ""}</span></button>`;
+  }
+  const sortiert = arr => arr.slice().sort((a, b) => (problem(b) ? 1 : 0) - (problem(a) ? 1 : 0));
+
+  function bahn() {
+    let h = `<div class="ecke-l" style="--s:1;--z:1"></div>
+      <div class="zonen-label" style="--s:1;--z:2">↗ unterwegs hierher</div>
+      <div class="zonen-label st" style="--s:1;--z:3">● an der Station, Rätsel offen</div>`;
+    for (let nr = 1; nr <= N; nr++) {
+      const s = station(nr), uw = sortiert(teams.filter(t => t.ort === "unterwegs" && t.nr === nr)), an = sortiert(teams.filter(t => t.ort === "station" && t.nr === nr));
+      h += `<div class="spalten-kopf" style="--s:${nr + 1};--z:1"><span class="feld aktuell">${nr}</span><span><span class="n">${esc(s.name)}</span><small>${uw.length + an.length} ${uw.length + an.length === 1 ? "Team" : "Teams"}</small></span></div>
+        <div class="zelle uw" style="--s:${nr + 1};--z:2" aria-label="Unterwegs zu Station ${nr}">${uw.map(karteHTML).join("") || `<span class="leer">niemand unterwegs</span>`}</div>
+        <div class="zelle st" style="--s:${nr + 1};--z:3" aria-label="An Station ${nr}">${an.map(karteHTML).join("") || `<span class="leer">niemand da</span>`}</div>`;
+    }
+    const fertig = teams.filter(t => t.ort === "ziel");
+    h += `<div class="spalten-kopf" style="--s:${N + 2};--z:1"><span class="feld ziel" aria-hidden="true">🧳</span><span><span class="n">Ziel</span><small>${fertig.length} von ${teams.length}</small></span></div>
+      <div class="zelle zl zl-zelle" style="--s:${N + 2};--z:2" aria-label="Im Ziel">${fertig.map(karteHTML).join("") || `<span class="leer">noch niemand</span>`}</div>`;
+    return `<div class="bahn" role="region" aria-label="Rennbahn: Teams nach Station">${h}</div>`;
+  }
+
+  /* ---- stilisierte Karte ---- */
+  const B = { n: 50.1115, s: 50.0880, w: 14.3925, o: 14.4515 };
+  const W = 1000, H = Math.round(W * (B.n - B.s) / ((B.o - B.w) * Math.cos(50.1 * Math.PI / 180)));
+  const P = (lat, lng) => [(lng - B.w) / (B.o - B.w) * W, (B.n - lat) / (B.n - B.s) * H];
+  function teamPos(t, i) {
+    if (t.gps == null) return null;
+    if (t.ort === "ziel") { const [x, y] = P(station(5).lat, station(5).lng); return [x - 40, y + 44]; }
+    const z = P(station(t.nr).lat, station(t.nr).lng);
+    if (t.ort === "station") { const a = (20 + 50 * teams.filter(x => x.ort === "station" && x.nr === t.nr).indexOf(t)) * Math.PI / 180; return [z[0] + Math.cos(a) * 46, z[1] + Math.sin(a) * 46]; }
+    const v = t.nr === 1 ? P(SJ.startpunkt.lat, SJ.startpunkt.lng) : P(station(t.nr - 1).lat, station(t.nr - 1).lng);
+    const gleich = teams.filter(x => x.ort === "unterwegs" && x.nr === t.nr), k = gleich.indexOf(t);
+    const f = 0.5 + 0.12 * (k % 3) - (t.entfernung ? 0 : 0.05), dx = z[0] - v[0], dy = z[1] - v[1], len = Math.hypot(dx, dy) || 1;
+    const off = (k - (gleich.length - 1) / 2) * 44;
+    return [v[0] + dx * f - dy / len * off, v[1] + dy * f + dx / len * off];
+  }
+  function karte() {
+    const fluss = [[50.0880, 14.4140], [50.0915, 14.4165], [50.0938, 14.4260], [50.0958, 14.4400], [50.1010, 14.4478], [50.1068, 14.4452], [50.1098, 14.4310], [50.1110, 14.4160], [50.1118, 14.4060]].map(p => P(...p));
+    let d = `M${fluss[0]}`; for (let k = 1; k < fluss.length - 1; k++) { const m = [(fluss[k][0] + fluss[k + 1][0]) / 2, (fluss[k][1] + fluss[k + 1][1]) / 2]; d += ` Q${fluss[k]} ${m}`; } d += ` L${fluss.at(-1)}`;
+    const punkte = [SJ.startpunkt, ...SJ.stationen].map(s => P(s.lat, s.lng));
+    const route = punkte.map((p, k) => (k ? "L" : "M") + p.join(",")).join(" ");
+    const [sx, sy] = P(SJ.startpunkt.lat, SJ.startpunkt.lng);
+    const gruen = [[50.1040, 14.4200, 150, 60, -10, "Stromovka"], [50.0960, 14.4175, 120, 40, -5, "Letná"], [50.0925, 14.4040, 80, 32, 0, ""]].map(([la, ln, rx, ry, r, n]) => { const [x, y] = P(la, ln); return `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#D8E6C8" transform="rotate(${r} ${x} ${y})"/>`; }).join("");
+    const stat = SJ.stationen.map(s => { const [x, y] = P(s.lat, s.lng); return `<g><rect x="${x - 19}" y="${y - 19}" width="38" height="38" rx="9" fill="#F2B632" stroke="#845500" stroke-width="2.5"/><text x="${x}" y="${y + 7}" text-anchor="middle" font-family="Archivo" font-weight="800" font-size="20" fill="#2A2233">${s.nr}</text></g>`; }).join("");
+    const namen = SJ.stationen.map(s => { const [x, y] = P(s.lat, s.lng); return `<text x="${x}" y="${y - 27}" text-anchor="middle" font-size="15" font-weight="700" fill="#2A2233" stroke="#F1EADB" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${esc(s.name)}</text>`; }).join("");
+    const mk = teams.map((t, i) => {
+      const p = teamPos(t, i); if (!p) return "";
+      const sel = gewaehlt === t.name, prob = problem(t), r = sel ? 26 : 20;
+      return `<g class="marker ${gewaehlt && !sel ? "blass" : ""}" data-team="${esc(t.name)}" role="button" tabindex="0" aria-label="Team ${esc(t.name)}${prob ? ", " + esc(prob) : ""}">
+        ${t.ort === "unterwegs" && istFehler(t) && t.gps != null ? `<circle cx="${p[0]}" cy="${p[1]}" r="${r + 7}" fill="none" stroke="#B42318" stroke-width="2.5" stroke-dasharray="5 4"/>` : ""}
+        <circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${t.farbe}" stroke="${prob ? (istFehler(t) ? "#B42318" : "#B7791F") : sel ? "#2A2233" : "#fff"}" stroke-width="${prob || sel ? 4 : 3}"/>
+        <text x="${p[0]}" y="${p[1] + r * .36}" text-anchor="middle" font-size="${r * 1.05}">${t.tier}</text>
+        ${prob ? `<g><rect x="${p[0] + r - 6}" y="${p[1] - r - 8}" width="${prob.length * 7.4 + 14}" height="22" rx="6" fill="${istFehler(t) ? "#B42318" : "#8A5A00"}"/><text x="${p[0] + r + 1}" y="${p[1] - r + 7}" font-size="13" font-weight="700" fill="#fff">${esc(prob)}</text></g>` : ""}
+        ${sel ? `<text x="${p[0]}" y="${p[1] + r + 20}" text-anchor="middle" font-family="Archivo" font-weight="800" font-size="17" fill="#2A2233" stroke="#F1EADB" stroke-width="4" paint-order="stroke">${esc(t.name)}</text>` : ""}
+      </g>`;
+    }).join("");
+    const ohne = teams.filter(t => t.gps == null);
+    return `<div class="kartenrahmen"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Stilisierte Karte mit Stationen und Teams" font-family="Barlow, sans-serif">
+      <defs><pattern id="raster" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#E6DCC8" stroke-width="1"/></pattern></defs>
+      <rect width="${W}" height="${H}" fill="#F1EADB"/><rect width="${W}" height="${H}" fill="url(#raster)"/>${gruen}
+      <path d="${d}" fill="none" stroke="#A9CBDA" stroke-width="30" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#C7DEE8" stroke-width="16" stroke-linecap="round"/>
+      <text x="${P(50.0952, 14.4320)[0]}" y="${P(50.0952, 14.4320)[1] + 34}" font-size="16" font-style="italic" fill="#2F5A6D">Moldau</text>
+      <path d="${route}" fill="none" stroke="#4B2A6E" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round"/>
+      <g><circle cx="${sx}" cy="${sy}" r="17" fill="#2A2233"/><text x="${sx}" y="${sy + 6}" text-anchor="middle" font-size="17">🏨</text><text x="${sx}" y="${sy + 36}" text-anchor="middle" font-size="14" font-weight="600" fill="#2A2233" stroke="#F1EADB" stroke-width="4" paint-order="stroke">Start</text></g>
+      ${stat}${mk}<g pointer-events="none">${namen}</g></svg>
+      <div class="kartenlegende">${ohne.length ? `<b style="color:var(--alarm)">Ohne Standort:</b> ${ohne.map(t => `<button class="alarm-chip" data-team="${esc(t.name)}" style="${tf(t)}"><span class="t">${t.tier}</span>${esc(t.name)}</button>`).join("")}` : ""}<span>Gestrichelter Ring: Standort veraltet</span></div></div>`;
+  }
+
+  function verlauf() {
+    $("#verlauf").innerHTML = ereignisse.map(e => { const t = teams.find(x => x.name === e.team);
+      return `<li><span class="zt">${esc(e.zeit)}</span><span class="ic" style="${tf(t)}" aria-hidden="true">${t.tier}</span><span><b>${esc(e.team)}</b> <span class="${e.art ? "art-" + e.art : ""}">${esc(e.text)}</span></span></li>`; }).join("");
+  }
+  function achtung() {
+    const p = teams.filter(problem);
+    $("#achtung").innerHTML = p.length ? `<b>${ICON.warn}<span class="nw">${p.length} brauchen dich</span></b>${p.map(t => `<button class="alarm-chip" data-team="${esc(t.name)}" style="${tf(t)}"><span class="t">${t.tier}</span>${esc(t.name)} · ${esc(problem(t))}</button>`).join("")}` : `<span style="color:var(--moos);font-weight:700">Alles ruhig</span>`;
+    const ziel = teams.filter(t => t.ort === "ziel").length;
+    $("#zahlen").textContent = `${teams.length} Teams · ${ziel} im Ziel`;
+  }
+  function buehne() {
+    const b = $("#buehne");
+    if (ansicht === "bahn") b.innerHTML = bahn();
+    else if (ansicht === "karte") b.innerHTML = karte();
+    else b.innerHTML = `<div class="platzhalter"><h2>${esc(ansicht)}</h2><p>Dieser Bereich ist im Mockup nicht ausgebaut.</p><button class="neben" data-nav="spiel">Zurück zum Spiel</button></div>`;
+    $("#leiste").hidden = !(ansicht === "bahn" || ansicht === "karte");
+    document.querySelectorAll("[data-v]").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === ansicht));
+    const navAktiv = ansicht === "bahn" || ansicht === "karte" ? "spiel" : ansicht;
+    document.querySelectorAll(".nav [data-nav]").forEach(x => x.dataset.nav === navAktiv ? x.setAttribute("aria-current", "page") : x.removeAttribute("aria-current"));
+  }
+
+  function schublade() {
+    const s = $("#schublade"), t = teams.find(x => x.name === gewaehlt);
+    if (!t) { s.classList.remove("offen"); s.setAttribute("aria-hidden", "true"); document.body.classList.remove("sch-offen"); return; }
+    const p = problem(t), st = t.nr ? station(t.nr) : null;
+    const ortText = t.ort === "ziel" ? `Im Ziel, Platz ${t.platz}` : t.ort === "station" ? `An Station ${t.nr}, Rätsel offen` : `Unterwegs zu Station ${t.nr}`;
+    let felder = ""; for (let k = 1; k <= N; k++) felder += `<span class="feld ${k <= t.geloest ? "erledigt" : ""} ${k === t.nr && t.ort !== "ziel" && k > t.geloest ? "aktuell" : ""}">${k <= t.geloest ? "✓" : k}</span>`;
+    felder += `<span class="feld koffer" style="width:36px;height:32px;font-size:18px">🧳</span>`;
+    const haupt = t.ort === "unterwegs" ? `<button class="haupt" data-akt="frei">Station ${t.nr} freischalten</button>`
+      : t.ort === "station" ? `<button class="haupt" data-akt="werten">Rätsel als gelöst werten</button>` : "";
+    s.innerHTML = `<div class="sch-kopf" style="${tf(t)}"><span class="gt" aria-hidden="true">${t.tier}</span><div><h2>Team ${esc(t.name)}</h2><span class="code">${esc(t.code)}</span></div>
+        <button class="zu" data-akt="zu" aria-label="Schließen">${ICON.zu}</button></div>
+      <div class="sch-inhalt">
+        ${p ? `<div class="sch-alarm"><b>${ICON.warn}${esc(p)}</b><p>${esc(problemText(t))}</p></div>` : ""}
+        ${haupt ? `<div class="sch-aktionen">${haupt}</div>` : ""}
+        <dl class="fakten">
+          <dt>Leitung</dt><dd>${esc(t.leitung)}</dd>
+          <dt>Wo</dt><dd>${ortText}${st && t.ort !== "ziel" ? `<br><span style="font-weight:500;color:var(--tinte-2)">${esc(st.name)}</span>` : ""}</dd>
+          <dt>Seit</dt><dd class="nw">${t.ort === "ziel" ? `${t.zeit} Uhr` : t.seit}${t.entfernung ? ` · noch ${t.entfernung} m` : ""}</dd>
+          <dt>Standort</dt><dd class="${p && t.ort !== "station" ? "gps-alt" : ""}">${t.gps == null ? "keiner gemeldet" : t.gps}</dd>
+          <dt>Fehlversuche</dt><dd>${t.fehlversuche || 0} von 3</dd>
+          <dt>Ziffern</dt><dd class="nw">${t.geloest} von ${N}</dd>
+        </dl>
+        <div class="sch-brett" aria-hidden="true">${felder}</div>
+        <div class="sch-aktionen">
+          <button class="neben" data-akt="anrufen">📞 ${esc(t.leitung)} anrufen</button>
+          <button class="neben" data-akt="link">🔗 Mitlese-Link kopieren</button>
+          <button class="neben" data-akt="leitung">👤 Teamleitung wechseln</button>
+          ${t.gps != null ? `<button class="neben" data-akt="zeigen">${ansicht === "karte" ? "In der Rennbahn zeigen" : "Auf der Karte zeigen"}</button>` : ""}
+        </div>
+      </div>`;
+    s.setAttribute("aria-hidden", "false");
+    document.body.classList.add("sch-offen");
+    const el = $(`#buehne [data-team="${t.name}"]`);
+    if (el) {
+      const r = el.getBoundingClientRect();
+      if (matchMedia("(max-width: 960px)").matches) {
+        const frei = innerHeight * 0.5, ziel = scrollY + r.top - Math.max(12, (frei - r.height) / 2);
+        if (r.top < 0 || r.bottom > frei) scrollTo({ top: Math.max(0, ziel), behavior: RUHIG ? "auto" : "smooth" });
+      } else s.classList.toggle("links", r.left + r.width / 2 > innerWidth / 2);
+    }
+    oben();
+    requestAnimationFrame(() => s.classList.add("offen"));
+  }
+
+  // Schublade beginnt unter Kopf und Leiste, damit Umschalter und Warnungen bedienbar bleiben
+  function oben() {
+    const s = $("#schublade");
+    if (matchMedia("(max-width: 960px)").matches) { s.style.top = ""; return; }
+    const l = $("#leiste"), unten = (l.hidden ? $(".kopf") : l).getBoundingClientRect().bottom;
+    s.style.top = Math.max(0, unten) + "px";
+  }
+  addEventListener("scroll", oben, { passive: true }); addEventListener("resize", oben);
+  function alles() { achtung(); buehne(); verlauf(); schublade(); }
+  function waehle(name) { gewaehlt = gewaehlt === name ? null : name; alles(); }
+  function zeit() { uhr++; return `00:${String(uhr).padStart(2, "0")}`; }
+
+  document.addEventListener("click", e => {
+    const tb = e.target.closest("[data-team]"); if (tb) { waehle(tb.dataset.team); return; }
+    const v = e.target.closest("[data-v]"); if (v) { ansicht = v.dataset.v; alles(); return; }
+    const n = e.target.closest("[data-nav]"); if (n) { ansicht = n.dataset.nav === "spiel" ? "bahn" : n.dataset.nav; if (ansicht !== "bahn" && ansicht !== "karte") gewaehlt = null; alles(); return; }
+    if (e.target.closest("#beenden")) { frage("Spiel beenden?", "Alle Teams sehen dann den Schluss-Bildschirm. Das lässt sich nicht rückgängig machen.", "Spiel beenden", () => toast("Spiel beenden ist im Mockup nicht ausgebaut.")); return; }
+    const a = e.target.closest("[data-akt]"); if (!a) return;
+    const t = teams.find(x => x.name === gewaehlt); if (!t && a.dataset.akt !== "zu") return;
+    const akt = a.dataset.akt;
+    if (akt === "zu") { gewaehlt = null; alles(); }
+    else if (akt === "frei") frage(`Station ${t.nr} für ${t.name} freischalten?`, `Das ersetzt den GPS-Check-in. ${t.name} sieht sofort das Rätsel von „${station(t.nr).name}“.`, "Freischalten", () => {
+      t.ort = "station"; t.seit = "0 min"; delete t.entfernung;
+      ereignisse.unshift({ zeit: zeit(), team: t.name, text: `Station ${t.nr} freigeschaltet (Spielleitung)`, art: "ok" });
+      alles(); toast(`${t.name}: Station ${t.nr} freigeschaltet.`);
+    });
+    else if (akt === "werten") frage(`Rätsel für ${t.name} als gelöst werten?`, `${t.name} bekommt die Ziffer von Station ${t.nr} und läuft weiter${t.nr < N ? ` zu Station ${t.nr + 1}` : " zum Ziel"}.`, "Als gelöst werten", () => {
+      const alt = t.nr, jetzt = zeit(); t.geloest++; if (t.fehlversuche >= 2) t.problem = null; t.fehlversuche = 0; t.seit = "0 min";
+      if (alt >= N) { t.platz = teams.filter(x => x.ort === "ziel").length + 1; t.zeit = jetzt; t.ort = "ziel"; } else { t.ort = "unterwegs"; t.nr = alt + 1; }
+      ereignisse.unshift({ zeit: jetzt, team: t.name, text: `Rätsel ${alt} gewertet (Spielleitung)`, art: "ok" });
+      alles(); toast(`${t.name}: Rätsel ${alt} gewertet, Ziffer freigegeben.`);
+    });
+    else if (akt === "anrufen") toast(`Ruft ${t.leitung} an (im Mockup nicht ausgebaut).`);
+    else if (akt === "link") { try { navigator.clipboard?.writeText(location.origin + location.pathname + "?mitlesen=" + t.code).catch(() => {}); } catch (err) {} toast(`Mitlese-Link für ${t.name} kopiert.`); }
+    else if (akt === "leitung") toast("Teamleitung wechseln ist im Mockup nicht ausgebaut.");
+    else if (akt === "zeigen") { ansicht = ansicht === "karte" ? "bahn" : "karte"; alles(); }
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") { if ($("#dialog").classList.contains("offen")) dialogZu(); else if (gewaehlt) { gewaehlt = null; alles(); } }
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches("g.marker")) { e.preventDefault(); waehle(e.target.dataset.team); }
+  });
+  $("#schleier").onclick = () => dialogZu();
+  alles();
+}
+
+if (ANSICHT === "admin") admin(); else handy();
+})();
+</script>
+</body>
+</html>

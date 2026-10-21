@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aktuell</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  html, body { margin: 0; background: #F1F5EE; font-family: 'Barlow', sans-serif; }
+  img { display: block; width: 100%; height: auto; }
+  .reiter { position: sticky; top: 0; display: flex; gap: 8px; padding: 8px 12px; background: rgba(23,48,42,.92); z-index: 1; }
+  .reiter button { font: 600 14px 'Barlow', sans-serif; padding: 6px 12px; border-radius: 6px; border: 0; background: transparent; color: #E4EEE8; cursor: pointer; }
+  .reiter button[aria-pressed="true"] { background: #EE5F1B; color: #0F1B18; }
+  .reiter span { color: #9BB1A9; font-size: 13px; align-self: center; margin-left: auto; }
+</style>
+</head>
+<body>
+<script>
+  const roh = location.hash.slice(1) || new URLSearchParams(location.search).get("ansicht"); addEventListener("hashchange", () => location.reload());
+  const ansicht = ["unterwegs", "raetsel", "admin"].includes(roh) ? roh : "unterwegs";
+  if (ansicht === "admin") {
+    document.body.innerHTML = `<div class="reiter"><button data-b="karte" aria-pressed="true">Reiter Karte</button><button data-b="teams" aria-pressed="false">Reiter Teams</button><span>Bildschirmfoto der echten App</span></div><img id="b" src="aktuell-admin-karte.png" alt="Spielleitung heute">`;
+    document.querySelector(".reiter").addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      document.querySelectorAll(".reiter button").forEach(x => x.setAttribute("aria-pressed", x === b));
+      document.getElementById("b").src = `aktuell-admin-${b.dataset.b}.png`;
+      scrollTo(0, 0);
+    });
+  } else {
+    document.body.innerHTML = `<img src="aktuell-${ansicht}.png" alt="Team-Ansicht heute">`;
+  }
+</script>
+</body>
+</html>
