@@ -2124,6 +2124,18 @@ Spezifikation (Nachtrag „Fernbedienung“).
   Speicher der Seite, mit `__rbEcht` ans Netz (für `page.route`), mit
   `__rbFehlt` wie ohne Migration; rb_* zählen nicht in `__RPC_LOG`.
 
+## Schema-Abzug (Punkt S1 der UI- und Backend-Durchsicht, Branch `schema-abzug`)
+
+Bisher gab es keinen Ort, an dem die heutige Fassung einer Datenbankfunktion
+steht (`admin_state` 13 Mal, `team_state` 10 Mal in den Migrationen).
+`tools/schema_abzug.py` zieht den Stand aus der Live-Datenbank (nur lesend, nur
+Systemkataloge) nach `supabase/schema/`: `funktionen/`, `tabellen/`, `sichten/`
+und eine README mit der Rechte-Übersicht (offen, nur PIN, intern). `--pruefen`
+vergleicht den Ordner mit dem Live-Stand (Exit 1) und warnt, wo Migrationen und
+Live auseinanderlaufen. Ablauf: nach jeder eingespielten Migration
+`python tools/schema_abzug.py` und mitcommitten, vor jedem Einspielen
+`--pruefen`. Einzelheiten: SPIEL.md §9.
+
 ## Stand zum Fortsetzen (16.10.2026, Rückblick v2 am 17.10.2026)
 
 **Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test
