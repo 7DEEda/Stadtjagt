@@ -3,7 +3,8 @@
 -- create or replace; die Rechte stehen danach ausdrücklich wie im Abzug. Mehrfach ausführbar, löscht keine Daten.
 -- Probelauf: tools/pruefstand/audit2510_db.py (--ohne zeigt rot).
 --
---  1. admin_set_selfie: Löschdatum heute oder früher (Prager Zeit) abgelehnt, sonst waren alle Fotos sofort weg.
+--  1. admin_set_selfie: Löschdatum heute oder früher (Prager Zeit) abgelehnt, sonst waren alle Fotos sofort weg. Das
+--     schon gespeicherte Datum geht nur beim Ausschalten durch.
 --  2. admin_set_test_mode: mit Plätzen in keinem Zustand umschalten (bisher nur in running gesperrt).
 --  3. admin_draw, admin_delete_participant, admin_delete_test_participants: Teamleitung zuerst unter Personen mit
 --     Geräte-Schlüssel; team_set_leader lehnt ein Ziel ohne Geräte-Schlüssel ab. admin_set_leader bleibt frei (Notweg).
@@ -24,9 +25,11 @@ begin
   -- Audit 25.10.: ein Löschdatum heute (oder früher) löschte beim nächsten Abruf alle Fotos. Heute zählt nach
   -- Prager Zeit, wie das Datumsfeld im Browser; gelöscht wird weiter in team_state/admin_state mit current_date
   -- (UTC), also am gewählten Tag ab 1 Uhr (Winterzeit) bzw. 2 Uhr (Sommerzeit), nie früher. Dasselbe Datum wie
-  -- gespeichert geht durch, sonst ließe sich das Gruppenselfie nach dem Löschtag nicht mehr ausschalten.
+  -- gespeichert geht beim Ausschalten durch, sonst ließe sich das Gruppenselfie nach dem Löschtag nicht mehr
+  -- ausschalten. Beim Einschalten nicht: ein altes Datum aus einer Probe würde sonst am Eventtag angenommen.
   if p_delete_on is not null and p_delete_on <= v_heute
-     and p_delete_on is distinct from (select photos_delete_on from game_state where id = 1) then
+     and (coalesce(p_on, false)
+          or p_delete_on is distinct from (select photos_delete_on from game_state where id = 1)) then
     raise exception 'Das Löschdatum muss nach heute liegen.' using errcode='P0001';
   end if;
   -- Einschalten mitten im Spiel: was schon gelöst ist, braucht kein Foto mehr, sonst stünden alle Teams

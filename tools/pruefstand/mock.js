@@ -544,8 +544,8 @@
       if (window.__fotoFehler && window.__fotoFehler(a, t)) fehler("Foto nicht erreichbar.");
       return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full, C.hochfotos && (t.name.length + a.p_position) % 3 === 0) }; },
     admin_set_selfie: a => { pin(a);
-      // Audit 25.10.: Löschdatum heute oder früher abgelehnt, das schon gespeicherte Datum nochmal senden geht
-      if (a.p_delete_on && a.p_delete_on <= new Date().toLocaleDateString("sv") && a.p_delete_on !== WELT.photosDeleteOn) fehler("Das Löschdatum muss nach heute liegen.");
+      // Audit 25.10.: Löschdatum heute oder früher abgelehnt; das schon gespeicherte Datum nochmal senden geht nur beim Ausschalten
+      if (a.p_delete_on && a.p_delete_on <= new Date().toLocaleDateString("sv") && (a.p_on || a.p_delete_on !== WELT.photosDeleteOn)) fehler("Das Löschdatum muss nach heute liegen.");
       WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
     admin_delete_photos: a => { pin(a); ANDERE_FOTOS.length = 0; Object.keys(FOTOS).forEach(k => delete FOTOS[k]); return adminState(); },
     admin_state: a => { pin(a); return adminState(); },

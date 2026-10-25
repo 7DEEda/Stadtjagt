@@ -14,7 +14,8 @@ während eines laufenden Spiels starten.
 
 Geprüft:
   1  admin_set_selfie: Löschdatum heute und gestern (Prager Zeit) abgelehnt, morgen und leer angenommen; das schon
-     gespeicherte Datum geht weiter durch (Ausschalten nach dem Löschtag).
+     gespeicherte Datum geht nur beim Ausschalten durch (nach dem Löschtag), beim Einschalten nicht (Review 25.10.:
+     altes Datum aus einer Probe).
   2  admin_set_test_mode: mit Plätzen in finished, running und drawn in keine Richtung umschaltbar; damit bringt
      „Spiel fortsetzen“ (admin_resume) keine Testplätze ins echte Spiel. Ohne Plätze frei.
   3  Teamleitung: admin_draw, admin_delete_participant, admin_delete_test_participants nehmen zuerst Personen mit
@@ -78,8 +79,17 @@ begin
     update game_state set photos_delete_on = v_heute - 3, selfie_on = true where id = 1;
     begin perform admin_set_selfie(v_pin, false, v_heute - 3); v_err := null; exception when others then v_err := sqlerrm; end;
     if v_err is not null or (select selfie_on from game_state where id = 1) then v_fehl := v_fehl || ('1F Ausschalten nach dem Löschtag: ' || coalesce(v_err, 'noch an')); end if;
+    -- Review 25.10.: ein altes Datum aus einer Probe (gestern gespeichert, ausgeschaltet) beim Einschalten: abgelehnt
+    update game_state set photos_delete_on = v_heute - 1, selfie_on = false where id = 1;
+    begin perform admin_set_selfie(v_pin, true, v_heute - 1); v_err := null; exception when others then v_err := sqlerrm; end;
+    if v_err is distinct from 'Das Löschdatum muss nach heute liegen.' then
+      v_fehl := v_fehl || ('1G altes Datum beim Einschalten: ' || coalesce(v_err, 'angenommen')); end if;
+    -- ausgeschaltet bleiben mit dem alten Datum (Schalter steht aus, die App schickt das gespeicherte Datum mit): angenommen
+    begin perform admin_set_selfie(v_pin, false, v_heute - 1); v_err := null; exception when others then v_err := sqlerrm; end;
+    if v_err is not null or (select selfie_on from game_state where id = 1) then
+      v_fehl := v_fehl || ('1H ausschalten mit altem Datum: ' || coalesce(v_err, 'an')); end if;
     update game_state set photos_delete_on = null, selfie_on = false where id = 1;
-    v_n := v_n + 6;
+    v_n := v_n + 8;
   exception when others then v_fehl := v_fehl || ('1 brach ab: ' || sqlerrm);
   end;
 
