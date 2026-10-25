@@ -717,6 +717,16 @@ const S = {
            tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false, confirm: null,
            draw: { mode: "size", value: 10 } }
 };
+// Jede Zuweisung an diese Stände zählt mit (Aktion, anderer Abruf, Abmelden). Ein Takt-Abruf, der vor einer Zuweisung losging,
+// ist veraltet und wird verworfen; solange einer läuft, startet der Takt keinen zweiten (zwei Antworten könnten sich überholen).
+const ZAEHL = { team: 0, admin: 0, pub: 0 }, LAEUFT = {};
+const zaehlend = (o, k, art) => { let v = o[k]; Object.defineProperty(o, k, { get: () => v, set: x => { v = x; ZAEHL[art]++; }, enumerable: true }); };
+zaehlend(S.team, "state", "team"); zaehlend(S.admin, "state", "admin"); zaehlend(S, "pub", "pub");
+function taktAbruf(art, abruf, dann) {
+  if (LAEUFT[art]) return Promise.resolve();
+  const z = ZAEHL[art]; LAEUFT[art] = true;
+  return abruf().then(s => z === ZAEHL[art] ? dann(s) : undefined).finally(() => { LAEUFT[art] = false; });
+}
 // lokaler Kalendertag (nicht UTC): für das Einmessen einmal am Tag und für den Vermerk des Wächters
 const heute = () => new Date().toDateString();
 // Kompass-Wächter (Nachtrag 30): Gedächtnis je Handy, ohne Namen. Der Vermerk gilt am selben Kalendertag (lokal), an
@@ -2180,7 +2190,7 @@ function viewAdmin() {
   if (st.status === "running") actions += problemKnopfHTML(st) + `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
   if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-rueckblick">Rückblick</button><button class="btn sm alt" data-act="a-resume" data-wait="Wird fortgesetzt …">Spiel fortsetzen</button>`;
 
-  let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div class="kopfchips">${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}</div></div></div><div>${actions}${themaBtn()}</div></div>${msgBox()}`;
+  let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div class="kopfchips">${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div></div><div>${actions}${themaBtn()}</div></div>${msgBox()}`;
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
   if (missing.length) out += `<div class="msg err">Ohne Koordinaten kann dort niemand einchecken. Betroffen: Station ${missing.map(s => s.position).join(", ")}.</div>`;
 
@@ -2550,7 +2560,14 @@ async function drawMap(first) {
 /* ---------- Routen laden ---------- */
 // Holt nur die Punkte seit dem letzten Abruf, sonst käme bei jedem Takt
 // der komplette Verlauf über die Leitung.
-async function syncTracks(full) {
+// Läuft schon ein Abruf (Neuzeichnen und Takt kommen oft zugleich), wird er mitbenutzt statt ein zweiter gestartet.
+let syncLauf = null;
+function syncTracks(full) {
+  if (syncLauf && !full) return syncLauf;
+  const p = syncHolen(full).finally(() => { if (syncLauf === p) syncLauf = null; });
+  return syncLauf = p;
+}
+async function syncHolen(full) {
   const A = S.admin;
   if (!A.pin) return;
   if (full) { A.tracks = null; A.syncedAt = null; }
@@ -2574,7 +2591,7 @@ async function syncTracks(full) {
     start: r.startedAt ? new Date(r.startedAt).getTime() : null,
     end: r.finishedAt ? new Date(r.finishedAt).getTime() : Date.now()
   };
-  if (stale && !full) return syncTracks(true);
+  if (stale && !full) return syncHolen(true);
 }
 
 /* ---------- Zeitachse ---------- */
@@ -3777,6 +3794,7 @@ function netzOk() {
   if (!S.msg || S.msg.kind !== "netz") return false;
   S.msg = null; return true;
 }
+const pinWeg = () => { S.admin.pin = null; SS.removeItem("sj.pin"); kartenSicht = null; };
 async function refresh() {
   if (imRueckblick()) return rueckblickZeigen();   // keine Abfrage, kein gpsWiederStarten(), kein wachHaltenPruefen()
   if (!cfg.url || !cfg.key) return render();
@@ -3788,7 +3806,7 @@ async function refresh() {
     await gpsWiederStarten();
   } catch (e) {
     if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); return render(); }
-    if (String(e.message).includes("Falsche PIN")) { S.admin.pin = null; SS.removeItem("sj.pin"); kartenSicht = null; }
+    if (String(e.message).includes("Falsche PIN")) pinWeg();
     S.msg = e.netz ? { type: "err", kind: "netz", text: e.message } : { type: "err", text: e.message };
     if (e.netz && letzterStand()) gpsWiederStarten().catch(() => { });
   }
@@ -4078,7 +4096,7 @@ setInterval(() => {
   versionPruefen(false);
   const busyTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
   if (S.view === "admin" && S.admin.pin) {
-    rpc("admin_state", { p_pin: S.admin.pin }).then(s => {
+    taktAbruf("admin", () => rpc("admin_state", { p_pin: S.admin.pin }), s => {
       S.admin.state = s; S.admin.stateAt = Date.now();   // für "Daten vom" in der Notfallmappe
       const netzWeg = netzOk();
       if (S.admin.tab === "fotos" && (s.photoCount || 0) !== (S.admin.fotos || []).length) fotosLaden();
@@ -4088,7 +4106,7 @@ setInterval(() => {
         if (netzWeg && !busyTyping) render(); else teamlisteNachziehen();
       }
       else if (!busyTyping && !S.admin.edit && !S.admin.confirm && !S.gross) render();
-    }).catch(() => { });
+    }).catch(e => { if (String(e.message).includes("Falsche PIN")) { pinWeg(); S.msg = { type: "err", text: e.message }; render(); } });
     return;
   }
   if (busyTyping) return;
@@ -4098,11 +4116,11 @@ setInterval(() => {
   // flackern. Die Daten kommen trotzdem, beim Schließen ist alles aktuell (Review 15.10.2026, Befund 5).
   // Hat sich das Team geändert (neu ausgelost, Leitung gewechselt), trotzdem neu zeichnen.
   const offen = () => S.hoch || S.team.hilfe;
-  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(async s => {
+  if (S.view === "team" && S.team.code) taktAbruf("team", () => rpc("team_state", { p_code: S.team.code }), async s => {
     const netzWeg = netzOk(); teamStandSetzen(s); await leitungNochDa(s); await ranglisteHolen();
     if (!offen() || !S.team.code || netzWeg) render();
   }).catch(e => { if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); render(); } });
-  if (S.view === "public") rpc("public_state", {}).then(async s => {
+  if (S.view === "public") taktAbruf("pub", () => rpc("public_state", {}), async s => {
     S.pub = s;
     const netzWeg = netzOk();
     const neu = (await nameNochDa()) | teamNachziehen();
