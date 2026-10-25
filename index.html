@@ -711,8 +711,7 @@ const S = {
            tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false, confirm: null,
            draw: { mode: "size", value: 10 } }
 };
-// Jede Zuweisung an diese Stände zählt mit (Aktion, anderer Abruf, Abmelden). Ein Takt-Abruf, der vor einer Zuweisung losging,
-// ist veraltet und wird verworfen; solange einer läuft, startet der Takt keinen zweiten (zwei Antworten könnten sich überholen).
+// Jede Zuweisung zählt mit: ein Takt-Abruf, der davor losging, ist veraltet und wird verworfen; läuft einer, startet kein zweiter.
 const ZAEHL = { team: 0, admin: 0, pub: 0 }, LAEUFT = {};
 const zaehlend = (o, k, art) => { let v = o[k]; Object.defineProperty(o, k, { get: () => v, set: x => { v = x; ZAEHL[art]++; }, enumerable: true }); };
 zaehlend(S.team, "state", "team"); zaehlend(S.admin, "state", "admin"); zaehlend(S, "pub", "pub");
@@ -1211,8 +1210,7 @@ setInterval(() => {
 }, 80);
 
 /* ---------- Team-Ansicht ---------- */
-// Die Denkpause hängt nicht an der Handyuhr: lockedUntil kommt vom Server, die Handyuhr kann falsch gehen. Die Restzeit wird
-// einmal beim ersten Sehen eines Wertes berechnet, auf die 120 s der Pause begrenzt und ab da mit performance.now() gezählt.
+// Denkpause ohne Handyuhr: Restzeit einmal beim ersten Sehen berechnen (höchstens 120 s), dann mit performance.now() zählen.
 const PAUSE = {};
 const pauseEnde = st => st.testMode || !st.lockedUntil ? 0
   : PAUSE[st.lockedUntil] ??= performance.now() + Math.min(120000, Math.max(0, new Date(st.lockedUntil).getTime() - Date.now()));
@@ -1917,7 +1915,6 @@ function stationZeile(s, st) {
           <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
         </div>`;
 }
-// Breite und Länge aus zwei Feldern (ein eingefügtes Paar im ersten gewinnt) als Zahlen, "," gilt als Komma
 const koordZahlen = (a, b) => koordAusFeldern(a, b).map(x => parseFloat(String(x).replace(",", ".")));
 function ekMitte() {
   const [lat, lng] = koordZahlen("e-lat", "e-lng");
@@ -2550,7 +2547,7 @@ async function drawMap(first) {
 /* ---------- Routen laden ---------- */
 // Holt nur die Punkte seit dem letzten Abruf, sonst käme bei jedem Takt
 // der komplette Verlauf über die Leitung.
-// Läuft schon ein Abruf (Neuzeichnen und Takt kommen oft zugleich), wird er mitbenutzt statt ein zweiter gestartet.
+// Läuft schon ein Abruf, wird er mitbenutzt.
 let syncLauf = null;
 function syncTracks(full) {
   if (syncLauf && !full) return syncLauf;
