@@ -47,8 +47,11 @@ GEFAEHRLICH = [
     (r"\bdrop\s+(table|schema|database|materialized\s+view)\b", "tabelle oder schema löschen"),
     (r"\btruncate\b", "truncate"),
     (r"\bdelete\s+from\b(?:(?!\bwhere\b)[^;])*(?:;|$)", "delete ohne where"),
-    (r"\bupdate\b[^;]*?\bset\b(?:(?!\bwhere\b)[^;])*(?:;|$)", "update ohne where"),
-    (r"\balter\s+table\b.*\bdrop\s+column\b", "spalte entfernen"),
+    # "insert ... on conflict ... do update set" ändert nur die Zeile, die gerade kollidiert
+    (r"(?<!\bdo )\bupdate\b[^;]*?\bset\b(?:(?!\bwhere\b)[^;])*(?:;|$)", "update ohne where"),
+    # COLUMN ist optional: "alter table t drop c" und "drop if exists c" löschen ebenso eine Spalte. Was sonst nach
+    # DROP stehen kann, löscht keine Daten (drop constraint, alter column ... drop default/not null/identity/expression).
+    (r"\balter\s+table\b[^;]*?\bdrop\s+(?!(?:constraint|default|not|identity|expression)\b)", "spalte entfernen"),
 ]
 
 # Anweisungen, die auffallen sollen, aber durchgehen: sie ändern nur Definitionen
@@ -97,13 +100,38 @@ def project_ref() -> str:
     return m.group(1)
 
 
+DOLLAR = re.compile(r"\$(?:[A-Za-z_][A-Za-z_0-9]*)?\$")
+
+
+def ohne_funktionskoerper(sql: str) -> str:
+    """Funktionskörper (Dollar-Quote direkt nach AS) fallen weg, dort steht das UPDATE der Funktion, nicht eine
+    Anweisung, die jetzt läuft. Jeder andere Dollar-Quote bleibt drin und wird mitgeprüft: ein DO-Block
+    (do $$ ... $$, do $probe$ ... $probe$) läuft sofort, ebenso ein String hinter EXECUTE. Benannte Quotes
+    ($function$, $mig$) zählen wie $$; verschachtelte Quotes tragen in Postgres verschiedene Namen."""
+    teile, i = [], 0
+    while True:
+        m = DOLLAR.search(sql, i)
+        if not m:
+            teile.append(sql[i:])
+            break
+        ende = sql.find(m.group(0), m.end())
+        if ende < 0:   # nicht geschlossen: so lassen, die Datenbank lehnt es ohnehin ab
+            teile.append(sql[i:])
+            break
+        teile.append(sql[i:m.start()])
+        if re.search(r"\bas\s*\Z", sql[:m.start()], flags=re.I):
+            teile.append(" ")
+        else:
+            teile.append(" " + ohne_funktionskoerper(sql[m.end():ende]) + " ")
+        i = ende + len(m.group(0))
+    return "".join(teile)
+
+
 def ohne_kommentare(sql: str) -> str:
     sql = re.sub(r"/\*.*?\*/", " ", sql, flags=re.S)
     sql = re.sub(r"--[^\n]*", " ", sql)
-    # Funktionskörper zwischen $$ ... $$ zählen nicht, dort steht das UPDATE
-    # der Funktion, nicht eine Anweisung, die jetzt ausgeführt wird.
-    sql = re.sub(r"\$\$.*?\$\$", " ", sql, flags=re.S)
-    return sql.lower()
+    # Leerraum zusammenfassen, damit "do\n  update" wie "do update" aussieht
+    return re.sub(r"\s+", " ", ohne_funktionskoerper(sql)).lower()
 
 
 def pruefen(sql: str, force: bool) -> None:
@@ -123,6 +151,9 @@ def pruefen(sql: str, force: bool) -> None:
 
 
 def ausfuehren(sql: str, read_only: bool) -> object:
+    """Schickt die SQL ohne Bremse. Die Bremse (pruefen) gilt für die Kommandozeile, main() ruft sie vorher auf.
+    Die Probeläufe in tools/pruefstand rufen ausfuehren direkt: sie löschen und ändern absichtlich, aber in einem
+    DO-Block, der immer mit einer Ausnahme endet, sodass der Server alles zurückrollt."""
     url = API.format(ref=project_ref())
     if read_only:
         url += "/read-only"
