@@ -2758,9 +2758,9 @@ const ACT = {
     try { st = await rpc("team_state", { p_code: code }); }
     catch (e) { S.msg = { type: "err", ort: "code", text: String(e.message).includes("Unbekannter Team-Code") ? "Diesen Team-Code gibt es nicht. Prüft die Schreibweise, etwa FUCHS-1234." : e.message }; return; }
     LS.removeItem("sj.abgemeldet");
-    S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
+    S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); LS.setItem("sj.hand", "1"); S.msg = null;
   },
-  "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.setItem("sj.abgemeldet", "1"); standVergessen(); stopGps(); },
+  "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.setItem("sj.abgemeldet", "1"); standVergessen(); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
   // Mitlese-Link fürs Team: teilen (Share-Sheet, sonst WhatsApp) oder kopieren
@@ -3726,7 +3726,7 @@ async function leitungOhneCode() {
   if (!tok || S.team.code || LS.getItem("sj.abgemeldet")) return false;
   try {
     const r = await rpc("leader_code", { p_token: tok });
-    S.team.code = r.code; LS.setItem("sj.code", r.code);   // der Kopf zeigt dann Team und Code
+    S.team.code = r.code; LS.setItem("sj.code", r.code); LS.removeItem("sj.hand");   // der Kopf zeigt dann Team und Code
     S.team.ohneNetz = false; netzOk();
     return true;
   } catch (e) {
@@ -3742,9 +3742,10 @@ async function leitungOhneCode() {
 }
 // Hat die Spielleitung die Leitung gewechselt oder wurde sie abgegeben, gibt dieses Handy nichts mehr ein.
 // Bisher blieb der gemerkte Code gültig und das Team hatte zwei eingebende Handys.
+// Ein von Hand getippter Code (Notweg der Spielleitung, sj.hand) gehört nicht dem Gerät: der bleibt.
 async function leitungNochDa(s) {
   const tok = LS.getItem("sj.token");
-  if (!tok || !s || !s.team || !s.team.leaderName || s.team.leaderName === S.myName) return;
+  if (!tok || LS.getItem("sj.hand") || !s || !s.team || !s.team.leaderName || s.team.leaderName === S.myName) return;
   try { await rpc("leader_code", { p_token: tok }); return; }   // umbenannt, aber weiter Leitung
   catch (e) {
     if (!/keine Teamleitung|kein Team\b/.test(String(e.message)) && !String(e.message).includes("Unbekanntes Gerät")) return;   // Funkloch
@@ -3763,7 +3764,7 @@ async function ranglisteHolen() {
 // statt still das alte Team weiter zu zeigen
 function codeUngueltig() {
   S.team.code = null; S.team.state = null; S.team.abmelden = false;
-  LS.removeItem("sj.code"); standVergessen(); stopGps();
+  LS.removeItem("sj.code"); LS.removeItem("sj.hand"); standVergessen(); stopGps();
   // Mit Geräte-Schlüssel holt der nächste Abruf das neue Team von selbst (leitungOhneCode)
   S.msg = LS.getItem("sj.token") ? { type: "info", text: "Die Teams wurden neu ausgelost." }
     : { type: "err", ort: "code", text: "Dieser Team-Code gilt nicht mehr, vermutlich wurde neu ausgelost." };
