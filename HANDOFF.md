@@ -2133,7 +2133,8 @@ bis Suite 21 (https://7deeda.github.io/geraetetest/). Nachtrag 34 (Code-Review
 lokal auf master.
 Die drei Migrationen dazu (`20261015090000_namenssuche_grenze`,
 `20261016090000_eingaben_wiederholen`, `20261017090000_rueckblick_steuerung`) sind
-live (geprüft 17.10. und mit dem Schema-Abzug am 25.10.); offen ist nur noch der Push. Der Service Worker muss spätestens 7 Tage vor dem Event live sein
+live (geprüft 17.10. und mit dem Schema-Abzug am 25.10.), und master ist gepusht
+(Stand 25.10.: kein lokaler Commit vor origin). Der Service Worker muss spätestens 7 Tage vor dem Event live sein
 (Erprobungszeit, siehe Ablauf am Eventtag).
 
 **Design-Variante "Weiterentwicklung": live** (entschieden 05.10.2026, Umbau
@@ -2221,8 +2222,6 @@ Datum des Änderungsstopps. Eventdatum steht im HANDOFF noch nicht.
 - **Team-Codes härten?** Tiername plus vier Ziffern lässt sich erraten (Sicherheitsprüfung
   25.10.). Entscheidung: so lassen, sechs Ziffern, oder Bremse bei Fehlversuchen.
 - **Supabase:** Token "Acces White" zurückziehen; `stadtjagd-stresstest` später löschen.
-- **Push:** alles ab Nachtrag 34 liegt nur lokal (GitHub-Anmeldung mit dem TSE-Apps-Konto).
-
 ## Pausenstand 16.10.2026, vormittags (zum Fortsetzen)
 
 Lokal auf master, NICHT gepusht (20 Commits): Ausfallsicherheit (Nachtrag 35), Rückblick-Show (Nachtrag 36),
