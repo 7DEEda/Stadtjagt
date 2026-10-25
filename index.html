@@ -1210,13 +1210,14 @@ setInterval(() => {
 }, 80);
 
 /* ---------- Team-Ansicht ---------- */
-// Denkpause ohne Handyuhr: Restzeit einmal beim ersten Sehen berechnen (höchstens 120 s), dann mit performance.now() zählen.
+// Denkpause: Restzeit einmal beim ersten Sehen berechnen (höchstens 120 s, eine schiefe Handyuhr verlängert sie nicht),
+// Ende = jetzt + Rest, danach mit Date.now() zählen. Nicht performance.now(): das steht still, solange das Handy schläft.
 const PAUSE = {};
 const pauseEnde = st => st.testMode || !st.lockedUntil ? 0
-  : PAUSE[st.lockedUntil] ??= performance.now() + Math.min(120000, Math.max(0, new Date(st.lockedUntil).getTime() - Date.now()));
-const pauseLaeuft = st => pauseEnde(st) > performance.now();
+  : PAUSE[st.lockedUntil] ??= Date.now() + Math.min(120000, Math.max(0, new Date(st.lockedUntil).getTime() - Date.now()));
+const pauseLaeuft = st => pauseEnde(st) > Date.now();
 function pauseText(ende) {
-  const rest = Math.max(0, Math.ceil((ende - performance.now()) / 1000));
+  const rest = Math.max(0, Math.ceil((ende - Date.now()) / 1000));
   return `Denkpause: noch ${rest} ${rest === 1 ? "Sekunde" : "Sekunden"}. Danach habt ihr wieder drei Versuche.`;
 }
 // Restzeit der festen Spieldauer, ab dem Start heruntergezählt; die Logik hängt nicht daran
@@ -4052,7 +4053,7 @@ setInterval(() => {
   const sd = $("#stand");
   if (sd) { const alt = S.zuletzt && Date.now() - S.zuletzt > 30000; sd.hidden = !alt; if (alt) sd.textContent = "Stand " + uhrzeit(S.zuletzt); }
   const p = $("#pause"); if (!p) return;
-  if (Number(p.dataset.bis) <= performance.now()) render(); else p.textContent = pauseText(Number(p.dataset.bis));
+  if (Number(p.dataset.bis) <= Date.now()) render(); else p.textContent = pauseText(Number(p.dataset.bis));
 }, 1000);
 setInterval(() => {
   if (document.hidden || (fingerSeit && Date.now() - fingerSeit < 3000)) return;

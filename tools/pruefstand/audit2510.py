@@ -6,7 +6,7 @@ Code-Audit 25.10.2026: zehn Befunde der App, ohne Datenbank, gegen mock.js.
     python tools/pruefstand/audit2510.py 2 6      nur diese Teile
 
 Teile: 1 Notweg Team-Code, 2 veraltete Abruf-Antwort, 3 Spielleitung ohne Netz und falsche PIN, 4 syncTracks doppelt,
-5 voller Speicher, 6 Denkpause bei falscher Handyuhr, 7 Umkreis-Text, 8 Team-Karte nach Funkloch, 9 toter Code,
+5 voller Speicher, 6 Denkpause bei falscher Handyuhr und gesperrtem Handy (performance.now() steht), 7 Umkreis-Text, 8 Team-Karte nach Funkloch, 9 toter Code,
 10 Team-Codes mit vier und sechs Ziffern. Haken in mock.js: window.__halten (Antwort wartet auf __freigeben()),
 window.__weg (nur diese Aufrufe scheitern), window.__serverJetzt (Uhr des "Servers", wenn die Handyuhr schief steht).
 Port 8871. Im Vordergrund mit Timeout aufrufen. Am Ende steht OK oder FEHLT.
@@ -187,21 +187,47 @@ with sync_playwright() as pw:
             pg.close()
 
     if an(6):
-        print("6 Denkpause bei falscher Handyuhr")
-        pg = neu(b, "leitung-raetsel", "window.__serverJetzt = Date.now.bind(Date); (function () { const r = Date.now.bind(Date); Date.now = () => r() + (window.__skew || 0); })();", uhr=False)
+        print("6 Denkpause bei falscher Handyuhr und gesperrtem Handy")
+        # __skew verstellt die Handyuhr (Date.now), __pStand hält performance.now() an: so steht diese Uhr auf iOS und
+        # Android, solange das Gerät schläft, während Date.now() weiterläuft
+        UHREN = ("window.__serverJetzt = Date.now.bind(Date); (function () { const r = Date.now.bind(Date); Date.now = () => r() + (window.__skew || 0);"
+                 " const p = performance.now.bind(performance); performance.now = () => window.__pStand != null ? window.__pStand : p(); })();")
+
+        def pause_rest(pg):
+            t = pg.locator("#pause").inner_text() if pg.locator("#pause").count() else ""
+            m = re.search(r"noch (\d+) Sekunden?", t)
+            return (int(m.group(1)) if m else None), t
+
+        def dreimal_falsch(pg):
+            for a in ("1", "2", "3"):
+                pg.fill("#tans", a)
+                if a == "3":
+                    pg.click("[data-act=t-answer]")
+                    pg.wait_for_selector("#pause")
+                else:
+                    tippen(pg, "[data-act=t-answer]")
+
+        pg = neu(b, "leitung-raetsel", UHREN, uhr=False)
         pg.evaluate("window.__skew = -3600000")
-        for a in ("1", "2", "3"):
-            pg.fill("#tans", a)
-            if a == "3":
-                pg.click("[data-act=t-answer]")
-                pg.wait_for_selector("#pause")
-            else:
-                tippen(pg, "[data-act=t-answer]")
-        t = pg.locator("#pause").inner_text() if pg.locator("#pause").count() else ""
-        m = re.search(r"noch (\d+) Sekunden", t)
-        rest = int(m.group(1)) if m else None
+        dreimal_falsch(pg)
+        rest, t = pause_rest(pg)
         pruef(rest is not None and 100 <= rest <= 120, f"Handyuhr eine Stunde zurück: höchstens 120 Sekunden ({t!r})")
         pruef(pg.is_disabled("#tans"), "Feld gesperrt")
+        pg.close()
+
+        pg = neu(b, "leitung-raetsel", UHREN, uhr=False)
+        dreimal_falsch(pg)
+        rest0, t = pause_rest(pg)
+        pruef(rest0 is not None and 115 <= rest0 <= 120, f"Pause beginnt bei etwa 120 Sekunden ({t!r})")
+        # Handy gesperrt: performance.now() steht, die Uhr läuft 90 s weiter
+        pg.evaluate("window.__pStand = performance.now(); window.__skew = 90000")
+        pg.wait_for_timeout(1600)
+        rest, t = pause_rest(pg)
+        pruef(rest is not None and 25 <= rest <= 31, f"nach 90 s Sperre zählt die Pause weiter: etwa 30 Sekunden ({t!r})")
+        pruef(pg.is_disabled("#tans"), "Feld noch gesperrt")
+        pg.evaluate("window.__skew = 125000")
+        pg.wait_for_timeout(1600)
+        pruef(pg.locator("#pause").count() == 0 and not pg.is_disabled("#tans"), "nach 125 s Sperre ist die Pause vorbei, das Feld frei")
         pg.close()
 
     if an(7):
