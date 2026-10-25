@@ -284,7 +284,7 @@ function zeigen() {
   // Knöpfe: nur mit verbundener Show; Start nur im Vorbereiten, sonst Weiter
   const vorb = !!st && st.phase === "vorbereiten";
   $("[data-befehl=start]").hidden = !vorb; $("[data-befehl=weiter]").hidden = vorb;
-  const an = { weiter: ok, start: ok && vorb, zurueck: ok && show, pause: ok && show, schwarz: ok, ende: ok && (show || vorb) };
+  const an = { weiter: ok, start: ok && vorb, zurueck: ok && show, pause: ok && show && !st.haelt && !st.endHalt, schwarz: ok, ende: ok && (show || vorb) };
   document.querySelectorAll("[data-befehl]").forEach(b => { b.disabled = !an[b.dataset.befehl]; });
   $("[data-befehl=pause]").textContent = show && !st.spielt ? "Abspielen" : "Pause";
   $("[data-befehl=schwarz]").textContent = st && st.schwarz ? "Bild zeigen" : "Schwarzbild";
