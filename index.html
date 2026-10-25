@@ -2758,7 +2758,9 @@ const ACT = {
     try { st = await rpc("team_state", { p_code: code }); }
     catch (e) { S.msg = { type: "err", ort: "code", text: String(e.message).includes("Unbekannter Team-Code") ? "Diesen Team-Code gibt es nicht. Prüft die Schreibweise, etwa FUCHS-123456." : e.message }; return; }
     LS.removeItem("sj.abgemeldet");
-    S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); LS.setItem("sj.hand", "1"); S.msg = null;
+    S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
+    // Merker nur für den Notweg: tippt die Teamleitung ihren eigenen Code, meldet leitungNochDa sie nach einem Wechsel ab
+    if (S.myName && st.team.leaderName === S.myName) LS.removeItem("sj.hand"); else LS.setItem("sj.hand", "1");
   },
   "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.setItem("sj.abgemeldet", "1"); standVergessen(); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },

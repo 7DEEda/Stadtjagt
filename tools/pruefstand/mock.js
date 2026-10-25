@@ -623,6 +623,8 @@
   };
 
   window.__freigeben = () => { const t = window.__tore || []; window.__tore = []; t.forEach(r => r()); };
+  // __leitung(name): die Spielleitung wechselt die Leitung von Team Fuchs (wie admin_set_leader)
+  window.__leitung = name => { FUCHS.leaderName = name; FUCHS.leaderId = person(name).id; };
 
   /* ---------- Speicher und Ansicht vorbelegen ---------- */
   // __behalten (offline.py, per add_init_script): Neuladen wie auf dem Handy, Speicher und Adresse bleiben

@@ -5,10 +5,11 @@ Code-Audit 25.10.2026: zehn Befunde der App, ohne Datenbank, gegen mock.js.
     python tools/pruefstand/audit2510.py          alle
     python tools/pruefstand/audit2510.py 2 6      nur diese Teile
 
-Teile: 1 Notweg Team-Code, 2 veraltete Abruf-Antwort, 3 Spielleitung ohne Netz und falsche PIN, 4 syncTracks doppelt,
+Teile: 1 Notweg Team-Code (sj.hand nur, wenn das Handy nicht selbst die Leitung ist), 2 veraltete Abruf-Antwort, 3 Spielleitung ohne Netz und falsche PIN, 4 syncTracks doppelt,
 5 voller Speicher, 6 Denkpause bei falscher Handyuhr und gesperrtem Handy (performance.now() steht), 7 Umkreis-Text, 8 Team-Karte nach Funkloch, 9 toter Code,
 10 Team-Codes mit vier und sechs Ziffern. Haken in mock.js: window.__halten (Antwort wartet auf __freigeben()),
-window.__weg (nur diese Aufrufe scheitern), window.__serverJetzt (Uhr des "Servers", wenn die Handyuhr schief steht).
+window.__weg (nur diese Aufrufe scheitern), window.__serverJetzt (Uhr des "Servers", wenn die Handyuhr schief steht),
+window.__leitung(name) (Spielleitung wechselt die Leitung von Team Fuchs).
 Port 8871. Im Vordergrund mit Timeout aufrufen. Am Ende steht OK oder FEHLT.
 """
 import functools
@@ -90,11 +91,29 @@ with sync_playwright() as pw:
         pg.fill("#tcode", "FUCHS-4821")
         tippen(pg, "[data-act=t-login]")
         pruef(pg.evaluate("S.team.code") == "FUCHS-4821", "von Hand eingegeben: Code steht")
+        pruef(pg.evaluate("localStorage.getItem('sj.hand')") == "1", "Mitglied tippt den Code: Merker sj.hand gesetzt")
         takt(pg)
         takt(pg)
         pruef(pg.evaluate("S.team.code") == "FUCHS-4821", f"nach zwei Abrufen noch angemeldet ({pg.evaluate('S.team.code')!r})")
         pg.evaluate("ACT['t-logout']()")
         pruef(pg.evaluate("localStorage.getItem('sj.hand')") is None, "Abmelden löscht den Merker")
+        pg.close()
+
+        # Review 25.10.: die Teamleitung tippt ihren Code selbst ein, danach wechselt die Spielleitung die Leitung.
+        # Dieses Handy ist kein Notweg und muss sich abmelden wie sonst auch.
+        pg = neu(b, "leitung-ohne-code")
+        pg.wait_for_function("S.team.code === 'FUCHS-4821'")
+        pg.evaluate("ACT['t-logout'](); render()")
+        pg.click("[data-act=t-codefeld]")
+        pg.fill("#tcode", "FUCHS-4821")
+        tippen(pg, "[data-act=t-login]")
+        pruef(pg.evaluate("S.team.code") == "FUCHS-4821", "Teamleitung tippt den eigenen Code: angemeldet")
+        pruef(pg.evaluate("localStorage.getItem('sj.hand')") is None, "Teamleitung tippt den eigenen Code: kein Merker sj.hand")
+        pg.evaluate("window.__leitung('Jonas Keller')")
+        takt(pg)
+        takt(pg)
+        pruef(pg.evaluate("S.team.code") is None, f"nach dem Leitungswechsel abgemeldet ({pg.evaluate('S.team.code')!r})")
+        pruef("leitet jetzt Team Fuchs" in pg.inner_text("#app"), "Meldung: Jonas leitet jetzt")
         pg.close()
 
     if an(2):
