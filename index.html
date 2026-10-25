@@ -608,28 +608,22 @@ input[type=date]{min-height:50px}
 <script src="config.js"></script>
 <script src="kompass-waechter.js"></script>
 <script>
-/* ===========================================================
-   KONFIGURATION – hier eintragen, bevor die Datei online geht.
-   Beides findest du in Supabase unter Project Settings, API.
-   Der anon-Key ist öffentlich und darf im Quelltext stehen.
-   Der service_role-Key gehört NIEMALS hierher.
-   =========================================================== */
 // Speicher, der nie wirft: Blockiert der Browser Cookies und Website-Daten,
 // wirft schon der Zugriff auf localStorage. Dann merkt sich die App die
 // Werte nur bis zum Neuladen, statt als weiße Seite stehenzubleiben.
+// Ist der Speicher voll (QuotaExceeded, etwa durch Fotos), gibt setItem false zurück statt zu werfen.
 const speicherOderMap = name => {
-  try { const s = window[name]; s.setItem("sj._", "1"); s.removeItem("sj._"); return s; }
-  catch {
+  try {
+    const s = window[name]; s.setItem("sj._", "1"); s.removeItem("sj._");
+    return { getItem: k => s.getItem(k), removeItem: k => s.removeItem(k), setItem: (k, v) => { try { s.setItem(k, v); return true; } catch { return false; } } };
+  } catch {
     const m = new Map();
-    return { getItem: k => m.has(k) ? m.get(k) : null, setItem: (k, v) => { m.set(k, String(v)); }, removeItem: k => { m.delete(k); } };
+    return { getItem: k => m.has(k) ? m.get(k) : null, setItem: (k, v) => { m.set(k, String(v)); return true; }, removeItem: k => { m.delete(k); } };
   }
 };
 const LS = speicherOderMap("localStorage"), SS = speicherOderMap("sessionStorage");
 // Die Werte stehen in config.js, die vor diesem Skript geladen wird.
-const cfg = {
-  url: (window.SJ_CONFIG && window.SJ_CONFIG.url) || LS.getItem("sj.url") || "",
-  key: (window.SJ_CONFIG && window.SJ_CONFIG.key) || LS.getItem("sj.key") || ""
-};
+const cfg = { url: (window.SJ_CONFIG && window.SJ_CONFIG.url) || "", key: (window.SJ_CONFIG && window.SJ_CONFIG.key) || "" };
 
 /* ---------- Grundlagen ---------- */
 const $ = s => document.querySelector(s);
@@ -717,6 +711,15 @@ const S = {
            tracks: null, syncedAt: null, hidden: {}, cursor: null, playing: false, confirm: null,
            draw: { mode: "size", value: 10 } }
 };
+// Jede Zuweisung zählt mit: ein Takt-Abruf, der davor losging, ist veraltet und wird verworfen; läuft einer, startet kein zweiter.
+const ZAEHL = { team: 0, admin: 0, pub: 0 }, LAEUFT = {};
+const zaehlend = (o, k, art) => { let v = o[k]; Object.defineProperty(o, k, { get: () => v, set: x => { v = x; ZAEHL[art]++; }, enumerable: true }); };
+zaehlend(S.team, "state", "team"); zaehlend(S.admin, "state", "admin"); zaehlend(S, "pub", "pub");
+function taktAbruf(art, abruf, dann) {
+  if (LAEUFT[art]) return Promise.resolve();
+  const z = ZAEHL[art]; LAEUFT[art] = true;
+  return abruf().then(s => z === ZAEHL[art] ? dann(s) : undefined).finally(() => { LAEUFT[art] = false; });
+}
 // lokaler Kalendertag (nicht UTC): für das Einmessen einmal am Tag und für den Vermerk des Wächters
 const heute = () => new Date().toDateString();
 // Kompass-Wächter (Nachtrag 30): Gedächtnis je Handy, ohne Namen. Der Vermerk gilt am selben Kalendertag (lokal), an
@@ -731,7 +734,7 @@ function waechterNeu() {
     onWechsel: z => {
       const neu = (z.vorbelastet && !m.vorbelastet) || z.versuche !== (m.versuche || 0);
       m = { vorbelastet: z.vorbelastet, versuche: z.versuche, datum: neu ? heute() : m.datum };
-      try { LS.setItem("sj.kompass", JSON.stringify(m)); } catch { /* egal */ }
+      LS.setItem("sj.kompass", JSON.stringify(m));
       kompassNeu = true; } });
 }
 S.gps.waechter = waechterNeu();
@@ -944,7 +947,6 @@ const DANGER = {
 };
 // Standard ist das getippte Wort, nur wer ausdrücklich wort:false setzt, kommt ohne aus
 const brauchtWort = key => DANGER[key].wort !== false;
-const fmtClock = ms => new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 function fmtDur(ms) {
   const m = Math.round(ms / 60000);
   return m < 60 ? m + " min" : Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0") + " h";
@@ -1029,16 +1031,6 @@ async function versionPruefen(sofort) {
     // ohne Neuzeichnen: die Karte der Spielleitung und Getipptes bleiben, wie sie sind
     document.querySelectorAll(".version").forEach(v => { if (!v.querySelector("[data-act=neu-laden]")) v.insertAdjacentHTML("beforeend", neuLink()); });
   } catch { /* still: beim nächsten Mal */ }
-}
-
-/* ---------- Setup-Ansicht, falls nicht konfiguriert ---------- */
-function viewSetup() {
-  return brand("Einrichtung") + `<div class="panel">
-    <h2>Mit Supabase verbinden</h2>
-    <p class="muted small">Trag die Werte aus Supabase unter Project Settings, API ein. Für den Dauerbetrieb schreibst du sie oben in die Datei, dann entfällt dieser Schritt für alle anderen.</p>
-    <div style="margin-top:12px"><label for="surl">Project URL</label><input id="surl" placeholder="https://xxxx.supabase.co" value="${esc(cfg.url)}"></div>
-    <div style="margin-top:12px"><label for="skey">anon public key</label><input id="skey" value="${esc(cfg.key)}"></div>
-    <button class="btn" data-act="cfg-save">Speichern</button>${msgBox()}</div>`;
 }
 
 /* ---------- Öffentliche Ansicht ---------- */
@@ -1218,8 +1210,13 @@ setInterval(() => {
 }, 80);
 
 /* ---------- Team-Ansicht ---------- */
-function pauseText(bis) {
-  const rest = Math.max(0, Math.ceil((new Date(bis).getTime() - Date.now()) / 1000));
+// Denkpause ohne Handyuhr: Restzeit einmal beim ersten Sehen berechnen (höchstens 120 s), dann mit performance.now() zählen.
+const PAUSE = {};
+const pauseEnde = st => st.testMode || !st.lockedUntil ? 0
+  : PAUSE[st.lockedUntil] ??= performance.now() + Math.min(120000, Math.max(0, new Date(st.lockedUntil).getTime() - Date.now()));
+const pauseLaeuft = st => pauseEnde(st) > performance.now();
+function pauseText(ende) {
+  const rest = Math.max(0, Math.ceil((ende - performance.now()) / 1000));
   return `Denkpause: noch ${rest} ${rest === 1 ? "Sekunde" : "Sekunden"}. Danach habt ihr wieder drei Versuche.`;
 }
 // Restzeit der festen Spieldauer, ab dem Start heruntergezählt; die Logik hängt nicht daran
@@ -1389,7 +1386,7 @@ function viewTeam() {
       <a class="btn ${ab ? "alt" : ""}" href="#/public">Zur Anmeldeseite</a></div>
       ${S.team.codeFeld ? `<div class="panel"><h3>Mit Team-Code eingeben</h3>
         <p class="small muted">Nur für die Spielleitung, wenn das Handy einer Teamleitung ausfällt. Den Code zeigt die Teamliste im Reiter Karte und Teams, wenn du das Team antippst.</p>
-        <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="FUCHS-1234"></div>
+        <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="FUCHS-123456"></div>
         <button class="btn" data-act="t-login" data-wait="Wird geprüft …" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox("code")}</div>`
       : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-codefeld">Spielleitung: mit Team-Code eingeben</button></p>`}`
       + helpBtn("Stadtjagd: Ich komme als Teamleitung nicht hinein.") + nav();
@@ -1450,7 +1447,7 @@ function leisteHTML(st, s, lesen) {
   }
   if (!s) return "";
   if (st.checkedIn) {
-    const pause = !st.testMode && st.lockedUntil && new Date(st.lockedUntil).getTime() > Date.now();
+    const pause = pauseLaeuft(st);
     return `<label for="tans">Eure Antwort</label>
       <div class="reihe"><input id="tans" ${s.numeric ? 'inputmode="numeric" pattern="[0-9]*"' : ""} autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" ${pause ? "disabled" : ""}>
       <button class="btn" data-act="t-answer" data-ort="leiste" data-wait="Wird geprüft …" ${S.busy || pause ? "disabled" : ""}>Prüfen</button></div>
@@ -1566,7 +1563,6 @@ function teamAnsicht(st, lesen) {
         <polygon class="needle" id="needle" points="39,8 47,42 39,36 31,42" style="transform:rotate(${g.needle}deg)"/>
         <text class="nq" x="39" y="48" text-anchor="middle">?</text></svg><div class="cap">Richtung</div></div>
         <div><div class="muted small">Entfernung</div><div class="dist" id="dist">${dist}</div>
-          <div class="small" id="umkreis">${umkreisHTML()}</div>
           <div class="muted small" id="gnote">${hasTarget ? gpsNote() || "Standort noch nicht aktiv" : "Kein Ziel hinterlegt"}</div>${kompassChip()}</div></div>
       ${!hasTarget ? `<div class="msg err">Für diese Station fehlen die Koordinaten. Die Spielleitung muss sie setzen.</div>` : ""}
       ${(lesen || st.testMode) && !g.on ? `<button class="btn alt" data-act="t-gps">Standort und Kompass freigeben</button>
@@ -1595,14 +1591,14 @@ function teamAnsicht(st, lesen) {
       </div>`;
   } else {
     // Nach drei Fehlversuchen: Feld sperren und die Pause sichtbar herunterzählen, über dem Feld
-    const pause = !st.testMode && st.lockedUntil && new Date(st.lockedUntil).getTime() > Date.now();
+    const pause = pauseLaeuft(st);
     // Tipp: nach der ersten Denkpause aufdeckbar, danach für alle im Team sichtbar
     const tipp = s.tip ? `<div class="msg info"><b>Tipp:</b> ${esc(s.tip)}</div>`
       : s.tipAvailable ? (lesen ? `<p class="small muted">${ichSelbst ? "Du kannst" : esc(leitung) + " kann"} jetzt einen Tipp aufdecken.</p>`
         : `<button class="btn alt" data-act="t-tip" data-wait="Wird aufgedeckt …">Tipp aufdecken</button>`) : "";
     out += `<div class="panel ${neuKlasse}"><p class="muted small">Station ${s.position}: ${esc(s.name)}</p>${okOben ? msgBox() : ""}
       <p class="riddle" style="margin-top:8px">${esc(s.riddle || "")}</p>${tipp}
-      ${pause ? `<div class="msg err" id="pause" data-bis="${esc(st.lockedUntil)}">${pauseText(st.lockedUntil)}</div>` : ""}
+      ${pause ? `<div class="msg err" id="pause" data-bis="${pauseEnde(st)}">${pauseText(pauseEnde(st))}</div>` : ""}
       ${pause ? "" : (okOben ? "" : msgBox()) + (lesen ? `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
           : `Fehlversuche: ${st.failedAttempts} von 3, danach 2 Minuten Pause.`}</p>` : "")}</div>`;
   }
@@ -1710,7 +1706,8 @@ function selfieKamera(pos) {
 }
 // Kam das Foto im Funkloch nicht durch, bleibt es auf dem Handy und wird beim nächsten Abruf nachgereicht
 const fotoSchluessel = (st, pos) => `sj.foto.${merkerTeil(st)}.${pos}`;
-function fotoMerken(st, sf) { try { LS.setItem(fotoSchluessel(st, sf.pos), JSON.stringify({ foto: sf.foto, thumb: sf.thumb })); } catch { /* Speicher voll: dann eben nicht */ } }
+// true, wenn das Foto gemerkt ist; bei vollem Speicher false, dann gibt es auch kein Nachreichen
+const fotoMerken = (st, sf) => LS.setItem(fotoSchluessel(st, sf.pos), JSON.stringify({ foto: sf.foto, thumb: sf.thumb }));
 let fotoNachreichZeit = 0;
 async function fotoNachreichen(s) {
   if (!s || !s.team || !s.selfie || !s.selfie.on || !S.team.code || Date.now() - fotoNachreichZeit < 30000) return;
@@ -1762,7 +1759,7 @@ function selfieHTML(st, lesen, leitung, ichSelbst) {
     <button class="btn" data-act="t-selfie-ok" data-wait="Wird hochgeladen …">Erneut senden</button>
     ${ersetzen ? `<button class="btn alt" data-act="t-selfie-ab">Abbrechen</button>`
       : `<button class="btn alt" data-act="t-selfie-skip" data-ort="selfie">Ohne Hochladen weiter</button>${msgBox("selfie")}
-        <p class="small muted">Das Foto bleibt auf diesem Handy und wird nachgereicht, sobald wieder Netz da ist.</p>`}</div>`;
+        ${sf.gemerkt ? `<p class="small muted">Das Foto bleibt auf diesem Handy und wird nachgereicht, sobald wieder Netz da ist.</p>` : ""}`}</div>`;
   return h + `<img class="foto" src="${sf.url}" alt="Vorschau eures Fotos"><p>Sind alle drauf?</p>
     <div class="row2"><button class="btn" data-act="t-selfie-ok" data-wait="Wird hochgeladen …">Das nehmen wir</button>
     <button class="btn alt" data-act="t-selfie">Noch mal</button></div>${msgBox("selfie")}
@@ -1918,9 +1915,9 @@ function stationZeile(s, st) {
           <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
         </div>`;
 }
+const koordZahlen = (a, b) => koordAusFeldern(a, b).map(x => parseFloat(String(x).replace(",", ".")));
 function ekMitte() {
-  const [la, lo] = koordAusFeldern("e-lat", "e-lng");
-  const lat = parseFloat(la.replace(",", ".")), lng = parseFloat(lo.replace(",", "."));
+  const [lat, lng] = koordZahlen("e-lat", "e-lng");
   return isNaN(lat) || isNaN(lng) ? null : [lat, lng];
 }
 function ekVorgaenger() {
@@ -2099,7 +2096,7 @@ function zuletztZeichnen() {
   const el = $("#zuletzt"), st = S.admin.state; if (!el || !st) return;
   const ev = ereignisse(st).filter(e => (st.teams || []).some(t => t.id === e.teamId));
   el.innerHTML = `<h3>Zuletzt</h3>${ev.length ? `<ol class="ticker">${ev.map(e => { const t = st.teams.find(x => x.id === e.teamId);
-    return `<li><button data-act="a-sel" data-id="${e.teamId}" data-zu="1" class="${e.art}"><time class="nw">${fmtClock(e.at)}</time>
+    return `<li><button data-act="a-sel" data-id="${e.teamId}" data-zu="1" class="${e.art}"><time class="nw">${uhrzeit(e.at)}</time>
       <span><b>${teamEmoji(t.name)} ${esc(t.name)}</b> ${esc(e.text)}</span></button></li>`; }).join("")}</ol>`
     : `<p class="small muted">Noch nichts passiert.</p>`}`;
 }
@@ -2180,7 +2177,7 @@ function viewAdmin() {
   if (st.status === "running") actions += problemKnopfHTML(st) + `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
   if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-rueckblick">Rückblick</button><button class="btn sm alt" data-act="a-resume" data-wait="Wird fortgesetzt …">Spiel fortsetzen</button>`;
 
-  let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div class="kopfchips">${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}</div></div></div><div>${actions}${themaBtn()}</div></div>${msgBox()}`;
+  let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div class="kopfchips">${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div></div><div>${actions}${themaBtn()}</div></div>${msgBox()}`;
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
   if (missing.length) out += `<div class="msg err">Ohne Koordinaten kann dort niemand einchecken. Betroffen: Station ${missing.map(s => s.position).join(", ")}.</div>`;
 
@@ -2300,7 +2297,7 @@ function viewAdmin() {
         Die Fotos sehen das eigene Team, die Spielleitung und beim Abendessen alle im Rückblick. Stationen, die beim Einschalten schon gelöst sind, brauchen kein Foto mehr.</p>
       <div style="margin-top:12px"><label for="afdatum">Alle Fotos löschen am</label><input id="afdatum" type="date" value="${esc(st.photosDeleteOn || "")}" data-enter="none"></div>
       <p class="small muted">An diesem Tag verschwinden die Fotos von selbst, auch aus den Alben der Teams. Ohne Datum bleiben sie liegen, bis du sie löschst.</p>
-      ${st.selfieOn && st.photosDeleteOn && st.photosDeleteOn <= new Date().toISOString().slice(0, 10) ? `<div class="msg err">Dieses Datum ist heute oder schon vorbei, die Fotos werden gelöscht. Ein Datum nach dem Abendessen wählen, sonst fehlen sie im Rückblick.</div>` : ""}
+      ${st.selfieOn && st.photosDeleteOn && st.photosDeleteOn <= new Date().toLocaleDateString("sv") ? `<div class="msg err">Dieses Datum ist heute oder schon vorbei, die Fotos werden gelöscht. Ein Datum nach dem Abendessen wählen, sonst fehlen sie im Rückblick.</div>` : ""}
       <div class="row2"><button class="btn ${st.selfieOn ? "alt" : ""}" data-act="a-selfie" data-on="${st.selfieOn ? "0" : "1"}" data-ort="fotos">${st.selfieOn ? "Ausschalten" : "Einschalten"}</button>
         <button class="btn alt" data-act="a-selfie" data-on="${st.selfieOn ? "1" : "0"}" data-ort="fotos">Datum speichern</button></div>${msgBox("fotos")}</div>`;
     out += `<div class="panel"><div class="bar"><h3>${st.photoCount || 0} ${st.photoCount === 1 ? "Foto" : "Fotos"}</h3>
@@ -2508,7 +2505,7 @@ async function drawMap(first) {
       else layers.luecken[t.id] = L.polyline(offen, { color, weight: 3, opacity: .8, dashArray: "9 9" }).addTo(map);
       if (marken.length) layers.marken[t.id] = L.layerGroup(marken.map(x => L.marker(x.at, { zIndexOffset: 300,
         icon: L.divIcon({ html: `<span class="maplueck" style="--c:${color}">${fmtDur(x.bis - x.von)}</span>`, className: "", iconSize: [0, 0] }) })
-        .bindPopup(`<b>${esc(t.name)}</b><br>kein GPS-Signal von ${fmtClock(x.von)} bis ${fmtClock(x.bis)} Uhr<br>${Math.round(x.m)} m Luftlinie`))).addTo(map);
+        .bindPopup(`<b>${esc(t.name)}</b><br>kein GPS-Signal von ${uhrzeit(x.von)} bis ${uhrzeit(x.bis)} Uhr<br>${Math.round(x.m)} m Luftlinie`))).addTo(map);
       line.forEach(p => pts.push([p[0], p[1]]));
     } else { drop(layers.tracks, t.id); drop(layers.luecken, t.id); }
 
@@ -2530,7 +2527,7 @@ async function drawMap(first) {
       ? ((tr && tr.stations) || []).filter(s => s.solvedAt && new Date(s.solvedAt).getTime() <= cur).length
       : t.solved;
     const popup = `<b>${esc(t.name)}</b><br>${esc(t.code)}<br>${solved} von ${aktiv(st).length} gelöst<br>`
-      + (stale ? "keine aktuelle Position" : "Position " + fmtClock(when) + " Uhr");
+      + (stale ? "keine aktuelle Position" : "Position " + uhrzeit(when) + " Uhr");
     const icon = L.divIcon({ html, className: "mhit", iconSize: [44, 44], iconAnchor: [22, 22] });
     if (layers.teams[t.id]) {
       layers.teams[t.id].setLatLng(at); layers.teams[t.id].setIcon(icon); layers.teams[t.id].setPopupContent(popup);
@@ -2550,7 +2547,14 @@ async function drawMap(first) {
 /* ---------- Routen laden ---------- */
 // Holt nur die Punkte seit dem letzten Abruf, sonst käme bei jedem Takt
 // der komplette Verlauf über die Leitung.
-async function syncTracks(full) {
+// Läuft schon ein Abruf, wird er mitbenutzt.
+let syncLauf = null;
+function syncTracks(full) {
+  if (syncLauf && !full) return syncLauf;
+  const p = syncHolen(full).finally(() => { if (syncLauf === p) syncLauf = null; });
+  return syncLauf = p;
+}
+async function syncHolen(full) {
   const A = S.admin;
   if (!A.pin) return;
   if (full) { A.tracks = null; A.syncedAt = null; }
@@ -2574,7 +2578,7 @@ async function syncTracks(full) {
     start: r.startedAt ? new Date(r.startedAt).getTime() : null,
     end: r.finishedAt ? new Date(r.finishedAt).getTime() : Date.now()
   };
-  if (stale && !full) return syncTracks(true);
+  if (stale && !full) return syncHolen(true);
 }
 
 /* ---------- Zeitachse ---------- */
@@ -2638,12 +2642,12 @@ function renderTimeline() {
   if (axis) {
     const step = (end - start) > 3 * 3600e3 ? 3600e3 : (end - start) > 75 * 60e3 ? 30 * 60e3 : 15 * 60e3;
     let a = "";
-    for (let ms = Math.ceil(start / step) * step; ms <= end; ms += step) a += `<span style="left:${pct(ms)}%">${fmtClock(ms)}</span>`;
+    for (let ms = Math.ceil(start / step) * step; ms <= end; ms += step) a += `<span style="left:${pct(ms)}%">${uhrzeit(ms)}</span>`;
     axis.innerHTML = a;
   }
   if (span) span.textContent = W.status === "finished"
-    ? `Start ${fmtClock(start)}, Ende ${fmtClock(end)}, Dauer ${fmtDur(end - start)}`
-    : `Start ${fmtClock(start)}, läuft seit ${fmtDur(end - start)}`;
+    ? `Start ${uhrzeit(start)}, Ende ${uhrzeit(end)}, Dauer ${fmtDur(end - start)}`
+    : `Start ${uhrzeit(start)}, läuft seit ${fmtDur(end - start)}`;
   updateCursor();
 }
 function updateCursor() {
@@ -2653,7 +2657,7 @@ function updateCursor() {
   const at = A.cursor != null ? A.cursor : end;
   const f = (Math.min(Math.max(at, start), end) - start) / (end - start);
   if (c) { c.hidden = false; c.style.left = `calc(114px + (100% - 204px) * ${f})`; }
-  if (clock) clock.textContent = fmtClock(at);
+  if (clock) clock.textContent = uhrzeit(at);
   if (slider && document.activeElement !== slider) slider.value = Math.round(f * 1000);
   const live = $("#tllive"); if (live) live.disabled = A.cursor == null;
 }
@@ -2680,11 +2684,6 @@ const ACT = {
     LS.setItem("sj.thema", neu);
     document.querySelectorAll(".thema").forEach(b => { b.innerHTML = themaInnen(); b.title = themaTitel(); b.setAttribute("aria-label", themaTitel()); });
     return false;
-  },
-  async "cfg-save"() {
-    cfg.url = val("surl"); cfg.key = val("skey");
-    LS.setItem("sj.url", cfg.url); LS.setItem("sj.key", cfg.key);
-    S.msg = null; await refresh();
   },
   async "pub-reg"() {
     // Den Geräte-Schlüssel erzeugt das Handy selbst und legt ihn VOR dem Aufruf ab. Geht die Antwort im Funkloch
@@ -2756,11 +2755,11 @@ const ACT = {
     const code = val("tcode");
     let st;
     try { st = await rpc("team_state", { p_code: code }); }
-    catch (e) { S.msg = { type: "err", ort: "code", text: String(e.message).includes("Unbekannter Team-Code") ? "Diesen Team-Code gibt es nicht. Prüft die Schreibweise, etwa FUCHS-1234." : e.message }; return; }
+    catch (e) { S.msg = { type: "err", ort: "code", text: String(e.message).includes("Unbekannter Team-Code") ? "Diesen Team-Code gibt es nicht. Prüft die Schreibweise, etwa FUCHS-123456." : e.message }; return; }
     LS.removeItem("sj.abgemeldet");
-    S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
+    S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); LS.setItem("sj.hand", "1"); S.msg = null;
   },
-  "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.setItem("sj.abgemeldet", "1"); standVergessen(); stopGps(); },
+  "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.setItem("sj.abgemeldet", "1"); standVergessen(); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
   // Mitlese-Link fürs Team: teilen (Share-Sheet, sonst WhatsApp) oder kopieren
@@ -2871,18 +2870,18 @@ const ACT = {
       sf.status = "fehler"; sf.fehler = String(e.message || "").replace(/\.$/, "");
       // Zeitstempel eines schon vorhandenen Fotos (Ersetzen): ein neueres im Abruf heißt, das hier kam doch an
       sf.altAt = ((alt.selfie && alt.selfie.photos) || []).filter(f => f.position === sf.pos).map(f => f.takenAt)[0] || null;
-      if (e.netz) fotoMerken(alt, sf);
+      sf.gemerkt = !!e.netz && fotoMerken(alt, sf);
     }
   },
   async "t-selfie-skip"() {
     const st = S.team.state, p = st && st.selfie && st.selfie.pending, hatte = !!S.selfie;
     if (!p) { S.selfie = null; return; }
-    if (hatte) fotoMerken(st, S.selfie);
+    const gemerkt = hatte && fotoMerken(st, S.selfie);
     const s = await rpc("team_selfie_skip", { p_code: S.team.code, p_position: p.position });
     S.team.state = s; S.selfie = null;
     const z = s.digits ? s.digits[p.position - 1] : null;
     if (z != null) S.neueZiffer = { i: p.position - 1, bis: Date.now() + 8000 };
-    S.msg = { type: "ok", text: `Station ${p.position} gelöst${z != null ? ", eure Ziffer: " + z : ""}.` + (hatte ? " Das Foto wird nachgereicht, sobald das Netz reicht." : "") };
+    S.msg = { type: "ok", text: `Station ${p.position} gelöst${z != null ? ", eure Ziffer: " + z : ""}.` + (gemerkt ? " Das Foto wird nachgereicht, sobald das Netz reicht." : "") };
   },
   "foto-gross"(d) { S.gross = { pos: Number(d.pos), team: d.team || null, route: d.route || "echt" }; },
   "foto-zu"() { S.gross = null; },
@@ -3015,11 +3014,6 @@ const ACT = {
     const neu = (S.admin.state.participants || []).find(p => p.name.toLowerCase() === name.trim().replace(/\s+/g, " ").toLowerCase());
     S.msg = { type: "ok", text: neu && neu.teamName ? `${neu.name} ist jetzt in Team ${neu.teamName}.` : `${name.trim()} ist angemeldet.` };
   },
-  async "a-unlock"(d) {
-    S.admin.state = await rpc("admin_unlock_station", { p_pin: S.admin.pin, p_team: d.id, p_position: Number(d.pos) });
-    const t = (S.admin.state.teams || []).find(x => x.id === d.id);
-    S.msg = { type: "ok", ort: "t:" + d.id, text: `${t ? "Team " + t.name : "Das Team"} ist an Station ${d.pos} eingecheckt. Das Rätsel ist jetzt offen.` };
-  },
   async "a-bg"(d) {
     S.admin.state = await rpc("admin_set_background", { p_pin: S.admin.pin, p_background: d.bg });
     S.msg = { type: "ok", ort: "bg", text: `Hintergrund: ${HINTERGRUENDE[d.bg]}. Die Handys übernehmen das mit der nächsten Abfrage.` };
@@ -3061,8 +3055,7 @@ const ACT = {
   },
   async "a-startpkt-save"(d) {
     // ein eingefügtes Paar im Feld Breite gewinnt, auch wenn Länge noch den alten Wert hat
-    const [la, lo] = koordAusFeldern("sp-lat", "sp-lng");
-    const lat = parseFloat(String(la).replace(",", ".")), lng = parseFloat(String(lo).replace(",", "."));
+    const [lat, lng] = koordZahlen("sp-lat", "sp-lng");
     if (isNaN(lat) || isNaN(lng)) { S.msg = { type: "err", ort: "start", text: "Bitte Breite und Länge eintragen, oder ein Paar wie 52.47010, 13.46280 ins Feld Breite einfügen." }; return; }
     S.admin.state = await rpc("admin_set_start", { p_pin: S.admin.pin, p_route: d.route, p_name: val("sp-name"), p_lat: lat, p_lng: lng });
     S.admin.startEdit = null; S.msg = { type: "ok", text: "Start gespeichert." };
@@ -3101,8 +3094,7 @@ const ACT = {
     return false;
   },
   async "a-save"(d) {
-    const [la, lo] = koordAusFeldern("e-lat", "e-lng");
-    const lat = parseFloat(la.replace(",", ".")), lng = parseFloat(lo.replace(",", "."));
+    const [lat, lng] = koordZahlen("e-lat", "e-lng");
     // Eine leere Ziffer würde still zur 0: lieber nachfragen
     const ziffer = val("e-digit").trim();
     if (!/^[0-9]$/.test(ziffer)) { S.msg = { type: "err", text: "Bitte eine Ziffer von 0 bis 9 eintragen." }; return; }
@@ -3221,13 +3213,6 @@ function aktuellesZiel() {
   if (st && st.status === "drawn") return PROBEZIEL;
   return null;
 }
-// Unter der Entfernung: ab wann der Check-in klappt, damit niemand auf Verdacht tippt
-function umkreisHTML() {
-  const st = aktiverStand(), s = st && st.station, g = S.gps;
-  if (!s || s.lat == null || s.lng == null || !g.pos || !s.radiusM || (st && st.checkedIn)) return "";
-  return haversine(g.pos, { lat: s.lat, lng: s.lng }) <= s.radiusM
-    ? `<b style="color:var(--ok)">Ihr seid im Umkreis</b>` : `Einchecken ab <span style="white-space:nowrap">etwa ${s.radiusM} m</span>`;
-}
 // Wie weit noch bis zum Einchecken: dieselbe Toleranz wie check_in in der Datenbank (Radius plus Genauigkeit, höchstens 25 m)
 function checkRest(st, s) {
   const g = S.gps;
@@ -3243,7 +3228,6 @@ function checkNachziehen() {
 }
 function liveUpdate() {
   const g = S.gps, ziel = aktuellesZiel();
-  const um = $("#umkreis"); if (um) um.innerHTML = umkreisHTML();
   kalZeigen();
   const note = $("#gnote"); if (note && ziel) note.textContent = gpsNote() || "Standort noch nicht aktiv";
   const n = $("#needle"); if (n) { const c = n.closest(".compass"), k = kompassKlasse(); c.classList.toggle("unsicher", k === "unsicher"); c.classList.toggle("lauf", k === "lauf"); }
@@ -3551,7 +3535,7 @@ async function eigenesTeam() {
   try {
     const r = await rpc("lookup_participant", { p_name: S.myName });
     if (r.found && r.team) { S.lookup = r.team; S.lookupName = r.name; S.lookupEigen = true; }
-  } catch { /* dann eben per Hand suchen */ }
+  } catch { S.autoLook = false; /* Funkloch: der nächste Takt versucht es noch einmal */ }
 }
 // Das angezeigte Team bei jeder Abfrage neu aus den Teamlisten ablesen, sonst bleibt nach
 // einem Neu-Auslosen das alte Team stehen. true, wenn sich das Team geändert hat.
@@ -3597,9 +3581,7 @@ async function mitlesen() {
 function mitLinkPruefen() {
   const m = location.hash.match(/^#\/mit\/([0-9a-f]{32})$/i);
   if (!m) return false;
-  // Läuft beim Start vor refresh(): ein gesperrter Speicher (privates Fenster, Geräterichtlinie)
-  // darf höchstens das Mitlesen kosten, nicht die ganze Seite
-  try { LS.setItem("sj.mit", m[1].toLowerCase()); } catch { /* dann eben nicht gemerkt */ }
+  LS.setItem("sj.mit", m[1].toLowerCase());
   history.replaceState(null, "", location.pathname + location.search + "#/public");
   S.view = "public"; S.mit = null;
   return true;
@@ -3678,7 +3660,7 @@ function abgleich(o, s) {
 // zeigt ohne Daten aber nur "Lade …". Darum merkt sich das Handy den letzten Stand der Teamleitung bzw. des Mitlesens
 // (einige KB). Nicht für die Spielleitung: admin_state enthält alle Lösungen und Namen.
 const LETZTER_MAX_MS = 12 * 3600000;
-function standMerken(k, daten) { try { LS.setItem(k, JSON.stringify(Object.assign({ at: Date.now() }, daten))); } catch { /* Speicher voll: dann eben nicht */ } }
+function standMerken(k, daten) { LS.setItem(k, JSON.stringify(Object.assign({ at: Date.now() }, daten))); }
 function standLesen(k) {
   try { const m = JSON.parse(LS.getItem(k) || "null"); return m && m.at && Date.now() - m.at <= LETZTER_MAX_MS ? m : null; }
   catch { return null; }
@@ -3726,7 +3708,7 @@ async function leitungOhneCode() {
   if (!tok || S.team.code || LS.getItem("sj.abgemeldet")) return false;
   try {
     const r = await rpc("leader_code", { p_token: tok });
-    S.team.code = r.code; LS.setItem("sj.code", r.code);   // der Kopf zeigt dann Team und Code
+    S.team.code = r.code; LS.setItem("sj.code", r.code); LS.removeItem("sj.hand");   // der Kopf zeigt dann Team und Code
     S.team.ohneNetz = false; netzOk();
     return true;
   } catch (e) {
@@ -3742,9 +3724,10 @@ async function leitungOhneCode() {
 }
 // Hat die Spielleitung die Leitung gewechselt oder wurde sie abgegeben, gibt dieses Handy nichts mehr ein.
 // Bisher blieb der gemerkte Code gültig und das Team hatte zwei eingebende Handys.
+// Ein von Hand getippter Code (Notweg der Spielleitung, sj.hand) gehört nicht dem Gerät: der bleibt.
 async function leitungNochDa(s) {
   const tok = LS.getItem("sj.token");
-  if (!tok || !s || !s.team || !s.team.leaderName || s.team.leaderName === S.myName) return;
+  if (!tok || LS.getItem("sj.hand") || !s || !s.team || !s.team.leaderName || s.team.leaderName === S.myName) return;
   try { await rpc("leader_code", { p_token: tok }); return; }   // umbenannt, aber weiter Leitung
   catch (e) {
     if (!/keine Teamleitung|kein Team\b/.test(String(e.message)) && !String(e.message).includes("Unbekanntes Gerät")) return;   // Funkloch
@@ -3763,7 +3746,7 @@ async function ranglisteHolen() {
 // statt still das alte Team weiter zu zeigen
 function codeUngueltig() {
   S.team.code = null; S.team.state = null; S.team.abmelden = false;
-  LS.removeItem("sj.code"); standVergessen(); stopGps();
+  LS.removeItem("sj.code"); LS.removeItem("sj.hand"); standVergessen(); stopGps();
   // Mit Geräte-Schlüssel holt der nächste Abruf das neue Team von selbst (leitungOhneCode)
   S.msg = LS.getItem("sj.token") ? { type: "info", text: "Die Teams wurden neu ausgelost." }
     : { type: "err", ort: "code", text: "Dieser Team-Code gilt nicht mehr, vermutlich wurde neu ausgelost." };
@@ -3776,9 +3759,9 @@ function netzOk() {
   if (!S.msg || S.msg.kind !== "netz") return false;
   S.msg = null; return true;
 }
+const pinWeg = () => { S.admin.pin = null; SS.removeItem("sj.pin"); kartenSicht = null; };
 async function refresh() {
   if (imRueckblick()) return rueckblickZeigen();   // keine Abfrage, kein gpsWiederStarten(), kein wachHaltenPruefen()
-  if (!cfg.url || !cfg.key) return render();
   try {
     if (S.view === "public") { S.pub = await rpc("public_state", {}); netzOk(); await nameNochDa(); teamNachziehen(); await eigenesTeam(); await mitlesen(); }
     if (S.view === "team" && !S.team.code) await leitungOhneCode();
@@ -3787,7 +3770,7 @@ async function refresh() {
     await gpsWiederStarten();
   } catch (e) {
     if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); return render(); }
-    if (String(e.message).includes("Falsche PIN")) { S.admin.pin = null; SS.removeItem("sj.pin"); kartenSicht = null; }
+    if (String(e.message).includes("Falsche PIN")) pinWeg();
     S.msg = e.netz ? { type: "err", kind: "netz", text: e.message } : { type: "err", text: e.message };
     if (e.netz && letzterStand()) gpsWiederStarten().catch(() => { });
   }
@@ -3801,7 +3784,7 @@ let hintergrundAktiv = "klassisch", hintergrundLaeuft = null;
 // Die Wahl bleibt im Speicher, damit der nächste Aufruf gleich richtig startet.
 function hintergrundSetzen(name) {
   if (!HINTERGRUENDE[name] || name === hintergrundAktiv || hintergrundLaeuft === name) return;
-  try { LS.setItem("sj.bg", name); } catch { /* egal */ }
+  LS.setItem("sj.bg", name);
   if (name === "klassisch") { $("#topo").innerHTML = KLASSISCH; hintergrundAktiv = name; return; }
   hintergrundLaeuft = name;
   fetch(`hintergrund/${name}.svg`).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
@@ -3858,7 +3841,7 @@ const rueckblickUrl = n => n + "?v=" + (VERSION || Date.parse(document.lastModif
 const rueckblickHost = {
   api: RUECKBLICK_API, rpc, url: rueckblickUrl, farbe: teamColor, emoji: teamEmoji,
   pin: () => S.admin.pin,
-  pinSetzen: p => { S.admin.pin = p; try { SS.setItem("sj.pin", p); } catch { /* dann gilt sie nur bis zum Neuladen nicht */ } },
+  pinSetzen: p => { S.admin.pin = p; SS.setItem("sj.pin", p); },
   pinVergessen: () => { S.admin.pin = null; try { SS.removeItem("sj.pin"); } catch { /* egal */ } }
 };
 function rueckblickLaden() {
@@ -3909,8 +3892,7 @@ function render() {
   // gezeichnet = Tab, der gerade im DOM steht (nach einem Tabwechsel ist S.team.tab schon der neue)
   S.team.scroll = inh ? inh.scrollTop : 0; S.team.scrollTab = S.team.gezeichnet;
   document.body.classList.remove("spiel");
-  app.innerHTML = (!cfg.url || !cfg.key) ? viewSetup()
-    : S.view === "team" ? viewTeam()
+  app.innerHTML = S.view === "team" ? viewTeam()
       : S.view === "admin" ? viewAdmin() : viewPublic();
   // Die Hülle ist so hoch wie der Bildschirm: ein mitgebrachter Fensterscroll würde Kopf und Tabs verschieben
   if (document.body.classList.contains("spiel") && (window.scrollY || document.documentElement.scrollTop)) window.scrollTo(0, 0);
@@ -4070,14 +4052,14 @@ setInterval(() => {
   const sd = $("#stand");
   if (sd) { const alt = S.zuletzt && Date.now() - S.zuletzt > 30000; sd.hidden = !alt; if (alt) sd.textContent = "Stand " + uhrzeit(S.zuletzt); }
   const p = $("#pause"); if (!p) return;
-  if (new Date(p.dataset.bis).getTime() <= Date.now()) render(); else p.textContent = pauseText(p.dataset.bis);
+  if (Number(p.dataset.bis) <= performance.now()) render(); else p.textContent = pauseText(Number(p.dataset.bis));
 }, 1000);
 setInterval(() => {
   if (document.hidden || (fingerSeit && Date.now() - fingerSeit < 3000)) return;
   versionPruefen(false);
   const busyTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
   if (S.view === "admin" && S.admin.pin) {
-    rpc("admin_state", { p_pin: S.admin.pin }).then(s => {
+    taktAbruf("admin", () => rpc("admin_state", { p_pin: S.admin.pin }), s => {
       S.admin.state = s; S.admin.stateAt = Date.now();   // für "Daten vom" in der Notfallmappe
       const netzWeg = netzOk();
       if (S.admin.tab === "fotos" && (s.photoCount || 0) !== (S.admin.fotos || []).length) fotosLaden();
@@ -4087,7 +4069,7 @@ setInterval(() => {
         if (netzWeg && !busyTyping) render(); else teamlisteNachziehen();
       }
       else if (!busyTyping && !S.admin.edit && !S.admin.confirm && !S.gross) render();
-    }).catch(() => { });
+    }).catch(e => { if (String(e.message).includes("Falsche PIN")) { pinWeg(); S.msg = { type: "err", text: e.message }; render(); } });
     return;
   }
   if (busyTyping) return;
@@ -4097,11 +4079,11 @@ setInterval(() => {
   // flackern. Die Daten kommen trotzdem, beim Schließen ist alles aktuell (Review 15.10.2026, Befund 5).
   // Hat sich das Team geändert (neu ausgelost, Leitung gewechselt), trotzdem neu zeichnen.
   const offen = () => S.hoch || S.team.hilfe;
-  if (S.view === "team" && S.team.code) rpc("team_state", { p_code: S.team.code }).then(async s => {
+  if (S.view === "team" && S.team.code) taktAbruf("team", () => rpc("team_state", { p_code: S.team.code }), async s => {
     const netzWeg = netzOk(); teamStandSetzen(s); await leitungNochDa(s); await ranglisteHolen();
     if (!offen() || !S.team.code || netzWeg) render();
   }).catch(e => { if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); render(); } });
-  if (S.view === "public") rpc("public_state", {}).then(async s => {
+  if (S.view === "public") taktAbruf("pub", () => rpc("public_state", {}), async s => {
     S.pub = s;
     const netzWeg = netzOk();
     const neu = (await nameNochDa()) | teamNachziehen();

@@ -209,7 +209,7 @@ with sync_playwright() as pw:
         pg.close()
         pg = neu(b, "anmeldung-leer")
         pg.fill("#pname", "Jonas Keller"); pg.click("[data-act=pub-reg]"); pg.wait_for_timeout(500)
-        pruef("schon angemeldet" in pg.inner_text("#app"), "fremder Name: weiter abgelehnt")
+        pruef("Diesen Namen gibt es schon" in pg.inner_text("#app"), "fremder Name: weiter abgelehnt")
         pruef(pg.evaluate("localStorage.getItem('sj.token')") is None, "abgelehnt: kein Schlüssel bleibt liegen")
         pg.close()
         pg = neu(b, "anmeldung-leer", vorher="window.__ALTE_DB = true")
@@ -278,7 +278,7 @@ with sync_playwright() as pw:
         pg.click("[data-act=a-tab][data-tab=stations]"); pg.wait_for_selector("[data-act=a-test]")
         pg.click("[data-act=a-test]"); pg.wait_for_selector("#dlgok"); pg.click("#dlgok"); pg.wait_for_timeout(600)
         t = pg.inner_text("#app")
-        pruef("Im laufenden Spiel gibt es schon Plätze" in t, "Einschalten mit Plätzen: Meldung des Servers steht da")
+        pruef("Es gibt schon Plätze" in t, "Einschalten mit Plätzen: Meldung des Servers steht da")
         pruef(pg.evaluate("S.admin.state.testMode") is False, "Testmodus bleibt aus")
         pg.close()
 

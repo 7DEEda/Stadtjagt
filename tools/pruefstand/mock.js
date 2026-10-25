@@ -6,6 +6,8 @@
   const P = new URLSearchParams(location.search);
   const SZ_NAME = P.get("szenario") || "anmeldung-leer";
   const NOW = Date.now();
+  // Uhr des "Servers": audit2510.py stellt die Handyuhr schief und lässt hier die echte laufen (window.__serverJetzt)
+  const jetzt = () => window.__serverJetzt ? window.__serverJetzt() : Date.now();
   const MIN = 60000;
   const iso = ms => ms == null ? null : new Date(ms).toISOString();
 
@@ -82,7 +84,7 @@
     const mitglieder = name === "Fuchs" ? FUCHS_MITGLIEDER.slice() : andere.slice(k, k += 8);
     const leader = mitglieder[name === "Fuchs" ? 0 : 1];
     const t = { id: "t-" + name.toLowerCase(), name,
-      code: name === "Fuchs" ? "FUCHS-4821" : name.toUpperCase() + "-" + (1000 + Math.floor(rnd() * 9000)),
+      code: name === "Fuchs" ? "FUCHS-4821" : name.toUpperCase() + "-" + (100000 + Math.floor(rnd() * 900000)),
       readToken: hex(32) };
     t.members = mitglieder.slice().sort((a, b) => a.localeCompare(b, "de"));
     mitglieder.forEach(n => PERSONEN.push({ id: "p-" + (pid++), name: n, teamId: t.id, token: "tok-" + hex(24) }));
@@ -323,7 +325,7 @@
       g.fillStyle = `hsl(${ton + i * 50},40%,35%)`; g.fillRect(x - 60 * k, y + 50 * k, 120 * k, 200 * k); }
     return c.toDataURL("image/jpeg", .8).split(",")[1];
   }
-  WELT.selfieOn = !!C.selfie; WELT.photosDeleteOn = C.selfie ? (C.loeschDatum === "heute" ? new Date().toISOString().slice(0, 10) : C.loeschDatum || "2026-10-31") : null;
+  WELT.selfieOn = !!C.selfie; WELT.photosDeleteOn = C.selfie ? (C.loeschDatum === "heute" ? new Date().toLocaleDateString("sv") : C.loeschDatum || "2026-10-31") : null;
   const ohneFoto = (name, pos) => (C.keinFoto || []).includes(pos) || (C.fehltFoto || []).includes(name + ":" + pos);
   // C.selfie.offen: die zuletzt gelöste Station des Fuchs-Teams wartet noch auf ihr Foto
   const SELFIE_DA = {}, FOTOS = {};
@@ -470,7 +472,8 @@
     register_participant: a => { const name = String(a.p_name || "").trim(); if (name.length < 2) fehler("Bitte den vollen Namen eintragen.");
       if (window.__ALTE_DB && "p_token" in a) fehler("Could not find the function public.register_participant(p_name, p_token) in the schema cache");
       const k = norm(name), da = ANGEMELDET[k];
-      if (da && (!a.p_token || da !== a.p_token)) fehler("Dieser Name ist schon angemeldet. Hast du dich schon eingetragen? Dann bist du dabei.");
+      if (da && (!a.p_token || da !== a.p_token)) fehler("Diesen Namen gibt es schon. Bist du das nicht, ergänze etwas, zum Beispiel einen zweiten Vornamen.");
+      if (!da && PERSONEN.length + Object.keys(ANGEMELDET).length >= 200) fehler("Die Anmeldung ist voll. Melde dich bei der Spielleitung.");
       const token = a.p_token || "tok-neu"; ANGEMELDET[k] = token; NEU[token] = name; window.__REG = (window.__REG || []).concat([a]);
       return { name, token, count: Object.keys(ANGEMELDET).length }; },
     check_in: a => {
@@ -498,8 +501,8 @@
       }
       if (!s) return { ok: false, message: "Alle Stationen sind gelöst.", state: teamState(t) };
       if (!FU.checkedIn) return { ok: false, message: "Erst am Ort einchecken, dann gibt es das Rätsel.", state: teamState(t) };
-      if (!WELT.testMode && FU.lockedUntil && FU.lockedUntil > Date.now())
-        return { ok: false, message: "Denkpause: noch " + Math.ceil((FU.lockedUntil - Date.now()) / 1000) + " Sekunden.", state: teamState(t) };
+      if (!WELT.testMode && FU.lockedUntil && FU.lockedUntil > jetzt())
+        return { ok: false, message: "Denkpause: noch " + Math.ceil((FU.lockedUntil - jetzt()) / 1000) + " Sekunden.", state: teamState(t) };
       if (passt(s)) {
         FU.solved++; FU.checkedIn = false; FU.failedAttempts = 0; FU.lockedUntil = null; FU.pauses = 0; FU.tipShown = false; FU.lastWrong = null;
         return { ok: true, message: ERFOLG, state: teamState(t) };
@@ -508,10 +511,10 @@
       if (!norm(a.p_answer)) return { ok: false, message: "Bitte gebt eine Antwort ein.", state: teamState(t) };
       const versuche = r => "Leider falsch. Noch " + r + (r === 1 ? " Versuch." : " Versuche.");
       // dieselbe falsche Antwort wie zuletzt zählt nicht noch einmal
-      if (norm(a.p_answer) === FU.lastWrong) return { ok: false, message: versuche(FU.lockedUntil && FU.lockedUntil <= Date.now() ? 3 : 3 - FU.failedAttempts), state: teamState(t) };
-      const n = FU.lockedUntil && FU.lockedUntil <= Date.now() ? 1 : FU.failedAttempts + 1;
+      if (norm(a.p_answer) === FU.lastWrong) return { ok: false, message: versuche(FU.lockedUntil && FU.lockedUntil <= jetzt() ? 3 : 3 - FU.failedAttempts), state: teamState(t) };
+      const n = FU.lockedUntil && FU.lockedUntil <= jetzt() ? 1 : FU.failedAttempts + 1;
       FU.lastWrong = norm(a.p_answer);
-      if (n >= 3) { FU.failedAttempts = 0; FU.lockedUntil = Date.now() + 120000; FU.pauses++;
+      if (n >= 3) { FU.failedAttempts = 0; FU.lockedUntil = jetzt() + 120000; FU.pauses++;
         return { ok: false, message: "Dreimal falsch. Zwei Minuten Denkpause für euer Team.", state: teamState(t) }; }
       FU.failedAttempts = n; FU.lockedUntil = null;
       return { ok: false, message: versuche(3 - n), state: teamState(t) };
@@ -525,7 +528,8 @@
     // __ALTE_DB: Datenbank ohne Nachtrag 30, PostgREST findet keine Funktion mit p_kompass (PGRST202)
     report_position: a => { if (window.__ALTE_DB && "p_kompass" in a) fehler("Could not find the function public.report_position(p_acc, p_code, p_kompass, p_lat, p_lng) in the schema cache");
       window.__KOMPASS = a.p_kompass; window.__POSITION = [a.p_lat, a.p_lng]; return { ok: true }; },
-    team_set_leader: a => teamState(fuchsByCode(a.p_code)),
+    // Audit 25.10.: ein Ziel ohne Geräte-Schlüssel (hier Tobias Neumann) wird abgelehnt
+    team_set_leader: a => { if (String(a.p_name).trim() === "Tobias Neumann") fehler("Diese Person hat sich nicht selbst angemeldet und kann nicht eingeben."); return teamState(fuchsByCode(a.p_code)); },
     // Gruppenselfie (Nachtrag 25)
     team_selfie: a => { const t = fuchsByCode(a.p_code); if (C.fotoFehler) fehler("Das Foto ist zu groß.");
       FOTOS[a.p_position] = { foto: a.p_photo, thumb: a.p_thumb, at: Date.now() }; SELFIE_DA[a.p_position] = true; return teamState(t); },
@@ -539,13 +543,16 @@
       (window.__FOTO_ARGS = window.__FOTO_ARGS || []).push({ n: t.name, p: a.p_position, full: !!a.p_full });
       if (window.__fotoFehler && window.__fotoFehler(a, t)) fehler("Foto nicht erreichbar.");
       return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full, C.hochfotos && (t.name.length + a.p_position) % 3 === 0) }; },
-    admin_set_selfie: a => { pin(a); WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
+    admin_set_selfie: a => { pin(a);
+      // Audit 25.10.: Löschdatum heute oder früher abgelehnt, das schon gespeicherte Datum nochmal senden geht
+      if (a.p_delete_on && a.p_delete_on <= new Date().toLocaleDateString("sv") && a.p_delete_on !== WELT.photosDeleteOn) fehler("Das Löschdatum muss nach heute liegen.");
+      WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
     admin_delete_photos: a => { pin(a); ANDERE_FOTOS.length = 0; Object.keys(FOTOS).forEach(k => delete FOTOS[k]); return adminState(); },
     admin_state: a => { pin(a); return adminState(); },
-    // Nachtrag 32: im laufenden Spiel mit Plätzen kein Umschalten, weder aus noch an
+    // Nachtrag 32, Audit 25.10.: mit Plätzen in keinem Zustand umschalten, weder aus noch an
     admin_set_test_mode: a => { pin(a);
-      if (!!a.p_on !== WELT.testMode && WELT.status === "running" && TEAMS.some(t => t.place))
-        fehler(a.p_on ? "Im laufenden Spiel gibt es schon Plätze. Den Testmodus jetzt einzuschalten würde die Rangliste durcheinanderbringen."
+      if (!!a.p_on !== WELT.testMode && TEAMS.some(t => t.place))
+        fehler(a.p_on ? "Es gibt schon Plätze. Den Testmodus jetzt einzuschalten würde die Rangliste durcheinanderbringen."
           : "Im Testlauf gibt es schon Plätze. Erst im Reiter Daten löschen „Fortschritt zurücksetzen“, dann den Testmodus ausschalten.");
       WELT.testMode = !!a.p_on; return adminState(); },
     admin_tracks: a => { pin(a); return adminTracks(); },
@@ -597,11 +604,15 @@
     const antwort = (status, data) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
     // __rbFehlt: Datenbank ohne die Migration 20261017090000 (PostgREST PGRST202)
     if (fn.startsWith("rb_") && window.__rbFehlt) return antwort(404, { code: "PGRST202", message: "Could not find the function public." + fn + " in the schema cache" });
+    // __weg: nur diese Aufrufe scheitern wie im Funkloch. __halten: diese Aufrufe werden beantwortet (Stand zum Sendezeitpunkt),
+    // die Antwort kommt aber erst nach window.__freigeben()
+    if (passt(window.__weg)) throw new TypeError("Prüfstand: Funkloch");
     try {
       // unbekannte Admin-Aufrufe: nichts tun, Stand zurückgeben
       const h = RPC[fn] || (fn.startsWith("admin_") ? (a => { pin(a); return adminState(); }) : null);
       if (!h) return antwort(404, { message: "Prüfstand kennt " + fn + " nicht." });
       const daten = h(args);
+      if (passt(window.__halten)) await new Promise(r => (window.__tore = window.__tore || []).push(r));
       // __verlieren: der Server hat es getan, die Antwort geht aber im Funkloch verloren
       if (passt(window.__verlieren) || netz === "antwort-weg") throw Object.assign(new TypeError("Prüfstand: Antwort verloren"), { verloren: true });
       return antwort(200, daten);
@@ -610,6 +621,8 @@
       return antwort(400, { message: e.message });
     }
   };
+
+  window.__freigeben = () => { const t = window.__tore || []; window.__tore = []; t.forEach(r => r()); };
 
   /* ---------- Speicher und Ansicht vorbelegen ---------- */
   // __behalten (offline.py, per add_init_script): Neuladen wie auf dem Handy, Speicher und Adresse bleiben
