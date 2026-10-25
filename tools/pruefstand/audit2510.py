@@ -223,7 +223,7 @@ with sync_playwright() as pw:
 
     if an(9):
         print("9 Toter Code")
-        for n in ("viewSetup", "cfg-save", '"a-unlock"', "sj.url", "sj.key", "const fmtClock"):
+        for n in ("viewSetup", "cfg-save", '"a-unlock"', "sj.url", "sj.key", "const fmtClock", "FUCHS-1234\""):
             pruef(n not in QUELLE, f"{n} steht nicht mehr im Quelltext")
 
     if an(10):
@@ -241,6 +241,22 @@ with sync_playwright() as pw:
             pruef(pg.evaluate("S.team.state.team.code") == code, f"{code} kommt vollständig im Stand an")
             pg.close()
         pruef(tiger is not None and re.fullmatch(r"TIGER-\d{6}", tiger) is not None, f"Prüfstand-Teams haben sechs Ziffern ({tiger})")
+
+    if an(11):
+        print("11 Nachtrag der Datenbank: Leitung abgeben abgelehnt, Löschdatum lokal")
+        pg = neu(b, "leitung-raetsel")
+        pg.click("[data-act=t-tab][data-tab=team]")
+        pg.click("[data-act=t-abgeben-frage]")
+        pg.select_option("#tneu", "Tobias Neumann")
+        tippen(pg, "[data-act=t-abgeben]")
+        t = pg.inner_text("#app")
+        pruef("kann nicht eingeben" in t, "Meldung des Servers steht unter dem Feld")
+        pruef(pg.evaluate("S.team.code") == "FUCHS-4821" and pg.evaluate("S.team.state !== null"), "Handy bleibt angemeldet")
+        pg.close()
+        pg = neu(b, "admin-fotos-heute")
+        pruef("heute oder schon vorbei" in pg.inner_text("#app") or pg.evaluate("document.body.innerText").count("heute oder schon vorbei") > 0,
+              "Löschdatum von heute (lokal) warnt")
+        pg.close()
 
     pruef(not err, "keine Fehler auf der Seite" + (f": {err[:3]}" if err else ""))
     print("FEHLT:\n  " + "\n  ".join(fehler) if fehler else "OK")

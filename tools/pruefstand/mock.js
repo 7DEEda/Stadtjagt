@@ -325,7 +325,7 @@
       g.fillStyle = `hsl(${ton + i * 50},40%,35%)`; g.fillRect(x - 60 * k, y + 50 * k, 120 * k, 200 * k); }
     return c.toDataURL("image/jpeg", .8).split(",")[1];
   }
-  WELT.selfieOn = !!C.selfie; WELT.photosDeleteOn = C.selfie ? (C.loeschDatum === "heute" ? new Date().toISOString().slice(0, 10) : C.loeschDatum || "2026-10-31") : null;
+  WELT.selfieOn = !!C.selfie; WELT.photosDeleteOn = C.selfie ? (C.loeschDatum === "heute" ? new Date().toLocaleDateString("sv") : C.loeschDatum || "2026-10-31") : null;
   const ohneFoto = (name, pos) => (C.keinFoto || []).includes(pos) || (C.fehltFoto || []).includes(name + ":" + pos);
   // C.selfie.offen: die zuletzt gelöste Station des Fuchs-Teams wartet noch auf ihr Foto
   const SELFIE_DA = {}, FOTOS = {};
@@ -472,7 +472,8 @@
     register_participant: a => { const name = String(a.p_name || "").trim(); if (name.length < 2) fehler("Bitte den vollen Namen eintragen.");
       if (window.__ALTE_DB && "p_token" in a) fehler("Could not find the function public.register_participant(p_name, p_token) in the schema cache");
       const k = norm(name), da = ANGEMELDET[k];
-      if (da && (!a.p_token || da !== a.p_token)) fehler("Dieser Name ist schon angemeldet. Hast du dich schon eingetragen? Dann bist du dabei.");
+      if (da && (!a.p_token || da !== a.p_token)) fehler("Diesen Namen gibt es schon. Bist du das nicht, ergänze etwas, zum Beispiel einen zweiten Vornamen.");
+      if (!da && PERSONEN.length + Object.keys(ANGEMELDET).length >= 200) fehler("Die Anmeldung ist voll. Melde dich bei der Spielleitung.");
       const token = a.p_token || "tok-neu"; ANGEMELDET[k] = token; NEU[token] = name; window.__REG = (window.__REG || []).concat([a]);
       return { name, token, count: Object.keys(ANGEMELDET).length }; },
     check_in: a => {
@@ -527,7 +528,8 @@
     // __ALTE_DB: Datenbank ohne Nachtrag 30, PostgREST findet keine Funktion mit p_kompass (PGRST202)
     report_position: a => { if (window.__ALTE_DB && "p_kompass" in a) fehler("Could not find the function public.report_position(p_acc, p_code, p_kompass, p_lat, p_lng) in the schema cache");
       window.__KOMPASS = a.p_kompass; window.__POSITION = [a.p_lat, a.p_lng]; return { ok: true }; },
-    team_set_leader: a => teamState(fuchsByCode(a.p_code)),
+    // Audit 25.10.: ein Ziel ohne Geräte-Schlüssel (hier Tobias Neumann) wird abgelehnt
+    team_set_leader: a => { if (String(a.p_name).trim() === "Tobias Neumann") fehler("Diese Person hat sich nicht selbst angemeldet und kann nicht eingeben."); return teamState(fuchsByCode(a.p_code)); },
     // Gruppenselfie (Nachtrag 25)
     team_selfie: a => { const t = fuchsByCode(a.p_code); if (C.fotoFehler) fehler("Das Foto ist zu groß.");
       FOTOS[a.p_position] = { foto: a.p_photo, thumb: a.p_thumb, at: Date.now() }; SELFIE_DA[a.p_position] = true; return teamState(t); },
@@ -541,13 +543,16 @@
       (window.__FOTO_ARGS = window.__FOTO_ARGS || []).push({ n: t.name, p: a.p_position, full: !!a.p_full });
       if (window.__fotoFehler && window.__fotoFehler(a, t)) fehler("Foto nicht erreichbar.");
       return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full, C.hochfotos && (t.name.length + a.p_position) % 3 === 0) }; },
-    admin_set_selfie: a => { pin(a); WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
+    admin_set_selfie: a => { pin(a);
+      // Audit 25.10.: Löschdatum heute oder früher abgelehnt, das schon gespeicherte Datum nochmal senden geht
+      if (a.p_delete_on && a.p_delete_on <= new Date().toLocaleDateString("sv") && a.p_delete_on !== WELT.photosDeleteOn) fehler("Das Löschdatum muss nach heute liegen.");
+      WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
     admin_delete_photos: a => { pin(a); ANDERE_FOTOS.length = 0; Object.keys(FOTOS).forEach(k => delete FOTOS[k]); return adminState(); },
     admin_state: a => { pin(a); return adminState(); },
-    // Nachtrag 32: im laufenden Spiel mit Plätzen kein Umschalten, weder aus noch an
+    // Nachtrag 32, Audit 25.10.: mit Plätzen in keinem Zustand umschalten, weder aus noch an
     admin_set_test_mode: a => { pin(a);
-      if (!!a.p_on !== WELT.testMode && WELT.status === "running" && TEAMS.some(t => t.place))
-        fehler(a.p_on ? "Im laufenden Spiel gibt es schon Plätze. Den Testmodus jetzt einzuschalten würde die Rangliste durcheinanderbringen."
+      if (!!a.p_on !== WELT.testMode && TEAMS.some(t => t.place))
+        fehler(a.p_on ? "Es gibt schon Plätze. Den Testmodus jetzt einzuschalten würde die Rangliste durcheinanderbringen."
           : "Im Testlauf gibt es schon Plätze. Erst im Reiter Daten löschen „Fortschritt zurücksetzen“, dann den Testmodus ausschalten.");
       WELT.testMode = !!a.p_on; return adminState(); },
     admin_tracks: a => { pin(a); return adminTracks(); },
