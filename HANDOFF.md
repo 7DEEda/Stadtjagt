@@ -2138,11 +2138,25 @@ Einzelheiten in SPIEL.md §2, §5, §7, §8, §9, §11, §15 bis §17.
 - **App:** Merker `sj.hand` für den Notweg Team-Code; Takt mit Zähler je Ansicht, kein neuer Abruf während
   eines laufenden, "Falsche PIN" im Takt über `pinWeg()`; Chip `#stand`; `LS`/`SS.setItem` werfen nie;
   "wird nachgereicht" nur bei `sf.gemerkt`; Denkpause aus der Restzeit beim ersten Sehen (höchstens 120 s,
-  `performance.now()`); Text "Einchecken ab etwa N m" gestrichen; keine Setup-Ansicht mehr.
+  gezählt mit `Date.now()`); Text "Einchecken ab etwa N m" gestrichen; keine Setup-Ansicht mehr.
 - **Rückblick:** `pause` per Handy wirkt im Halt und Endhalt nicht; 600-ms-Sperre auch nach dem Lösen eines
   Halts; Abstand zum Ersten aus einzeln gerundeten Sekunden; kein Check-in-Umkreis mehr in der Doku.
 - **Prüfstand:** `audit2510.py` (Teile 1 bis 11), `audit2510_db.py`; Prüfstand komplett grün auf
   `audit-fixes` (25.10.).
+- **Nacharbeit nach dem Review (25.10.), fünf Punkte:**
+  1. Denkpause: das Ende war an `performance.now()` verankert, das auf iOS und Android steht, solange das Handy
+     gesperrt ist. Jetzt Empfangszeit `Date.now()` plus Rest (höchstens 120 s), verglichen mit `Date.now()`.
+     `audit2510.py` Teil 6 hält `performance.now()` an und lässt `Date.now()` 90 s weiterlaufen: Rest etwa 30 s.
+  2. `admin_set_selfie`: das schon gespeicherte Löschdatum (heute oder früher) geht nur beim Ausschalten durch.
+     Vorher nahm auch das Einschalten ein altes Datum aus einer Probe an (Fotos am Eventtag sofort weg).
+     Probelauf 1G/1H, `mock.js` gleich.
+  3. Meldung bei gleichem Namen: "Diesen Namen gibt es schon. Warst du das selbst, bist du schon dabei. Sonst
+     ergänze etwas, zum Beispiel einen zweiten Vornamen." (Link zweimal geöffnet oder schon auf der Liste der
+     Spielleitung, und echte Namensgleichheit). Die App wertet den Text nicht aus.
+  4. `sj.hand` nur für den Notweg: tippt die Teamleitung ihren eigenen Code (`leaderName === S.myName`), bleibt
+     der Merker weg, und nach einem Leitungswechsel meldet sich das Handy ab. Neuer Haken `window.__leitung` in
+     `mock.js`, geprüft in `audit2510.py` Teil 1.
+  5. `tools/sql.py`: Docstring sagt, dass die Bremse vor Versehen schützt, nicht vor Absicht.
 
 ## Stand zum Fortsetzen (16.10.2026, Rückblick v2 am 17.10.2026)
 
@@ -2169,7 +2183,7 @@ die Migration 20261017090000 (siehe oben). Zum Ausprobieren vor dem Einspielen
 gibt es nur den Prüfstand (`fernbedienung.py`).
 
 **Code-Audit (Nachtrag 38, 25.10.2026):** Migration `20261025090000_audit.sql` vorbereitet,
-Probelauf grün (65 Prüfungen), NOCH NICHT eingespielt. Reihenfolge: Migration einspielen
+Probelauf grün (67 Prüfungen, nach der Nacharbeit zum Review), NOCH NICHT eingespielt. Reihenfolge: Migration einspielen
 (`python tools/sql.py supabase/migrations/20261025090000_audit.sql`), dann Branch `audit-fixes` nach
 master, dann push. Alte vierstellige Codes gelten
 bis zum nächsten Auslosen.

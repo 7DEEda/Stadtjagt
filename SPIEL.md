@@ -45,7 +45,9 @@ gewechselt oder abgegeben, gibt das alte Handy sofort nichts mehr ein
 (`leitungNochDa` nach jedem Abruf). Den Team-Code braucht nur noch die
 Spielleitung, wenn sie am Tablet für ein Team eingibt. Dieser Notweg setzt den
 Merker `sj.hand`: `leitungNochDa` meldet das Gerät dann nicht ab, weil der Code
-nicht aus dem Geräte-Schlüssel stammt. `leitungOhneCode`, Abmelden und
+nicht aus dem Geräte-Schlüssel stammt. Tippt die Teamleitung ihren eigenen Code
+(`leaderName` gleich `S.myName` im geladenen Teamstand), bleibt der Merker weg:
+wechselt die Leitung, meldet sich das Handy ab wie sonst. `leitungOhneCode`, Abmelden und
 `codeUngueltig` löschen den Merker. Team-Codes haben vier oder sechs Ziffern
 (Beispiel `FUCHS-123456`, siehe §7).
 
@@ -490,7 +492,9 @@ anon, authenticated`, am Ende `notify pgrst, 'reload schema';`.
 - Einspielen: `python tools/sql.py supabase/migrations/<datei>.sql`. Token in
   `%USERPROFILE%\.supabase\stadtjagt.token`. Das Skript bremst zerstörerische
   Anweisungen außerhalb von Funktionskörpern. Die Bremse in `sql.py` prüft auch
-  `DO`-Blöcke, nur Funktionskörper nicht. Tests: `python
+  `DO`-Blöcke, nur Funktionskörper nicht. Sie schützt vor Versehen, nicht vor
+  Absicht: Strings mit `--`, zusammengesetzte Befehle und eine Funktion, die
+  angelegt und dann aufgerufen wird, gehen durch. Tests: `python
   tools/test_sql_bremse.py`. Probeläufe (`*_db.py`) rufen `sql.ausfuehren`
   direkt auf und unterliegen der Bremse nicht.
 - Reihenfolge beim Ausliefern: erst die Datenbank, dann die App.
@@ -589,7 +593,9 @@ Spezifikationen in `docs/superpowers/specs/`.
   Zurücksetzen, neu Auslosen und Leeren der Anmeldung nehmen sie mit. Das
   Löschdatum muss nach dem heutigen Prager Datum liegen, sonst wären alle Fotos
   sofort weg; gelöscht wird am gewählten Tag ab 1 Uhr (Winterzeit) bzw. 2 Uhr
-  (Sommerzeit). Ist `photos_delete_on` erreicht, löschen `team_state` und `admin_state` sie beim
+  (Sommerzeit). Das schon gespeicherte Datum geht nur beim Ausschalten noch
+  einmal durch (nach dem Löschtag), beim Einschalten nicht: ein altes Datum aus
+  einer Probe wird am Eventtag abgelehnt. Ist `photos_delete_on` erreicht, löschen `team_state` und `admin_state` sie beim
   nächsten Abruf.
 - Wird mitten im Spiel eingeschaltet, brauchen schon gelöste Stationen kein
   Foto mehr (`admin_set_selfie` setzt für sie `selfie_at`).
@@ -784,8 +790,10 @@ mit den Änderungen aus der Gegenprüfung (gehen der Spezifikation vor).
   `tools/sw-aus.js` (löscht nur `sj-*`, meldet die eigene Registrierung ab).
 - **Speicher und Denkpause (Audit 25.10.):** `LS`/`SS.setItem` werfen nie, auch
   nicht bei vollem Speicher. Die Denkpause rechnet die Restzeit beim ersten
-  Sehen aus (höchstens 120 s) und zählt danach mit `performance.now()`, nicht
-  mit der Handyuhr.
+  Sehen aus (höchstens 120 s, eine schiefe Handyuhr verlängert sie nicht), das
+  Ende ist Empfangszeit `Date.now()` plus Rest, verglichen wird mit
+  `Date.now()`. Nicht `performance.now()`: das steht auf iOS und Android still,
+  solange das Handy gesperrt ist.
 - **Datenbank-Änderungen bleiben mit der vorigen App-Fassung verträglich**
   (neue Parameter nur mit `default`, keine Felder aus Antworten entfernen):
   alte Fassungen laufen eine Weile weiter (offener Tab, Laden im Funkloch).
