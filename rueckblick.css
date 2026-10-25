@@ -4,7 +4,7 @@
    --park, --strasse, --fluss usw. gelten nur dort (index.html kennt --park und --strasse mit anderen Werten für die
    Hintergründe). Gestaltung nach design-system/pages/rueckblick.md. */
 #rueckblick{
-  --park:#DFEAD6; --strasse:#FFFFFF; --strasse-rand:#D3DECF; --fluss:#C9DDEA; --flaeche:#E6EBE2;
+  --park:#DFEAD6; --strasse:#FFFFFF; --strasse-rand:#D3DECF; --fluss:#C9DDEA;
   --haus:#E2E8DD; --haus-rand:#D6DED0; --gruen:#E6EEDF;
   --anon:#3E5A52; --anon-linie:#3E5A52;   /* Zeitraffer anonym: Köpfe und Routen in einer Farbe */
   --ring:var(--card);                     /* Ring um Köpfe und Marken; im Dunkeln hell (S18) */
@@ -18,13 +18,13 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]) #rueckblick{
-    --park:#13261F; --strasse:#22362F; --strasse-rand:#1B2D27; --fluss:#16303F; --flaeche:#14231E;
+    --park:#13261F; --strasse:#22362F; --strasse-rand:#1B2D27; --fluss:#16303F;
     --haus:#152520; --haus-rand:#1A2C26; --gruen:#122219;
     --anon:#5E786F; --anon-linie:#9BB1A9; --ring:var(--ink);
   }
 }
 :root[data-theme="dark"] #rueckblick{
-  --park:#13261F; --strasse:#22362F; --strasse-rand:#1B2D27; --fluss:#16303F; --flaeche:#14231E;
+  --park:#13261F; --strasse:#22362F; --strasse-rand:#1B2D27; --fluss:#16303F;
   --haus:#152520; --haus-rand:#1A2C26; --gruen:#122219;
   --anon:#5E786F; --anon-linie:#9BB1A9; --ring:var(--ink);
 }
@@ -44,7 +44,6 @@
 #rueckblick #rb-buehne{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:var(--paper)}
 #rueckblick #rb-welt,#rueckblick #rb-schirm{position:absolute;inset:0;width:1920px;height:1080px;display:block}
 #rueckblick #rb-buehne[data-art=titel] #rb-stationen,#rueckblick #rb-buehne[data-art=titel] #rb-namen,#rueckblick #rb-buehne[data-art=vorbereiten] #rb-stationen,#rueckblick #rb-buehne[data-art=fakten] #rb-stationen,#rueckblick #rb-buehne[data-art=fakten] #rb-namen,#rueckblick #rb-buehne[data-art=gruppen] #rb-namen,#rueckblick #rb-buehne[data-art=rangliste] #rb-stationen,#rueckblick #rb-buehne[data-art=rangliste] #rb-namen,#rueckblick #rb-buehne[data-art=spalten] #rb-stationen,#rueckblick #rb-buehne[data-art=spalten] #rb-namen,#rueckblick #rb-buehne[data-art=sieger] #rb-stationen,#rueckblick #rb-buehne[data-art=sieger] #rb-namen{display:none}
-#rueckblick #rb-buehne[data-art=titel] .radius{display:none}
 #rueckblick #rb-welt .hoehe{fill:none;stroke:var(--contour);stroke-width:1.6;vector-effect:non-scaling-stroke}
 #rueckblick #rb-welt .park{fill:var(--park)}
 #rueckblick #rb-welt .gruen{fill:var(--gruen)}
@@ -53,13 +52,10 @@
 #rueckblick #rb-welt .bahn{fill:none;stroke:var(--feld);stroke-width:2;stroke-dasharray:10 6;opacity:.6;vector-effect:non-scaling-stroke}
 #rueckblick #rb-welt .flusslinie{fill:none;stroke:var(--fluss);stroke-width:4;vector-effect:non-scaling-stroke}
 #rueckblick .osm{position:absolute;right:24px;bottom:calc(var(--unten, 0px) + 10px);z-index:4;font:500 18px var(--body);color:var(--muted);opacity:.8;pointer-events:none}
-#rueckblick #rb-welt .flaeche{fill:var(--flaeche)}
-#rueckblick #rb-welt .fluss{fill:none;stroke:var(--fluss);stroke-linecap:round;stroke-linejoin:round}
 #rueckblick #rb-welt .strasse-r{fill:none;stroke:var(--strasse-rand);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 #rueckblick #rb-welt .strasse{fill:none;stroke:var(--strasse);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 #rueckblick #rb-welt .neben{fill:none;stroke:var(--strasse);stroke-width:3;stroke-linecap:round;vector-effect:non-scaling-stroke}
 #rueckblick #rb-welt .weg{fill:none;stroke:var(--feld);stroke-width:1.6;stroke-dasharray:6 7;opacity:.55;vector-effect:non-scaling-stroke}
-#rueckblick #rb-welt .radius{transition:opacity .5s var(--kurve);fill:var(--flag);fill-opacity:.09;stroke:var(--flag);stroke-width:2;stroke-opacity:.7;vector-effect:non-scaling-stroke}
 #rueckblick #rb-welt .rand{fill:none;stroke:var(--card);stroke-width:12;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:.85;vector-effect:non-scaling-stroke}   /* stroke-opacity: opacity je Pfad kostete im Zeitraffer 15 fps */
 #rueckblick #rb-welt .spur{fill:none;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 #rueckblick #rb-welt .luecke{fill:none;stroke-width:4;stroke-dasharray:10 10;stroke-linecap:round;vector-effect:non-scaling-stroke}
@@ -82,7 +78,6 @@
 #rueckblick #rb-buehne[data-art="karte"] #rb-welt .spur,#rueckblick #rb-buehne[data-art="karte"] #rb-welt .luecke{stroke:var(--anon-linie);stroke-opacity:.5}
 
 #rueckblick #rb-pulse .kpuls{fill:none;stroke:var(--flag);stroke-width:5}
-#rueckblick #rb-schirm .puls{fill:none;stroke-width:5}
 
 /* ---------- Zeitraffer (Nachtrag 17.10.): ein Kapitel, oben Laufzeit und "im Ziel", keine Seitenleiste ---------- */
 #rueckblick .zr-kopf{position:absolute;right:40px;top:28px;display:flex;align-items:center;gap:36px;padding:14px 32px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(17,17,17,.08);white-space:nowrap}
@@ -190,7 +185,7 @@
 
 /* Awards (17.10.): Titel, Wert und Team links, die Route des Teams rechts über der blassen Karte. Nur dieses Team
    zeigt Farbe und Tier; die anderen Routen und Köpfe sind aus (data-art ist "award", nicht "karte") */
-#rueckblick #rb-buehne[data-art=award] #rb-namen,#rueckblick #rb-buehne[data-art=award] .radius{display:none}
+#rueckblick #rb-buehne[data-art=award] #rb-namen{display:none}
 #rueckblick .aw-spalte{position:absolute;left:112px;top:0;bottom:var(--unten, 0px);width:860px;display:flex;flex-direction:column;justify-content:center}
 #rueckblick .aw-emo{font-size:128px;line-height:1;align-self:flex-start;transform-origin:50% 60%}
 #rueckblick .aw-titel{font:700 var(--bs-xl)/1 var(--head);margin-top:24px;letter-spacing:-.01em;text-wrap:balance}
@@ -283,7 +278,7 @@
 #rueckblick .rb-hilfe td:first-child{width:380px;white-space:nowrap}
 
 /* ---------- Steuerleiste (Bildschirm-Pixel, nicht skaliert; nur mit Maus) ---------- */
-#rueckblick #rb-leiste{position:fixed;z-index:10;left:0;right:0;bottom:0;height:72px;display:flex;align-items:center;gap:8px;padding:0 16px;background:var(--card);border-top:1px solid var(--line);font:600 15px var(--head);color:var(--ink);transition:opacity .16s var(--kurve),transform .16s var(--kurve);z-index:10}
+#rueckblick #rb-leiste{position:fixed;z-index:10;left:0;right:0;bottom:0;height:72px;display:flex;align-items:center;gap:8px;padding:0 16px;background:var(--card);border-top:1px solid var(--line);font:600 15px var(--head);color:var(--ink);transition:opacity .16s var(--kurve),transform .16s var(--kurve)}
 #rueckblick #rb-leiste.weg{opacity:0;transform:translateY(8px);pointer-events:none}
 #rueckblick #rb-leiste button{min-height:48px;min-width:48px;border-radius:10px;border:1.5px solid var(--feld);background:transparent;color:var(--ink);font:700 15px var(--head);padding:0 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 #rueckblick #rb-leiste button.haupt{background:var(--flag);border-color:var(--flag);color:var(--flag-ink);min-width:116px;justify-content:center}
@@ -348,7 +343,6 @@
 #rueckblick #rb-frage button{min-height:48px;min-width:48px;border-radius:10px;border:1.5px solid var(--feld);background:transparent;color:var(--ink);font:700 15px var(--head);padding:0 18px;cursor:pointer}
 #rueckblick #rb-frage button.haupt{background:var(--flag);border-color:var(--flag);color:var(--flag-ink)}
 #rueckblick #rb-frage button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){ #rueckblick #rb-leiste{transition:none} }
 
 /* Gruppen-Ausgang: nur das Hotel (Start) steht schon auf der Karte, die Stationen kommen mit dem Zeitraffer; der Kasten blendet mit ein */
 #rueckblick #rb-buehne[data-art=gruppen] #rb-stationen g:nth-child(n+2){display:none}

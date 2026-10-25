@@ -633,11 +633,10 @@ function karteRastern() {
   });
 }
 
-let radEl = [], teamEl = {}, kopfEl = {}, ankerEl = {}, stEl = [], namenEl = [];
+let teamEl = {}, kopfEl = {}, ankerEl = {}, stEl = [], namenEl = [];
 function kartenElemente() {
   letzteKarte = null;
   const sp = $("#rb-spuren"); sp.innerHTML = ""; teamEl = {};
-  radEl = [];   // kein Check-in-Umkreis auf der Karte (Friedrich 18.10.): nur die Stationen
   D.teams.forEach(t => {
     const g = el("g", {}, sp);
     // Spur in Stücken zu je STUECK Punkten: fertige Stücke bleiben stehen, je Bild wird nur das letzte neu gesetzt
@@ -791,7 +790,7 @@ function weiter() {
   const k = K[Z.i], h = OPT.anhalten && k.halte && k.halte[Z.hNr];
   Z.spielt = true; knopf();   // M3: Weiter setzt fort, auch aus der Pause und nach dem Schwarzbild
   if (Z.haelt) {
-    Z.haelt = false; Z.hNr++;
+    Z.haelt = false; Z.hNr++; Z.wechsel = performance.now();   // dieselbe 600-ms-Sperre wie nach einem Kapitelwechsel
     // der letzte Halt kurz vor dem Ende (Splash, nach dem Aufdecken, Rangliste, Siegerbild): gleich ins nächste Kapitel,
     // sonst bräuchte es nach dem Endhalt ein zweites Weiter
     if (Z.hNr >= k.halte.length && k.dur - Z.lokal <= 700 && Z.i < K.length - 1) return geheZu(Z.i + 1);
@@ -987,7 +986,7 @@ function rangHTML(k) {
       <span class="rl-kreis"><span class="fr">?</span><span class="ti" style="background:${t.farbe}">${t.emoji}</span></span>
       <span class="n">${esc(t.name)}${t.place ? (t.gleich.length && t.place > k.top ? `<small>${esc(t.gleich.join(", "))}</small>` : "") : `<small>${t.solved} von ${D.stationen.length} Stationen</small>`}</span>
       ${t.place ? walzenHTML() : '<span class="weg">nicht im Ziel</span>'}
-      <span class="dif">${t.place > 1 && k.erster ? "+" + diffText(t.netto - k.erster.netto) : ""}</span></div>`).join("")}</div>`;
+      <span class="dif">${t.place > 1 && k.erster ? "+" + diffText((Math.round(t.netto / 1000) - Math.round(k.erster.netto / 1000)) * 1000) : ""}</span></div>`).join("")}</div>`;
 }
 function spaltenHTML(k) {
   const { folge, r, sc, px } = k.sp, bild = $("#rb-grund image.karte"), erst = k.id === "spalten";
@@ -1776,7 +1775,7 @@ function fernBefehl(b) {
   if (!root || !D || frageOffen()) return;   // Rückfrage "verlassen?" offen: das entscheidet der Laptop
   // wie jede Taste außer B: im Schwarzbild holt sie erst das Bild zurück (M3)
   if (b !== "schwarz" && $("#rb-schwarz").classList.contains("an")) { schwarz(); return; }
-  const tat = { weiter, zurueck, pause: () => spielPause(true), schwarz, ende: zumEnde,
+  const tat = { weiter, zurueck, pause: () => { if (!Z.haelt && !Z.endHalt) spielPause(true); }, schwarz, ende: zumEnde,   /* Pause vom Handy deckt im Halt nichts auf */
     start: () => { if (Z.phase === "vorbereiten") starten(); } }[b];
   if (tat) tat();
 }
@@ -1801,7 +1800,7 @@ const leuteText = t => { const m = t.members, n = m.length;
 const platzTeam = p => D.rang.find(t => t.place === p);
 function platzText(t) {
   const erster = platzTeam(1), zweiter = platzTeam(2);
-  const ab = t.place === 1 ? (zweiter ? `, ${abstand(zweiter.netto - t.netto)} vor Platz 2` : "") : erster ? `, ${abstand(t.netto - erster.netto)} hinter dem Ersten` : "";
+  const ab = t.place === 1 ? (zweiter ? `, ${abstand((Math.round(zweiter.netto / 1000) - Math.round(t.netto / 1000)) * 1000)} vor Platz 2` : "") : erster ? `, ${abstand((Math.round(t.netto / 1000) - Math.round(erster.netto / 1000)) * 1000)} hinter dem Ersten` : "";
   return `${t.name}, ${leuteText(t)}, Zeit ${hms(t.netto)}${ab}${t.gleich.length ? ` (${t.gleich.join(", ")})` : ""}`;
 }
 const awardText = a => `${a.titel}: ${a.team.name}, ${ohneTags(a.zeile)}.`;
