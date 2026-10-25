@@ -18,7 +18,10 @@ wieder zurückziehen.
 
 Schutz vor Unfällen: Anweisungen, die Daten oder Tabellen vernichten, werden
 abgelehnt, solange nicht --force dabeisteht. Die Init-Migration beginnt mit
-"drop table ... cascade" und würde ohne diese Bremse alles löschen.
+"drop table ... cascade" und würde ohne diese Bremse alles löschen. Die Bremse
+schützt vor Versehen, nicht vor Absicht: Strings mit "--", zusammengesetzte
+Befehle (etwa per execute) oder eine Funktion, die erst angelegt und dann
+aufgerufen wird, gehen durch.
 """
 import argparse
 import json
