@@ -6,6 +6,8 @@
   const P = new URLSearchParams(location.search);
   const SZ_NAME = P.get("szenario") || "anmeldung-leer";
   const NOW = Date.now();
+  // Uhr des "Servers": audit2510.py stellt die Handyuhr schief und lässt hier die echte laufen (window.__serverJetzt)
+  const jetzt = () => window.__serverJetzt ? window.__serverJetzt() : Date.now();
   const MIN = 60000;
   const iso = ms => ms == null ? null : new Date(ms).toISOString();
 
@@ -82,7 +84,7 @@
     const mitglieder = name === "Fuchs" ? FUCHS_MITGLIEDER.slice() : andere.slice(k, k += 8);
     const leader = mitglieder[name === "Fuchs" ? 0 : 1];
     const t = { id: "t-" + name.toLowerCase(), name,
-      code: name === "Fuchs" ? "FUCHS-4821" : name.toUpperCase() + "-" + (1000 + Math.floor(rnd() * 9000)),
+      code: name === "Fuchs" ? "FUCHS-4821" : name.toUpperCase() + "-" + (100000 + Math.floor(rnd() * 900000)),
       readToken: hex(32) };
     t.members = mitglieder.slice().sort((a, b) => a.localeCompare(b, "de"));
     mitglieder.forEach(n => PERSONEN.push({ id: "p-" + (pid++), name: n, teamId: t.id, token: "tok-" + hex(24) }));
@@ -498,8 +500,8 @@
       }
       if (!s) return { ok: false, message: "Alle Stationen sind gelöst.", state: teamState(t) };
       if (!FU.checkedIn) return { ok: false, message: "Erst am Ort einchecken, dann gibt es das Rätsel.", state: teamState(t) };
-      if (!WELT.testMode && FU.lockedUntil && FU.lockedUntil > Date.now())
-        return { ok: false, message: "Denkpause: noch " + Math.ceil((FU.lockedUntil - Date.now()) / 1000) + " Sekunden.", state: teamState(t) };
+      if (!WELT.testMode && FU.lockedUntil && FU.lockedUntil > jetzt())
+        return { ok: false, message: "Denkpause: noch " + Math.ceil((FU.lockedUntil - jetzt()) / 1000) + " Sekunden.", state: teamState(t) };
       if (passt(s)) {
         FU.solved++; FU.checkedIn = false; FU.failedAttempts = 0; FU.lockedUntil = null; FU.pauses = 0; FU.tipShown = false; FU.lastWrong = null;
         return { ok: true, message: ERFOLG, state: teamState(t) };
@@ -508,10 +510,10 @@
       if (!norm(a.p_answer)) return { ok: false, message: "Bitte gebt eine Antwort ein.", state: teamState(t) };
       const versuche = r => "Leider falsch. Noch " + r + (r === 1 ? " Versuch." : " Versuche.");
       // dieselbe falsche Antwort wie zuletzt zählt nicht noch einmal
-      if (norm(a.p_answer) === FU.lastWrong) return { ok: false, message: versuche(FU.lockedUntil && FU.lockedUntil <= Date.now() ? 3 : 3 - FU.failedAttempts), state: teamState(t) };
-      const n = FU.lockedUntil && FU.lockedUntil <= Date.now() ? 1 : FU.failedAttempts + 1;
+      if (norm(a.p_answer) === FU.lastWrong) return { ok: false, message: versuche(FU.lockedUntil && FU.lockedUntil <= jetzt() ? 3 : 3 - FU.failedAttempts), state: teamState(t) };
+      const n = FU.lockedUntil && FU.lockedUntil <= jetzt() ? 1 : FU.failedAttempts + 1;
       FU.lastWrong = norm(a.p_answer);
-      if (n >= 3) { FU.failedAttempts = 0; FU.lockedUntil = Date.now() + 120000; FU.pauses++;
+      if (n >= 3) { FU.failedAttempts = 0; FU.lockedUntil = jetzt() + 120000; FU.pauses++;
         return { ok: false, message: "Dreimal falsch. Zwei Minuten Denkpause für euer Team.", state: teamState(t) }; }
       FU.failedAttempts = n; FU.lockedUntil = null;
       return { ok: false, message: versuche(3 - n), state: teamState(t) };
@@ -597,11 +599,15 @@
     const antwort = (status, data) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
     // __rbFehlt: Datenbank ohne die Migration 20261017090000 (PostgREST PGRST202)
     if (fn.startsWith("rb_") && window.__rbFehlt) return antwort(404, { code: "PGRST202", message: "Could not find the function public." + fn + " in the schema cache" });
+    // __weg: nur diese Aufrufe scheitern wie im Funkloch. __halten: diese Aufrufe werden beantwortet (Stand zum Sendezeitpunkt),
+    // die Antwort kommt aber erst nach window.__freigeben()
+    if (passt(window.__weg)) throw new TypeError("Prüfstand: Funkloch");
     try {
       // unbekannte Admin-Aufrufe: nichts tun, Stand zurückgeben
       const h = RPC[fn] || (fn.startsWith("admin_") ? (a => { pin(a); return adminState(); }) : null);
       if (!h) return antwort(404, { message: "Prüfstand kennt " + fn + " nicht." });
       const daten = h(args);
+      if (passt(window.__halten)) await new Promise(r => (window.__tore = window.__tore || []).push(r));
       // __verlieren: der Server hat es getan, die Antwort geht aber im Funkloch verloren
       if (passt(window.__verlieren) || netz === "antwort-weg") throw Object.assign(new TypeError("Prüfstand: Antwort verloren"), { verloren: true });
       return antwort(200, daten);
@@ -610,6 +616,8 @@
       return antwort(400, { message: e.message });
     }
   };
+
+  window.__freigeben = () => { const t = window.__tore || []; window.__tore = []; t.forEach(r => r()); };
 
   /* ---------- Speicher und Ansicht vorbelegen ---------- */
   // __behalten (offline.py, per add_init_script): Neuladen wie auf dem Handy, Speicher und Adresse bleiben
