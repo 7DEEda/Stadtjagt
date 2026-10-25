@@ -658,6 +658,20 @@ with sync_playwright() as pw:
             pg.mouse.move(box[0] + box[1] * .2, box[2] + 12); pg.mouse.down(); pg.mouse.move(box[0] + box[1] * .8, box[2] + 12, steps=5)
             zz = z(); pg.mouse.up()
             pruef(zz["id"] == "platz2" and abs(zz["lokal"] - dur * .8) < dur * .06, f"Leiste: Ziehen (auch knapp unter der Leiste) setzt die Zeit ({zz['lokal']:.0f})")
+            # Doppelklick nach dem Lösen eines Halts überspringt kein Kapitel (Code-Audit 25.10.): die 600-ms-Sperre gilt auch dort
+            for kid, nach in (("rangliste", "Rangliste"), ("fakten", "Fun Facts (Bier)")):
+                pg.evaluate(f"RB.starten('{kid}', 0)")
+                pg.wait_for_function(f"RB.zustand().id === '{kid}' && RB.zustand().haelt === true", timeout=15000)
+                pg.wait_for_timeout(800)
+                pg.keyboard.press("ArrowRight"); pg.wait_for_timeout(100); pg.keyboard.press("ArrowRight")
+                pg.wait_for_timeout(300)
+                pruef(z()["id"] == kid and not z()["haelt"], f"Doppelklick nach dem Lösen des Halts: {nach} bleibt stehen ({z()['id']})")
+            # Abstand zum Ersten passt zu den Walzen, die jede Zeit einzeln runden: 3600,6 s und 4200,4 s zeigen 9:59
+            pg.evaluate("(() => { const r = RB.D().rang; window.__nettoAlt = [r[0].netto, r[1].netto]; r[0].netto = 3600600; r[1].netto = 4200400; })()")
+            pg.evaluate("RB.starten('rangliste', 0)"); pg.wait_for_timeout(300)
+            dif1 = pg.evaluate("document.querySelectorAll('.rl-zeile .dif')[1].textContent.trim()")
+            pruef(dif1 == "+9:59", f"Abstand zum Ersten stimmt mit den gerundeten Walzen überein ({dif1})")
+            pg.evaluate("(() => { const r = RB.D().rang; [r[0].netto, r[1].netto] = window.__nettoAlt; })()")
             pg.evaluate("RB.zeige('abspann', 5000)")
             pg.keyboard.press("Space"); pruef(z()["spielt"], "Abspann: Leertaste setzt fort (endlos)")
             pg.wait_for_timeout(700)
@@ -938,6 +952,13 @@ with sync_playwright() as pw:
         pruef(zr and all(x != "none" for x in zr), "Zeitraffer: alle Köpfe als '?'")
         pruef(pg.evaluate("document.querySelector('.zr-uhr').textContent") not in ("", None) and re.fullmatch(r"\d:\d\d", pg.evaluate("document.querySelector('.zr-uhr').textContent")),
               "Zeitraffer: Laufzeit-Timer")
+        # Doppelklick nach dem Lösen des Halts vor dem Drehen überspringt die Zeitraffer-Szene nicht (Code-Audit 25.10.)
+        pg.evaluate("RB.starten('gruppen', 0)")
+        pg.wait_for_function("RB.zustand().id === 'gruppen' && RB.zustand().haelt === true", timeout=15000)
+        pg.wait_for_timeout(800)
+        pg.keyboard.press("ArrowRight"); pg.wait_for_timeout(100); pg.keyboard.press("ArrowRight")
+        pg.wait_for_timeout(300)
+        pruef(pg.evaluate("RB.zustand().id") == "gruppen", f"Die Gruppen: Doppelklick nach dem Lösen des Halts bleibt im Kapitel ({pg.evaluate('RB.zustand().id')})")
         pg.context.close()
 
     # ------------------------------------------------------------------ 12
