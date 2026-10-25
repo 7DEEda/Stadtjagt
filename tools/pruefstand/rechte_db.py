@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Probelauf für Nachtrag 31 (current_station sperren) gegen die echte Datenbank, ohne Spuren. Seitdem um jede neue
-Migration mit Funktionen ergänzt (zuletzt Nachtrag 37, Fernbedienung der Rückblick-Show).
+Migration mit Funktionen ergänzt (zuletzt Code-Audit 25.10., 20261025090000_audit.sql).
 
     python tools/pruefstand/rechte_db.py
 
@@ -19,7 +19,8 @@ import sql  # noqa: E402
 # Die Migrationen, die diese Datenbank noch nicht (oder zuletzt neu) bekommen hat; der Probelauf spielt sie nacheinander ein.
 # Nach dem Einspielen einer Migration, die Funktionen neu anlegt, hier ergänzen (SPIEL.md §9).
 MIGRATIONEN = ["20261004090000_current_station_sperren.sql", "20261015090000_namenssuche_grenze.sql",
-               "20261016090000_eingaben_wiederholen.sql", "20261017090000_rueckblick_steuerung.sql"]
+               "20261016090000_eingaben_wiederholen.sql", "20261017090000_rueckblick_steuerung.sql",
+               "20261025090000_audit.sql"]
 MIGRATION = [sql.REPO / "supabase" / "migrations" / n for n in MIGRATIONEN]
 
 # Interne Hilfsfunktionen: dürfen weder anon noch authenticated ausführen
