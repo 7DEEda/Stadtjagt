@@ -3730,6 +3730,7 @@ async function leitungOhneCode() {
 // Ein von Hand getippter Code (Notweg der Spielleitung, sj.hand) gehört nicht dem Gerät: der bleibt.
 async function leitungNochDa(s) {
   const tok = LS.getItem("sj.token");
+  if (s && s.team && S.myName && s.team.leaderName === S.myName) LS.removeItem("sj.hand");   // selbst Leitung geworden: Merker weg
   if (!tok || LS.getItem("sj.hand") || !s || !s.team || !s.team.leaderName || s.team.leaderName === S.myName) return;
   try { await rpc("leader_code", { p_token: tok }); return; }   // umbenannt, aber weiter Leitung
   catch (e) {
