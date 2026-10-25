@@ -2013,7 +2013,7 @@ Review über 3597609..fb33189, zehn Befunde, alle behoben (Auftrag:
 - Handy: Hochhalten und Hilfe-Blatt flackern nicht mehr im 10-s-Abruf;
   Hochhalten hängt nach Spielende nicht fest; Erfolg von Einchecken und
   Antwort steht in der Leiste.
-- **Migration `20261015090000_namenssuche_grenze.sql` NICHT eingespielt:**
+- **Migration `20261015090000_namenssuche_grenze.sql` eingespielt (laut Schema-Abzug 25.10. live), damals: nicht eingespielt:**
   `lookup_participant` sucht über 60 Zeichen nur genau, Tippfehler-Suche ohne
   Levenshtein für Kandidaten mit zu großem Längenunterschied. Probelauf
   `tools/pruefstand/namenssuche_grenze_db.py` grün (31 Prüfungen), mit
@@ -2041,7 +2041,7 @@ Einzelheiten und Prüfskripte: SPIEL.md §15.
   Nicht-JSON gelten als Funkloch.
 - Version unter der Navigation, „Neue Version laden“ bei neuerer Fassung.
 - Notfallmappe im Reiter Stationen (Druck nur das Blatt, immer hell).
-- **Migration `20261016090000_eingaben_wiederholen.sql` NICHT eingespielt**
+- **Migration `20261016090000_eingaben_wiederholen.sql` eingespielt (laut Schema-Abzug 25.10. live), damals: nicht eingespielt**
   (Generator `tools/migration_eingaben.py`, Probelauf
   `tools/pruefstand/eingaben_db.py`: `--ohne` rot, mit grün, 41 Prüfungen;
   `rechte_db.py` grün). Nach dem Einspielen scheitert der alte Probelauf
@@ -2115,7 +2115,7 @@ Spezifikation (Nachtrag „Fernbedienung“).
   Panel, „Handy verbunden“, sobald das Handy abfragt; in der Probe ein PIN-Feld
   „Aktivieren“ im Block. Ohne die Migration: „Die Datenbank kennt die
   Fernbedienung noch nicht.“, die Show fragt dann nicht weiter.
-- **Migration `20261017090000_rueckblick_steuerung.sql` NICHT eingespielt**
+- **Migration `20261017090000_rueckblick_steuerung.sql` eingespielt (laut Schema-Abzug 25.10. live), damals: nicht eingespielt**
   (Generator `tools/migration_rueckblick_steuerung.py`, Probelauf
   `tools/pruefstand/rueckblick_steuerung_db.py`: `--ohne` rot, mit grün,
   90 Prüfungen; `rechte_db.py` um Migration und rb_* erweitert, 28 grün).
@@ -2127,7 +2127,7 @@ Spezifikation (Nachtrag „Fernbedienung“).
 ## Code-Audit 25.10.2026 (Nachtrag 38)
 
 Drei Fix-Branches (`fix-show`, `fix-db`, `fix-app`) mit 19 Fixes, zusammengeführt im Branch
-`audit-fixes` (Worktree `Projects/tse/stadtjagd-audit`), noch nicht auf master, nicht gepusht.
+`audit-fixes` (Worktree `Projects/tse/stadtjagd-audit`). Migration am 25.10. eingespielt (Datenbank ist bis etwa Mitte Februar 2027 Entwicklungsumgebung).
 Einzelheiten in SPIEL.md §2, §5, §7, §8, §9, §11, §15 bis §17.
 
 - **Datenbank** (Migration `20261025090000_audit.sql`): Leitung wird unter Personen mit Geräte-Schlüssel
@@ -2158,6 +2158,18 @@ Einzelheiten in SPIEL.md §2, §5, §7, §8, §9, §11, §15 bis §17.
      `mock.js`, geprüft in `audit2510.py` Teil 1.
   5. `tools/sql.py`: Docstring sagt, dass die Bremse vor Versehen schützt, nicht vor Absicht.
 
+## Schema-Abzug (Punkt S1 der UI- und Backend-Durchsicht, Branch `schema-abzug`)
+
+Bisher gab es keinen Ort, an dem die heutige Fassung einer Datenbankfunktion
+steht (`admin_state` 13 Mal, `team_state` 10 Mal in den Migrationen).
+`tools/schema_abzug.py` zieht den Stand aus der Live-Datenbank (nur lesend, nur
+Systemkataloge) nach `supabase/schema/`: `funktionen/`, `tabellen/`, `sichten/`
+und eine README mit der Rechte-Übersicht (offen, nur PIN, intern). `--pruefen`
+vergleicht den Ordner mit dem Live-Stand (Exit 1) und warnt, wo Migrationen und
+Live auseinanderlaufen. Ablauf: nach jeder eingespielten Migration
+`python tools/schema_abzug.py` und mitcommitten, vor jedem Einspielen
+`--pruefen`. Einzelheiten: SPIEL.md §9.
+
 ## Stand zum Fortsetzen (16.10.2026, Rückblick v2 am 17.10.2026)
 
 **Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test
@@ -2183,9 +2195,8 @@ die Migration 20261017090000 (siehe oben). Zum Ausprobieren vor dem Einspielen
 gibt es nur den Prüfstand (`fernbedienung.py`).
 
 **Code-Audit (Nachtrag 38, 25.10.2026):** Migration `20261025090000_audit.sql` vorbereitet,
-Probelauf grün (67 Prüfungen, nach der Nacharbeit zum Review), NOCH NICHT eingespielt. Reihenfolge: Migration einspielen
-(`python tools/sql.py supabase/migrations/20261025090000_audit.sql`), dann Branch `audit-fixes` nach
-master, dann push. Alte vierstellige Codes gelten
+Probelauf grün (67 Prüfungen, nach der Nacharbeit zum Review), am 25.10. eingespielt
+(Rechteprüfung grün, `supabase/schema/` neu erzeugt). Offen: Branch `audit-fixes` nach master, dann push. Alte vierstellige Codes gelten
 bis zum nächsten Auslosen.
 
 **NÄCHSTER SCHRITT:** Rückblick-Show v2: `#/rueckblick/probe` am Beamer (Lesbarkeit
@@ -2261,7 +2272,7 @@ Datum des Änderungsstopps. Eventdatum steht im HANDOFF noch nicht.
 - **Live-Admin-PIN prüfen:** nicht mehr die Vorgabe `2026`, mindestens 12 Zeichen.
 - **Team-Codes härten:** Sechs Ziffern sind in der Migration `20261025090000_audit.sql` umgesetzt
   (Sicherheitsprüfung 25.10.); eine Bremse bei Fehlversuchen bleibt offen.
-- **Audit-Migration einspielen** (siehe oben: einspielen, Branch `audit-fixes` nach master, push).
+- **Audit-Fixes ausliefern:** Migration ist live (25.10.); Branch `audit-fixes` nach master, dann push.
   Vor dem Event Testpersonen entfernen (zählen zur 200er-Grenze der Selbstanmeldung).
 - **Supabase:** Token "Acces White" zurückziehen; `stadtjagd-stresstest` später löschen.
 ## Pausenstand 16.10.2026, vormittags (zum Fortsetzen)

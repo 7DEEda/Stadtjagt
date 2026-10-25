@@ -339,8 +339,10 @@ vendor/                    Leaflet 1.9.4, Schriften (woff2, OFL), QR-Generator; 
 rueckblick.js, .css        Rückblick-Show (§16), wird nur beim Öffnen von #/rueckblick nachgeladen
 rueckblick-karte.js        Grundkarte von Prag aus OpenStreetMap für die Show (tools/rueckblick/karte.py)
 supabase/migrations/*.sql  Schema und Spiellogik, in Dateinamen-Reihenfolge
+supabase/schema/           heutiger Stand der Datenbank (Funktionen, Tabellen, Sichten, Rechte), erzeugt, nicht von Hand
 supabase/seed-*.sql        Stationen der Prager Route, 100 Testpersonen
 tools/sql.py               SQL über die Supabase Management-API ausführen
+tools/schema_abzug.py      Schema-Abzug nach supabase/schema/ erzeugen und gegen die Live-Datenbank prüfen (nur lesend)
 tools/hintergrund/         Generator für die Hintergrund-Varianten (OSM-Daten sind gitignored)
 mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrund, Routen)
 ```
@@ -489,6 +491,15 @@ anon, authenticated`, am Ende `notify pgrst, 'reload schema';`.
   `current_station` in Nachtrag 28, behoben in Nachtrag 31). `create or
   replace` mit gleicher Signatur behält die Rechte. Der Probelauf zum Nachtrag
   prüft die Rechte mit (Muster: `tools/pruefstand/rechte_db.py`).
+- **Wo die heutige Fassung einer Funktion steht:** `supabase/schema/funktionen/<name>.sql`
+  (je Funktion die Live-Fassung mit Rechten, dazu `tabellen/`, `sichten/` und in
+  der `README.md` die Übersicht, welche Funktion offen, nur per PIN oder intern ist).
+  Als Vorlage für eine Änderung dient diese Datei, nicht die Suche durch die
+  Migrationen. Nach jeder eingespielten Migration `python tools/schema_abzug.py`
+  laufen lassen und das Ergebnis mitcommitten; vor jedem Einspielen
+  `python tools/schema_abzug.py --pruefen` (Exit 1, wenn der Ordner vom Live-Stand
+  abweicht; Warnungen, wo Migrationen und Live nicht zusammenpassen). Beides liest
+  nur aus den Systemkatalogen, nie Tabelleninhalte.
 - Einspielen: `python tools/sql.py supabase/migrations/<datei>.sql`. Token in
   `%USERPROFILE%\.supabase\stadtjagt.token`. Das Skript bremst zerstörerische
   Anweisungen außerhalb von Funktionskörpern. Die Bremse in `sql.py` prüft auch

@@ -65,8 +65,10 @@ rueckblick-fernbedienung.html  Fernbedienung der Show fürs Handy (Migration 202
 tools/testlaeufe.py            Läufe des Geräte-Tests nach testlaeufe/ holen
 vendor/qrcode.js               QR-Generator für den Mitlese-Link, lokal
 tools/sql.py                   SQL an die Datenbank schicken, ohne den SQL-Editor
+tools/schema_abzug.py          Stand der Datenbank nach supabase/schema/ abziehen, --pruefen vergleicht
 tools/pruefstand/              UI-Prüfstand: App ohne Datenbank in jedem Zustand fotografieren
 supabase/migrations/*.sql      Schema, Rechte und die gesamte Spiellogik
+supabase/schema/               heutiger Stand je Funktion, Tabelle und Sicht (erzeugt, siehe dortige README)
 supabase/seed-*.sql            Prager Stationen und Testpersonen
 .github/workflows/pages.yml    Deployment auf GitHub Pages
 ```
@@ -106,6 +108,13 @@ eingespielt; `python tools/test_sql_bremse.py` prüft die Bremse in `tools/sql.p
 ```bash
 python tools/sql.py supabase/seed-stationen-prag.sql
 python tools/sql.py --read-only -c "select status from game_state"
+```
+
+Stand der Datenbank abziehen und prüfen (nur lesend):
+
+```bash
+python tools/schema_abzug.py             # schreibt supabase/schema/
+python tools/schema_abzug.py --pruefen   # Exit 1, wenn der Ordner vom Live-Stand abweicht
 ```
 
 Braucht einen Personal Access Token in `%USERPROFILE%\.supabase\stadtjagt.token`
