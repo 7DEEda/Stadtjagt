@@ -247,7 +247,7 @@ begin
     raise exception 'Die Anmeldung ist voll. Melde dich bei der Spielleitung.' using errcode='P0001';
   end if;
   if exists (select 1 from participants where name_key = norm(v_name)) then
-    raise exception 'Diesen Namen gibt es schon. Bist du das nicht, ergänze etwas, zum Beispiel einen zweiten Vornamen.'
+    raise exception 'Diesen Namen gibt es schon. Warst du das selbst, bist du schon dabei. Sonst ergänze etwas, zum Beispiel einen zweiten Vornamen.'
       using errcode='P0001';
   end if;
   begin
@@ -258,7 +258,7 @@ begin
     if found then
       return json_build_object('name', v_da.name, 'token', v_da.token, 'count', (select count(*) from participants));
     end if;
-    raise exception 'Diesen Namen gibt es schon. Bist du das nicht, ergänze etwas, zum Beispiel einen zweiten Vornamen.'
+    raise exception 'Diesen Namen gibt es schon. Warst du das selbst, bist du schon dabei. Sonst ergänze etwas, zum Beispiel einen zweiten Vornamen.'
       using errcode='P0001';
   end;
   return json_build_object('name', v_name, 'token', v_token, 'count', (select count(*) from participants));

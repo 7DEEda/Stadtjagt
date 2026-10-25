@@ -209,7 +209,7 @@ with sync_playwright() as pw:
         pg.close()
         pg = neu(b, "anmeldung-leer")
         pg.fill("#pname", "Jonas Keller"); pg.click("[data-act=pub-reg]"); pg.wait_for_timeout(500)
-        pruef("Diesen Namen gibt es schon" in pg.inner_text("#app"), "fremder Name: weiter abgelehnt")
+        pruef("Diesen Namen gibt es schon. Warst du das selbst, bist du schon dabei. Sonst ergänze etwas, zum Beispiel einen zweiten Vornamen." in pg.inner_text("#app"), "fremder Name: weiter abgelehnt, Meldung nennt beide Fälle (Review 25.10.)")
         pruef(pg.evaluate("localStorage.getItem('sj.token')") is None, "abgelehnt: kein Schlüssel bleibt liegen")
         pg.close()
         pg = neu(b, "anmeldung-leer", vorher="window.__ALTE_DB = true")

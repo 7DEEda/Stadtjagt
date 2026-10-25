@@ -47,7 +47,7 @@ declare
   v_fehl text[] := '{}'; v_n int := 0; v_err text; r json; f text; rr text; i int; k int;
   t_id uuid; t2_id uuid; a_id uuid; b_id uuid; c_id uuid; v_code text; v_alt text; v_tok text;
   v_rechte_vorher text; v_rechte_nachher text;
-  v_neu text := 'Diesen Namen gibt es schon. Bist du das nicht, ergänze etwas, zum Beispiel einen zweiten Vornamen.';
+  v_neu text := 'Diesen Namen gibt es schon. Warst du das selbst, bist du schon dabei. Sonst ergänze etwas, zum Beispiel einen zweiten Vornamen.';
 begin
   -- Rechte, Sicherheitsart und search_path der sieben Funktionen vor der Migration (ACL als Menge, die Reihenfolge
   -- der Einträge kann sich durch revoke/grant ändern, ohne dass sich ein Recht ändert)

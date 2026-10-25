@@ -472,7 +472,7 @@
     register_participant: a => { const name = String(a.p_name || "").trim(); if (name.length < 2) fehler("Bitte den vollen Namen eintragen.");
       if (window.__ALTE_DB && "p_token" in a) fehler("Could not find the function public.register_participant(p_name, p_token) in the schema cache");
       const k = norm(name), da = ANGEMELDET[k];
-      if (da && (!a.p_token || da !== a.p_token)) fehler("Diesen Namen gibt es schon. Bist du das nicht, ergänze etwas, zum Beispiel einen zweiten Vornamen.");
+      if (da && (!a.p_token || da !== a.p_token)) fehler("Diesen Namen gibt es schon. Warst du das selbst, bist du schon dabei. Sonst ergänze etwas, zum Beispiel einen zweiten Vornamen.");
       if (!da && PERSONEN.length + Object.keys(ANGEMELDET).length >= 200) fehler("Die Anmeldung ist voll. Melde dich bei der Spielleitung.");
       const token = a.p_token || "tok-neu"; ANGEMELDET[k] = token; NEU[token] = name; window.__REG = (window.__REG || []).concat([a]);
       return { name, token, count: Object.keys(ANGEMELDET).length }; },

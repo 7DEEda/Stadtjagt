@@ -167,8 +167,11 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
    zurück (Antwort im Funkloch verloren, auch nach Umbenennen). Für einen
    vorhandenen Namen gibt es nie einen neuen Token.
 3. Doppelte Namen (über `name_key = norm(name)`) werden abgelehnt (Meldung
-   "Diesen Namen gibt es schon. Bist du das nicht, ergänze etwas, zum Beispiel
-   einen zweiten Vornamen."), ebenso
+   "Diesen Namen gibt es schon. Warst du das selbst, bist du schon dabei. Sonst
+   ergänze etwas, zum Beispiel einen zweiten Vornamen."; sie deckt beide Fälle:
+   jemand öffnet den Link ein zweites Mal oder steht schon auf der Liste der
+   Spielleitung, oder zwei Personen heißen gleich; die App wertet den Text nicht
+   aus), ebenso
    Namen ohne einen lateinischen Buchstaben oder eine Ziffer (leerer
    Schlüssel, Nachtrag 20). Die Anmeldung wartet mit `for share` auf ein
    laufendes Auslosen, das Auslosen sperrt `game_state` mit `for update`.
