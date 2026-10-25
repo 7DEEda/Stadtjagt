@@ -192,7 +192,11 @@ with sync_playwright() as pw:
         pg.evaluate("window.__skew = -3600000")
         for a in ("1", "2", "3"):
             pg.fill("#tans", a)
-            tippen(pg, "[data-act=t-answer]")
+            if a == "3":
+                pg.click("[data-act=t-answer]")
+                pg.wait_for_selector("#pause")
+            else:
+                tippen(pg, "[data-act=t-answer]")
         t = pg.locator("#pause").inner_text() if pg.locator("#pause").count() else ""
         m = re.search(r"noch (\d+) Sekunden", t)
         rest = int(m.group(1)) if m else None

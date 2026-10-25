@@ -617,11 +617,14 @@ input[type=date]{min-height:50px}
 // Speicher, der nie wirft: Blockiert der Browser Cookies und Website-Daten,
 // wirft schon der Zugriff auf localStorage. Dann merkt sich die App die
 // Werte nur bis zum Neuladen, statt als weiße Seite stehenzubleiben.
+// Ist der Speicher voll (QuotaExceeded, etwa durch Fotos), gibt setItem false zurück statt zu werfen.
 const speicherOderMap = name => {
-  try { const s = window[name]; s.setItem("sj._", "1"); s.removeItem("sj._"); return s; }
-  catch {
+  try {
+    const s = window[name]; s.setItem("sj._", "1"); s.removeItem("sj._");
+    return { getItem: k => s.getItem(k), removeItem: k => s.removeItem(k), setItem: (k, v) => { try { s.setItem(k, v); return true; } catch { return false; } } };
+  } catch {
     const m = new Map();
-    return { getItem: k => m.has(k) ? m.get(k) : null, setItem: (k, v) => { m.set(k, String(v)); }, removeItem: k => { m.delete(k); } };
+    return { getItem: k => m.has(k) ? m.get(k) : null, setItem: (k, v) => { m.set(k, String(v)); return true; }, removeItem: k => { m.delete(k); } };
   }
 };
 const LS = speicherOderMap("localStorage"), SS = speicherOderMap("sessionStorage");
@@ -741,7 +744,7 @@ function waechterNeu() {
     onWechsel: z => {
       const neu = (z.vorbelastet && !m.vorbelastet) || z.versuche !== (m.versuche || 0);
       m = { vorbelastet: z.vorbelastet, versuche: z.versuche, datum: neu ? heute() : m.datum };
-      try { LS.setItem("sj.kompass", JSON.stringify(m)); } catch { /* egal */ }
+      LS.setItem("sj.kompass", JSON.stringify(m));
       kompassNeu = true; } });
 }
 S.gps.waechter = waechterNeu();
@@ -1228,8 +1231,14 @@ setInterval(() => {
 }, 80);
 
 /* ---------- Team-Ansicht ---------- */
-function pauseText(bis) {
-  const rest = Math.max(0, Math.ceil((new Date(bis).getTime() - Date.now()) / 1000));
+// Die Denkpause hängt nicht an der Handyuhr: lockedUntil kommt vom Server, die Handyuhr kann falsch gehen. Die Restzeit wird
+// einmal beim ersten Sehen eines Wertes berechnet, auf die 120 s der Pause begrenzt und ab da mit performance.now() gezählt.
+const PAUSE = {};
+const pauseEnde = st => st.testMode || !st.lockedUntil ? 0
+  : PAUSE[st.lockedUntil] ??= performance.now() + Math.min(120000, Math.max(0, new Date(st.lockedUntil).getTime() - Date.now()));
+const pauseLaeuft = st => pauseEnde(st) > performance.now();
+function pauseText(ende) {
+  const rest = Math.max(0, Math.ceil((ende - performance.now()) / 1000));
   return `Denkpause: noch ${rest} ${rest === 1 ? "Sekunde" : "Sekunden"}. Danach habt ihr wieder drei Versuche.`;
 }
 // Restzeit der festen Spieldauer, ab dem Start heruntergezählt; die Logik hängt nicht daran
@@ -1460,7 +1469,7 @@ function leisteHTML(st, s, lesen) {
   }
   if (!s) return "";
   if (st.checkedIn) {
-    const pause = !st.testMode && st.lockedUntil && new Date(st.lockedUntil).getTime() > Date.now();
+    const pause = pauseLaeuft(st);
     return `<label for="tans">Eure Antwort</label>
       <div class="reihe"><input id="tans" ${s.numeric ? 'inputmode="numeric" pattern="[0-9]*"' : ""} autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" ${pause ? "disabled" : ""}>
       <button class="btn" data-act="t-answer" data-ort="leiste" data-wait="Wird geprüft …" ${S.busy || pause ? "disabled" : ""}>Prüfen</button></div>
@@ -1605,14 +1614,14 @@ function teamAnsicht(st, lesen) {
       </div>`;
   } else {
     // Nach drei Fehlversuchen: Feld sperren und die Pause sichtbar herunterzählen, über dem Feld
-    const pause = !st.testMode && st.lockedUntil && new Date(st.lockedUntil).getTime() > Date.now();
+    const pause = pauseLaeuft(st);
     // Tipp: nach der ersten Denkpause aufdeckbar, danach für alle im Team sichtbar
     const tipp = s.tip ? `<div class="msg info"><b>Tipp:</b> ${esc(s.tip)}</div>`
       : s.tipAvailable ? (lesen ? `<p class="small muted">${ichSelbst ? "Du kannst" : esc(leitung) + " kann"} jetzt einen Tipp aufdecken.</p>`
         : `<button class="btn alt" data-act="t-tip" data-wait="Wird aufgedeckt …">Tipp aufdecken</button>`) : "";
     out += `<div class="panel ${neuKlasse}"><p class="muted small">Station ${s.position}: ${esc(s.name)}</p>${okOben ? msgBox() : ""}
       <p class="riddle" style="margin-top:8px">${esc(s.riddle || "")}</p>${tipp}
-      ${pause ? `<div class="msg err" id="pause" data-bis="${esc(st.lockedUntil)}">${pauseText(st.lockedUntil)}</div>` : ""}
+      ${pause ? `<div class="msg err" id="pause" data-bis="${pauseEnde(st)}">${pauseText(pauseEnde(st))}</div>` : ""}
       ${pause ? "" : (okOben ? "" : msgBox()) + (lesen ? `<p class="small muted">${st.testMode ? "Testmodus: jede Antwort zählt, auch ein leeres Feld."
           : `Fehlversuche: ${st.failedAttempts} von 3, danach 2 Minuten Pause.`}</p>` : "")}</div>`;
   }
@@ -1720,7 +1729,8 @@ function selfieKamera(pos) {
 }
 // Kam das Foto im Funkloch nicht durch, bleibt es auf dem Handy und wird beim nächsten Abruf nachgereicht
 const fotoSchluessel = (st, pos) => `sj.foto.${merkerTeil(st)}.${pos}`;
-function fotoMerken(st, sf) { try { LS.setItem(fotoSchluessel(st, sf.pos), JSON.stringify({ foto: sf.foto, thumb: sf.thumb })); } catch { /* Speicher voll: dann eben nicht */ } }
+// true, wenn das Foto gemerkt ist; bei vollem Speicher false, dann gibt es auch kein Nachreichen
+const fotoMerken = (st, sf) => LS.setItem(fotoSchluessel(st, sf.pos), JSON.stringify({ foto: sf.foto, thumb: sf.thumb }));
 let fotoNachreichZeit = 0;
 async function fotoNachreichen(s) {
   if (!s || !s.team || !s.selfie || !s.selfie.on || !S.team.code || Date.now() - fotoNachreichZeit < 30000) return;
@@ -1772,7 +1782,7 @@ function selfieHTML(st, lesen, leitung, ichSelbst) {
     <button class="btn" data-act="t-selfie-ok" data-wait="Wird hochgeladen …">Erneut senden</button>
     ${ersetzen ? `<button class="btn alt" data-act="t-selfie-ab">Abbrechen</button>`
       : `<button class="btn alt" data-act="t-selfie-skip" data-ort="selfie">Ohne Hochladen weiter</button>${msgBox("selfie")}
-        <p class="small muted">Das Foto bleibt auf diesem Handy und wird nachgereicht, sobald wieder Netz da ist.</p>`}</div>`;
+        ${sf.gemerkt ? `<p class="small muted">Das Foto bleibt auf diesem Handy und wird nachgereicht, sobald wieder Netz da ist.</p>` : ""}`}</div>`;
   return h + `<img class="foto" src="${sf.url}" alt="Vorschau eures Fotos"><p>Sind alle drauf?</p>
     <div class="row2"><button class="btn" data-act="t-selfie-ok" data-wait="Wird hochgeladen …">Das nehmen wir</button>
     <button class="btn alt" data-act="t-selfie">Noch mal</button></div>${msgBox("selfie")}
@@ -2888,18 +2898,18 @@ const ACT = {
       sf.status = "fehler"; sf.fehler = String(e.message || "").replace(/\.$/, "");
       // Zeitstempel eines schon vorhandenen Fotos (Ersetzen): ein neueres im Abruf heißt, das hier kam doch an
       sf.altAt = ((alt.selfie && alt.selfie.photos) || []).filter(f => f.position === sf.pos).map(f => f.takenAt)[0] || null;
-      if (e.netz) fotoMerken(alt, sf);
+      sf.gemerkt = !!e.netz && fotoMerken(alt, sf);
     }
   },
   async "t-selfie-skip"() {
     const st = S.team.state, p = st && st.selfie && st.selfie.pending, hatte = !!S.selfie;
     if (!p) { S.selfie = null; return; }
-    if (hatte) fotoMerken(st, S.selfie);
+    const gemerkt = hatte && fotoMerken(st, S.selfie);
     const s = await rpc("team_selfie_skip", { p_code: S.team.code, p_position: p.position });
     S.team.state = s; S.selfie = null;
     const z = s.digits ? s.digits[p.position - 1] : null;
     if (z != null) S.neueZiffer = { i: p.position - 1, bis: Date.now() + 8000 };
-    S.msg = { type: "ok", text: `Station ${p.position} gelöst${z != null ? ", eure Ziffer: " + z : ""}.` + (hatte ? " Das Foto wird nachgereicht, sobald das Netz reicht." : "") };
+    S.msg = { type: "ok", text: `Station ${p.position} gelöst${z != null ? ", eure Ziffer: " + z : ""}.` + (gemerkt ? " Das Foto wird nachgereicht, sobald das Netz reicht." : "") };
   },
   "foto-gross"(d) { S.gross = { pos: Number(d.pos), team: d.team || null, route: d.route || "echt" }; },
   "foto-zu"() { S.gross = null; },
@@ -3614,9 +3624,7 @@ async function mitlesen() {
 function mitLinkPruefen() {
   const m = location.hash.match(/^#\/mit\/([0-9a-f]{32})$/i);
   if (!m) return false;
-  // Läuft beim Start vor refresh(): ein gesperrter Speicher (privates Fenster, Geräterichtlinie)
-  // darf höchstens das Mitlesen kosten, nicht die ganze Seite
-  try { LS.setItem("sj.mit", m[1].toLowerCase()); } catch { /* dann eben nicht gemerkt */ }
+  LS.setItem("sj.mit", m[1].toLowerCase());
   history.replaceState(null, "", location.pathname + location.search + "#/public");
   S.view = "public"; S.mit = null;
   return true;
@@ -3695,7 +3703,7 @@ function abgleich(o, s) {
 // zeigt ohne Daten aber nur "Lade …". Darum merkt sich das Handy den letzten Stand der Teamleitung bzw. des Mitlesens
 // (einige KB). Nicht für die Spielleitung: admin_state enthält alle Lösungen und Namen.
 const LETZTER_MAX_MS = 12 * 3600000;
-function standMerken(k, daten) { try { LS.setItem(k, JSON.stringify(Object.assign({ at: Date.now() }, daten))); } catch { /* Speicher voll: dann eben nicht */ } }
+function standMerken(k, daten) { LS.setItem(k, JSON.stringify(Object.assign({ at: Date.now() }, daten))); }
 function standLesen(k) {
   try { const m = JSON.parse(LS.getItem(k) || "null"); return m && m.at && Date.now() - m.at <= LETZTER_MAX_MS ? m : null; }
   catch { return null; }
@@ -3820,7 +3828,7 @@ let hintergrundAktiv = "klassisch", hintergrundLaeuft = null;
 // Die Wahl bleibt im Speicher, damit der nächste Aufruf gleich richtig startet.
 function hintergrundSetzen(name) {
   if (!HINTERGRUENDE[name] || name === hintergrundAktiv || hintergrundLaeuft === name) return;
-  try { LS.setItem("sj.bg", name); } catch { /* egal */ }
+  LS.setItem("sj.bg", name);
   if (name === "klassisch") { $("#topo").innerHTML = KLASSISCH; hintergrundAktiv = name; return; }
   hintergrundLaeuft = name;
   fetch(`hintergrund/${name}.svg`).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
@@ -3877,7 +3885,7 @@ const rueckblickUrl = n => n + "?v=" + (VERSION || Date.parse(document.lastModif
 const rueckblickHost = {
   api: RUECKBLICK_API, rpc, url: rueckblickUrl, farbe: teamColor, emoji: teamEmoji,
   pin: () => S.admin.pin,
-  pinSetzen: p => { S.admin.pin = p; try { SS.setItem("sj.pin", p); } catch { /* dann gilt sie nur bis zum Neuladen nicht */ } },
+  pinSetzen: p => { S.admin.pin = p; SS.setItem("sj.pin", p); },
   pinVergessen: () => { S.admin.pin = null; try { SS.removeItem("sj.pin"); } catch { /* egal */ } }
 };
 function rueckblickLaden() {
@@ -4089,7 +4097,7 @@ setInterval(() => {
   const sd = $("#stand");
   if (sd) { const alt = S.zuletzt && Date.now() - S.zuletzt > 30000; sd.hidden = !alt; if (alt) sd.textContent = "Stand " + uhrzeit(S.zuletzt); }
   const p = $("#pause"); if (!p) return;
-  if (new Date(p.dataset.bis).getTime() <= Date.now()) render(); else p.textContent = pauseText(p.dataset.bis);
+  if (Number(p.dataset.bis) <= performance.now()) render(); else p.textContent = pauseText(Number(p.dataset.bis));
 }, 1000);
 setInterval(() => {
   if (document.hidden || (fingerSeit && Date.now() - fingerSeit < 3000)) return;
