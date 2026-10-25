@@ -93,7 +93,12 @@ supabase/seed-*.sql            Prager Stationen und Testpersonen
 Prüfen ohne Datenbank: `python tools/pruefstand/selfie.py`, `name.py`,
 `geraetetest.py`, `kritik.py`, `ziffer.py`, `teststation.py` (Probelauf `teststation_db.py`),
 `waechter.py` (Kompass-Wächter, Probelauf `waechter_db.py`), `rueckblick.py` (Rückblick-Show),
-`fernbedienung.py` (Handy als Fernbedienung der Show, Probelauf `rueckblick_steuerung_db.py`). Einzelheiten in
+`fernbedienung.py` (Handy als Fernbedienung der Show, Probelauf `rueckblick_steuerung_db.py`),
+`audit2510.py` (Teile 1 bis 11 des Code-Audits vom 25.10.2026, Probelauf `audit2510_db.py`).
+`rueckblick.py` hat seit dem Audit die Gruppen 6 und 11 erweitert, `fernbedienung.py` die neue Gruppe 5.
+Neue Haken in `mock.js`: `__halten`/`__freigeben` (Antworten festhalten und wieder freigeben),
+`__weg` und `__serverJetzt`. Die Migration `20261025090000_audit.sql` ist vorbereitet, noch nicht
+eingespielt; `python tools/test_sql_bremse.py` prüft die Bremse in `tools/sql.py`. Einzelheiten in
 `HANDOFF.md`, geordnet in `SPIEL.md` Abschnitt 11 bis 17.
 
 ## SQL ausführen

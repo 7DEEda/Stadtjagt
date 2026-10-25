@@ -33,14 +33,21 @@ App eingeben.
 | **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, fortsetzen, freischalten, Rätsel werten, Teamleitung wählen, Stationen pflegen, Leute eintragen, löschen, Testmodus | Reiter Karte und Teams (Karte, Teamliste mit "Braucht dich", Zuletzt), Zeitachse, Codes und Mitlese-Links, Koffer-Code |
 
 Die Teamleitung wird beim Auslosen je Team zufällig bestimmt
-(`teams.leader_participant_id`); die Spielleitung kann sie ändern
-(`admin_set_leader`), die Teamleitung selbst abgeben (`team_set_leader`).
+(`teams.leader_participant_id`), und zwar unter den Personen mit Geräte-Schlüssel
+(Token); wer nur eingetragen wurde, hat kein Handy für die Rolle. Dasselbe gilt
+für die Nachfolge, wenn die Leitung gelöscht wird. Die Teamleitung kann
+(`team_set_leader`) nur an selbst Angemeldete abgeben, die Spielleitung
+(`admin_set_leader`) an jede Person im Team (Notweg).
 Seit Nachtrag 22 meldet sich jede Person nur selbst an, auf dem eigenen Handy
 („Jemanden ohne eigenes Handy anmelden“ gibt es nicht mehr). Die Teamleitung
 tippt keinen Code: ihr Handy holt ihn über `leader_code`. Wird die Leitung
 gewechselt oder abgegeben, gibt das alte Handy sofort nichts mehr ein
 (`leitungNochDa` nach jedem Abruf). Den Team-Code braucht nur noch die
-Spielleitung, wenn sie am Tablet für ein Team eingibt.
+Spielleitung, wenn sie am Tablet für ein Team eingibt. Dieser Notweg setzt den
+Merker `sj.hand`: `leitungNochDa` meldet das Gerät dann nicht ab, weil der Code
+nicht aus dem Geräte-Schlüssel stammt. `leitungOhneCode`, Abmelden und
+`codeUngueltig` löschen den Merker. Team-Codes haben vier oder sechs Ziffern
+(Beispiel `FUCHS-123456`, siehe §7).
 
 ---
 
@@ -87,7 +94,8 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
   durch“). Nur im Testmodus geht es ohne Koordinaten und ohne Abstand.
 - Erlaubt, wenn Abstand ≤ `stations.radius_m` + `min(GPS-Genauigkeit, 25 m)`.
   Radius Vorgabe 50 m, Rudolfstollen 60 m.
-- Die App holt dafür eine frische Position (`freshPosition`).
+- Die App holt dafür eine frische Position (`freshPosition`). Sie nennt vorab
+  keine Mindestentfernung; der Text "Einchecken ab etwa N m" ist gestrichen.
 - Danach ist das Rätsel frei (`team_state.station.riddle`).
 
 ### Rätsel (`submit_answer`)
@@ -158,10 +166,15 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
    mit; kennt der Server den Token schon, gibt er die vorhandene Anmeldung
    zurück (Antwort im Funkloch verloren, auch nach Umbenennen). Für einen
    vorhandenen Namen gibt es nie einen neuen Token.
-3. Doppelte Namen (über `name_key = norm(name)`) werden abgelehnt, ebenso
+3. Doppelte Namen (über `name_key = norm(name)`) werden abgelehnt (Meldung
+   "Diesen Namen gibt es schon. Bist du das nicht, ergänze etwas, zum Beispiel
+   einen zweiten Vornamen."), ebenso
    Namen ohne einen lateinischen Buchstaben oder eine Ziffer (leerer
    Schlüssel, Nachtrag 20). Die Anmeldung wartet mit `for share` auf ein
    laufendes Auslosen, das Auslosen sperrt `game_state` mit `for update`.
+   Ab 200 Personen ist die Selbstanmeldung voll ("Die Anmeldung ist voll. Melde
+   dich bei der Spielleitung."). Die Grenze ist weich: sie zählt Test- und
+   nachgetragene Personen mit, die Spielleitung trägt weiter ein.
 4. Die Spielleitung kann zusätzlich einzeln (`admin_add_participant`) oder
    viele auf einmal (`admin_add_participants`, eine Zeile pro Name, auch
    „Testdaten einfügen“ mit 90 Namen „… (Test)“) eintragen. Diese haben keinen
@@ -265,7 +278,8 @@ mit dem Team-Code.
   (Nachtrag 31: Nachtrag 28 hatte `current_station` neu angelegt und die Sperre
   verloren).
 - Admin-Funktionen prüfen die PIN serverseitig (`require_admin`).
-- Team-Codes: Tiername plus vier Ziffern. `team_by_code` vergleicht nur
+- Team-Codes: Tiername plus sechs Ziffern (`FUCHS-123456`); alte vierstellige
+  Codes gelten bis zum nächsten Auslosen. `team_by_code` vergleicht nur
   Buchstaben und Ziffern (`EULE 8765` = `eule-8765`).
 - Mitlesen nur mit Geräte-Token aus der eigenen Anmeldung oder mit dem
   Mitlese-Schlüssel des Teams (`teams.read_token`, kommt nur von der
@@ -292,7 +306,7 @@ Bewusst akzeptiert oder offen:
   Zeichen (Trigger auf `game_state`); eine alte kurze PIN gilt, bis sie
   geändert wird. Ein Fehlversuchszähler geht nicht einfach: `require_admin`
   bricht mit einer Exception ab, die das Hochzählen zurückrollen würde.
-- Team-Codes (16 Tiere × 9000 Zahlen) lassen sich mit vielen Anfragen raten;
+- Team-Codes (16 Tiere × 900000 Zahlen) lassen sich mit vielen Anfragen raten;
   unter Kollegen hingenommen.
 - **Offen und vor dem Event zu lösen:** Das Repo ist öffentlich, und GitHub
   Pages liefert es zusätzlich komplett aus (`path: .` in
@@ -331,8 +345,9 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
   `S.gps`, `S.mit`, `S.lookup`, …). `render()` baut `#app` komplett per
   `innerHTML` neu.
 - **Ansichten:** `viewPublic`, `viewTeam` → `teamAnsicht(st, lesen)`,
-  `viewAdmin` (Reiter Karte und Teams, Zeitachse, Auslosen, Teilnehmende, Stationen, Fotos, Daten löschen),
-  `viewSetup` (ohne `config.js`). Routing über den Hash (`#/public`, `#/team`,
+  `viewAdmin` (Reiter Karte und Teams, Zeitachse, Auslosen, Teilnehmende, Stationen, Fotos, Daten löschen).
+  Eine Setup-Ansicht gibt es nicht mehr: ohne `config.js` erscheint die Meldung
+  aus `rpc()`. Routing über den Hash (`#/public`, `#/team`,
   `#/admin`).
 - **Aktionen:** Klicks auf `[data-act]` rufen `ACT[name](dataset)`. Wirft eine
   Aktion oder setzt sie `S.msg` vom Typ `err`, bleiben die Eingaben stehen
@@ -349,6 +364,11 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
   Karte, Zuletzt, Zeitachse sowie Teamliste und Zähler im Kopf
   (`teamlisteNachziehen()`) ziehen sich selbst nach. Ein zweites Intervall
   (1 s) zählt die Denkpause herunter.
+  Jede Ansicht hat einen Zähler (`ZAEHL`, `taktAbruf`): die Antwort eines
+  Abrufs, der nach einem Wechsel der Ansicht zurückkommt, wird verworfen, und
+  solange ein Abruf läuft, startet der Takt keinen neuen. Die Spielleitung
+  behandelt "Falsche PIN" im Takt über `pinWeg()`; im Kopf der Spielleitung
+  steht der Chip `#stand`. `syncTracks` merkt sich den laufenden Durchgang.
 - **Löschen und Rückfragen:** alles über die Liste `DANGER` und einen Dialog,
   meist mit getipptem Wort `LÖSCHEN`; `wort: false` für Person und Spielende.
   `neutral: true` (Start, Teamleitung wechseln, Rätsel werten) zeigt den Dialog
@@ -375,8 +395,9 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
   `sj.letzter.team`/`sj.letzter.mit` (letzter Stand ohne Netz, §15),
   `sj.url`/`sj.key` (nur ohne `config.js`) im `localStorage`; `sj.pin` im
   `sessionStorage`. Zugriff nur über `LS`/`SS`: Blockiert der Browser
-  Website-Daten, fallen beide auf eine Map im Speicher zurück, statt die
-  Seite beim Laden abzubrechen.
+  Website-Daten oder ist der Speicher voll, fallen beide auf eine Map im
+  Speicher zurück, `setItem` wirft nie, statt die Seite abzubrechen.
+  `sj.hand` (Team-Code von Hand eingegeben, §2) kommt dazu.
 
 ### GPS und Kompass
 - `startGps` (Standort beobachten, Kompass-Erlaubnis auf iOS aus einem Klick),
@@ -465,7 +486,10 @@ anon, authenticated`, am Ende `notify pgrst, 'reload schema';`.
   prüft die Rechte mit (Muster: `tools/pruefstand/rechte_db.py`).
 - Einspielen: `python tools/sql.py supabase/migrations/<datei>.sql`. Token in
   `%USERPROFILE%\.supabase\stadtjagt.token`. Das Skript bremst zerstörerische
-  Anweisungen außerhalb von Funktionskörpern.
+  Anweisungen außerhalb von Funktionskörpern. Die Bremse in `sql.py` prüft auch
+  `DO`-Blöcke, nur Funktionskörper nicht. Tests: `python
+  tools/test_sql_bremse.py`. Probeläufe (`*_db.py`) rufen `sql.ausfuehren`
+  direkt auf und unterliegen der Bremse nicht.
 - Reihenfolge beim Ausliefern: erst die Datenbank, dann die App.
 
 ### Testmodus und Testdaten
@@ -474,8 +498,9 @@ anon, authenticated`, am Ende `notify pgrst, 'reload schema';`.
   weiter geprüft. Rotes „Testmodus an“ in Admin und Team-Ansicht.
   „Spiel starten“ warnt, solange er an ist (bleibt beim Testen dauerhaft an,
   Entscheidung 19.09.2026).
-- Im laufenden Spiel mit Plätzen lässt er sich in keine Richtung umschalten
-  (Nachtrag 32); Ausweg ist „Fortschritt zurücksetzen“. Vor dem Event also
+- Mit Plätzen lässt er sich in keinem Zustand umschalten (Nachtrag 32,
+  Meldung "Es gibt schon Plätze."); Ausweg ist „Fortschritt zurücksetzen“. Nach
+  einem echten Spiel geht auch das Einschalten erst danach. Vor dem Event also
   erst zurücksetzen, dann ausschalten.
 - Im Testmodus spielen alle Teams nur die Teststation (Nachtrag 28), und der
   Kompass-Wächter wirkt (Nachtrag 30).
@@ -550,15 +575,18 @@ Spezifikationen in `docs/superpowers/specs/`.
 - `team_selfie` speichert das Foto (JPEG, bis 700 KB, Vorschau bis 60 KB) und
   setzt `selfie_at`. `team_selfie_skip` setzt nur `selfie_at`: die Ziffer hängt
   nie am Netz. Ein nicht gesendetes Foto bleibt im `localStorage` und wird
-  nachgereicht (`fotoNachreichen()`).
+  nachgereicht (`fotoNachreichen()`); "wird nachgereicht" steht nur da, wenn
+  wirklich eines gemerkt ist (`sf.gemerkt`).
 - Ersetzen geht für die zuletzt gelöste Station, bis an einer späteren
   eingecheckt ist.
 - Album: `team_photo` mit Team-Code, Geräte-Schlüssel oder Mitlese-Link.
   Spielleitung: `admin_photos`, `admin_photo`, `admin_set_selfie`,
   `admin_delete_photos`; das ZIP entsteht im Browser (`zipBauen()`).
 - Fotos liegen in `station_photos`, mit Fremdschlüssel auf `progress`:
-  Zurücksetzen, neu Auslosen und Leeren der Anmeldung nehmen sie mit. Ist
-  `photos_delete_on` erreicht, löschen `team_state` und `admin_state` sie beim
+  Zurücksetzen, neu Auslosen und Leeren der Anmeldung nehmen sie mit. Das
+  Löschdatum muss nach dem heutigen Prager Datum liegen, sonst wären alle Fotos
+  sofort weg; gelöscht wird am gewählten Tag ab 1 Uhr (Winterzeit) bzw. 2 Uhr
+  (Sommerzeit). Ist `photos_delete_on` erreicht, löschen `team_state` und `admin_state` sie beim
   nächsten Abruf.
 - Wird mitten im Spiel eingeschaltet, brauchen schon gelöste Stationen kein
   Foto mehr (`admin_set_selfie` setzt für sie `selfie_at`).
@@ -751,6 +779,10 @@ mit den Änderungen aus der Gegenprüfung (gehen der Spezifikation vor).
   sind über den Namen versioniert: wer eine tauscht, gibt ihr einen neuen
   Namen. Kein Manifest, kein Installieren-Hinweis. Notausgang
   `tools/sw-aus.js` (löscht nur `sj-*`, meldet die eigene Registrierung ab).
+- **Speicher und Denkpause (Audit 25.10.):** `LS`/`SS.setItem` werfen nie, auch
+  nicht bei vollem Speicher. Die Denkpause rechnet die Restzeit beim ersten
+  Sehen aus (höchstens 120 s) und zählt danach mit `performance.now()`, nicht
+  mit der Handyuhr.
 - **Datenbank-Änderungen bleiben mit der vorigen App-Fassung verträglich**
   (neue Parameter nur mit `default`, keine Felder aus Antworten entfernen):
   alte Fassungen laufen eine Weile weiter (offener Tab, Laden im Funkloch).
@@ -818,8 +850,9 @@ den Rückblick, gesteuert von der Spielleitung. Keine neue RPC, keine Migration.
   Teams je Gruppe mit Tier und Namen, Ausgang: die Kreise drehen sich zu „?“ und
   fliegen auf die Ringplätze am Start), ein anonymer Zeitraffer (70 s, Laufzeit
   ab 0:00, „im Ziel x von n“, Kamera um alle Köpfe und den Start, „?“-Köpfe,
-  graue Routen, Kopf springt beim Lösen, Ankerlinien im Ring, Check-in-Umkreis
-  nur bei Teams in der Nähe), Rangliste Teil 1 (alles rattert, Halt; Weiter
+  graue Routen, Kopf springt beim Lösen, Ankerlinien im Ring; seit 18.10.
+  gibt es keinen Check-in-Umkreis mehr auf der Karte, nur die Stationen),
+  Rangliste Teil 1 (alles rattert, Halt; Weiter
   deckt die Plätze ab 4 von unten auf, rechts der Abstand zum Ersten), Awards
   (Auftakt, bis zu sechs, Koffer-Teams ohne Award), Rangliste Teil 2 (die
   Zeiten der ersten drei rasten ein), Drei Spalten (Platz 2, 1, 3 mit Zeit und
@@ -831,8 +864,8 @@ den Rückblick, gesteuert von der Spielleitung. Keine neue RPC, keine Migration.
   Aufdecken, Siegerbild) geht gleich ins nächste Kapitel.
 - **Steuerung:** Tasten wie im Mockup (Leertaste, K, F5, Pfeile, Bild auf/ab,
   Enter, N, P, Pos1, Ende = Rangliste, F, B/., T, R = Rand für Fernseher, H).
-  Schutz: Weiter in den ersten 600 ms nach einem Wechsel und gehaltene Tasten
-  wirken nicht, zu frühes Weiter springt auf den Halt, während des Aufdeckens
+  Schutz: Weiter in den ersten 600 ms nach einem Wechsel (auch nach dem Lösen
+  eines Halts) und gehaltene Tasten wirken nicht, zu frühes Weiter springt auf den Halt, während des Aufdeckens
   wirken Weiter und Zurück nicht (M2), Weiter setzt aus Pause und Schwarzbild
   fort (M3), im Durchsehen startet nichts, Starten baut die Kapitel neu (M8).
   Leiste unten nur bei Mausbewegung, pausiert bleibt sie stehen; Klick und
@@ -882,7 +915,9 @@ den Rückblick, gesteuert von der Spielleitung. Keine neue RPC, keine Migration.
   steht), Check-ins und Lösungen ohne GPS-Punkt innerhalb von 3 min und ein
   Startpunkt vor einem GPS-Beginn später als 5 min kommen als gestrichelte
   Punkte dazu (M7; Vorbereiten: „Tiger: GPS nur bis 14:25, danach aus den
-  Check-ins“). Gleichstand in derselben Sekunde: „0,3 s vor Platz 2“ (K12). Ab
+  Check-ins“). Gleichstand in derselben Sekunde: „0,3 s vor Platz 2“ (K12). Der Abstand zum
+  Ersten (Rangliste, Moderation, "vor Platz 2") wird aus einzeln auf Sekunden
+  gerundeten Zeiten gebildet, damit er zu den angezeigten Zeiten passt. Ab
   13 Teams Ring mit 16 Plätzen, ab 14 Rangliste in zwei Spalten (K11).
   Uhrzeiten in `Europe/Prague` (K14).
 - **Awards:** aus Spuren und Check-ins (Navi, Sightseeing, Rätselfüchse,
@@ -932,6 +967,8 @@ bleibt ohne Handy voll bedienbar (Tastatur, Presenter).
   zeigen“, „Zum Ende“ (erst der zweite Tipp binnen 4 s wirkt: „Springt zur
   Rangliste. Noch einmal tippen.“, wie die Taste Ende). Kurzes Vibrieren und
   sichtbarer Druck, Rahmen am Knopf, bis die Show den Befehl ausgeführt hat.
+  Im Halt und Endhalt wirkt `pause` nicht, der Knopf ist dort deaktiviert; dort
+  gibt es nur Weiter. Die Leertaste am Laptop bleibt unverändert.
   Doppeltipp: solange ein Befehl unterwegs ist und 400 ms danach zählt kein
   Tipp. Wake Lock, solange die Seite offen ist. Ohne verbundene Show sind die
   Knöpfe gesperrt.

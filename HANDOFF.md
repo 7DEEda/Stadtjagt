@@ -2124,6 +2124,26 @@ Spezifikation (Nachtrag „Fernbedienung“).
   Speicher der Seite, mit `__rbEcht` ans Netz (für `page.route`), mit
   `__rbFehlt` wie ohne Migration; rb_* zählen nicht in `__RPC_LOG`.
 
+## Code-Audit 25.10.2026 (Nachtrag 38)
+
+Drei Fix-Branches (`fix-show`, `fix-db`, `fix-app`) mit 19 Fixes, zusammengeführt im Branch
+`audit-fixes` (Worktree `Projects/tse/stadtjagd-audit`), noch nicht auf master, nicht gepusht.
+Einzelheiten in SPIEL.md §2, §5, §7, §8, §9, §11, §15 bis §17.
+
+- **Datenbank** (Migration `20261025090000_audit.sql`): Leitung wird unter Personen mit Geräte-Schlüssel
+  gelost (auch die Nachfolge); `team_set_leader` nur an selbst Angemeldete; Selbstanmeldung ab 200 Personen
+  voll; Meldung bei gleichem Namen; Team-Codes sechsstellig; Testmodus mit Plätzen nie umschaltbar;
+  Löschdatum der Fotos muss nach dem heutigen Prager Datum liegen.
+- **Werkzeug:** Bremse in `tools/sql.py` prüft DO-Blöcke (`tools/test_sql_bremse.py`).
+- **App:** Merker `sj.hand` für den Notweg Team-Code; Takt mit Zähler je Ansicht, kein neuer Abruf während
+  eines laufenden, "Falsche PIN" im Takt über `pinWeg()`; Chip `#stand`; `LS`/`SS.setItem` werfen nie;
+  "wird nachgereicht" nur bei `sf.gemerkt`; Denkpause aus der Restzeit beim ersten Sehen (höchstens 120 s,
+  `performance.now()`); Text "Einchecken ab etwa N m" gestrichen; keine Setup-Ansicht mehr.
+- **Rückblick:** `pause` per Handy wirkt im Halt und Endhalt nicht; 600-ms-Sperre auch nach dem Lösen eines
+  Halts; Abstand zum Ersten aus einzeln gerundeten Sekunden; kein Check-in-Umkreis mehr in der Doku.
+- **Prüfstand:** `audit2510.py` (Teile 1 bis 11), `audit2510_db.py`; Prüfstand komplett grün auf
+  `audit-fixes` (25.10.).
+
 ## Stand zum Fortsetzen (16.10.2026, Rückblick v2 am 17.10.2026)
 
 **Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test
@@ -2147,6 +2167,12 @@ am 05./06.10., gemerged 09.10.), siehe Nachtrag 33. Vorlagen nur lokal:
 **Fernbedienung (Nachtrag 37, 17.10.2026):** gebaut, lokal auf master; braucht
 die Migration 20261017090000 (siehe oben). Zum Ausprobieren vor dem Einspielen
 gibt es nur den Prüfstand (`fernbedienung.py`).
+
+**Code-Audit (Nachtrag 38, 25.10.2026):** Migration `20261025090000_audit.sql` vorbereitet,
+Probelauf grün (65 Prüfungen), NOCH NICHT eingespielt. Reihenfolge: Migration einspielen
+(`python tools/sql.py supabase/migrations/20261025090000_audit.sql`), dann Branch `audit-fixes` nach
+master, dann push. Alte vierstellige Codes gelten
+bis zum nächsten Auslosen.
 
 **NÄCHSTER SCHRITT:** Rückblick-Show v2: `#/rueckblick/probe` am Beamer (Lesbarkeit
 aus der letzten Reihe, Klicker: jedes Kapitel wartet auf Weiter, F5, B, Alt-Tab,
@@ -2219,8 +2245,10 @@ Datum des Änderungsstopps. Eventdatum steht im HANDOFF noch nicht.
   `Projects/tse/stadtjagd-schema`): `supabase/schema/` mit dem Live-Stand,
   `tools/schema_abzug.py --pruefen`. Live stimmt mit den Migrationen überein.
 - **Live-Admin-PIN prüfen:** nicht mehr die Vorgabe `2026`, mindestens 12 Zeichen.
-- **Team-Codes härten?** Tiername plus vier Ziffern lässt sich erraten (Sicherheitsprüfung
-  25.10.). Entscheidung: so lassen, sechs Ziffern, oder Bremse bei Fehlversuchen.
+- **Team-Codes härten:** Sechs Ziffern sind in der Migration `20261025090000_audit.sql` umgesetzt
+  (Sicherheitsprüfung 25.10.); eine Bremse bei Fehlversuchen bleibt offen.
+- **Audit-Migration einspielen** (siehe oben: einspielen, Branch `audit-fixes` nach master, push).
+  Vor dem Event Testpersonen entfernen (zählen zur 200er-Grenze der Selbstanmeldung).
 - **Supabase:** Token "Acces White" zurückziehen; `stadtjagd-stresstest` später löschen.
 ## Pausenstand 16.10.2026, vormittags (zum Fortsetzen)
 
