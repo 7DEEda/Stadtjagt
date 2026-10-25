@@ -2131,11 +2131,9 @@ bis Suite 21 (https://7deeda.github.io/geraetetest/). Nachtrag 34 (Code-Review
 15.10.), Nachtrag 35 (Ausfallsicherheit, 16.10.) und Nachtrag 36 (Rückblick-Show,
 16.10., ohne Migration) und Nachtrag 37 (Fernbedienung am Handy, 17.10.) liegen
 lokal auf master.
-Ausliefern: erst die drei Migrationen einspielen
-(`python tools/sql.py supabase/migrations/20261015090000_namenssuche_grenze.sql`,
-dann `python tools/sql.py supabase/migrations/20261016090000_eingaben_wiederholen.sql`,
-dann `python tools/sql.py supabase/migrations/20261017090000_rueckblick_steuerung.sql`),
-dann pushen. Der Service Worker muss spätestens 7 Tage vor dem Event live sein
+Die drei Migrationen dazu (`20261015090000_namenssuche_grenze`,
+`20261016090000_eingaben_wiederholen`, `20261017090000_rueckblick_steuerung`) sind
+live (geprüft 17.10. und mit dem Schema-Abzug am 25.10.); offen ist nur noch der Push. Der Service Worker muss spätestens 7 Tage vor dem Event live sein
 (Erprobungszeit, siehe Ablauf am Eventtag).
 
 **Design-Variante "Weiterentwicklung": live** (entschieden 05.10.2026, Umbau
@@ -2180,7 +2178,7 @@ späteren Läufen nicht wieder; am Testtag meldete Supabase Störungen. Antwortg
 `public_state` 6 bis 9 KB, `admin_state` 26 bis 44 KB je Abfrage. Nicht gemessen:
 Mobilfunk mit wechselnden IPs, Last von mehreren Standorten, Selfie-Uploads.
 Protokoll und Anleitung für einen neuen Lauf: `tools/STRESSTEST.md`. Testprojekt
-`stadtjagd-stresstest` gelöscht, Vorgaben im Skript geleert.
+`stadtjagd-stresstest` seit 19.10. pausiert (nicht gelöscht), Vorgaben im Skript geleert.
 
 **Danach (Teil 3, Spezifikation fertig, kein Plan):** Rollen ohne Tippen
 (Teamleitung übergeben, Handy schaltet von selbst um), Akku-Warnung bei 20 %
@@ -2201,6 +2199,29 @@ Datum des Änderungsstopps. Eventdatum steht im HANDOFF noch nicht.
 
 **Weitere offene Punkte:** Positionen aus 4 älteren Geräte-Test-Läufen löschen
 (Frage an Friedrich offen); 404 beim ersten Prüfstand-Bild abstellen.
+
+**Todos (25.10.2026):**
+- **Rätsel und Begehung:** Fünf Stationen haben noch Platzhalter-Rätsel. Vorschläge
+  mit Quellen und Prüfpunkten stehen in der Begehungs-Checkliste
+  (https://claude.ai/artifact/CzLmGWcwaz7T3HLBX7hJ2J, privat). Dort vor Ort abhaken,
+  Werte eintragen, Rätsel wählen, Fotos hochladen; Claude liest den Speicher danach
+  aus und trägt Rätsel, Lösungen und Ortshinweise in `supabase/seed-stationen-prag.sql`
+  ein. Vorab klären: Station 4 liegt nach den Koordinaten über der Štefánik-Brücke,
+  der Ortshinweis nennt die Čech-Brücke; Zugang zum Metronom-Plateau (2019 gesperrt,
+  dort stehen die Koffer); Jahreszahl und Schreibweise am Rudolfstollen (1593 oder
+  1583, MDLXXXXIII oder MDXCIII); Planetarium nach dem Umbau ohne belegte Details.
+- **UI- und Backend-Durchsicht entscheiden:** 17 Punkte mit Vorher/Nachher
+  (https://claude.ai/artifact/SFuTkbD47PHdR61wLSdCQs, privat), Auswahl kopieren und
+  an Claude geben. Korrektur zu Punkt S3: die Antwortgröße von `admin_state` ist
+  gemessen (26 bis 44 KB, Stresstest oben).
+- **Schema-Abzug übernehmen:** Branch `schema-abzug` (Worktree
+  `Projects/tse/stadtjagd-schema`): `supabase/schema/` mit dem Live-Stand,
+  `tools/schema_abzug.py --pruefen`. Live stimmt mit den Migrationen überein.
+- **Live-Admin-PIN prüfen:** nicht mehr die Vorgabe `2026`, mindestens 12 Zeichen.
+- **Team-Codes härten?** Tiername plus vier Ziffern lässt sich erraten (Sicherheitsprüfung
+  25.10.). Entscheidung: so lassen, sechs Ziffern, oder Bremse bei Fehlversuchen.
+- **Supabase:** Token "Acces White" zurückziehen; `stadtjagd-stresstest` später löschen.
+- **Push:** alles ab Nachtrag 34 liegt nur lokal (GitHub-Anmeldung mit dem TSE-Apps-Konto).
 
 ## Pausenstand 16.10.2026, vormittags (zum Fortsetzen)
 
