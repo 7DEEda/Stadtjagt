@@ -137,6 +137,28 @@ p{margin:.4em 0 0}
 .muted{color:var(--muted)}.small{font-size:var(--fs-s)}
 .brand{display:flex;gap:12px;align-items:center;margin-bottom:16px}
 .flag{width:32px;height:32px;flex:none}
+/* Startbild beim ersten Öffnen (27.10.2026): der Kompass sucht Norden und fliegt ins Logo des Kopfs */
+#intro{position:fixed;inset:0;z-index:1300;cursor:pointer}
+#intro .grund{position:absolute;inset:0;background:var(--paper)}
+#intro .buehne{position:absolute;left:0;right:0;top:27%;display:flex;flex-direction:column;align-items:center}
+#intro .kflug,#intro .wflug{transform-origin:0 0}
+#intro .kompass{display:block;width:168px;height:168px;color:var(--ink);overflow:visible}
+#intro .ring{fill:none;stroke:currentColor;stroke-width:1.8}
+#intro .skala line{stroke:currentColor;stroke-width:.35;opacity:.5}
+#intro .skala text{font:700 2.1px var(--head);fill:var(--muted);text-anchor:middle;dominant-baseline:central}
+#intro .skala .n{fill:var(--flag-text)}
+#intro .nadel{transform-origin:12px 12px}
+#intro .wflug{margin-top:26px}
+#intro .wort{display:block;font:700 64px/1.1 var(--head);color:var(--ink);white-space:nowrap}
+#intro .ort{font:700 34px/1 var(--head);color:var(--flag-text);margin-top:4px}
+#intro .tipp{position:absolute;left:0;right:0;bottom:calc(28px + env(safe-area-inset-bottom,0px));text-align:center;font:500 var(--fs-xs) var(--body);color:var(--muted)}
+body.intro #app{visibility:hidden}
+body.intro-landet #app .flag,body.intro-landet #app .brand h1{visibility:hidden}
+body.intro-landet #app > :not(.brand):not(.ph),body.intro-landet .ph > :not(.kopf){animation:intro-rein .7s cubic-bezier(.32,.72,.2,1) .45s both}
+body.intro-landet #app > :nth-child(3){animation-delay:.56s}body.intro-landet #app > :nth-child(n+4){animation-delay:.67s}
+body.intro-landet #app .thema{animation:intro-auf .4s .6s both}
+@keyframes intro-rein{from{opacity:0;transform:translateY(36px)}}
+@keyframes intro-auf{from{opacity:0}}
 /* Schalter hell/dunkel oben rechts in jedem Kopf */
 .thema{display:inline-grid;place-items:center;width:44px;height:44px;flex:none;margin-left:auto;padding:0;border-radius:10px;border:1.5px solid var(--feld);background:var(--card);color:var(--ink);cursor:pointer;vertical-align:middle;
   transition:background .16s cubic-bezier(.32,.72,.4,1),color .16s cubic-bezier(.32,.72,.4,1)}
@@ -984,7 +1006,8 @@ const MOND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.
 const themaInnen = () => themaJetzt() === "dark" ? SONNE : MOND;
 const themaTitel = () => themaJetzt() === "dark" ? "Helle Darstellung" : "Dunkle Darstellung";
 const themaBtn = () => `<button class="thema" data-act="thema" aria-label="${themaTitel()}" title="${themaTitel()}">${themaInnen()}</button>`;
-const brand = sub => `<div class="brand">${logo()}<div><h1>Stadtjagd</h1><div class="muted small">${esc(sub)}</div></div>${themaBtn()}</div>`;
+// Unterzeile nur bei der Spielleitung; die Ansichten für Teilnehmende zeigen nur das Logo und "Stadtjagd" (27.10.2026)
+const brand = sub => `<div class="brand">${logo()}<div><h1>Stadtjagd</h1>${sub ? `<div class="muted small">${esc(sub)}</div>` : ""}</div>${themaBtn()}</div>`;
 // Jede Meldung steht genau an einer Stelle: msgBox(ort) zeigt nur Meldungen mit demselben ort,
 // msgBox() nur die ohne ort. Jede Ansicht ruft msgBox() für allgemeine Meldungen genau einmal auf.
 const msgBox = ort => {
@@ -1042,8 +1065,8 @@ function hochHTML(name) {
 }
 function viewPublic() {
   const p = S.pub;
-  if (!p) return brand("Teamfahrt") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
-  let out = brand(p.status === "registration" ? "Anmeldung offen" : p.status === "finished" ? "Spiel beendet" : p.status === "running" ? "Das Spiel läuft" : "Die Teams stehen");
+  if (!p) return brand() + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
+  let out = brand();
   // allgemeine Meldungen (Funkloch beim Laden): oben, außer beim Mitlesen, da stehen sie in der Team-Ansicht
   const mitDa = S.mit && S.mit.team && (p.status === "running" || p.status === "finished");
   if (!mitDa) out += msgBox();
@@ -1383,7 +1406,7 @@ function viewTeam() {
       : `<h2>Du leitest gerade kein Team</h2>
         <p class="muted">Eingeben kann nur die Teamleitung, auf ihrem eigenen Handy. Station und Rätsel siehst du auf der Anmeldeseite mit.</p>
         <button class="btn alt" data-act="t-ohne-code" data-wait="Wird geprüft …">Noch einmal prüfen</button>`;
-    return brand("Teamleitung") + `<div class="panel">${warum}${msgBox()}
+    return brand() + `<div class="panel">${warum}${msgBox()}
       <a class="btn ${ab ? "alt" : ""}" href="#/public">Zur Anmeldeseite</a></div>
       ${S.team.codeFeld ? `<div class="panel"><h3>Mit Team-Code eingeben</h3>
         <p class="small muted">Nur für die Spielleitung, wenn das Handy einer Teamleitung ausfällt. Den Code zeigt die Teamliste im Reiter Karte und Teams, wenn du das Team antippst.</p>
@@ -1393,7 +1416,7 @@ function viewTeam() {
       + helpBtn("Stadtjagd: Ich komme als Teamleitung nicht hinein.") + nav();
   }
   const st = S.team.state;
-  if (!st) return brand("Teamleitung") + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
+  if (!st) return brand() + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
   return teamAnsicht(st, false) + (S.hoch && document.body.classList.contains("spiel") ? hochHTML(st.team.name) : "");
 }
 // Umbau Weiterentwicklung: das Spiel am Handy als feste Hülle. Kopf und Tabs stehen, nur der Inhalt scrollt.
@@ -3786,13 +3809,15 @@ const KLASSISCH = $("#topo").innerHTML;
 let hintergrundAktiv = "klassisch", hintergrundLaeuft = null;
 // Vom Server gewählter Hintergrund: A bis C aus hintergrund/<x>.svg nachladen, klassisch steht im HTML.
 // Die Wahl bleibt im Speicher, damit der nächste Aufruf gleich richtig startet.
+// Zustand des Startbilds (introStarten am Ende des Skripts); steht hier, weil hintergrundSetzen ihn schon beim Laden fragt
+const INTRO = { an: false, anis: [], timer: 0 };
 function hintergrundSetzen(name) {
   if (!HINTERGRUENDE[name] || name === hintergrundAktiv || hintergrundLaeuft === name) return;
   LS.setItem("sj.bg", name);
-  if (name === "klassisch") { $("#topo").innerHTML = KLASSISCH; hintergrundAktiv = name; return; }
+  if (name === "klassisch") { $("#topo").innerHTML = KLASSISCH; hintergrundAktiv = name; introKarte(); return; }
   hintergrundLaeuft = name;
   fetch(`hintergrund/${name}.svg`).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
-    .then(svg => { $("#topo").innerHTML = svg; hintergrundAktiv = name; })
+    .then(svg => { $("#topo").innerHTML = svg; hintergrundAktiv = name; introKarte(); })
     .catch(() => { /* Funkloch oder Datei fehlt: der bisherige Hintergrund bleibt */ })
     .finally(() => { hintergrundLaeuft = null; });
 }
@@ -4124,8 +4149,80 @@ document.addEventListener("visibilitychange", () => {
   if (cfg.url && cfg.key) refresh();
   versionPruefen(true);
 });
+/* ---------- Startbild beim ersten Öffnen (27.10.2026, Mockup im Chat) ---------- */
+// Nur beim allerersten Öffnen auf diesem Handy, nie bei der Spielleitung und in der Rückblick-Show. 5 s: die Karte
+// zeichnet sich, die Nadel sucht Norden, "Stadtjagd Prag" steigt auf, dann fliegen Kompass und Schriftzug genau an
+// ihren Platz im Kopf der Seite. Die App lädt dahinter ganz normal; ein Tipp beendet das Intro sofort. Kein Sensor:
+// die Nadel ist gespielt.
+function introStarten() {
+  if (LS.getItem("sj.intro") || S.view === "admin" || imRueckblick()) return;
+  LS.setItem("sj.intro", "1");
+  const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let skala = "";
+  for (let a = 0; a < 360; a += 30) { const r = rad(a), s = Math.sin(r), c = Math.cos(r);
+    skala += `<line x1="${(12 + s * 8.2).toFixed(2)}" y1="${(12 - c * 8.2).toFixed(2)}" x2="${(12 + s * 9.1).toFixed(2)}" y2="${(12 - c * 9.1).toFixed(2)}"/>`; }
+  [["N", 0], ["O", 90], ["S", 180], ["W", 270]].forEach(([t, a]) => {
+    skala += `<text${t === "N" ? ' class="n"' : ""} x="${(12 + Math.sin(rad(a)) * 6.6).toFixed(2)}" y="${(12 - Math.cos(rad(a)) * 6.6).toFixed(2)}">${t}</text>`; });
+  document.body.insertAdjacentHTML("beforeend", `<div id="intro" aria-hidden="true"><div class="grund"></div><div class="buehne">
+    <div class="kflug"><svg class="kompass" viewBox="0 0 24 24"><g class="skala">${skala}</g>
+      <circle class="ring" cx="12" cy="12" r="10" transform="rotate(-90 12 12)"/>
+      <g class="nadel"><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></g></svg></div>
+    <div class="wflug"><span class="wort">Stadtjagd</span></div><div class="ort">Prag</div></div><div class="tipp">Tippen zum Überspringen</div></div>`);
+  const el = $("#intro"), q = s => el.querySelector(s);
+  const lauf = (x, frames, opt) => { if (!x) return null; const a = x.animate(frames, { fill: "both", easing: "cubic-bezier(.32,.72,.2,1)", ...opt }); INTRO.anis.push(a); return a; };
+  INTRO.an = true; document.body.classList.add("intro");
+  el.addEventListener("pointerdown", introEnde);
+  if (ruhig) { lauf(el, [{ opacity: 1 }, { opacity: 1, offset: .6 }, { opacity: 0 }], { duration: 1500 }); INTRO.timer = setTimeout(introEnde, 1500); return; }
+  // 1) Karte und Ring (0 bis 1,1 s)
+  lauf(q(".grund"), [{ opacity: 1 }, { opacity: 0 }], { duration: 900 });
+  introKarte();
+  const U = (2 * Math.PI * 10 + .1).toFixed(2);   // echter Umfang statt pathLength: Safari rundet sonst eine Lücke hinein
+  lauf(q(".ring"), [{ strokeDasharray: `${U} ${U}`, strokeDashoffset: U }, { strokeDasharray: `${U} ${U}`, strokeDashoffset: 0 }], { duration: 900, delay: 150, fill: "backwards" });
+  lauf(q(".kompass"), [{ transform: "scale(.82)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 700, delay: 100 });
+  lauf(q(".skala"), [{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 650 });
+  // 2) die Nadel sucht Norden: gedämpfte Schwingung, endet genau auf 0° (0,6 bis 2,8 s)
+  const nadel = [];
+  for (let i = 0; i <= 40; i++) { const u = i / 40; nadel.push({ transform: `rotate(${(i === 40 ? 0 : -250 * Math.exp(-4.2 * u) * Math.cos(u * Math.PI * 3.2)).toFixed(2)}deg)`, offset: u }); }
+  lauf(q(".nadel"), nadel, { duration: 2200, delay: 600, easing: "linear" });
+  // 3) "Stadtjagd Prag" steigt auf
+  [[".wort", 1700], [".ort", 1950]].forEach(([s, d]) => lauf(q(s), [{ opacity: 0, transform: "translateY(14px)" }, { opacity: 1, transform: "none" }], { duration: 600, delay: d }));
+  lauf(q(".tipp"), [{ opacity: 0 }, { opacity: 1, offset: .2 }, { opacity: 1, offset: .8 }, { opacity: 0 }], { duration: 3600, delay: 400 });
+  // 4) Landen (3,6 bis 4,6 s): erst jetzt messen, die Seite dahinter ist bis dahin fertig gezeichnet
+  INTRO.timer = setTimeout(() => {
+    const ziel = $("#app .flag"), h1 = $("#app .brand h1"), wort = h1 && h1.textContent.trim() === "Stadtjagd" ? h1 : null;
+    document.body.classList.add("intro-landet"); document.body.classList.remove("intro");
+    const flug = (von, nach, delay) => { const a = von.getBoundingClientRect(), b = nach.getBoundingClientRect();
+      lauf(von, [{ transform: "none" }, { transform: `translate(${b.left - a.left}px,${b.top - a.top}px) scale(${b.width / a.width})` }], { duration: 1000, delay, fill: "forwards" }); };
+    lauf(q(".skala"), [{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: "forwards" });
+    lauf(q(".ort"), [{ opacity: 1 }, { opacity: 0, transform: "translateY(-8px)" }], { duration: 350, fill: "forwards" });
+    if (ziel) flug(q(".kflug"), ziel, 0); else lauf(q(".kflug"), [{ opacity: 1 }, { opacity: 0 }], { duration: 500, fill: "forwards" });
+    if (wort) flug(q(".wflug"), wort, 40); else lauf(q(".wflug"), [{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: "forwards" });
+    INTRO.timer = setTimeout(introEnde, 1400);
+  }, 3600);
+}
+// Die Karte zeichnet sich; kommt der Hintergrund der Spielleitung während des Intros an, zeichnet er sich ebenso.
+// Gestrichelte Wege und Flächen blenden nur auf. Danach gilt wieder das Stylesheet.
+function introKarte() {
+  if (!INTRO.an || !$("#intro .grund")) return;
+  $("#topo").querySelectorAll("path, circle").forEach((p, i) => {
+    let a;
+    if (p.matches(".t") || getComputedStyle(p).stroke === "none" || !p.getTotalLength) a = p.animate([{ opacity: 0 }, { opacity: getComputedStyle(p).opacity }], { duration: 900, delay: 700 });
+    else { const L = p.getTotalLength().toFixed(1);
+      a = p.animate([{ strokeDasharray: `${L} ${L}`, strokeDashoffset: L }, { strokeDasharray: `${L} ${L}`, strokeDashoffset: 0 }], { duration: 1400, delay: 80 + (i % 9) * 60, easing: "cubic-bezier(.4,0,.2,1)", fill: "backwards" }); }
+    INTRO.anis.push(a);
+  });
+}
+function introEnde() {
+  if (!INTRO.an) return;
+  INTRO.an = false; clearTimeout(INTRO.timer);
+  INTRO.anis.forEach(a => { try { a.cancel(); } catch { } }); INTRO.anis = [];
+  const el = $("#intro"); if (el) el.remove();
+  document.body.classList.remove("intro", "intro-landet");
+}
+
 mitLinkPruefen();
 refresh();
+introStarten();
 // Service Worker (sw.js, Ausfallsicherheit 1): die App startet auch im Funkloch oder bei einem Aussetzer von GitHub
 // Pages. Nur für die App selbst (./ oder ./index.html, nicht der Prüfstand mit app.html), nur über https oder lokal.
 // updateViaCache "none": der Browser prüft sw.js bei jeder Navigation am HTTP-Cache vorbei. Scheitert das

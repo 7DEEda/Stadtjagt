@@ -637,6 +637,8 @@
     Object.entries(ls).forEach(([k, v]) => localStorage.setItem(k, v));
     Object.entries(C.ss || {}).forEach(([k, v]) => sessionStorage.setItem(k, v));
   } catch (e) { console.warn("Prüfstand: Speicher gesperrt", e); }
+  // Startbild beim ersten Öffnen: gilt als gesehen, sonst läge es über jeder Prüfung; &intro=1 zeigt es (intro.py)
+  if (!P.has("intro")) try { if (!localStorage.getItem("sj.intro")) localStorage.setItem("sj.intro", "1"); } catch { }
   if (!window.__behalten) history.replaceState(null, "", location.pathname + location.search + "#/" + (C.view || "public"));
 
   /* ---------- Standort ---------- */

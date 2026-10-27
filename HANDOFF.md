@@ -2170,6 +2170,15 @@ Live auseinanderlaufen. Ablauf: nach jeder eingespielten Migration
 `python tools/schema_abzug.py` und mitcommitten, vor jedem Einspielen
 `--pruefen`. Einzelheiten: SPIEL.md §9.
 
+## Startbild beim ersten Öffnen (27.10.2026, ohne Migration)
+
+Wunsch von Friedrich: beim ersten Aufruf am Handy ein Intro wie der Vorspann der Rückblick-Show, mit dem Kompass im
+Fokus, nahtlos in die erste Seite. Mockup (privat): https://claude.ai/artifact/3xgja8Y9btcF2NvwwZAkEX. Entscheidungen:
+nur beim allerersten Öffnen eines Handys, 5 Sekunden, ohne Zeile "TSE Teamfahrt / April 2027", und der Kopf der
+Ansichten für Teilnehmende ohne Unterzeile ("Anmeldung offen" usw.). Von Claude entschieden: auch Teamleitung,
+Mitglied und Mitlese-Link bekommen es, nie die Spielleitung und die Rückblick-Show; ein Tipp überspringt. Einzelheiten
+SPIEL.md §18, Prüfung `tools/pruefstand/intro.py`. Am echten Handy noch anzusehen (iPhone und Android).
+
 ## Stand zum Fortsetzen (16.10.2026, Rückblick v2 am 17.10.2026)
 
 **Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test
@@ -2198,6 +2207,9 @@ gibt es nur den Prüfstand (`fernbedienung.py`).
 Probelauf grün (67 Prüfungen, nach der Nacharbeit zum Review), am 25.10. eingespielt
 (Rechteprüfung grün, `supabase/schema/` neu erzeugt). Offen: Branch `audit-fixes` nach master, dann push. Alte vierstellige Codes gelten
 bis zum nächsten Auslosen.
+
+**Startbild (27.10.2026):** live, siehe Abschnitt "Startbild beim ersten Öffnen"; am Handy ansehen (zum
+Wiedersehen in den Website-Daten `sj.intro` löschen oder ein privates Fenster nehmen).
 
 **NÄCHSTER SCHRITT:** Rückblick-Show v2: `#/rueckblick/probe` am Beamer (Lesbarkeit
 aus der letzten Reihe, Klicker: jedes Kapitel wartet auf Weiter, F5, B, Alt-Tab,

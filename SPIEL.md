@@ -1054,3 +1054,32 @@ bleibt ohne Handy voll bedienbar (Tastatur, Presenter).
   Probelauf `tools/pruefstand/rueckblick_steuerung_db.py` (mit `--ohne` rot).
   Bekannte Grenze: zwei Befehle innerhalb derselben Sekunde, dann wirkt nur der
   letzte (eine Zeile, kein Puffer).
+
+## 18. Startbild beim ersten Öffnen (27.10.2026)
+
+- **Wann:** nur beim allerersten Öffnen auf einem Handy (`sj.intro` in
+  `localStorage`, gesetzt schon beim Start des Intros). Nie bei der
+  Spielleitung (`#/admin`) und in der Rückblick-Show; Anmeldung, Teamleitung,
+  Mitglied und Mitlese-Link bekommen es. Ohne Speicher (gesperrt) kommt es bei
+  jedem Neuladen.
+- **Ablauf, 5 s:** Die Karte (`#topo`) zeichnet sich, ein großer Kompass läuft
+  ein, die Nadel pendelt gedämpft auf Norden (gespielt, kein Sensor),
+  "Stadtjagd" und "Prag" steigen auf (wie der Vorspann der Rückblick-Show).
+  Bei 3,6 s misst `introStarten()` das Logo `#app .flag` und die Überschrift
+  `#app .brand h1` und lässt Kompass und Schriftzug in 1 s genau dorthin fliegen;
+  heißt die Überschrift nicht "Stadtjagd" (Teamleitung: Teamname), blendet der
+  Schriftzug aus. Der Rest der Seite kommt von unten (`body.intro-landet`), bei
+  5 s übernimmt das echte Logo. Kommt der Hintergrund der Spielleitung während
+  des Intros an, zeichnet er sich ebenso (`introKarte()` aus
+  `hintergrundSetzen()`).
+- **Die App wartet nicht:** sie lädt und zeichnet dahinter normal
+  (`body.intro`: `#app` unsichtbar). Ein Tipp beendet das Intro sofort
+  (`introEnde()`). "Bewegung reduzieren": nur 1,5 s Überblenden.
+- **Kopf:** die Ansichten für Teilnehmende zeigen nur Logo und "Stadtjagd",
+  ohne Unterzeile ("Anmeldung offen", "Das Spiel läuft" usw. sind weg);
+  `brand(sub)` zeigt die Unterzeile nur noch bei der Spielleitung und im
+  Rückblick-Fehler.
+- **Prüfen:** `tools/pruefstand/intro.py` (Port 8872). `mock.js` merkt das
+  Intro als gesehen, damit es keine andere Prüfung verdeckt; `&intro=1` in der
+  Adresse zeigt es.
+

@@ -36,6 +36,7 @@ etwa `timeout 300 python tools/pruefstand/waechter.py`.
 | `review1510.py` | Befunde des Code-Reviews vom 15.10.2026 (Nachtrag 34) |
 | `lokal.py` | Leaflet und Schriften aus `vendor/`, keine Anfrage an unpkg oder Google (Nachtrag 35) |
 | `version.py` | Versionszeile und "Neue Version laden" (Nachtrag 35) |
+| `intro.py` | Startbild beim ersten Öffnen: Ablauf, Landung auf Logo und Überschrift, Überspringen, nur einmal, nicht bei der Spielleitung; `&intro=1` in der Adresse (sonst merkt `mock.js` es als gesehen) |
 | `mappe.py` | Notfallmappe: Inhalt, hell im dunklen Design, Druck, Handy (Nachtrag 35) |
 | `funkloch.py` | Eingaben ohne Netz, Abgleich, Serverfehler wie Funkloch; Schalter `window.__netz` in `mock.js` (Nachtrag 35) |
 | `offline.py` | Service Worker: Start ohne Server, letzter Stand, Netz zuerst, Notausgang; baut eigenen Ordner mit mock.js inline (Nachtrag 35) |
