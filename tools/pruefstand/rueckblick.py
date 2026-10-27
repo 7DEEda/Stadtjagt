@@ -579,6 +579,9 @@ with sync_playwright() as pw:
             dif = pg.evaluate("[...document.querySelectorAll('.rl-zeile .dif')].map(d => d.textContent.trim())")
             pruef(auf == 0 and auf2 == 9, f"Rangliste Schritt 2: Plätze ab 4 aufgedeckt ({auf} vorher, {auf2} danach), Ende von Teil 1 hält")
             pruef(dif[0] == "" and all(re.fullmatch(r"\+\d+:\d\d(:\d\d)?", x) for x in dif[1:7]), f"Abstand zum Ersten neben der Zeit ({dif[:4]})")
+            oben_w = "[...document.querySelectorAll('.rl-zeile')].slice(0, 3).map(r => [...r.querySelectorAll('.band')].map(b => b.style.transform).join())"
+            w1 = pg.evaluate(oben_w); pg.wait_for_timeout(500); w2 = pg.evaluate(oben_w)
+            pruef(all(x != y for x, y in zip(w1, w2)), "Rangliste, Ende von Teil 1: die Walzen der ersten drei drehen weiter")
             pg.keyboard.press("ArrowRight")
             pruef(z()["id"] == "awards", "nach Teil 1 der Rangliste: die Awards (vor der Siegerehrung)")
             pg.evaluate("RB.starten('rangliste2', 0)")

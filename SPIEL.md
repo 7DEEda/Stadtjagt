@@ -875,7 +875,8 @@ den Rückblick, gesteuert von der Spielleitung. Keine neue RPC, keine Migration.
   graue Routen, Kopf springt beim Lösen, Ankerlinien im Ring; seit 18.10.
   gibt es keinen Check-in-Umkreis mehr auf der Karte, nur die Stationen),
   Rangliste Teil 1 (alles rattert, Halt; Weiter
-  deckt die Plätze ab 4 von unten auf, rechts der Abstand zum Ersten), Awards
+  deckt die Plätze ab 4 von unten auf, rechts der Abstand zum Ersten; die
+  Zeiten der ersten drei rattern weiter, auch wenn Teil 1 am Ende hält), Awards
   (Auftakt, bis zu sechs, Koffer-Teams ohne Award), Rangliste Teil 2 (die
   Zeiten der ersten drei rasten ein), Drei Spalten (Platz 2, 1, 3 mit Zeit und
   Weg, verdeckte Teams als Reihe darunter), Platz 3, Platz 2, Platz 1 (je Halt

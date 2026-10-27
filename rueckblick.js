@@ -836,8 +836,10 @@ function takt(jetzt) {
     if (Z.spielt) {
       const h = OPT.anhalten && k.halte && k.halte[Z.hNr];
       if (!Z.haelt && h && Z.lokal < h.t && Z.lokal + dt >= h.t) { Z.lokal = h.t; Z.haelt = true; }
-      // die Walzen drehen im Halt weiter: im ersten Halt jedes Kapitels, in der Rangliste in jedem
-      if (Z.haelt) { if (Z.hNr === 0 || k.art === "rangliste") Z.extra += dt; } else Z.lokal += dt;
+      // die Walzen drehen im Halt weiter: im ersten Halt jedes Kapitels, in der Rangliste in jedem und auch am Ende von
+      // Teil 1, wo die ersten drei noch verdeckt sind (Friedrich 27.10.)
+      if (Z.haelt) { if (Z.hNr === 0 || k.art === "rangliste") Z.extra += dt; }
+      else if (Z.endHalt && k.art === "rangliste") Z.extra += dt; else Z.lokal += dt;
       // nichts läuft von selbst durch (Friedrich 17.10.): das Kapitel hält am Ende, bis Weiter kommt
       if (Z.lokal >= k.dur && !k.endlos) { Z.lokal = k.dur; if (!Z.endHalt) { Z.endHalt = true; leisteFortschritt(); } }
     }
