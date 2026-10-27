@@ -1063,8 +1063,9 @@ bleibt ohne Handy voll bedienbar (Tastatur, Presenter).
   Mitglied und Mitlese-Link bekommen es. Ohne Speicher (gesperrt) kommt es bei
   jedem Neuladen.
 - **Start:** Das Startbild steht sofort (Papier, `#app` unsichtbar dahinter),
-  alle Animationen angehalten auf ihrem ersten Bild. Los geht es 1 s nach dem
-  vollständigen Laden der Seite (`load`, Friedrich 27.10.); ein Tipp vorher
+  alle Animationen angehalten auf ihrem ersten Bild. Los geht es 0,5 s nach dem
+  vollständigen Laden der Seite (`load`, Friedrich 27.10., erst 1 s, dann nach
+  den Varianten 0,5 s); ein Tipp vorher
   beendet es ebenso.
 - **Ablauf, 5 s:** Ein großer Kompass läuft ein und deckt die Karte von seiner
   Mitte aus auf (eine Fläche in Papierfarbe mit Loch wächst, nur `transform`;

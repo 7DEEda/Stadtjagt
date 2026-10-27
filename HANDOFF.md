@@ -2175,7 +2175,8 @@ Live auseinanderlaufen. Ablauf: nach jeder eingespielten Migration
 Wunsch von Friedrich: beim ersten Aufruf am Handy ein Intro wie der Vorspann der Rückblick-Show, mit dem Kompass im
 Fokus, nahtlos in die erste Seite. Mockup (privat): https://claude.ai/artifact/3xgja8Y9btcF2NvwwZAkEX. Entscheidungen:
 nur beim allerersten Öffnen eines Handys, 5 Sekunden, ohne Zeile "TSE Teamfahrt / April 2027", und der Kopf der
-Ansichten für Teilnehmende ohne Unterzeile ("Anmeldung offen" usw.). Von Claude entschieden: auch Teamleitung,
+Ansichten für Teilnehmende ohne Unterzeile ("Anmeldung offen" usw.). Bewegung beginnt 0,5 s nach dem vollständigen
+Laden (Variante 1 "Kreis" aus https://claude.ai/artifact/Tu3XQQFAkTxMruEWBhgppB). Von Claude entschieden: auch Teamleitung,
 Mitglied und Mitlese-Link bekommen es, nie die Spielleitung und die Rückblick-Show; ein Tipp überspringt. Einzelheiten
 SPIEL.md §18, Prüfung `tools/pruefstand/intro.py`. Am echten Handy noch anzusehen (iPhone und Android).
 
