@@ -139,17 +139,22 @@ p{margin:.4em 0 0}
 .flag{width:32px;height:32px;flex:none}
 /* Startbild beim ersten Öffnen (27.10.2026): der Kompass sucht Norden und fliegt ins Logo des Kopfs */
 #intro{position:fixed;inset:0;z-index:1300;cursor:pointer}
-#intro .grund{position:absolute;inset:0;background:var(--paper)}
+/* Die Karte wird vom Kompass aus aufgedeckt: eine Fläche in Papierfarbe mit Loch in der Mitte wächst (nur transform,
+   das rechnet die Grafikeinheit; Linien einzeln zu zeichnen ruckelte am Handy) */
+#intro .grund{position:absolute;left:50%;top:calc(27% + 84px);width:400px;height:400px;margin:-200px 0 0 -200px;border-radius:50%;
+  background:radial-gradient(circle closest-side,transparent 8%,var(--paper) 12%);will-change:transform}
 #intro .buehne{position:absolute;left:0;right:0;top:27%;display:flex;flex-direction:column;align-items:center}
-#intro .kflug,#intro .wflug{transform-origin:0 0}
-#intro .kompass{display:block;width:168px;height:168px;color:var(--ink);overflow:visible}
+#intro .kflug,#intro .wflug{transform-origin:0 0;will-change:transform}
+#intro .kflug{position:relative;width:168px;height:168px}
+#intro .kompass{display:block;width:168px;height:168px;color:var(--ink);overflow:visible;will-change:transform,opacity}
+#intro .nadel{position:absolute;inset:0;will-change:transform}
+#intro .nadel svg{display:block;width:100%;height:100%;color:var(--ink)}
 #intro .ring{fill:none;stroke:currentColor;stroke-width:1.8}
 #intro .skala line{stroke:currentColor;stroke-width:.35;opacity:.5}
 #intro .skala text{font:700 2.1px var(--head);fill:var(--muted);text-anchor:middle;dominant-baseline:central}
 #intro .skala .n{fill:var(--flag-text)}
-#intro .nadel{transform-origin:12px 12px}
 #intro .wflug{margin-top:26px}
-#intro .wort{display:block;font:700 64px/1.1 var(--head);color:var(--ink);white-space:nowrap}
+#intro .wort{display:block;font:700 64px/1.1 var(--head);color:var(--ink);white-space:nowrap;will-change:transform,opacity}
 #intro .ort{font:700 34px/1 var(--head);color:var(--flag-text);margin-top:4px}
 #intro .tipp{position:absolute;left:0;right:0;bottom:calc(28px + env(safe-area-inset-bottom,0px));text-align:center;font:500 var(--fs-xs) var(--body);color:var(--muted)}
 body.intro #app{visibility:hidden}
@@ -3814,10 +3819,10 @@ const INTRO = { an: false, anis: [], timer: 0 };
 function hintergrundSetzen(name) {
   if (!HINTERGRUENDE[name] || name === hintergrundAktiv || hintergrundLaeuft === name) return;
   LS.setItem("sj.bg", name);
-  if (name === "klassisch") { $("#topo").innerHTML = KLASSISCH; hintergrundAktiv = name; introKarte(); return; }
+  if (name === "klassisch") { $("#topo").innerHTML = KLASSISCH; hintergrundAktiv = name; return; }
   hintergrundLaeuft = name;
   fetch(`hintergrund/${name}.svg`).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
-    .then(svg => { $("#topo").innerHTML = svg; hintergrundAktiv = name; introKarte(); })
+    .then(svg => { $("#topo").innerHTML = svg; hintergrundAktiv = name; })
     .catch(() => { /* Funkloch oder Datei fehlt: der bisherige Hintergrund bleibt */ })
     .finally(() => { hintergrundLaeuft = null; });
 }
@@ -4165,20 +4170,23 @@ function introStarten() {
     skala += `<text${t === "N" ? ' class="n"' : ""} x="${(12 + Math.sin(rad(a)) * 6.6).toFixed(2)}" y="${(12 - Math.cos(rad(a)) * 6.6).toFixed(2)}">${t}</text>`; });
   document.body.insertAdjacentHTML("beforeend", `<div id="intro" aria-hidden="true"><div class="grund"></div><div class="buehne">
     <div class="kflug"><svg class="kompass" viewBox="0 0 24 24"><g class="skala">${skala}</g>
-      <circle class="ring" cx="12" cy="12" r="10" transform="rotate(-90 12 12)"/>
-      <g class="nadel"><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></g></svg></div>
+      <circle class="ring" cx="12" cy="12" r="10" transform="rotate(-90 12 12)"/></svg>
+      <div class="nadel"><svg viewBox="0 0 24 24"><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></svg></div></div>
     <div class="wflug"><span class="wort">Stadtjagd</span></div><div class="ort">Prag</div></div><div class="tipp">Tippen zum Überspringen</div></div>`);
   const el = $("#intro"), q = s => el.querySelector(s);
   const lauf = (x, frames, opt) => { if (!x) return null; const a = x.animate(frames, { fill: "both", easing: "cubic-bezier(.32,.72,.2,1)", ...opt }); INTRO.anis.push(a); return a; };
   INTRO.an = true; document.body.classList.add("intro");
   el.addEventListener("pointerdown", introEnde);
   if (ruhig) { lauf(el, [{ opacity: 1 }, { opacity: 1, offset: .6 }, { opacity: 0 }], { duration: 1500 }); INTRO.timer = setTimeout(introEnde, 1500); return; }
-  // 1) Karte und Ring (0 bis 1,1 s)
-  lauf(q(".grund"), [{ opacity: 1 }, { opacity: 0 }], { duration: 900 });
-  introKarte();
+  // 1) Ring läuft ein, dann deckt er die Karte auf (0 bis 2,4 s)
+  // Maßstab nach Bildschirm: am Anfang deckt die Fläche alles bis in die fernste Ecke, am Ende reicht das Loch dorthin
+  const gb = q(".grund").getBoundingClientRect(), gx = gb.left + gb.width / 2, gy = gb.top + gb.height / 2;
+  const weit = Math.hypot(Math.max(gx, innerWidth - gx), Math.max(gy, innerHeight - gy)), s0 = weit / 190, s1 = weit / 14;
+  lauf(q(".grund"), [{ transform: `scale(${s0.toFixed(2)})`, opacity: 1 }, { transform: `scale(${s1.toFixed(1)})`, opacity: 1, offset: .75 }, { transform: `scale(${s1.toFixed(1)})`, opacity: 0 }],
+    { duration: 1600, delay: 800, easing: "cubic-bezier(.5,0,.3,1)" });
   const U = (2 * Math.PI * 10 + .1).toFixed(2);   // echter Umfang statt pathLength: Safari rundet sonst eine Lücke hinein
   lauf(q(".ring"), [{ strokeDasharray: `${U} ${U}`, strokeDashoffset: U }, { strokeDasharray: `${U} ${U}`, strokeDashoffset: 0 }], { duration: 900, delay: 150, fill: "backwards" });
-  lauf(q(".kompass"), [{ transform: "scale(.82)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 700, delay: 100 });
+  [".kompass", ".nadel svg"].forEach(s => lauf(q(s), [{ transform: "scale(.82)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 700, delay: 100 }));
   lauf(q(".skala"), [{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 650 });
   // 2) die Nadel sucht Norden: gedämpfte Schwingung, endet genau auf 0° (0,6 bis 2,8 s)
   const nadel = [];
@@ -4199,18 +4207,6 @@ function introStarten() {
     if (wort) flug(q(".wflug"), wort, 40); else lauf(q(".wflug"), [{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: "forwards" });
     INTRO.timer = setTimeout(introEnde, 1400);
   }, 3600);
-}
-// Die Karte zeichnet sich; kommt der Hintergrund der Spielleitung während des Intros an, zeichnet er sich ebenso.
-// Gestrichelte Wege und Flächen blenden nur auf. Danach gilt wieder das Stylesheet.
-function introKarte() {
-  if (!INTRO.an || !$("#intro .grund")) return;
-  $("#topo").querySelectorAll("path, circle").forEach((p, i) => {
-    let a;
-    if (p.matches(".t") || getComputedStyle(p).stroke === "none" || !p.getTotalLength) a = p.animate([{ opacity: 0 }, { opacity: getComputedStyle(p).opacity }], { duration: 900, delay: 700 });
-    else { const L = p.getTotalLength().toFixed(1);
-      a = p.animate([{ strokeDasharray: `${L} ${L}`, strokeDashoffset: L }, { strokeDasharray: `${L} ${L}`, strokeDashoffset: 0 }], { duration: 1400, delay: 80 + (i % 9) * 60, easing: "cubic-bezier(.4,0,.2,1)", fill: "backwards" }); }
-    INTRO.anis.push(a);
-  });
 }
 function introEnde() {
   if (!INTRO.an) return;

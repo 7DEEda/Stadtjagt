@@ -1062,16 +1062,17 @@ bleibt ohne Handy voll bedienbar (Tastatur, Presenter).
   Spielleitung (`#/admin`) und in der Rückblick-Show; Anmeldung, Teamleitung,
   Mitglied und Mitlese-Link bekommen es. Ohne Speicher (gesperrt) kommt es bei
   jedem Neuladen.
-- **Ablauf, 5 s:** Die Karte (`#topo`) zeichnet sich, ein großer Kompass läuft
-  ein, die Nadel pendelt gedämpft auf Norden (gespielt, kein Sensor),
+- **Ablauf, 5 s:** Ein großer Kompass läuft ein und deckt die Karte von seiner
+  Mitte aus auf (eine Fläche in Papierfarbe mit Loch wächst, nur `transform`;
+  die Linien einzeln zu zeichnen flackerte und ruckelte am Handy, 27.10.), die Nadel pendelt gedämpft auf Norden (gespielt, kein Sensor),
   "Stadtjagd" und "Prag" steigen auf (wie der Vorspann der Rückblick-Show).
   Bei 3,6 s misst `introStarten()` das Logo `#app .flag` und die Überschrift
   `#app .brand h1` und lässt Kompass und Schriftzug in 1 s genau dorthin fliegen;
   heißt die Überschrift nicht "Stadtjagd" (Teamleitung: Teamname), blendet der
   Schriftzug aus. Der Rest der Seite kommt von unten (`body.intro-landet`), bei
-  5 s übernimmt das echte Logo. Kommt der Hintergrund der Spielleitung während
-  des Intros an, zeichnet er sich ebenso (`introKarte()` aus
-  `hintergrundSetzen()`).
+  5 s übernimmt das echte Logo. Animiert werden nur `transform` und `opacity`
+  auf eigenen Ebenen (Nadel als eigenes Element), dazu der kleine Ring; die
+  Karte selbst nie.
 - **Die App wartet nicht:** sie lädt und zeichnet dahinter normal
   (`body.intro`: `#app` unsichtbar). Ein Tipp beendet das Intro sofort
   (`introEnde()`). "Bewegung reduzieren": nur 1,5 s Überblenden.

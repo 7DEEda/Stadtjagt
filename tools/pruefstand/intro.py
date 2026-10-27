@@ -71,6 +71,12 @@ with sync_playwright() as pw:
     w1 = pg.evaluate("getComputedStyle(document.querySelector('#intro .nadel')).transform"); pg.wait_for_timeout(300)
     w2 = pg.evaluate("getComputedStyle(document.querySelector('#intro .nadel')).transform")
     pruef(w1 != w2, "die Nadel pendelt")
+    # flüssig am Handy: nur transform und opacity auf eigenen Ebenen, keine Linie der Karte wird einzeln gezeichnet
+    arten = pg.evaluate("""document.getAnimations().map(a => [a.effect.target.closest('#topo') ? 'topo' : 'intro',
+      ...new Set(a.effect.getKeyframes().flatMap(k => Object.keys(k).filter(x => !['offset', 'easing', 'composite', 'computedOffset'].includes(x))))])""")
+    pruef(not any(a[0] == "topo" for a in arten), "die Karte selbst wird nicht animiert")
+    andere = sorted({x for a in arten for x in a[1:] if x not in ("transform", "opacity")})
+    pruef(set(andere) <= {"strokeDasharray", "strokeDashoffset"}, f"sonst nur transform und opacity, außer dem kleinen Ring ({andere})")
     pg.wait_for_function("document.body.classList.contains('intro-landet')", timeout=6000)
     pg.wait_for_timeout(1150)   # Flug (1 s) vorbei, Übergabe noch nicht
     pruef(pg.locator("#intro").count() == 1, "kurz vor der Übergabe steht das Intro noch")
