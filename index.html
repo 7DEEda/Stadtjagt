@@ -3815,7 +3815,7 @@ let hintergrundAktiv = "klassisch", hintergrundLaeuft = null;
 // Vom Server gewählter Hintergrund: A bis C aus hintergrund/<x>.svg nachladen, klassisch steht im HTML.
 // Die Wahl bleibt im Speicher, damit der nächste Aufruf gleich richtig startet.
 // Zustand des Startbilds (introStarten am Ende des Skripts); steht hier, weil hintergrundSetzen ihn schon beim Laden fragt
-const INTRO = { an: false, anis: [], timer: 0 };
+const INTRO = { an: false, laeuft: false, anis: [], timer: 0 };
 function hintergrundSetzen(name) {
   if (!HINTERGRUENDE[name] || name === hintergrundAktiv || hintergrundLaeuft === name) return;
   LS.setItem("sj.bg", name);
@@ -4155,8 +4155,9 @@ document.addEventListener("visibilitychange", () => {
   versionPruefen(true);
 });
 /* ---------- Startbild beim ersten Öffnen (27.10.2026, Mockup im Chat) ---------- */
-// Nur beim allerersten Öffnen auf diesem Handy, nie bei der Spielleitung und in der Rückblick-Show. 5 s: die Karte
-// zeichnet sich, die Nadel sucht Norden, "Stadtjagd Prag" steigt auf, dann fliegen Kompass und Schriftzug genau an
+// Nur beim allerersten Öffnen auf diesem Handy, nie bei der Spielleitung und in der Rückblick-Show. Das Startbild
+// steht sofort (Papier, die App unsichtbar dahinter), die Bewegung beginnt 1 s nach dem vollständigen Laden der Seite
+// (Friedrich 27.10.). Dann 5 s: der Kompass deckt die Karte auf, die Nadel sucht Norden, "Stadtjagd Prag" steigt auf, dann fliegen Kompass und Schriftzug genau an
 // ihren Platz im Kopf der Seite. Die App lädt dahinter ganz normal; ein Tipp beendet das Intro sofort. Kein Sensor:
 // die Nadel ist gespielt.
 function introStarten() {
@@ -4174,10 +4175,17 @@ function introStarten() {
       <div class="nadel"><svg viewBox="0 0 24 24"><polygon points="12,4.5 15.2,12 12,10.6 8.8,12" fill="var(--flag)"/><polygon points="12,19.5 8.8,12 12,13.4 15.2,12" fill="currentColor" opacity=".55"/></svg></div></div>
     <div class="wflug"><span class="wort">Stadtjagd</span></div><div class="ort">Prag</div></div><div class="tipp">Tippen zum Überspringen</div></div>`);
   const el = $("#intro"), q = s => el.querySelector(s);
-  const lauf = (x, frames, opt) => { if (!x) return null; const a = x.animate(frames, { fill: "both", easing: "cubic-bezier(.32,.72,.2,1)", ...opt }); INTRO.anis.push(a); return a; };
-  INTRO.an = true; document.body.classList.add("intro");
+  // bis zum Start stehen alle Animationen angehalten auf ihrem ersten Bild
+  const lauf = (x, frames, opt) => { if (!x) return null; const a = x.animate(frames, { fill: "both", easing: "cubic-bezier(.32,.72,.2,1)", ...opt });
+    if (!INTRO.laeuft) a.pause(); INTRO.anis.push(a); return a; };
+  INTRO.an = true; INTRO.laeuft = false; document.body.classList.add("intro");
   el.addEventListener("pointerdown", introEnde);
-  if (ruhig) { lauf(el, [{ opacity: 1 }, { opacity: 1, offset: .6 }, { opacity: 0 }], { duration: 1500 }); INTRO.timer = setTimeout(introEnde, 1500); return; }
+  const starten = danach => {
+    const los = () => { if (!INTRO.an) return; INTRO.laeuft = true; INTRO.anis.forEach(a => a.play()); danach(); };
+    const warten = () => { INTRO.timer = setTimeout(los, 1000); };
+    if (document.readyState === "complete") warten(); else addEventListener("load", warten, { once: true });
+  };
+  if (ruhig) { lauf(el, [{ opacity: 1 }, { opacity: 1, offset: .6 }, { opacity: 0 }], { duration: 1500 }); starten(() => { INTRO.timer = setTimeout(introEnde, 1500); }); return; }
   // 1) Ring läuft ein, dann deckt er die Karte auf (0 bis 2,4 s)
   // Maßstab nach Bildschirm: am Anfang deckt die Fläche alles bis in die fernste Ecke, am Ende reicht das Loch dorthin
   const gb = q(".grund").getBoundingClientRect(), gx = gb.left + gb.width / 2, gy = gb.top + gb.height / 2;
@@ -4196,7 +4204,7 @@ function introStarten() {
   [[".wort", 1700], [".ort", 1950]].forEach(([s, d]) => lauf(q(s), [{ opacity: 0, transform: "translateY(14px)" }, { opacity: 1, transform: "none" }], { duration: 600, delay: d }));
   lauf(q(".tipp"), [{ opacity: 0 }, { opacity: 1, offset: .2 }, { opacity: 1, offset: .8 }, { opacity: 0 }], { duration: 3600, delay: 400 });
   // 4) Landen (3,6 bis 4,6 s): erst jetzt messen, die Seite dahinter ist bis dahin fertig gezeichnet
-  INTRO.timer = setTimeout(() => {
+  starten(() => { INTRO.timer = setTimeout(() => {
     const ziel = $("#app .flag"), h1 = $("#app .brand h1"), wort = h1 && h1.textContent.trim() === "Stadtjagd" ? h1 : null;
     document.body.classList.add("intro-landet"); document.body.classList.remove("intro");
     const flug = (von, nach, delay) => { const a = von.getBoundingClientRect(), b = nach.getBoundingClientRect();
@@ -4206,7 +4214,7 @@ function introStarten() {
     if (ziel) flug(q(".kflug"), ziel, 0); else lauf(q(".kflug"), [{ opacity: 1 }, { opacity: 0 }], { duration: 500, fill: "forwards" });
     if (wort) flug(q(".wflug"), wort, 40); else lauf(q(".wflug"), [{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: "forwards" });
     INTRO.timer = setTimeout(introEnde, 1400);
-  }, 3600);
+  }, 3600); });
 }
 function introEnde() {
   if (!INTRO.an) return;

@@ -1062,6 +1062,10 @@ bleibt ohne Handy voll bedienbar (Tastatur, Presenter).
   Spielleitung (`#/admin`) und in der Rückblick-Show; Anmeldung, Teamleitung,
   Mitglied und Mitlese-Link bekommen es. Ohne Speicher (gesperrt) kommt es bei
   jedem Neuladen.
+- **Start:** Das Startbild steht sofort (Papier, `#app` unsichtbar dahinter),
+  alle Animationen angehalten auf ihrem ersten Bild. Los geht es 1 s nach dem
+  vollständigen Laden der Seite (`load`, Friedrich 27.10.); ein Tipp vorher
+  beendet es ebenso.
 - **Ablauf, 5 s:** Ein großer Kompass läuft ein und deckt die Karte von seiner
   Mitte aus auf (eine Fläche in Papierfarbe mit Loch wächst, nur `transform`;
   die Linien einzeln zu zeichnen flackerte und ruckelte am Handy, 27.10.), die Nadel pendelt gedämpft auf Norden (gespielt, kein Sensor),

@@ -67,8 +67,15 @@ with sync_playwright() as pw:
     pg.wait_for_selector("#intro", state="attached", timeout=3000)
     pruef(pg.evaluate("getComputedStyle(document.getElementById('app')).visibility") == "hidden", "die App wartet unsichtbar hinter dem Intro")
     pruef(pg.evaluate("localStorage.getItem('sj.intro')") == "1", "das Handy merkt sich das Intro sofort")
-    pg.wait_for_timeout(900)   # die Nadel startet nach 0,6 s
-    w1 = pg.evaluate("getComputedStyle(document.querySelector('#intro .nadel')).transform"); pg.wait_for_timeout(300)
+    # die Bewegung beginnt 1 s nach dem vollständigen Laden, bis dahin steht das erste Bild
+    pg.wait_for_function("document.readyState === 'complete'", timeout=10000)
+    geladen = pg.evaluate("performance.getEntriesByType('navigation')[0].loadEventEnd")
+    pg.wait_for_timeout(500)
+    stand = pg.evaluate("[getComputedStyle(document.querySelector('#intro .kompass')).opacity, document.getAnimations().filter(a => a.playState === 'running').length]")
+    pruef(stand == ["0", 0], f"bis 1 s nach dem Laden steht alles still, der Kompass ist noch nicht da ({stand})")
+    pruef(pg.locator("#intro .grund").evaluate("e => getComputedStyle(e).transform") != "none", "die Papierfläche deckt die Seite schon ab")
+    pg.wait_for_function(f"performance.now() > {geladen} + 1000 + 900", timeout=5000)   # die Nadel startet 0,6 s nach dem Start
+    w1 =pg.evaluate("getComputedStyle(document.querySelector('#intro .nadel')).transform"); pg.wait_for_timeout(300)
     w2 = pg.evaluate("getComputedStyle(document.querySelector('#intro .nadel')).transform")
     pruef(w1 != w2, "die Nadel pendelt")
     # flüssig am Handy: nur transform und opacity auf eigenen Ebenen, keine Linie der Karte wird einzeln gezeichnet
@@ -77,7 +84,7 @@ with sync_playwright() as pw:
     pruef(not any(a[0] == "topo" for a in arten), "die Karte selbst wird nicht animiert")
     andere = sorted({x for a in arten for x in a[1:] if x not in ("transform", "opacity")})
     pruef(set(andere) <= {"strokeDasharray", "strokeDashoffset"}, f"sonst nur transform und opacity, außer dem kleinen Ring ({andere})")
-    pg.wait_for_function("document.body.classList.contains('intro-landet')", timeout=6000)
+    pg.wait_for_function("document.body.classList.contains('intro-landet')", timeout=8000)
     pg.wait_for_timeout(1150)   # Flug (1 s) vorbei, Übergabe noch nicht
     pruef(pg.locator("#intro").count() == 1, "kurz vor der Übergabe steht das Intro noch")
     k, z = rect(pg, "#intro .kompass"), rect(pg, "#app .flag")
@@ -85,7 +92,8 @@ with sync_playwright() as pw:
     wo, wz = rect(pg, "#intro .wort"), rect(pg, "#app .brand h1")
     pruef(nah(wo[:2], wz[:2], 1.5) and abs(wo[3] - wz[3]) <= 1.5, f"Schriftzug landet auf der Überschrift ({wo} / {wz})")
     pg.wait_for_function("!document.getElementById('intro')", timeout=3000)
-    pruef(pg.evaluate("performance.now()") < 7500, "nach rund 5 Sekunden vorbei")
+    ende = pg.evaluate("performance.now()") - geladen
+    pruef(5800 < ende < 7500, f"vorbei rund 1 + 5 Sekunden nach dem Laden ({ende / 1000:.1f} s)")
     pruef(pg.evaluate("getComputedStyle(document.querySelector('#app .flag')).visibility") == "visible", "danach ist das echte Logo zu sehen")
     pruef(not pg.evaluate("document.body.className.includes('intro')"), "keine Intro-Klasse bleibt am body")
     pruef(pg.locator(".brand .small").count() == 0, "Kopf der Anmeldeseite ohne Unterzeile")
@@ -125,8 +133,8 @@ with sync_playwright() as pw:
     pg = seite(b, reduced_motion="reduce")
     pg.goto(APP + "anmeldung-leer&intro=1")
     pg.wait_for_selector("#intro", state="attached", timeout=3000)
-    pg.wait_for_function("!document.getElementById('intro')", timeout=3000)
-    pruef(True, "Intro ist nach höchstens 3 s weg")
+    pg.wait_for_function("!document.getElementById('intro')", timeout=6000)
+    pruef(True, "Intro ist nach höchstens 6 s weg")
     pg.close()
 
     pruef(not err, "keine Fehler auf der Seite" + (f": {err[:3]}" if err else ""))
