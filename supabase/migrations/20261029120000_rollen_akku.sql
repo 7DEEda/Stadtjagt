@@ -6,10 +6,13 @@
 --  1. participants: akku, akku_laedt, akku_at, gesehen_at.
 --  2. member_state(p_token, p_akku, p_laedt): Signaturwechsel (die alte Fassung mit einem Argument wird gedroppt, sonst
 --     PGRST203). Schreibt Akku und gesehen_at (höchstens alle 20 s, außer der Akku ändert sich), liefert ichLeite.
---  3. report_position(..., p_akku, p_laedt): Signaturwechsel; der Akku geht auf die Teamleitung des Teams.
---  4. team_state: neues Feld geraete (members bleibt). admin_state: participants[].hatHandy, teams[].leaderAkku.
---  5. F7: member_state_by_team (Mitlese-Link) entfällt, jede Überladung. teams.read_token, team.readToken und der
---     read_token-Pfad in team_photo bleiben vorerst (Plan, Nachtrag F7).
+--  3. report_position bleibt unverändert und schreibt keinen Akku: der Akku hängt am Gerät (Geräte-Schlüssel), nicht am
+--     Team-Code. Die Teamleitung meldet ihn über member_state, wie jedes Mitglied (Review 29.10., Befund W1).
+--  4. team_state: neues Feld geraete (members bleibt), kein readToken mehr. admin_state: participants[].hatHandy,
+--     teams[].leaderAkku, kein readToken mehr.
+--  5. F7: member_state_by_team (Mitlese-Link) entfällt, jede Überladung. W3: auch der read_token-Pfad ist zu: team_photo
+--     ohne p_read_token-Zweig (Signatur unverändert), teams.read_token neu gewürfelt (die Spalte bleibt, alte Probelauf-
+--     Skripte füllen sie noch).
 
 alter table participants add column if not exists akku smallint;
 alter table participants add column if not exists akku_laedt boolean;
@@ -17,7 +20,6 @@ alter table participants add column if not exists akku_at timestamptz;
 alter table participants add column if not exists gesehen_at timestamptz;
 
 drop function if exists public.member_state(text);
-drop function if exists public.report_position(text, double precision, double precision, double precision, text);
 
 CREATE OR REPLACE FUNCTION public.member_state(p_token text, p_akku integer DEFAULT NULL::integer, p_laedt boolean DEFAULT NULL::boolean)
  RETURNS json
@@ -48,43 +50,11 @@ begin
     return json_build_object('name', v.name, 'team', null, 'ichLeite', false);
   end if;
   select * into t from teams where id = v.team_id;
-  return ((team_state(t.code)::jsonb #- '{team,code}' #- '{team,readToken}')
+  return ((team_state(t.code)::jsonb #- '{team,code}')
           || jsonb_build_object('name', v.name, 'ichLeite', t.leader_participant_id = v.id))::json;
 end $function$;
 revoke all on function public.member_state(p_token text, p_akku integer, p_laedt boolean) from public, anon, authenticated;
 grant execute on function public.member_state(p_token text, p_akku integer, p_laedt boolean) to public, anon, authenticated;
-
-CREATE OR REPLACE FUNCTION public.report_position(p_code text, p_lat double precision, p_lng double precision, p_acc double precision, p_kompass text DEFAULT NULL::text, p_akku integer DEFAULT NULL::integer, p_laedt boolean DEFAULT NULL::boolean)
- RETURNS void
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-declare t teams; v_akku int := case when p_akku between 0 and 100 then p_akku end;
-begin
-  if (select status from game_state where id = 1) <> 'running' then return; end if;
-  t := team_by_code(p_code);
-  -- Rollen und Akku 29.10.: der Akku gehört der Teamleitung (leader_participant_id), auch ohne brauchbare Position.
-  -- Das Notweg-Tablet schickt keinen Akku. Höchstens eine Schreibung je 20 s, außer der Akku ändert sich.
-  if v_akku is not null and t.leader_participant_id is not null then
-    update participants set akku = v_akku, akku_laedt = coalesce(p_laedt, false), akku_at = now(), gesehen_at = now()
-     where id = t.leader_participant_id
-       and (gesehen_at is null or gesehen_at < now() - interval '20 seconds'
-            or akku is distinct from v_akku or akku_laedt is distinct from coalesce(p_laedt, false));
-  end if;
-  if p_lat is null or p_lng is null or abs(p_lat) > 90 or abs(p_lng) > 180
-     or (abs(p_lat) < 0.01 and abs(p_lng) < 0.01)
-     or p_acc is null or p_acc <= 0 or p_acc > 1000 then
-    return;
-  end if;
-  insert into team_positions(team_id, lat, lng, accuracy_m, updated_at, kompass)
-  values (t.id, p_lat, p_lng, p_acc, now(), case when p_kompass in ('ok', 'unzuverlaessig') then p_kompass end)
-  on conflict (team_id) do update
-    set lat = excluded.lat, lng = excluded.lng, accuracy_m = excluded.accuracy_m, updated_at = now(), kompass = excluded.kompass;
-  insert into position_log(team_id, lat, lng, accuracy_m) values (t.id, p_lat, p_lng, p_acc);
-end $function$;
-revoke all on function public.report_position(p_code text, p_lat double precision, p_lng double precision, p_acc double precision, p_kompass text, p_akku integer, p_laedt boolean) from public, anon, authenticated;
-grant execute on function public.report_position(p_code text, p_lat double precision, p_lng double precision, p_acc double precision, p_kompass text, p_akku integer, p_laedt boolean) to public, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.team_state(p_code text)
  RETURNS json
@@ -125,7 +95,7 @@ begin
   select count(*) into v_done from finishes;
 
   return json_build_object(
-    'team', json_build_object('id', t.id, 'name', t.name, 'code', t.code, 'readToken', t.read_token,
+    'team', json_build_object('id', t.id, 'name', t.name, 'code', t.code,
       'leaderName', (select p.name from participants p where p.id = t.leader_participant_id),
       'members', coalesce((select json_agg(p2.name order by p2.name)
                            from participants p2 where p2.team_id = t.id), '[]'::json)),
@@ -236,7 +206,7 @@ begin
     'caseCode', (select string_agg(s.digit::text, '' order by s.position) from stations s)
                 || ((select coalesce(sum(digit),0) from stations) % 10)::text,
     'teams', coalesce((select json_agg(to_json(y)) from (
-        select t.id, t.name, t.code, t.read_token as "readToken",
+        select t.id, t.name, t.code,
           t.leader_participant_id as "leaderId",
           (select p.name from participants p where p.id = t.leader_participant_id) as "leaderName",
           -- Rollen und Akku 29.10.: Akku der Teamleitung, nur bis 10 min Alter (sonst null)
@@ -277,6 +247,30 @@ begin
 end $function$;
 revoke all on function public.admin_state(p_pin text) from public, anon, authenticated;
 grant execute on function public.admin_state(p_pin text) to public, anon, authenticated;
+
+-- W3: team_photo ohne den read_token-Zweig (Signatur und Rechte wie bisher), alte Lese-Token unbrauchbar machen
+CREATE OR REPLACE FUNCTION public.team_photo(p_code text, p_token text, p_read_token text, p_position integer, p_full boolean DEFAULT false)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_team uuid;
+begin
+  if coalesce(p_code, '') <> '' then
+    v_team := (team_by_code(p_code)).id;
+  elsif coalesce(p_token, '') <> '' then
+    select team_id into v_team from participants where token = p_token;
+  end if;
+  if v_team is null then raise exception 'Kein Zugang zu diesem Album.' using errcode='P0001'; end if;
+  return json_build_object('data', (select encode(case when p_full then ph.photo else ph.thumb end, 'base64')
+          from station_photos ph join stations s on s.id = ph.station_id
+          where ph.team_id = v_team and s.position = p_position));
+end $function$;
+revoke all on function public.team_photo(p_code text, p_token text, p_read_token text, p_position integer, p_full boolean) from public, anon, authenticated;
+grant execute on function public.team_photo(p_code text, p_token text, p_read_token text, p_position integer, p_full boolean) to public, anon, authenticated;
+
+update teams set read_token = replace(gen_random_uuid()::text, '-', '') where read_token is not null;
 
 -- F7: Mitlese-Link streichen, jede Überladung von member_state_by_team
 do $drop$

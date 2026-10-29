@@ -84,8 +84,7 @@
     const mitglieder = name === "Fuchs" ? FUCHS_MITGLIEDER.slice() : andere.slice(k, k += 8);
     const leader = mitglieder[name === "Fuchs" ? 0 : 1];
     const t = { id: "t-" + name.toLowerCase(), name,
-      code: name === "Fuchs" ? "FUCHS-4821" : name.toUpperCase() + "-" + (100000 + Math.floor(rnd() * 900000)),
-      readToken: hex(32) };
+      code: name === "Fuchs" ? "FUCHS-4821" : name.toUpperCase() + "-" + (100000 + Math.floor(rnd() * 900000)) };
     t.members = mitglieder.slice().sort((a, b) => a.localeCompare(b, "de"));
     mitglieder.forEach(n => PERSONEN.push({ id: "p-" + (pid++), name: n, teamId: t.id, token: "tok-" + hex(24) }));
     t.leaderName = leader;
@@ -346,7 +345,7 @@
   const geraeteVon = t => t.members.slice().sort((a, b) => a.localeCompare(b, "de")).map(name => { const a = AKKUS[name], alt = akkuAlt(a);
     return { name, angemeldet: !OHNE_HANDY.has(name), verbunden: !OFFLINE.has(name) && !OHNE_HANDY.has(name), akku: alt ? null : a.akku, laedt: alt ? null : a.laedt }; });
   window.__AKKUS = AKKUS;   // Prüfungen setzen hier Stände anderer Handys: __AKKUS['Julia Krüger'] = { akku: 15, laedt: false, at: Date.now() }
-  window.__MEMBER_ARGS = []; window.__REPORT_ARGS = []; window.__AKKU = null;
+  window.__MEMBER_ARGS = []; window.__REPORT_ARGS = [];
 
   /* ---------- Akku dieses Handys: navigator.getBattery wie in Chrome auf Android; ohne C.akku fehlt es wie in Safari ---------- */
   const BM = new EventTarget();
@@ -413,7 +412,7 @@
     const running = WELT.status === "running";
     const place = t.place;
     return {
-      team: { id: t.id, name: t.name, code: t.code, readToken: t.readToken, leaderName: t.leaderName, members: members(t) },
+      team: { id: t.id, name: t.name, code: t.code, leaderName: t.leaderName, members: members(t) },
       background: WELT.background, status: WELT.status, startedAt: iso(WELT.startedAt), durationMin: WELT.durationMin,
       endsAt: WELT.startedAt ? iso(WELT.startedAt + WELT.durationMin * MIN) : null,
       totalStations: LISTE.length, solvedCount: f.solved,
@@ -430,7 +429,7 @@
     };
   }
   function memberState(t, name) {
-    const s = teamState(t); delete s.team.code; delete s.team.readToken; s.name = name;
+    const s = teamState(t); delete s.team.code; s.name = name;
     if (!window.__ALTE_DB) s.ichLeite = t.leaderName === name;
     return s;
   }
@@ -461,7 +460,7 @@
       testStart: WELT.testStart || { name: "TSE Berlin, Grenzallee 4", lat: 52.4698774, lng: 13.4627621 },
       aktiveStationen: (WELT.testMode && C.teststation ? [TESTSTATION] : STATIONEN).map(s => ({ id: s.id, position: s.position, name: s.name, lat: s.lat, lng: s.lng, radiusM: s.radiusM })),
       caseCode: CASE_CODE, selfieOn: WELT.selfieOn, photosDeleteOn: WELT.photosDeleteOn, photoCount: fotoListe().length,
-      teams: teams.map(t => ({ id: t.id, name: t.name, code: t.code, readToken: t.readToken, leaderId: t.leaderId, leaderName: t.leaderName,
+      teams: teams.map(t => ({ id: t.id, name: t.name, code: t.code, leaderId: t.leaderId, leaderName: t.leaderName,
         leaderAkku: !window.__ALTE_DB && AKKUS[t.leaderName] && !akkuAlt(AKKUS[t.leaderName]) ? { akku: AKKUS[t.leaderName].akku, laedt: AKKUS[t.leaderName].laedt, at: iso(AKKUS[t.leaderName].at) } : undefined,
         memberCount: t.members.length, members: members(t), solved: t.solved,
         currentPosition: t.solved < 5 ? t.solved + 1 : null,
@@ -587,10 +586,9 @@
       t.place = doneCount() + 1; t.finishedAt = Date.now();
       return { ok: true, won: t.place <= 3, message: "Koffer offen.", state: teamState(t) }; },
     // __ALTE_DB: Datenbank ohne Nachtrag 30, PostgREST findet keine Funktion mit p_kompass (PGRST202)
-    report_position: a => { if (window.__ALTE_DB && ("p_kompass" in a || "p_akku" in a)) fehler("Could not find the function public.report_position(p_acc, p_code, p_kompass, p_lat, p_lng) in the schema cache");
+    report_position: a => { if (window.__ALTE_DB && ("p_kompass" in a)) fehler("Could not find the function public.report_position(p_acc, p_code, p_kompass, p_lat, p_lng) in the schema cache");
       window.__REPORT_ARGS.push(a);
-      // Akku der Leitung (leader_participant_id), nur wenn p_akku gültig ist
-      if (a.p_akku != null && a.p_akku >= 0 && a.p_akku <= 100) { const t = fuchsByCode(a.p_code); AKKUS[t.leaderName] = { akku: a.p_akku, laedt: !!a.p_laedt, at: jetzt() }; window.__AKKU = { akku: a.p_akku, laedt: !!a.p_laedt }; }
+      // Seit Review W1 schreibt report_position keinen Akku mehr (der Akku hängt am Gerät: member_state)
       window.__KOMPASS = a.p_kompass; window.__POSITION = [a.p_lat, a.p_lng]; return { ok: true }; },
     // Audit 25.10.: ein Ziel ohne Geräte-Schlüssel (hier Tobias Neumann) wird abgelehnt
     team_set_leader: a => { const t = fuchsByCode(a.p_code), n = String(a.p_name).trim();

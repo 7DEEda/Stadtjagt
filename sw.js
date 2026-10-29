@@ -23,7 +23,7 @@ const SCHRIFTEN = ["barlow-400-latin", "barlow-400-latin-ext", "barlow-500-latin
   "barlow-semi-condensed-600-latin-ext", "barlow-semi-condensed-700-latin", "barlow-semi-condensed-700-latin-ext",
   "jetbrains-mono-700-latin", "jetbrains-mono-700-latin-ext"].map(n => `vendor/fonts/${n}.woff2`);
 const HINTERGRUENDE = ["hintergrund/a.svg", "hintergrund/b.svg", "hintergrund/c.svg"];
-// Karte der Spielleitung (Leaflet) und Mitlese-QR: gleich beim ersten Besuch, nicht erst nach der ersten Benutzung
+// Karte der Spielleitung (Leaflet) und Fernbedienungs-QR: gleich beim ersten Besuch, nicht erst nach der ersten Benutzung
 const BIBLIOTHEKEN = ["vendor/qrcode.js", "vendor/leaflet-1.9.4/leaflet.js", "vendor/leaflet-1.9.4/leaflet.css",
   "vendor/leaflet-1.9.4/images/layers.png", "vendor/leaflet-1.9.4/images/layers-2x.png", "vendor/leaflet-1.9.4/images/marker-icon.png",
   "vendor/leaflet-1.9.4/images/marker-icon-2x.png", "vendor/leaflet-1.9.4/images/marker-shadow.png"];

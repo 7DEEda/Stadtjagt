@@ -712,8 +712,10 @@ const ohneFunktion = e => !!e && (e.code === "PGRST202" || /Could not find the f
 // Akku (Rollen und Akku, 29.10.2026): level 0 bis 100, null = unbekannt (iPhone: Safari gibt ihn nicht heraus)
 const AKKU = { level: null, laedt: false, bm: null };
 const AKKU_KNAPP = 20, AKKU_LEER = 10;
-// Die Datenbank kennt p_akku noch nicht (Migration fehlt): die Aufrufe laufen dann ohne
-let DB_OHNE_AKKU = false;
+// Die Datenbank kennt p_akku bei member_state noch nicht (Migration fehlt): die Aufrufe laufen dann 5 Minuten ohne,
+// danach versucht es das Handy einmal wieder mit Akku (die Migration kann zwischendurch eingespielt worden sein)
+let DB_OHNE_AKKU_BIS = 0;
+const dbOhneAkku = () => Date.now() < DB_OHNE_AKKU_BIS;
 // Geräte-Schlüssel wie register_participant ihn ausgibt: 64 Hex-Zeichen, hier aus 32 Zufallsbytes
 const neuerSchluessel = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), x => x.toString(16).padStart(2, "0")).join("");
 async function rpc(fn, args) {
@@ -1137,8 +1139,8 @@ function viewPublic() {
       <div class="kreis" data-act="pub-hoch" role="button" aria-label="Team-Zeichen groß zeigen" title="Antippen zum Hochhalten">${teamEmoji(t.name)}</div>
       <h1>Team ${esc(t.name)}</h1>
       <p>${p.status === "drawn" ? `Sucht die anderen mit ${teamEmoji(t.name)}. ` : ""}Teamleitung: <b>${esc(t.leaderName || "offen")}</b></p>
-      ${p.status === "drawn" && eigen && !ichLeite ? `<p class="small" style="margin-top:6px">Alle Teams starten gleichzeitig. ${S.mit ? `Lass diese Seite offen: ab dem Start siehst du hier Station und Rätsel. Eingeben macht ${esc(vorname(t.leaderName) || "eure Teamleitung")}.` : `Station und Rätsel siehst du ab dem Start auf dem Handy, mit dem du dich angemeldet hast.`}</p>` : ""}
-      ${p.status === "running" && !ichLeite ? `<div class="msg info" style="text-align:left">Das Spiel läuft. Station und Rätsel siehst du auf dem Handy, mit dem du dich angemeldet hast. Frag ${esc(vorname(t.leaderName) || "eure Teamleitung")} danach.</div>` : ""}
+      ${p.status === "drawn" && eigen && !ichLeite ? `<p class="small" style="margin-top:6px">Alle Teams starten gleichzeitig. ${S.mit ? `Lass diese Seite offen: ab dem Start siehst du hier Station und Rätsel. Eingeben macht ${esc(vorname(t.leaderName) || "eure Teamleitung")}.` : `Station und Rätsel siehst du ab dem Start bei ${esc(vorname(t.leaderName) || "eurer Teamleitung")}.`}</p>` : ""}
+      ${p.status === "running" && !ichLeite ? `<div class="msg info" style="text-align:left">Das Spiel läuft. ${eigen ? `Station und Rätsel siehst du bei ${esc(vorname(t.leaderName) || "eurer Teamleitung")}.` : `Station und Rätsel sieht ${esc(vorname(t.leaderName) || "die Teamleitung")} auf dem Handy.`}</div>` : ""}
       ${msgBox("karte")}
       ${ichLeite ? `<a class="btn" href="#/team">Du bist Teamleitung: loslegen</a>
         <p class="small muted">Auf diesem Handy bist du gleich drin.</p>` : ""}
@@ -1364,9 +1366,10 @@ function akkuHinweisHTML(st, lesen) {
   const liste = l.map(x => `${x.ich ? "dein Handy" : esc(vorname(x.name))} <span class="nw">${x.akku} %</span>`).join(", ");
   const leitung = st.team.leaderName;
   let text;
-  if (!lesen && l.some(x => x.ich)) text = `Gib die Leitung rechtzeitig an jemanden mit vollerem Akku ab.${leitungAbgebbar(st, lesen) ? `<button class="btn alt" data-act="t-abgeben-frage">Leitung abgeben</button>` : ""}`;
+  if (!lesen && l.some(x => x.ich)) text = leitungAbgebbar(st, lesen) ? `Gib die Leitung rechtzeitig an jemanden mit vollerem Akku ab.<button class="btn alt" data-act="t-abgeben-frage">Leitung abgeben</button>`
+    : "Lade dein Handy, wenn du kannst.";
   else if (l.some(x => x.name === leitung)) text = `Das Handy der Teamleitung geht bald aus. ${esc(vorname(leitung))} sollte die Leitung rechtzeitig abgeben.`;
-  else text = "Ladet das Handy, wenn ihr könnt.";
+  else text = l.length === 1 ? "Ladet das Handy, wenn ihr könnt." : "Ladet die Handys, wenn ihr könnt.";
   return `<div class="msg warn" id="akkuhinweis"><b>Akku knapp: ${liste}</b><br>${text}</div>`;
 }
 // Hinweis des Wächters; nach erfolglosem Einmessen ehrlicher (Mockup rollen-akku-kompass.html)
@@ -1690,6 +1693,26 @@ function leitungHTML(st) {
 // Das Übergabe-Fenster: Personen zum Antippen, mit Akku. Gleiches Blatt für "Leitung abgeben" und die Akku-Warnung bei
 // 20 % und 10 % (Mockups rollen-akku-kompass.html und akku-warnung.html). Liegt über jeder Phase, nicht nur über der Hülle.
 const AKKU_ICON = p => `<svg viewBox="0 0 30 16" aria-hidden="true"><rect x="1" y="2" width="24" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="26" y="5.5" width="2.5" height="5" rx="1" fill="currentColor"/><rect x="3" y="4" width="${Math.max(1, 20 * p / 100)}" height="8" rx="1.5" fill="currentColor"/></svg>`;
+function wahlHTML(st) {
+  return waehlbar(st).map(g => {
+    const sub = !g.verbunden ? "Handy gerade nicht offen" : g.akku == null ? "" : `Akku <span class="nw">${g.akku} %</span>${g.laedt ? ", lädt" : ""}`;
+    const knapp = g.verbunden && g.akku != null && g.akku <= AKKU_KNAPP && !g.laedt;
+    return `<button data-act="t-wahl" data-name="${esc(g.name)}" aria-pressed="${S.team.wahl === g.name}">${esc(g.name)}${sub ? `<small class="${knapp ? "knapp" : ""}">${sub}</small>` : ""}</button>`;
+  }).join("");
+}
+// Offenes Fenster, neuer Stand: nur die Liste ersetzen, das Fenster bleibt dasselbe Element (keine neue Einblendung).
+// Fällt die gewählte Person weg, ist die Wahl leer; der Fokus bleibt auf dem Knopf derselben Person.
+function uebergabeListeNachziehen(st) {
+  const el = $(".ueber .wahl");
+  if (!el) return;
+  const namen = waehlbar(st).map(g => g.name);
+  if (S.team.wahl && !namen.includes(S.team.wahl)) { S.team.wahl = null; const b = $("#tabgeben"); if (b) b.disabled = true; }
+  const fokus = document.activeElement && el.contains(document.activeElement) ? document.activeElement.dataset.name : null;
+  const neu = wahlHTML(st);
+  if (el.innerHTML === neu) return;
+  el.innerHTML = neu;
+  if (fokus) { const b = [...el.querySelectorAll("button")].find(x => x.dataset.name === fokus); if (b) b.focus(); }
+}
 function uebergabeHTML(st) {
   const k = S.team.uebergabe;
   if (!k || S.view !== "team" || !S.team.code) return "";
@@ -1698,13 +1721,8 @@ function uebergabeHTML(st) {
     : k === "akku20" ? `<div class="akkuzeile">${AKKU_ICON(AKKU.level ?? 20)}<b class="nw">${AKKU.level ?? 20} %</b></div>
       <h2 id="ueb-t">Akku wird knapp</h2><p>Gebt die Leitung jetzt an jemanden mit vollerem Akku ab.</p>`
     : `<h2 id="ueb-t">Leitung abgeben</h2><p>Die neue Leitung bekommt Einchecken, Antworten und Koffer auf ihr Handy, ohne etwas zu tippen.</p>`;
-  const wahl = waehlbar(st).map(g => {
-    const sub = !g.verbunden ? "Handy nicht verbunden" : g.akku == null ? "" : `Akku <span class="nw">${g.akku} %</span>${g.laedt ? ", lädt" : ""}`;
-    const knapp = g.verbunden && g.akku != null && g.akku <= AKKU_KNAPP && !g.laedt;
-    return `<button data-act="t-wahl" data-name="${esc(g.name)}" aria-pressed="${S.team.wahl === g.name}">${esc(g.name)}${sub ? `<small class="${knapp ? "knapp" : ""}">${sub}</small>` : ""}</button>`;
-  }).join("");
   return `<div class="ueber" data-act="t-abgeben-nein"><div class="blatt" role="dialog" aria-modal="true" aria-labelledby="ueb-t">${kopf}
-    <div class="wahl" role="group" aria-label="Neue Teamleitung">${wahl}</div>${msgBox("abgeben")}
+    <div class="wahl" role="group" aria-label="Neue Teamleitung">${wahlHTML(st)}</div>${msgBox("abgeben")}
     <div class="row2"><button class="btn alt" data-act="t-abgeben-nein">${k === "abgeben" ? "Abbrechen" : "Später"}</button>
       <button class="btn" id="tabgeben" data-act="t-abgeben" data-wait="Wird übergeben …" ${S.team.wahl ? "" : "disabled"}>Übergeben</button></div></div></div>`;
 }
@@ -2094,9 +2112,9 @@ function problemVon(t, st) {
   const upd = t.position && t.position.updatedAt, alt = upd ? Date.now() - new Date(upd).getTime() : null;
   if (alt == null) return { stufe: "fehler", kurz: "kein GPS", text: `${t.name} sendet keinen Standort. Ruf die Teamleitung an; ist das Team an der Station, schalte sie frei.` };
   if (alt > GPS_ALT_MS) return { stufe: "fehler", kurz: `GPS ${ago(upd)}`, text: `Letzter Standort ${ago(upd)}. Vielleicht ist das Handy gesperrt.` };
-  // F5: unter 10 % und nicht ladend geht das Handy der Teamleitung gleich aus
+  // F5: ab 10 % abwärts und nicht ladend geht das Handy der Teamleitung gleich aus
   const la = t.leaderAkku;
-  if (la && la.akku != null && !la.laedt && la.akku < AKKU_LEER) return { stufe: "warn", kurz: `Akku ${la.akku}\u00a0%`, akku: true,
+  if (la && la.akku != null && !la.laedt && la.akku <= AKKU_LEER) return { stufe: "warn", kurz: `Akku ${la.akku}\u00a0%`, akku: true,
     text: `${t.leaderName || "Die Teamleitung"} hat nur noch ${la.akku}\u00a0% Akku. Ruf an, die Leitung sollte sie jetzt abgeben.` };
   // Beim 3. Fehlversuch setzt submit_answer die Fehlversuche auf 0 und sperrt bis lockedUntil (Review 15.10.2026, Befund 2)
   if (t.lockedUntil && new Date(t.lockedUntil).getTime() > Date.now()) return { stufe: "warn", kurz: `Denkpause bis ${uhrzeit(t.lockedUntil)}`,
@@ -2859,7 +2877,11 @@ const ACT = {
       const team = (await rpc("team_set_leader", { p_code: S.team.code, p_name: name })).team;
       // Abgegeben: dieses Handy liest ab jetzt mit, GPS läuft weiter; die neue Leitung schaltet nach dem nächsten Abruf um
       const wer = vorname(name);
-      await rolleWechseln("mitglied", team || (st && st.team), g && !g.verbunden ? `${wer} leitet jetzt das Team, sobald das Handy wieder verbunden ist.` : `${wer} leitet jetzt das Team`);
+      // Aus einem Akku-Fenster oder mit knappem, nicht ladendem Akku abgegeben: das Handy soll durchhalten, also kein
+      // GPS und keine Bildschirmsperre mehr (sonst läuft es weiter wie bisher). Wieder an per Knopf "Standort freigeben".
+      const spart = /^akku/.test(S.team.uebergabe || "") || (AKKU.level != null && AKKU.level <= AKKU_KNAPP && !AKKU.laedt && !LS.getItem("sj.hand"));
+      await rolleWechseln("mitglied", team || (st && st.team), g && !g.verbunden ? `${wer} leitet jetzt das Team, sobald das Handy wieder offen ist.` : `${wer} leitet jetzt das Team`);
+      if (spart) { LS.removeItem("sj.gps"); stopGps(); wachHaltenPruefen(); render(); }
       return false;
     } catch (e) { S.msg = { type: "err", ort: "abgeben", text: e.message || "Etwas ist schiefgelaufen." }; }
   },
@@ -3574,22 +3596,18 @@ async function maybeReport() {
   const urteil = g.waechter ? g.waechter.urteil : null;
   const neuUrteil = urteil !== g.lastSentUrteil;
   // eine Meldung zur Zeit: im Funkloch hängt eine Anfrage sonst lange, und jede neue Position stieße die nächste an
-  if (g.meldet || (!moved && !oldEnough && !neuUrteil && !g.akkuNeu)) return;
+  if (g.meldet || (!moved && !oldEnough && !neuUrteil)) return;
   g.meldet = true;
   g.lastSent = Date.now(); g.lastSentPos = { ...g.pos };
   const pos = { p_code: S.team.code, p_lat: g.pos.lat, p_lng: g.pos.lng, p_acc: g.acc };
-  // Der Akku gehört der Teamleitung. Am Notweg-Tablet (Code von Hand, sj.hand) ist es nicht ihr Handy: kein Akku.
-  const akku = AKKU.level != null && !DB_OHNE_AKKU && !LS.getItem("sj.hand") ? { p_akku: AKKU.level, p_laedt: AKKU.laedt } : null;
-  // Eine Datenbank ohne Nachtrag 30 kennt p_kompass nicht, eine ohne die Akku-Migration p_akku nicht (PostgREST findet
-  // die Funktion nicht, PGRST202): nur dann einmal ohne, die Position ist wichtiger als Urteil und Akku. Bei jedem
-  // anderen Fehler (Funkloch, Server) kein zweiter Aufruf.
+  // Der Akku geht nicht mit der Position raus: er hängt am Handy, nicht am Team-Code (akkuMelden, member_state).
+  // Eine Datenbank ohne Nachtrag 30 kennt p_kompass nicht (PostgREST findet die Funktion nicht, PGRST202): nur dann
+  // einmal ohne, die Position ist wichtiger als das Urteil. Bei jedem anderen Fehler (Funkloch, Server) kein zweiter Aufruf.
   try {
-    try {
-      try { await rpc("report_position", { ...pos, p_kompass: urteil, ...akku }); }
-      catch (e) { if (!akku || !ohneFunktion(e)) throw e; DB_OHNE_AKKU = true; await rpc("report_position", { ...pos, p_kompass: urteil }); }
-    } catch (e) { if (!ohneFunktion(e)) throw e; await rpc("report_position", pos); }
+    try { await rpc("report_position", { ...pos, p_kompass: urteil }); }
+    catch (e) { if (!ohneFunktion(e)) throw e; await rpc("report_position", pos); }
     // erst nach dem Senden: scheitert es, geht das Urteil beim nächsten Melden wieder mit
-    g.lastSentUrteil = urteil; if (akku) g.akkuNeu = false;
+    g.lastSentUrteil = urteil;
     g.sentAt = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   } catch { /* Funkloch: beim nächsten Mal erneut */ }
   finally { g.meldet = false; }
@@ -3607,7 +3625,11 @@ async function akkuStarten() {
     akkuFensterPruefen();
   } catch { /* gesperrt: wie ein iPhone */ }
 }
-const akkuMerk = () => { try { return Object.assign({ a20: false, a10: false }, JSON.parse(LS.getItem("sj.akku") || "{}")); } catch { return { a20: false, a10: false }; } };
+// Der Merker gilt am selben Kalendertag (lokal, wie sj.kompass): an einem neuen Tag sind beide Schwellen wieder scharf.
+const akkuMerk = () => {
+  let m = {}; try { m = JSON.parse(LS.getItem("sj.akku") || "{}") || {}; } catch { /* defekt: neu anfangen */ }
+  return m.datum === heute() ? { a20: !!m.a20, a10: !!m.a10, datum: m.datum } : { a20: false, a10: false, datum: heute() };
+};
 // Stufe, die das Team sieht: 0 normal oder ladend, 20 knapp, 10 fast leer
 const akkuStufe = () => AKKU.level == null || AKKU.laedt ? 0 : AKKU.level <= AKKU_LEER ? 10 : AKKU.level <= AKKU_KNAPP ? 20 : 0;
 function akkuLesen() {
@@ -3616,7 +3638,7 @@ function akkuLesen() {
   const m = akkuMerk(); let neu = false;
   if (AKKU.level > 25 && m.a20) { m.a20 = false; neu = true; }
   if (AKKU.level > 15 && m.a10) { m.a10 = false; neu = true; }
-  if (neu) LS.setItem("sj.akku", JSON.stringify(m));
+  if (neu) LS.setItem("sj.akku", JSON.stringify(m));   // m trägt das Datum von heute
 }
 // Hält etwas die Seite besetzt? Dann öffnet sich kein Akku-Fenster und nichts wird neu gezeichnet: Hochhalten,
 // Hilfe-Blatt, Einmessen, Selfie (Kamera und Vorschau), großes Foto, offenes Fenster, laufende Aktion, Tippen.
@@ -3629,7 +3651,7 @@ function akkuBelegt() {
 function akkuGeaendert() {
   const vorher = akkuStufe();
   akkuLesen();
-  if (vorher !== akkuStufe()) S.gps.akkuNeu = true;   // geht mit der nächsten Meldung raus
+  akkuMelden(true);   // Stufe oder Laden gewechselt: gleich an die Datenbank (nur die Teamleitung, gedrosselt)
   if (akkuFensterPruefen()) return;
   // Der Hinweis erscheint oder verschwindet: neu zeichnen, wenn gerade nichts besetzt ist
   if (vorher !== akkuStufe() && (S.view === "team" || S.view === "public") && !akkuBelegt()) render();
@@ -3737,9 +3759,23 @@ function teamNachziehen() {
 // noch nicht (PGRST202), einmal ohne und ab dann gar nicht mehr.
 async function memberStateRufen(tok) {
   const a = { p_token: tok };
-  if (AKKU.level != null && !DB_OHNE_AKKU) { a.p_akku = AKKU.level; a.p_laedt = AKKU.laedt; }
+  if (AKKU.level != null && !dbOhneAkku()) { a.p_akku = AKKU.level; a.p_laedt = AKKU.laedt; }
   try { return await rpc("member_state", a); }
-  catch (e) { if (!("p_akku" in a) || !ohneFunktion(e)) throw e; DB_OHNE_AKKU = true; return rpc("member_state", { p_token: tok }); }
+  catch (e) { if (!("p_akku" in a) || !ohneFunktion(e)) throw e; DB_OHNE_AKKU_BIS = Date.now() + 300000; return rpc("member_state", { p_token: tok }); }
+}
+// Die Teamleitung ruft im Team-Takt zusätzlich member_state mit dem eigenen Geräte-Schlüssel auf: so kennt der Server
+// Akku und "gerade offen" dieses Handys (auch auf dem iPhone, das keinen Akku herausgibt). Höchstens alle 30 s, sofort
+// bei einem Wechsel der Stufe oder des Ladens. Nie mit dem Code vom Notweg-Tablet (sj.hand): das ist nicht ihr Handy.
+let akkuGemeldet = { at: 0, stufe: null, laedt: null }, akkuMeldet = false;
+async function akkuMelden(sofort) {
+  const tok = LS.getItem("sj.token");
+  if (!tok || LS.getItem("sj.hand") || S.view !== "team" || !S.team.code || akkuMeldet) return;
+  const geaendert = akkuGemeldet.stufe !== akkuStufe() || akkuGemeldet.laedt !== AKKU.laedt;
+  if (!(sofort && geaendert) && Date.now() - akkuGemeldet.at < 30000) return;
+  akkuMeldet = true;
+  try { await memberStateRufen(tok); akkuGemeldet = { at: Date.now(), stufe: akkuStufe(), laedt: AKKU.laedt }; }
+  catch { /* Funkloch oder fremdes Gerät: der nächste Takt versucht es noch einmal */ }
+  finally { akkuMeldet = false; }
 }
 // Mitlesen: Stand des eigenen Teams über den Geräte-Schlüssel aus der Anmeldung (S.mit)
 async function mitlesen() {
@@ -4261,10 +4297,14 @@ setInterval(() => {
   // Beim Hochhalten und mit offenem Hilfe-Blatt nicht neu zeichnen: beides würde jedes Mal neu einblenden und
   // flackern. Die Daten kommen trotzdem, beim Schließen ist alles aktuell (Review 15.10.2026, Befund 5).
   // Hat sich das Team geändert (neu ausgelost, Leitung gewechselt), trotzdem neu zeichnen.
-  const offen = () => S.hoch || S.team.hilfe;
+  // Ebenso das Übergabe-Fenster: es spielt beim Neuaufbau die Einblendung erneut. Dort ersetzt der Takt nur die Liste
+  // der Personen (Auswahl und Fokus bleiben).
+  const offen = () => S.hoch || S.team.hilfe || S.team.uebergabe;
+  if (S.view === "team" && S.team.code) akkuMelden(false);
   if (S.view === "team" && S.team.code) taktAbruf("team", () => rpc("team_state", { p_code: S.team.code }), async s => {
     const netzWeg = netzOk(); teamStandSetzen(s); await leitungNochDa(s); await ranglisteHolen();
     if (akkuFensterPruefen()) return;
+    if (S.team.uebergabe && S.team.code && !netzWeg) { uebergabeListeNachziehen(s); return; }
     if (!offen() || !S.team.code || netzWeg) render();
   }).catch(e => { if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); render(); } });
   if (S.view === "public") taktAbruf("pub", () => rpc("public_state", {}), async s => {

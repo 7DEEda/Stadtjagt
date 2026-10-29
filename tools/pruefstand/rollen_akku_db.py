@@ -20,12 +20,14 @@ Geprüft:
    3  ungültige Werte (-1, 101) werden ignoriert, auch gesehen_at/akku_at bleiben
    4  Drosselung: höchstens eine Schreibung je 20 s, außer der Akku ändert sich
    5  team_state.geraete: angemeldet, verbunden (2 min), Akku-Alter (10 min), members unverändert
-   6  report_position mit und ohne Akku, alter Aufruf, Akku nur auf die Teamleitung, nichts in drawn
-   7  ichLeite nach team_set_leader; Person ohne Team
+   6  report_position unverändert (fünf Parameter): schreibt Position, aber keinen Akku und kein gesehen_at; nichts in drawn
+   7  ichLeite nach team_set_leader; der Akku der alten Leitung landet nicht bei der neuen; eine Leitung ohne Akku
+      (iPhone) wird über member_state "verbunden"; Person ohne Team
    8  admin_state: hatHandy, leaderAkku (Alter, keine Leitung)
-   9  genau eine member_state, eine report_position; member_state_by_team ist weg (F7)
+   9  genau eine member_state (drei Parameter), eine report_position (fünf); member_state_by_team ist weg (F7)
   10  Rechte, SECURITY DEFINER, search_path; interne Hilfsfunktionen weiter gesperrt; neue Spalten nicht für anon
-  11  alle bisherigen Felder von team_state und admin_state noch da
+  11  alle bisherigen Felder von team_state und admin_state noch da, aber ohne readToken (W3)
+  12  W3: team_photo liefert mit read_token nichts mehr, mit p_token und p_code weiter; alte read_token sind neu gewürfelt
 """
 import pathlib
 import re
@@ -37,8 +39,7 @@ import sql  # noqa: E402
 from rechte_db import INTERN  # noqa: E402
 
 MIGRATION = sql.REPO / "supabase" / "migrations" / "20261029120000_rollen_akku.sql"
-NEU = ["member_state(text,integer,boolean)",
-       "report_position(text,double precision,double precision,double precision,text,integer,boolean)",
+NEU = ["member_state(text,integer,boolean)", "team_photo(text,text,text,integer,boolean)",
        "team_state(text)", "admin_state(text)"]
 
 
@@ -143,61 +144,61 @@ def pruefungen() -> str:
     a("  r := member_state(v_ta);")
     a(chk("json_array_length(r->'geraete') = 3", "5I geraete auch in member_state"))
 
-    a("-- 6: report_position")
+    a("-- 6: report_position (unverändert, fünf Parameter, kein Akku)")
     a("  update game_state set status = 'running', test_mode = false, started_at = coalesce(started_at, now()) where id = 1;")
     a("  update participants set akku = null, akku_laedt = null, akku_at = null, gesehen_at = null where id in (v_a, v_b);")
     a("  v_pl := (select count(*) from position_log where team_id = v_id);")
-    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok', 77, true);")
-    a(chk(f"{st('akku')} = 77 and {st('akku_laedt')} and {st('akku_at')} = now() and {st('gesehen_at')} = now()",
-          "6A Akku auf die Teamleitung"))
-    a(chk(f"{stb('akku')} is null", "6B Mitglied bekommt den Akku der Leitung nicht"))
-    a(chk("(select count(*) from position_log where team_id = v_id) = v_pl + 1 and "
-          "(select lat from team_positions where team_id = v_id) = 50.1", "6C Position eingetragen"))
-    a("  update participants set gesehen_at = now() - interval '1 minute' where id = v_a;")
     a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok');")
     a("  perform report_position(p_code => v_code, p_lat => 50.1, p_lng => 14.4, p_acc => 5);")
-    a(chk(f"{st('akku')} = 77 and {st('gesehen_at')} = now() - interval '1 minute'", "6D ohne Akku (alter Aufruf) ändert nichts"))
-    a(chk("(select count(*) from position_log where team_id = v_id) = v_pl + 3", "6E alter Aufruf schreibt Position"))
-    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok', 150, false);")
-    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok', -3, false);")
-    a(chk(f"{st('akku')} = 77 and {st('akku_laedt')}", "6F ungültiger Akku ignoriert"))
-    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok', 77, true);")
-    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok', 77, true);")
-    a(chk(f"{st('gesehen_at')} = now()", "6G gleicher Akku nach 1 min: wieder geschrieben"))
-    a("  update participants set gesehen_at = now() - interval '10 seconds' where id = v_a;")
-    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok', 77, true);")
-    a(chk(f"{st('gesehen_at')} = now() - interval '10 seconds'", "6H gleicher Akku nach 10 s: nicht geschrieben"))
-    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok', 76, true);")
-    a(chk(f"{st('akku')} = 76", "6I geänderter Akku sofort"))
+    a(chk("(select count(*) from position_log where team_id = v_id) = v_pl + 2 and "
+          "(select lat from team_positions where team_id = v_id) = 50.1", "6A Position eingetragen"))
+    a(chk(f"{st('akku')} is null and {st('gesehen_at')} is null and {stb('akku')} is null and {stb('gesehen_at')} is null",
+          "6B report_position schreibt weder Akku noch gesehen_at"))
+    a("  begin perform report_position(v_code, 50.1, 14.4, 5, 'ok', 77, true); v_f := v_f || '6C Aufruf mit Akku (sieben Argumente) angenommen'::text; "
+      "exception when undefined_function then null; end;")
+    a("  v_n := v_n + 1;")
     a("  v_pl := (select count(*) from position_log where team_id = v_id);")
-    a("  perform report_position(v_code, null, null, null, null, 60, false);")
-    a("  perform report_position(v_code, 0, 0, 5, null, 60, false);")
-    a(chk(f"{st('akku')} = 60 and (select count(*) from position_log where team_id = v_id) = v_pl",
-          "6J Akku auch ohne brauchbare Position, keine Position geschrieben"))
+    a("  perform report_position(v_code, null, null, null, null);")
+    a("  perform report_position(v_code, 0, 0, 5, null);")
+    a(chk("(select count(*) from position_log where team_id = v_id) = v_pl", "6D ohne brauchbare Position wird nichts geschrieben"))
     a("  update game_state set status = 'drawn' where id = 1;")
-    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok', 12, false);")
-    a(chk(f"{st('akku')} = 60 and (select count(*) from position_log where team_id = v_id) = v_pl",
-          "6K in drawn wird nichts geschrieben"))
+    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok');")
+    a(chk("(select count(*) from position_log where team_id = v_id) = v_pl", "6E in drawn wird nichts geschrieben"))
     a("  update game_state set status = 'registration' where id = 1;")
-    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok', 12, false);")
-    a(chk(f"{st('akku')} = 60", "6L in registration wird nichts geschrieben"))
+    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok');")
+    a(chk("(select count(*) from position_log where team_id = v_id) = v_pl", "6F in registration wird nichts geschrieben"))
     a("  update game_state set status = 'running' where id = 1;")
     a("  insert into teams (name, code, read_token) values ('Probelauf ohne Leitung', v_code2, md5(random()::text)) returning id into v_id2;")
-    a("  perform report_position(v_code2, 50.1, 14.4, 5, 'ok', 33, false);")
-    a(chk("(select count(*) from position_log where team_id = v_id2) = 1", "6M Team ohne Leitung: Position ja, kein Fehler"))
-    a("  begin perform report_position('gibt-es-nicht', 50.1, 14.4, 5, 'ok', 33, false); v_f := v_f || '6N unbekannter Code angenommen'::text; "
-      "exception when others then if sqlerrm <> 'Unbekannter Team-Code.' then v_f := v_f || ('6N falscher Text: ' || sqlerrm); end if; end;")
+    a("  perform report_position(v_code2, 50.1, 14.4, 5, 'ok');")
+    a(chk("(select count(*) from position_log where team_id = v_id2) = 1", "6G Team ohne Leitung: Position ja, kein Fehler"))
+    a("  begin perform report_position('gibt-es-nicht', 50.1, 14.4, 5, 'ok'); v_f := v_f || '6H unbekannter Code angenommen'::text; "
+      "exception when others then if sqlerrm <> 'Unbekannter Team-Code.' then v_f := v_f || ('6H falscher Text: ' || sqlerrm); end if; end;")
     a("  v_n := v_n + 1;")
 
     a("-- 7: ichLeite")
+    a("  v_pin_ := (select admin_pin from game_state where id = 1);")
     a("  r := member_state(v_ta); r2 := member_state(v_tb);")
     a(chk("(r->>'ichLeite')::boolean and not (r2->>'ichLeite')::boolean", "7A Leitung A", "r->>'ichLeite' || r2->>'ichLeite'"))
     a("  perform team_set_leader(v_code, v_nb);")
     a("  r := member_state(v_ta); r2 := member_state(v_tb);")
     a(chk("not (r->>'ichLeite')::boolean and (r2->>'ichLeite')::boolean", "7B nach team_set_leader wechselt ichLeite", "r->>'ichLeite' || r2->>'ichLeite'"))
     a(chk("r2->'team'->>'leaderName' = v_nb", "7C leaderName passt"))
-    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok', 20, false);")
-    a(chk(f"{stb('akku')} = 20 and {st('akku')} <> 20", "7D Akku folgt der neuen Leitung"))
+    # W1: der Akku hängt am Gerät. Die alte Leitung (A) meldet weiter ihren Akku, das landet bei A und nicht bei B;
+    # die neue Leitung (B) ohne Akku (iPhone) wird über member_state trotzdem "verbunden".
+    a("  update participants set akku = null, akku_laedt = null, akku_at = null, gesehen_at = null where id in (v_a, v_b);")
+    a("  perform member_state(v_ta, 77, true);")
+    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok');")
+    a(chk(f"{st('akku')} = 77 and {stb('akku')} is null and {stb('gesehen_at')} is null",
+          "7D Akku der alten Leitung landet nicht bei der neuen"))
+    a("  r := team_state(v_code);")
+    a("  select x into r2 from json_array_elements(r->'geraete') x where x->>'name' = v_nb;")
+    a(chk("not (r2->>'verbunden')::boolean and json_typeof(r2->'akku') = 'null'", "7F neue Leitung vor dem ersten Abruf: nicht offen", "r2::text"))
+    a("  perform member_state(v_tb);")
+    a("  r := team_state(v_code);")
+    a("  select x into r2 from json_array_elements(r->'geraete') x where x->>'name' = v_nb;")
+    a(chk("(r2->>'verbunden')::boolean and json_typeof(r2->'akku') = 'null'", "7G iPhone-Leitung ohne Akku wird über member_state offen", "r2::text"))
+    a("  select x into r2 from json_array_elements(admin_state(v_pin_)->'teams') x where x->>'id' = v_id::text;")
+    a(chk("r2->>'leaderAkku' is null", "7H Spielleitung: Leitung ohne Akku, kein Akku der alten Leitung", "r2->>'leaderAkku'"))
     a("  insert into participants (name, name_key, token) values (v_ne, norm(v_ne), 'probe-' || md5(random()::text)) returning token into v_te;")
     a("  r := member_state(v_te);")
     a(chk("json_typeof(r->'team') = 'null' and not (r->>'ichLeite')::boolean and r->>'name' = v_ne", "7E Person ohne Team", "r::text"))
@@ -231,8 +232,8 @@ def pruefungen() -> str:
           "and (select pronargs from pg_proc where pronamespace = 'public'::regnamespace and proname = 'member_state') = 3",
           "9A genau eine member_state mit drei Parametern"))
     a(chk("(select count(*) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'report_position') = 1 "
-          "and (select pronargs from pg_proc where pronamespace = 'public'::regnamespace and proname = 'report_position') = 7",
-          "9B genau eine report_position mit sieben Parametern"))
+          "and (select pronargs from pg_proc where pronamespace = 'public'::regnamespace and proname = 'report_position') = 5",
+          "9B genau eine report_position mit fünf Parametern (unverändert)"))
     a(chk("not exists (select 1 from pg_proc where pronamespace = 'public'::regnamespace and proname = 'member_state_by_team')",
           "9C member_state_by_team gibt es noch"))
     a(chk("(select count(*) from pg_proc where pronamespace = 'public'::regnamespace and proname in ('team_state', 'admin_state')) = 2",
@@ -269,9 +270,10 @@ def pruefungen() -> str:
       "'prizesLeft','winnerTeamId','isWinner','testMode','selfie','geraete'] loop")
     a("    if not (r::jsonb ? f) then v_f := v_f || ('11A team_state ohne ' || f); end if; v_n := v_n + 1;")
     a("  end loop;")
-    a("  foreach f in array array['id','name','code','readToken','leaderName','members'] loop")
+    a("  foreach f in array array['id','name','code','leaderName','members'] loop")
     a("    if not ((r->'team')::jsonb ? f) then v_f := v_f || ('11B team_state.team ohne ' || f); end if; v_n := v_n + 1;")
     a("  end loop;")
+    a(chk("not ((r->'team')::jsonb ? 'readToken')", "11B2 team_state.team enthält readToken noch"))
     a("  foreach f in array array['on','pending','replaceable','deleteOn','photos'] loop")
     a("    if not ((r->'selfie')::jsonb ? f) then v_f := v_f || ('11C team_state.selfie ohne ' || f); end if; v_n := v_n + 1;")
     a("  end loop;")
@@ -286,23 +288,43 @@ def pruefungen() -> str:
     a("    if not (r2::jsonb ? f) then v_f := v_f || ('11E participants ohne ' || f); end if; v_n := v_n + 1;")
     a("  end loop;")
     a("  select x into r2 from json_array_elements(r->'teams') x where x->>'id' = v_id::text;")
-    a("  foreach f in array array['id','name','code','readToken','leaderId','leaderName','memberCount','members','solved',"
+    a("  foreach f in array array['id','name','code','leaderId','leaderName','memberCount','members','solved',"
       "'currentPosition','checkedInAt','lastSolvedAt','lastActivity','failedAttempts','lockedUntil','position','place','finishedAt',"
       "'leaderAkku'] loop")
     a("    if not (r2::jsonb ? f) then v_f := v_f || ('11F teams ohne ' || f); end if; v_n := v_n + 1;")
     a("  end loop;")
+    a(chk("not (r2::jsonb ? 'readToken')", "11F2 admin_state.teams enthält readToken noch"))
+
+    a("-- 12: team_photo ohne read_token (W3)")
+    a("  select id into v_st from stations order by position limit 1;")
+    a("  insert into progress (team_id, station_id) values (v_id, v_st);")
+    a("  insert into station_photos (team_id, station_id, photo, thumb) values (v_id, v_st, decode('0102', 'hex'), decode('0102', 'hex'));")
+    a("  update teams set read_token = 'probe-lese-' || md5(random()::text) where id = v_id;")
+    a("  begin perform team_photo(null, null, (select read_token from teams where id = v_id), 1, false); "
+      "v_f := v_f || '12A team_photo mit read_token liefert noch etwas'::text; "
+      "exception when others then if sqlerrm <> 'Kein Zugang zu diesem Album.' then v_f := v_f || ('12A falscher Text: ' || sqlerrm); end if; end;")
+    a("  begin perform team_photo('', '', (select read_token from teams where id = v_id), 1, false); "
+      "v_f := v_f || '12B team_photo mit read_token (leere Texte) liefert noch etwas'::text; "
+      "exception when others then null; end;")
+    a("  v_n := v_n + 2;")
+    a("  v_ph := team_photo(null, v_ta, null, (select position from stations where id = v_st), false);")
+    a(chk("v_ph->>'data' is not null", "12C team_photo mit p_token geht", "v_ph::text"))
+    a("  v_ph := team_photo(v_code, null, null, (select position from stations where id = v_st), true);")
+    a(chk("v_ph->>'data' is not null", "12D team_photo mit p_code geht", "v_ph::text"))
+    a(chk("(select read_token from teams where id = v_alt) is distinct from v_rt", "12E alte read_token sind neu gewürfelt"))
     return "\n".join(x for x in c if x)
 
 
 PROBE = r"""
 do $probe$
-declare v_n int := 0; v_f text[] := '{}'; r json; r2 json; f text; rr text; v_pl int; v_pin text;
+declare v_n int := 0; v_f text[] := '{}'; r json; r2 json; f text; rr text; v_pl int; v_pin text; v_pin_ text; v_alt uuid; v_rt text := 'probe-lese-' || md5(random()::text); v_st uuid; v_ph json;
         v_code text := 'PROBE-' || substr(md5(random()::text), 1, 8); v_code2 text := 'PROBE-' || substr(md5(random()::text), 1, 8);
         v_id uuid; v_id2 uuid; v_a uuid; v_b uuid; v_c uuid;
         v_na text := 'Probe Anna ' || substr(md5(random()::text), 1, 6); v_nb text := 'Probe Ben ' || substr(md5(random()::text), 1, 6);
         v_nc text := 'Probe Cleo ' || substr(md5(random()::text), 1, 6); v_ne text := 'Probe Emil ' || substr(md5(random()::text), 1, 6);
         v_ta text := 'probe-' || md5(random()::text); v_tb text := 'probe-' || md5(random()::text); v_te text;
 begin
+  insert into teams (name, code, read_token) values ('Probelauf alt', 'PROBE-' || substr(md5(random()::text), 1, 8), v_rt) returning id into v_alt;
   __MIGRATION__
   update game_state set status = 'running', test_mode = false, started_at = coalesce(started_at, now()) where id = 1;
   insert into teams (name, code, read_token) values ('Probelauf', v_code, md5(random()::text)) returning id into v_id;

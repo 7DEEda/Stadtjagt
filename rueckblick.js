@@ -1871,7 +1871,7 @@ let qrLaedt = null;
 function fernQr() {
   if (F.qr) return F.qr;
   if (window.qrcode) { const q = window.qrcode(0, "M"); q.addData(fernLink()); q.make(); return F.qr = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); }
-  // vendor/qrcode.js (MIT) lädt erst beim ersten Gebrauch, wie beim Mitlese-Link in index.html
+  // vendor/qrcode.js (MIT) lädt erst beim ersten Gebrauch, früher auch beim Mitlese-Link in index.html
   if (!qrLaedt) qrLaedt = new Promise((ok, nein) => { const s = document.createElement("script"); s.src = "vendor/qrcode.js"; s.onload = ok; s.onerror = nein; document.head.appendChild(s); })
     .then(() => fernAnzeige(), () => { qrLaedt = null; });
   return "";

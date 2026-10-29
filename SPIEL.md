@@ -155,6 +155,11 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
   `ok` / `unzuverlaessig`, sonst null), bei einem Wechsel des Urteils sofort.
   Die App schickt immer nur eine Meldung zur Zeit und wiederholt ohne
   `p_kompass` nur bei PGRST202 (Datenbank ohne Nachtrag 30).
+- Der Akku geht nicht mit der Position raus: er hängt am Gerät, nicht am Team-Code.
+  Jedes Handy meldet ihn über `member_state(p_token, p_akku, p_laedt)`; die
+  Teamleitung ruft das im Team-Takt zusätzlich auf (höchstens alle 30 s, sofort
+  bei Wechsel der Stufe oder des Ladens, nie mit dem Code vom Notweg-Tablet).
+  Das liefert auch auf dem iPhone „gerade offen“ (`gesehen_at`).
 
 ---
 
@@ -256,7 +261,6 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
 |---|---|---|---|---|
 | Teams, Mitglieder, Teamleitung | ja | eigenes | eigenes | alle |
 | Team-Code | nein | **nein** | eigener | alle |
-| Mitlese-Schlüssel (ohne Funktion) | nein | **nein** | eigener | alle |
 | Station, Ortshinweis, Koordinaten | nein | eigene | eigene | alle |
 | Rätsel | nein | nach Check-in | nach Check-in | alle |
 | Lösung | nein | nein | nein | alle |
@@ -288,9 +292,11 @@ mit dem Team-Code.
 - Mitlesen nur mit Geräte-Token aus der eigenen Anmeldung, nie über den
   Namen: Namen sind öffentlich, und alle Teams haben dieselben Rätsel und
   Ziffern. Den Mitlese-Link (`teams.read_token`, `member_state_by_team`) gibt es
-  seit F7 (29.10.2026) nicht mehr; die Spalte und das Feld `readToken` bleiben
-  ohne Funktion stehen, die Funktion `member_state_by_team` fällt mit der
-  Migration weg.
+  seit F7 (29.10.2026) nicht mehr: die Funktion `member_state_by_team` fällt mit
+  der Migration weg, `team_photo` kennt den Lese-Token nicht mehr, die Felder
+  `readToken` fehlen in `team_state` und `admin_state`, und die Spalte
+  `teams.read_token` wird mit der Migration neu gewürfelt (sie bleibt ohne
+  Funktion stehen).
 - Selbstanmeldung nur bis zum Auslosen, sonst bekäme ein erfundener Name
   mitten im Spiel Einblick in ein fremdes Team.
 - Supabase lädt `pg-safeupdate`: **jedes** `UPDATE`/`DELETE` braucht ein

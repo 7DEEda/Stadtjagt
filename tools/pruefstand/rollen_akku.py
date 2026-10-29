@@ -10,7 +10,7 @@ Teile: 1 Mitglied wird Leitung und zurück (stilles Umschalten, ab Auslosen), 2 
 3 Spielleitung nimmt die Leitung weg, veraltete Antwort, 4 Notweg-Tablet (sj.hand), 5 Abmelden und sj.abgemeldet (F1),
 6 Akku-Fenster bei 20 % und 10 %, 7 Akku-Hinweis, 8 Spielleitung (Vermerk, Braucht dich), 9 Meldungen mit Akku,
 10 alte Datenbank (PGRST202), 11 iPhone ohne Akku, 12 Texte und Tippziele.
-Haken in mock.js: window.__akku(level, laedt), __AKKUS, __MEMBER_ARGS, __REPORT_ARGS, __AKKU, __ALTE_DB, __leitung(name).
+Haken in mock.js: window.__akku(level, laedt), __AKKUS, __MEMBER_ARGS, __REPORT_ARGS, __ALTE_DB, __leitung(name).
 Der Mitlese-Link (F7) ist gestrichen und kommt hier nicht mehr vor.
 Im Vordergrund mit Timeout aufrufen, etwa `timeout 590 python tools/pruefstand/rollen_akku.py`. Am Ende steht OK oder FEHLT.
 """
@@ -149,7 +149,7 @@ with sync_playwright() as pw:
         namen = pg.locator(".wahl button").all_inner_texts()
         namen = [n.replace(" ", " ").replace("\n", " | ") for n in namen]
         pruef(len(namen) == 6 and not any("Tobias" in n for n in namen), f"6 Personen, Tobias (ohne eigenes Handy) fehlt ({len(namen)})")
-        pruef(namen[-1].startswith("Lea Hoffmann") and "Handy nicht verbunden" in namen[-1], f"nicht verbundenes Handy steht zuletzt: {namen[-1]!r}")
+        pruef(namen[-1].startswith("Lea Hoffmann") and "Handy gerade nicht offen" in namen[-1], f"Handy, das gerade nicht offen ist, steht zuletzt: {namen[-1]!r}")
         pruef(any(n.startswith("Emre Demir") and "Akku 70 %, lädt" in n for n in namen), "Akku und 'lädt' stehen dran")
         pruef(any(n.startswith("Jonas Keller") and "Akku 81 %" in n for n in namen), "Jonas mit Akku 81 %")
         pruef(pg.locator("#tabgeben").is_disabled(), "'Übergeben' gesperrt ohne Wahl")
@@ -167,6 +167,21 @@ with sync_playwright() as pw:
         # Funkloch: Meldung im Fenster, Fenster bleibt
         pg.click("[data-act=t-abgeben-frage]")
         pg.click(".wahl button:has-text('Julia')")
+        # W2: der 10-s-Takt baut das offene Fenster nicht neu auf (sonst spielt die Einblendung erneut), ersetzt nur die Liste
+        pg.evaluate("window.__ue = document.querySelector('.ueber'); window.__blatt = document.querySelector('.ueber .blatt')")
+        pg.evaluate("window.__AKKUS['Julia Krüger'] = { akku: 33, laedt: false, at: Date.now() }")
+        takt(pg)
+        takt(pg)
+        pruef(pg.evaluate("document.querySelector('.ueber') === window.__ue && document.querySelector('.ueber .blatt') === window.__blatt"),
+              "Takt läuft: dasselbe Fenster-Element, keine neue Einblendung")
+        pruef(pg.evaluate("S.team.wahl") == "Julia Krüger" and pg.locator(".wahl button[aria-pressed=true]").count() == 1,
+              "Auswahl bleibt im Takt")
+        pruef(any(n.startswith("Julia") and "Akku 33 %" in n for n in [x.replace(" ", " ") for x in pg.locator(".wahl button").all_inner_texts()]),
+              "die Liste im offenen Fenster zieht nach (Julia 33 %)")
+        pg.focus(".wahl button:has-text('Jonas')")
+        pg.evaluate("window.__AKKUS['Jonas Keller'] = { akku: 77, laedt: false, at: Date.now() }")
+        takt(pg)
+        pruef(pg.evaluate("document.activeElement && document.activeElement.dataset.name") == "Jonas Keller", "Fokus bleibt auf dem Knopf")
         pg.evaluate("window.__weg = ['team_set_leader']")
         pg.click("#tabgeben")
         pg.wait_for_timeout(800)
@@ -184,13 +199,40 @@ with sync_playwright() as pw:
         pruef("Anmeldeseite" not in t and "tippt" not in t, "keine alte Meldung ('Anmeldeseite', 'tippt')")
         pg.close()
 
+        # W4: Abgabe aus dem Akku-Fenster oder mit knappem, nicht ladendem Akku: kein GPS und keine Bildschirmsperre mehr
+        for titel, js, erwartet in [
+                ("aus dem Akku-Fenster (18 %)", "window.__akku(18)", False),
+                ("mit 15 % über den Knopf", "window.__akku(15)", False),
+                ("mit 15 %, aber am Ladegerät", "window.__akku(15, true)", True),
+                ("mit 60 %", "0", True)]:
+            pg = neu(b, "akku-leitung")
+            pg.evaluate(js)
+            pg.wait_for_timeout(300)
+            if pg.evaluate("S.team.uebergabe") == "akku20":
+                pass
+            else:
+                pg.click(".ftabs [data-tab=team]")
+                pg.click("[data-act=t-abgeben-frage]")
+            pg.click(".wahl button:has-text('Jonas')")
+            pg.click("#tabgeben")
+            pruef(warte(pg, "S.view === 'public'"), f"Übergabe {titel}")
+            pg.wait_for_timeout(400)
+            an_ = pg.evaluate("S.gps.on")
+            pruef(an_ is erwartet and (ls(pg, "sj.gps") == "1") is erwartet,
+                  f"Übergabe {titel}: GPS {'läuft weiter' if erwartet else 'aus, Merker gelöscht'} (an={an_}, sj.gps={ls(pg, 'sj.gps')})")
+            if not erwartet:
+                pruef(pg.evaluate("!S.wachHalten"), f"Übergabe {titel}: Bildschirmsperre gelöst")
+                takt(pg)
+                pruef(pg.evaluate("S.gps.on") is False, f"Übergabe {titel}: der Takt startet das GPS nicht wieder")
+            pg.close()
+
         pg = neu(b, "akku-leitung")
         pg.click(".ftabs [data-tab=team]")
         pg.click("[data-act=t-abgeben-frage]")
         pg.click(".wahl button:has-text('Lea')")
         pg.click("#tabgeben")
-        pruef(warte(pg, "S.view === 'public'"), "Übergabe an ein nicht verbundenes Handy klappt")
-        pruef(text(pg, "#kurz") == "Lea leitet jetzt das Team, sobald das Handy wieder verbunden ist.", f"Wortlaut F6: {text(pg, '#kurz')!r}")
+        pruef(warte(pg, "S.view === 'public'"), "Übergabe an ein Handy, das gerade nicht offen ist, klappt")
+        pruef(text(pg, "#kurz") == "Lea leitet jetzt das Team, sobald das Handy wieder offen ist.", f"Wortlaut F6: {text(pg, '#kurz')!r}")
         pg.close()
 
     if an(3):
@@ -239,6 +281,11 @@ with sync_playwright() as pw:
         takt(pg)
         takt(pg)
         pruef(pg.evaluate("S.view") == "team" and pg.evaluate("S.team.code") == "FUCHS-4821", "Tablet bleibt Teamleitung, keine Rollenwechsel")
+        n = len(pg.evaluate("window.__MEMBER_ARGS"))
+        takt(pg)
+        takt(pg)
+        takt(pg)
+        pruef(len(pg.evaluate("window.__MEMBER_ARGS")) == n, "Tablet mit Code von Hand meldet keinen Akku über member_state (sj.hand)")
         pg.close()
 
         pg = neu(b, "rolle-mitglied")
@@ -301,6 +348,18 @@ with sync_playwright() as pw:
         pg.evaluate("window.__akku(20)")
         pruef(warte(pg, "S.team.uebergabe === 'akku20'"), "nach Laden über 25 % wieder scharf: 20-%-Fenster kommt wieder")
         pg.keyboard.press("Escape")
+        pg.close()
+
+        # K6: der Merker gilt nur am selben Kalendertag
+        pg = neu(b, "akku-leitung")
+        pg.evaluate("localStorage.setItem('sj.akku', JSON.stringify({ a20: true, a10: true, datum: heute() }))")
+        pruef(pg.evaluate("akkuMerk().a20") is True and pg.evaluate("akkuMerk().a10") is True, "Merker von heute gilt")
+        pg.evaluate("localStorage.setItem('sj.akku', JSON.stringify({ a20: true, a10: true, datum: 'Mon Jan 01 2001' }))")
+        pruef(pg.evaluate("akkuMerk().a20") is False and pg.evaluate("akkuMerk().a10") is False, "Merker von einem anderen Tag: beide Schwellen wieder scharf")
+        pg.evaluate("localStorage.setItem('sj.akku', JSON.stringify({ a20: true, a10: true }))")
+        pruef(pg.evaluate("akkuMerk().a20") is False, "alter Merker ohne Datum: wieder scharf")
+        pg.evaluate("window.__akku(18)")
+        pruef(warte(pg, "S.team.uebergabe === 'akku20'"), "neuer Tag: das 20-%-Fenster kommt wieder")
         pg.close()
 
         pg = neu(b, "akku-leitung-15")
@@ -384,6 +443,10 @@ with sync_playwright() as pw:
         pg.evaluate("window.__akku(18)")
         pg.wait_for_timeout(400)
         pruef(pg.evaluate("S.team.uebergabe") is None, "niemand zum Übergeben: kein Fenster")
+        pg.click(".ftabs [data-tab=weg], .ftabs [data-tab=raetsel]")
+        t = text(pg, "#akkuhinweis") if pg.locator("#akkuhinweis").count() else ""
+        pruef("Lade dein Handy, wenn du kannst." in t and "Leitung" not in t.replace("Teamleitung", "") and pg.locator("#akkuhinweis [data-act]").count() == 0,
+              f"niemand wählbar: 'Lade dein Handy, wenn du kannst.' ohne Knopf ({t!r})")
         pg.close()
 
     if an(7):
@@ -392,14 +455,15 @@ with sync_playwright() as pw:
         pruef(warte(pg, "S.mit && S.mit.team"), "Jonas liest mit")
         pg.wait_for_selector("#akkuhinweis")
         t = text(pg, "#akkuhinweis")
-        pruef(t.startswith("Akku knapp: dein Handy 18 %, Julia 15 %") and "Ladet das Handy, wenn ihr könnt." in t, f"Hinweis bei knappem Mitglied: {t!r}")
+        pruef(t.startswith("Akku knapp: dein Handy 18 %, Julia 15 %") and "Ladet die Handys, wenn ihr könnt." in t, f"Hinweis bei zwei knappen Handys: {t!r}")
         pruef(pg.evaluate("document.querySelector('#akkuhinweis').closest('#inhalt') !== null"), "Hinweis steht oben im Reiter Weg")
         pg.click(".ftabs [data-tab=ziffern]")
         pruef(pg.locator("#akkuhinweis").count() == 0, "nicht im Reiter Ziffern")
         pg.click(".ftabs [data-tab=weg], .ftabs [data-tab=raetsel]")
         pg.evaluate("window.__akku(18, true)")
         pg.wait_for_timeout(400)
-        pruef("dein Handy" not in text(pg, "#akkuhinweis") and "Julia" in text(pg, "#akkuhinweis"), "Laden nimmt das eigene Handy aus dem Hinweis")
+        pruef("dein Handy" not in text(pg, "#akkuhinweis") and "Julia" in text(pg, "#akkuhinweis") and "Ladet das Handy, wenn ihr könnt." in text(pg, "#akkuhinweis"),
+              "Laden nimmt das eigene Handy aus dem Hinweis, bei einem Handy steht die Einzahl")
         pg.evaluate("window.__AKKUS['Julia Krüger'] = { akku: 15, laedt: true, at: Date.now() + 1e7 }")
         takt(pg)
         pruef(pg.locator("#akkuhinweis").count() == 0, "alle laden: kein Hinweis")
@@ -455,6 +519,10 @@ with sync_playwright() as pw:
         pruef("Akku der Teamleitung: 18 %" in d, f"Detail: Akku der Teamleitung ({d[:80]!r})")
         opts = pg.locator("#teamfeld .row.sel select option").all_inner_texts()
         pruef("Emre Demir (kein eigenes Handy)" in opts and "Anna Berger" in opts, f"Auswahl: Emre mit '(kein eigenes Handy)' ({opts})")
+        pruef(pg.evaluate("!!(problemVon({ name: 'X', leaderName: 'Y', position: { updatedAt: new Date().toISOString() }, leaderAkku: { akku: 10, laedt: false } }, { status: 'running' }) || {}).akku") is True
+              and pg.evaluate("problemVon({ name: 'X', leaderName: 'Y', position: { updatedAt: new Date().toISOString() }, leaderAkku: { akku: 11, laedt: false } }, { status: 'running' })") is None
+              and pg.evaluate("problemVon({ name: 'X', leaderName: 'Y', position: { updatedAt: new Date().toISOString() }, leaderAkku: { akku: 10, laedt: true } }, { status: 'running' })") is None,
+              "'Braucht dich' bei 10 % (nicht ladend), nicht bei 11 % und nicht ladend")
         pg.evaluate("S.admin.confirm = { key: 'leader', id: S.admin.state.teams[0].id, value: 'x', name: 'Jonas Keller', team: 'Fuchs', alt: 'Anna Berger' }; render()")
         dl = text(pg, ".dialog, #dlg, .overlay")
         pruef("tippt" not in dl and "Beide Handys schalten nach dem nächsten Abruf von selbst um" in dl, f"Dialog 'Teamleitung wechseln' ohne 'tippt' ({dl[:160]!r})")
@@ -463,28 +531,37 @@ with sync_playwright() as pw:
         # Ergebnis steht vor dem Schließen (Chrome 155 hängt sonst, siehe abschluss.py)
 
     if an(9):
-        print("9 Meldungen mit Akku")
+        print("9 Meldungen mit Akku (W1: über member_state, nicht über report_position)")
         pg = neu(b, "akku-leitung")
         pg.evaluate("window.__gps(50.10496, 14.4231, 8)")
         pg.wait_for_timeout(500)
         ra = pg.evaluate("window.__REPORT_ARGS")
-        pruef(len(ra) >= 1 and ra[0].get("p_akku") == 60 and ra[0].get("p_laedt") is False, f"report_position meldet Akku 60 und laedt = false ({ra[:1]})")
-        pruef(pg.evaluate("window.__AKKU") == {"akku": 60, "laedt": False}, "Server hat den Akku der Leitung")
-        n = len(pg.evaluate("window.__REPORT_ARGS"))
+        pruef(len(ra) >= 1 and all("p_akku" not in a and "p_laedt" not in a for a in ra), f"report_position schickt keinen Akku mehr ({ra[:1]})")
+        tok = pg.evaluate("localStorage.getItem('sj.token')")
+        takt(pg)
+        ma = pg.evaluate("window.__MEMBER_ARGS")
+        pruef(len(ma) >= 1 and ma[-1].get("p_token") == tok and ma[-1].get("p_akku") == 60 and ma[-1].get("p_laedt") is False,
+              f"Teamleitung ruft im Takt member_state mit eigenem Token und Akku 60 ({ma[-1:]})")
+        pruef(pg.evaluate("window.__AKKUS['Anna Berger'].akku") == 60, "Server hat den Akku der Leitung (am Gerät)")
+        n = len(pg.evaluate("window.__MEMBER_ARGS"))
+        takt(pg)
+        takt(pg)
+        pruef(len(pg.evaluate("window.__MEMBER_ARGS")) == n, "innerhalb von 30 s kein zweiter Aufruf (gedrosselt)")
+        takt(pg)
+        pruef(len(pg.evaluate("window.__MEMBER_ARGS")) == n + 1, "nach 30 s wieder ein Aufruf")
+        n += 1
         pg.evaluate("window.__akku(55)")
-        pg.evaluate("window.__gps(50.10496, 14.4231, 8)")
-        pg.wait_for_timeout(400)
-        pruef(len(pg.evaluate("window.__REPORT_ARGS")) == n, "55 % statt 60 %: keine zusätzliche Meldung (Drosselung bleibt)")
+        pg.wait_for_timeout(300)
+        pruef(len(pg.evaluate("window.__MEMBER_ARGS")) == n, "55 % statt 60 %: kein zusätzlicher Aufruf")
         pg.evaluate("window.__akku(20)")
-        pg.evaluate("window.__gps(50.10496, 14.4231, 8)")
         pg.wait_for_timeout(500)
-        ra = pg.evaluate("window.__REPORT_ARGS")
-        pruef(len(ra) == n + 1 and ra[-1]["p_akku"] == 20, f"Schwelle 20 % löst sofort eine Meldung aus ({len(ra) - n})")
+        ma = pg.evaluate("window.__MEMBER_ARGS")
+        pruef(len(ma) == n + 1 and ma[-1]["p_akku"] == 20, f"Schwelle 20 % löst sofort einen Aufruf aus ({len(ma) - n})")
         pg.evaluate("window.__akku(20, true)")
-        pg.evaluate("window.__gps(50.10496, 14.4231, 8)")
         pg.wait_for_timeout(500)
-        ra = pg.evaluate("window.__REPORT_ARGS")
-        pruef(ra[-1]["p_akku"] == 20 and ra[-1]["p_laedt"] is True, "Laden-Wechsel geht sofort mit")
+        ma = pg.evaluate("window.__MEMBER_ARGS")
+        pruef(ma[-1]["p_akku"] == 20 and ma[-1]["p_laedt"] is True, "Laden-Wechsel geht sofort mit")
+        pruef(pg.evaluate("window.__AKKUS['Anna Berger'].laedt") is True, "Server kennt Laden")
         pg.close()
 
         pg = neu(b, "akku-mitglied-knapp")
@@ -498,11 +575,18 @@ with sync_playwright() as pw:
         pg = neu(b, "akku-leitung", vorab="window.__ALTE_DB = true;")
         pg.evaluate("window.__gps(50.10496, 14.4231, 8)")
         pg.wait_for_timeout(600)
-        pruef(pg.evaluate("window.__POSITION") is not None and pg.evaluate("DB_OHNE_AKKU") is True, "Meldung geht über den Rückfall durch, DB_OHNE_AKKU gemerkt")
-        pg.evaluate("window.__REPORT_ARGS.length = 0; window.__gps(50.1051, 14.4235, 8)")
-        pg.wait_for_timeout(500)
-        ra = pg.evaluate("window.__REPORT_ARGS")
-        pruef(ra == [] or all("p_akku" not in a for a in ra), "danach kein p_akku mehr")
+        pruef(pg.evaluate("window.__POSITION") is not None, "Meldung geht über den Rückfall (ohne p_kompass) durch")
+        takt(pg)
+        pruef(pg.evaluate("dbOhneAkku()") is True, "member_state der Leitung: Rückfall ohne p_akku, DB_OHNE_AKKU gemerkt")
+        pg.evaluate("window.__MEMBER_ARGS.length = 0")
+        takt(pg, 30000)
+        pruef(len(pg.evaluate("window.__MEMBER_ARGS")) >= 1 and all("p_akku" not in a for a in pg.evaluate("window.__MEMBER_ARGS")), "danach ruft es ohne p_akku")
+        # K1: nach 5 Minuten wird einmal erneut mit Akku versucht (und bei alter Datenbank wieder 5 Minuten gemerkt)
+        pg.evaluate("DB_OHNE_AKKU_BIS = Date.now() + 1000; window.__MEMBER_ARGS.length = 0")
+        takt(pg, 30000)
+        ma = pg.evaluate("window.__MEMBER_ARGS")
+        pruef(any("p_akku" in a for a in ma), f"nach Verfall des Vermerks versucht es einmal wieder mit Akku ({len(ma)} Aufrufe)")
+        pruef(pg.evaluate("dbOhneAkku()") is True, "und merkt sich die alte Datenbank erneut")
         pg.click(".ftabs [data-tab=team]")
         pg.click("[data-act=t-abgeben-frage]")
         namen = pg.locator(".wahl button").all_inner_texts()
@@ -514,7 +598,7 @@ with sync_playwright() as pw:
 
         pg = neu(b, "rolle-mitglied", vorab="window.__ALTE_DB = true;")
         pruef(warte(pg, "S.mit && S.mit.team"), "Mitlesen klappt mit alter Datenbank (member_state ohne p_akku)")
-        pruef(pg.evaluate("DB_OHNE_AKKU") is True, "DB_OHNE_AKKU gemerkt")
+        pruef(pg.evaluate("dbOhneAkku()") is True, "DB_OHNE_AKKU gemerkt")
         pg.evaluate("window.__MEMBER_ARGS.length = 0")
         takt(pg)
         pruef(all("p_akku" not in a for a in pg.evaluate("window.__MEMBER_ARGS")), "danach ruft es ohne p_akku")
@@ -532,6 +616,10 @@ with sync_playwright() as pw:
         ra = pg.evaluate("window.__REPORT_ARGS")
         pruef(len(ra) >= 1 and all("p_akku" not in a and "p_laedt" not in a for a in ra), "report_position ohne Akku")
         pruef(pg.locator(".ueber").count() == 0 and pg.locator("#akkuhinweis").count() == 0, "keine Warnung")
+        takt(pg)
+        ma = pg.evaluate("window.__MEMBER_ARGS")
+        pruef(len(ma) >= 1 and ma[-1].get("p_token") == pg.evaluate("localStorage.getItem('sj.token')") and "p_akku" not in ma[-1] and "p_laedt" not in ma[-1],
+              f"iPhone-Leitung ruft member_state nur mit p_token (so wird sie 'gerade offen') ({ma[-1:]})")
         pg.click(".ftabs [data-tab=team]")
         pg.click("[data-act=t-abgeben-frage]")
         pruef(pg.locator(".wahl button").count() == 6, "Übergabe geht trotzdem")
