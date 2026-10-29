@@ -2180,6 +2180,14 @@ Laden (Variante 1 "Kreis" aus https://claude.ai/artifact/Tu3XQQFAkTxMruEWBhgppB)
 Mitglied und Mitlese-Link bekommen es, nie die Spielleitung und die Rückblick-Show; ein Tipp überspringt. Einzelheiten
 SPIEL.md §18, Prüfung `tools/pruefstand/intro.py`. Am echten Handy noch anzusehen (iPhone und Android).
 
+## Save-the-Date-Mail (28.10.2026, nicht im Repo)
+
+Termin der Teamfahrt: **Fr 23. bis So 25. April 2027** (Friedrich, 28.10.). Teaser-Mail als Kartenblatt (Postenstrecke
+Start 23., Posten 24., Ziel 25., Kartenausschnitt aus Hintergrund A ohne Gitterzahlen, Nordpfeil und Maßstab), verrät
+weder Prag noch das Spiel; Fuß "Blatt 2 folgt." Liegt in OneDrive `Claude\TSE\Marketing\Stadtjagt\mail\save-the-date\`
+(HTML, Bilder, `teamfahrt-2027.ics`, Erzeuger-Skripte in `erzeugen\`). In Outlook: HTML im Browser öffnen, alles
+kopieren, in eine neue Mail einfügen. In Outlook noch nicht getestet, noch nicht verschickt.
+
 ## Stand zum Fortsetzen (16.10.2026, Rückblick v2 am 17.10.2026)
 
 **Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test
