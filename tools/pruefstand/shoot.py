@@ -23,7 +23,7 @@ def bauen():
     shutil.copy(REPO / "config.js", HIER / "config.js")
     shutil.copy(REPO / "kompass-waechter.js", HIER / "kompass-waechter.js")
     shutil.copytree(REPO / "hintergrund", HIER / "hintergrund", dirs_exist_ok=True)
-    shutil.copytree(REPO / "vendor", HIER / "vendor", dirs_exist_ok=True)   # QR-Generator für den Mitlese-Link
+    shutil.copytree(REPO / "vendor", HIER / "vendor", dirs_exist_ok=True)   # QR-Generator für die Rückblick-Fernbedienung
     # Rückblick-Show: Skript, Stylesheet und Grundkarte werden nur mit ihr nachgeladen, liegen aber neben app.html
     # dazu die Fernbedienung fürs Handy (fernbedienung.py)
     for n in ("rueckblick.js", "rueckblick.css", "rueckblick-karte.js", "rueckblick-fernbedienung.html"):

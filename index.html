@@ -486,9 +486,6 @@ a.btn{text-decoration:none;text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 /* Tablet hochkant: die Karte lässt Platz zum Wischen, sonst fängt sie jedes Scrollen ab */
 @media (orientation:portrait){#map{height:min(62vh,560px)}}
-/* QR-Code des Mitlese-Links: immer dunkel auf Weiß, sonst liest ihn im dunklen Design keine Kamera */
-.qr{background:#fff;border-radius:10px;padding:14px;margin-top:12px;display:grid;place-items:center}
-.qr svg{width:min(100%,260px);height:auto;display:block}
 /* Stationsname verschlüsselt (Nachtrag 26). Jedes Zeichen ein Feld fester Breite und Höhe, flimmernd wie
    eingerastet in derselben Schrift: so springt weder die Zeile noch der Inhalt darunter. */
 .geheim{font:700 var(--fs-xl)/1 var(--mono);display:flex;flex-wrap:wrap;gap:4px .55em;margin:0}
@@ -1102,7 +1099,7 @@ function viewPublic() {
 
   const vorbei = p.status === "finished";
   out += ranglisteHTML(p, mit ? mit.team.name : null);
-  // Eigenes Team: über den Namen gefunden, oder über Geräte- bzw. Mitlese-Schlüssel bekannt
+  // Eigenes Team: über den Namen gefunden, oder über den Geräte-Schlüssel bekannt
   const t = S.lookup || (S.mit && S.mit.team ? { name: S.mit.team.name, leaderName: S.mit.team.leaderName, members: S.mit.team.members } : null);
   const eigen = S.lookup ? S.lookupEigen : !!t;
   // Gehört dieses Handy der Teamleitung? Nur mit eigenem Geräte-Schlüssel: ein per Suche gemerkter
@@ -1118,8 +1115,8 @@ function viewPublic() {
       <div class="kreis" data-act="pub-hoch" role="button" aria-label="Team-Zeichen groß zeigen" title="Antippen zum Hochhalten">${teamEmoji(t.name)}</div>
       <h1>Team ${esc(t.name)}</h1>
       <p>${p.status === "drawn" ? `Sucht die anderen mit ${teamEmoji(t.name)}. ` : ""}Teamleitung: <b>${esc(t.leaderName || "offen")}</b></p>
-      ${p.status === "drawn" && eigen && !ichLeite ? `<p class="small" style="margin-top:6px">Alle Teams starten gleichzeitig. ${S.mit ? `Lass diese Seite offen: ab dem Start siehst du hier Station und Rätsel. Eingeben macht ${esc(vorname(t.leaderName) || "eure Teamleitung")}.` : `Station und Rätsel siehst du ab dem Start über den Mitlese-Link, den ${esc(vorname(t.leaderName) || "eure Teamleitung")} in eure Gruppe schickt.`}</p>` : ""}
-      ${p.status === "running" && !ichLeite ? `<div class="msg info" style="text-align:left">Das Spiel läuft. Station und Rätsel siehst du über den Mitlese-Link. Frag ${esc(vorname(t.leaderName) || "eure Teamleitung")} danach.</div>` : ""}
+      ${p.status === "drawn" && eigen && !ichLeite ? `<p class="small" style="margin-top:6px">Alle Teams starten gleichzeitig. ${S.mit ? `Lass diese Seite offen: ab dem Start siehst du hier Station und Rätsel. Eingeben macht ${esc(vorname(t.leaderName) || "eure Teamleitung")}.` : `Station und Rätsel siehst du ab dem Start auf dem Handy, mit dem du dich angemeldet hast.`}</p>` : ""}
+      ${p.status === "running" && !ichLeite ? `<div class="msg info" style="text-align:left">Das Spiel läuft. Station und Rätsel siehst du auf dem Handy, mit dem du dich angemeldet hast. Frag ${esc(vorname(t.leaderName) || "eure Teamleitung")} danach.</div>` : ""}
       ${msgBox("karte")}
       ${ichLeite ? `<a class="btn" href="#/team">Du bist Teamleitung: loslegen</a>
         <p class="small muted">Auf diesem Handy bist du gleich drin.</p>` : ""}
@@ -1492,11 +1489,10 @@ function leisteHTML(st, s, lesen) {
 function teamTabHTML(st, lesen) {
   const mitglieder = `<div class="panel"><h3>Mitglieder <span class="small muted nw">${(st.team.members || []).length}</span></h3>
     <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}${m === st.team.leaderName ? ' <span class="chip">Teamleitung</span>' : ""}</li>`).join("")}</ul></div>`;
-  return (lesen ? "" : mitlesePanelHTML(st, "Wer diesen Link öffnet, sieht auf dem eigenen Handy alles mit: Station, Rätsel, Ziffern. Eingeben kannst nur du."))
-    + mitglieder
+  return mitglieder
     + `<p style="text-align:center;margin:10px 0 0"><button class="link" data-act="pub-hoch">${teamEmoji(st.team.name)} Team-Zeichen zum Hochhalten</button></p>`
     + albumHTML(st) + (S.pub ? ranglisteHTML(S.pub, st.team.name) : "")
-    + (lesen ? "" : leitungHTML(st, true) + abmeldenHTML() + nav());
+    + (lesen ? "" : leitungHTML(st) + abmeldenHTML() + nav());
 }
 // Die Hülle fürs laufende Spiel: je nach Tab Weg (der lange Teil), Ziffern oder Team
 function spielHuelle(st, s, lesen, weg, hilfeText) {
@@ -1532,10 +1528,8 @@ function teamAnsicht(st, lesen) {
   if (st.status === "drawn") return kopfAlt + out + `<div class="panel"><h3>Ihr seid startklar</h3>
     <p>Alle Teams starten gleichzeitig. Wartet auf das Signal der Spielleitung.</p>${msgBox()}
     <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>`
-    // vor dem Start ist der Mitlese-Link der wichtigste Handgriff: einmal in die Gruppe, dann sehen alle mit
-    + (lesen ? "" : mitlesePanelHTML(st, "Schick den Link jetzt in eure Team-Gruppe. Wer ihn öffnet, sieht ab dem Start auf dem eigenen Handy alles, was du hier siehst. Eingeben kannst nur du."))
     + vorbereitenHTML() + helpBtn(`Stadtjagd: Hier ist ${kennung}. Wir haben eine Frage vor dem Start.`)
-    + (lesen ? "" : leitungHTML(st, true) + abmeldenHTML() + nav());
+    + (lesen ? "" : leitungHTML(st) + abmeldenHTML() + nav());
 
   // Unterwegs zählt die Station: das Schloss steht dann klein unter ihr,
   // groß erst wieder beim Koffer und am Ende (Entscheidung 18.09.2026, Variante B)
@@ -1635,35 +1629,11 @@ function teamAnsicht(st, lesen) {
   }
   return spielHuelle(st, s, lesen, out, `Stadtjagd: Hier ist ${kennung}. Wir brauchen Hilfe bei Station ${s.position}.`);
 }
-// Mitlese-Link fürs Team, mit passendem Satz je nach Phase
-function mitlesePanelHTML(st, text) {
-  if (!st.team.readToken) return "";
-  // Nach "Link teilen" steht der Link auch als QR-Code da: wer daneben steht, scannt ihn mit der Kamera
-  const qr = S.team.qr ? qrSvg(mitleseLink(st.team.readToken)) : "";
-  return `<div class="panel"><h3>Mitlesen fürs Team</h3><p class="small muted">${text}</p>
-    <div class="row2"><button class="btn alt" data-act="t-mit-teilen">Link teilen</button><button class="btn alt" data-act="t-mit-kopieren">Link kopieren</button></div>${msgBox("mit")}
-    ${S.team.qr ? `<div class="qr" role="img" aria-label="QR-Code des Mitlese-Links">${qr || '<span class="small" style="color:#17302A">QR-Code wird gebaut …</span>'}</div>
-      <p class="small muted" style="text-align:center">Wer neben dir steht, scannt den Code mit der Handykamera und liest sofort mit.</p>` : ""}</div>`;
-}
-// QR-Code als SVG. Die Bibliothek (vendor/qrcode.js, MIT) liegt im Repo und wird erst beim ersten Gebrauch geladen.
-let qrLaden = null;
-const qrFertig = {};
-function qrSvg(text) {
-  if (qrFertig[text]) return qrFertig[text];
-  if (window.qrcode) {
-    const q = window.qrcode(0, "M"); q.addData(text); q.make();
-    return qrFertig[text] = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
-  }
-  if (!qrLaden) qrLaden = new Promise((res, rej) => { const s = document.createElement("script"); s.src = "vendor/qrcode.js"; s.onload = res; s.onerror = rej; document.head.appendChild(s); })
-    .then(render, () => { qrLaden = null; });
-  return "";
-}
-// Nur für die Teamleitung: Mitlese-Link fürs Team (außer er steht schon oben) und die Leitung abgeben
-function leitungHTML(st, ohneMit) {
-  let h = ohneMit ? "" : mitlesePanelHTML(st, "Wer diesen Link öffnet, sieht auf dem eigenen Handy alles, was ihr hier seht: Station, Rätsel, Ziffern. Eingeben könnt nur ihr.");
-  if (!leitungAbgebbar(st, false)) return h;
+// Nur für die Teamleitung: die Leitung abgeben
+function leitungHTML(st) {
+  if (!leitungAbgebbar(st, false)) return "";
   const andere = st.team.members.filter(m => m !== st.team.leaderName);
-  return h + (S.team.abgeben
+  return (S.team.abgeben
     ? `<div class="panel"><h3>Leitung abgeben</h3>
         <p class="small muted">Die neue Leitung tippt auf ihrem eigenen Handy auf „Teamleitung“ und ist gleich drin. Dieses Handy gibt danach nichts mehr ein.</p>
         <div style="margin-top:12px"><label for="tneu">Neue Teamleitung</label><select id="tneu"><option value="" selected disabled>Person wählen</option>${andere.map(m => `<option>${esc(m)}</option>`).join("")}</select></div>
@@ -1756,7 +1726,7 @@ async function fotoNachreichen(s) {
     return;
   }
 }
-// Fotos holen: wer = "team" (eigenes Album, Zugang wie beim Mitlesen) oder eine Team-Kennung (Spielleitung).
+// Fotos holen: wer = "team" (eigenes Album, Zugang über Team-Code bzw. Geräte-Schlüssel) oder eine Team-Kennung (Spielleitung).
 // Gibt die data-URL zurück oder null, solange geladen wird; ist das Foto da, zeichnet die Seite neu.
 const fotoCache = {};
 function fotoUrl(wer, pos, stempel, voll, route) {
@@ -1766,7 +1736,7 @@ function fotoUrl(wer, pos, stempel, voll, route) {
     fotoCache[k] = "laedt";
     const ruf = wer === "team"
       ? rpc("team_photo", { p_code: S.view === "team" ? S.team.code : null, p_token: S.view === "team" ? null : LS.getItem("sj.token"),
-          p_read_token: S.view === "team" ? null : LS.getItem("sj.mit"), p_position: pos, p_full: !!voll })
+          p_read_token: null, p_position: pos, p_full: !!voll })
       : rpc("admin_photo", { p_pin: S.admin.pin, p_team: wer, p_position: pos, p_full: !!voll, p_route: route || "echt" });
     ruf.then(r => { const b = r && r.data; if (b) fotoCache[k] = "data:image/jpeg;base64," + String(b).replace(/\s/g, ""); else delete fotoCache[k]; if (b) render(); })
       .catch(() => { delete fotoCache[k]; });
@@ -2074,7 +2044,6 @@ function teamZeile(t, i, st) {
       <select class="sm" id="lt-${t.id}" data-chg="a-leader" data-id="${t.id}" data-ort="t:${t.id}">${!t.leaderId ? `<option value="" selected>offen</option>` : ""}
         ${(st.participants || []).filter(x => x.teamId === t.id).map(x => `<option value="${esc(x.id)}" ${x.id === t.leaderId ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
       <p class="small">Code <b class="nw">${esc(t.code)}</b></p>
-      ${t.readToken ? `<button class="btn sm alt" data-act="a-mit" data-id="${t.id}" data-ort="t:${t.id}" data-token="${esc(t.readToken)}" data-name="${esc(t.name)}">Mitlese-Link kopieren</button>` : ""}
       </div>`;
   return `<li class="row ${p ? "p-" + p.stufe : ""} ${sel ? "sel" : ""}" data-row="${t.id}">
     <div class="row-top"><button class="row-main" data-act="a-sel" data-id="${t.id}" aria-expanded="${sel}">
@@ -2249,7 +2218,7 @@ function viewAdmin() {
     const n = (st.participants || []).length, d = A.draw;
     // Nach dem Auslosen ist Starten der nächste Schritt, nicht Neu auslosen
     if (st.status === "drawn") out += `<div class="panel"><h3>Bereit zum Start</h3>
-        <p class="small muted">Die Teamleitungen sind auf ihrem eigenen Handy unter „Teamleitung“ gleich drin, einen Code braucht niemand. Vorher die Mitlese-Links in die Gruppen schicken. Die App fragt vor dem Start noch einmal nach.</p>
+        <p class="small muted">Die Teamleitungen sind auf ihrem eigenen Handy unter „Teamleitung“ gleich drin, einen Code braucht niemand. Die App fragt vor dem Start noch einmal nach.</p>
         ${st.testMode ? `<div class="msg err">Der Testmodus ist noch an: Entfernung und Antworten werden nicht geprüft. Ausschalten im Reiter Stationen.</div>` : ""}
         <button class="btn" data-act="a-start">Spiel starten</button></div>`;
     // Den Reiter gibt es nur vor dem Start (laeuft schaltet oben auf live um); danach steht der Weg zurück im Reiter Daten löschen
@@ -2795,21 +2764,6 @@ const ACT = {
   "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.setItem("sj.abgemeldet", "1"); standVergessen(); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
-  // Mitlese-Link fürs Team: teilen (Share-Sheet, sonst WhatsApp) oder kopieren
-  async "t-mit-teilen"() {
-    const link = mitleseLink(S.team.state.team.readToken), text = `Stadtjagd, Team ${S.team.state.team.name}: Mit diesem Link lest ihr auf eurem Handy mit.`;
-    // Erst den QR-Code zeigen: er bleibt stehen, auch wenn das Teilen-Fenster wieder zugeht
-    S.team.qr = true; render();
-    // Share-Sheet: der Link nur als url, sonst steht er in WhatsApp doppelt
-    if (navigator.share) { try { await navigator.share({ title: "Stadtjagd mitlesen", text, url: link }); } catch { /* abgebrochen */ } return false; }
-    window.open("https://wa.me/?text=" + encodeURIComponent(text + " " + link), "_blank");
-    return false;
-  },
-  async "t-mit-kopieren"() {
-    const link = mitleseLink(S.team.state.team.readToken);
-    try { await navigator.clipboard.writeText(link); S.msg = { type: "ok", ort: "mit", text: "Link kopiert. Schickt ihn in eure Team-Gruppe." }; }
-    catch { S.msg = { type: "info", ort: "mit", text: link }; }
-  },
   "t-abgeben-frage"() {
     S.team.abgeben = true; S.msg = null; S.team.tab = "team";   // das Fenster steht im Tab Team
     // Der Knopf im Kompass-Hinweis steht weit weg vom Fenster: nach dem Neuzeichnen hinscrollen
@@ -3063,11 +3017,6 @@ const ACT = {
     if (!team || !p || team.leaderId === d.value) return false;   // gleiche Leitung (etwa nach dem Neuzeichnen): kein Dialog
     S.admin.confirm = { key: "leader", id: d.id, value: d.value, name: p.name, team: team.name, alt: team.leaderName, code: team.code };
     S.msg = null;
-  },
-  async "a-mit"(d) {
-    const link = mitleseLink(d.token);
-    try { await navigator.clipboard.writeText(link); S.msg = { type: "ok", ort: "t:" + d.id, text: `Mitlese-Link kopiert. Wer ihn öffnet, liest bei Team ${d.name} mit.` }; }
-    catch { S.msg = { type: "info", ort: "t:" + d.id, text: "Kopieren ging nicht. Hier der Link zum Markieren: " + link }; }
   },
   "a-edit"(d) {
     S.admin.edit = d.id; S.admin.startEdit = null;
@@ -3589,37 +3538,30 @@ function teamNachziehen() {
   if (!neu) S.hoch = false;
   return geaendert;
 }
-// Mitlesen: Stand des eigenen Teams über den Geräte-Schlüssel aus der Anmeldung, sonst über den
-// Mitlese-Link der Teamleitung (sj.mit, gilt für das Team, nicht für eine Person)
+// Mitlesen: Stand des eigenen Teams über den Geräte-Schlüssel aus der Anmeldung (S.mit)
 async function mitlesen() {
-  const tok = LS.getItem("sj.token"), mitTok = LS.getItem("sj.mit");
-  if ((!tok && !mitTok) || !S.pub || S.pub.status === "registration") { S.mit = null; return; }
+  const tok = LS.getItem("sj.token");
+  if (!tok || !S.pub || S.pub.status === "registration") { S.mit = null; return; }
   try {
     const vorher = S.mit ? phaseKey(S.mit) : null;
-    if (tok) {
-      S.mit = await rpc("member_state", { p_token: tok }); namenUebernehmen(S.mit.name);
-    } else S.mit = await rpc("member_state_by_team", { p_read_token: mitTok });
-    standMerken("sj.letzter.mit", { key: tok || mitTok, pub: S.pub, mit: S.mit });
+    S.mit = await rpc("member_state", { p_token: tok }); namenUebernehmen(S.mit.name);
+    standMerken("sj.letzter.mit", { key: tok, pub: S.pub, mit: S.mit });
     // Rätsel offen oder nächste Station: das neue Panel kurz umranden, damit es beim Mitlesen auffällt
     if (vorher && vorher !== phaseKey(S.mit)) S.mitNeuBis = Date.now() + 2500;
   } catch (e) {
     // Nur ein ungültiger Schlüssel beendet das Mitlesen; im Funkloch bleibt der letzte Stand stehen
-    const weg = String(e.message).includes("Unbekanntes Gerät") || String(e.message).includes("Unbekannter Mitlese-Link");
-    if (String(e.message).includes("Unbekanntes Gerät")) LS.removeItem("sj.token");
-    if (String(e.message).includes("Unbekannter Mitlese-Link")) LS.removeItem("sj.mit");
-    if (weg) { S.mit = null; LS.removeItem("sj.letzter.mit"); }
+    if (String(e.message).includes("Unbekanntes Gerät")) { LS.removeItem("sj.token"); S.mit = null; LS.removeItem("sj.letzter.mit"); }
   }
 }
-// Mitlese-Link geöffnet (#/mit/<schlüssel>): Schlüssel merken, dann die normale Ansicht zeigen
+// Alte Mitlese-Links (#/mit/<schlüssel>) gibt es nicht mehr: auf die öffentliche Ansicht umleiten, den Schlüssel
+// nicht merken. Den früher gemerkten Schlüssel sj.mit beim Start löschen.
 function mitLinkPruefen() {
-  const m = location.hash.match(/^#\/mit\/([0-9a-f]{32})$/i);
-  if (!m) return false;
-  LS.setItem("sj.mit", m[1].toLowerCase());
+  LS.removeItem("sj.mit");
+  if (!/^#\/mit\//i.test(location.hash)) return false;
   history.replaceState(null, "", location.pathname + location.search + "#/public");
   S.view = "public"; S.mit = null;
   return true;
 }
-const mitleseLink = token => token ? `${location.origin}${location.pathname}#/mit/${token}` : "";
 // Die Spielleitung kann Namen berichtigen: den neuen Namen übernehmen, damit Anrede und Team-Karte stimmen
 function namenUebernehmen(neu) {
   if (!neu || neu === S.myName) return;
@@ -3708,7 +3650,7 @@ function letzterStand() {
     if (m && m.code === S.team.code && imSpiel(m.state)) { S.team.state = m.state; S.zuletzt = m.at; return true; }
   }
   if (S.view === "public" && !S.pub) {
-    const m = standLesen("sj.letzter.mit"), key = LS.getItem("sj.token") || LS.getItem("sj.mit");
+    const m = standLesen("sj.letzter.mit"), key = LS.getItem("sj.token");
     if (m && key && m.key === key && m.pub && imSpiel(m.mit)) { S.pub = m.pub; S.mit = m.mit; S.zuletzt = m.at; return true; }
   }
   return false;

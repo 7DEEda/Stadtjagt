@@ -170,7 +170,7 @@ with sync_playwright() as pw:
     pruef(BASIS in h and BASIS + "config.js" in h and BASIS + "kompass-waechter.js" in h, f"Hülle im Cache: ./, config.js, kompass-waechter.js ({h})")
     pruef(all(BASIS + "vendor/fonts/" + n in d for n in SCHRIFTEN), f"alle {len(SCHRIFTEN)} Schriften im Cache")
     pruef(all(BASIS + f"hintergrund/{x}.svg" in d for x in "abc"), "Hintergründe a, b, c im Cache")
-    # Schlussreview 16.10.2026: Leaflet (Karte der Spielleitung) und QR-Bibliothek (Mitlese-Link) liegen schon nach dem
+    # Schlussreview 16.10.2026: Leaflet (Karte der Spielleitung) und QR-Bibliothek (Rückblick-Fernbedienung) liegen schon nach dem
     # ersten Besuch im Cache, nicht erst nach der ersten Benutzung
     vend = ["vendor/qrcode.js"] + sorted("vendor/leaflet-1.9.4/" + str(q.relative_to(REPO / "vendor" / "leaflet-1.9.4")).replace(chr(92), "/")
                                          for q in (REPO / "vendor" / "leaflet-1.9.4").rglob("*") if q.is_file() and q.name != "LICENSE")

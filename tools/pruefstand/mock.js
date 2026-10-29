@@ -443,7 +443,6 @@
       if (!p && NEU[a.p_token]) return { name: NEU[a.p_token], team: null };   // eben angemeldet, noch ohne Team
       if (!p) fehler("Unbekanntes Gerät.");
       return mitTeams() ? memberState(teamOf(p), p.name) : { name: p.name, team: null }; },
-    member_state_by_team: a => { const t = TEAMS.find(x => x.readToken === a.p_read_token); if (!t) fehler("Unbekannter Mitlese-Link."); return memberState(t, null); },
     lookup_participant: a => {
       const q = norm(a.p_name); if (!q) return { found: false };
       const exakt = PERSONEN.find(p => norm(p.name) === q);

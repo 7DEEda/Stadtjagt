@@ -197,3 +197,17 @@ SPIEL.md (§2, §4, §6, §8), HANDOFF Nachtrag 39, Prüfstand-README. Feldprobe
   (`problemVon`).
 - **F6:** Wortlaut wie vorgeschlagen. **Der Mitlese-Link ohne Anmeldung (`member_state_by_team`) zeigt keine
   Akku- und Verbindungsdaten**: dort fehlt `geraete` (serverseitig entfernen), also auch kein Akku-Hinweis.
+
+## Nachtrag F7 (Friedrich 29.10.2026): Mitlese-Link streichen
+
+Der Mitlese-Link (Link bzw. QR-Code für Leute ohne eigene Anmeldung, `#/public?read=…` / `read_token`,
+`member_state_by_team`) entfällt ganz. Bleibt: Angemeldete Mitglieder sehen ihr Team weiter über `member_state`
+(eigenes Handy, `sj.token`). Umsetzung als erster Frontend-Schritt:
+- index.html: Mitlese-Panel in `leitungHTML`, QR-Erzeugung (`vendor/qrcode.js` nur noch, wenn die Rückblick-
+  Fernbedienung ihn braucht, dort bleibt er), Route/Parameter für den Lese-Token, `mitLinkPruefen()` soweit nur
+  dafür, Texte mit „Mitlese-Link“ entfernen. `sw.js` lädt `vendor/qrcode.js` weiter vor (Fernbedienungs-QR am Laptop).
+- Migration: `member_state_by_team` droppen (Rechte entfallen mit). `teams.read_token` und das Feld
+  `team.readToken` bleiben vorerst stehen (alte Fassungen aus dem Cache brechen sonst nicht, aber der Token ist
+  ohne Funktion wertlos).
+- Damit entfällt F6 Teil 2.
+- mock.js, Prüfskripte und SPIEL.md entsprechend; Prüfungen, die den Mitlese-Link testen, entfernen oder umstellen.
