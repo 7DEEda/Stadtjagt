@@ -13,8 +13,6 @@ begin
     v_team := (team_by_code(p_code)).id;
   elsif coalesce(p_token, '') <> '' then
     select team_id into v_team from participants where token = p_token;
-  elsif coalesce(p_read_token, '') <> '' then
-    select id into v_team from teams where read_token = p_read_token;
   end if;
   if v_team is null then raise exception 'Kein Zugang zu diesem Album.' using errcode='P0001'; end if;
   return json_build_object('data', (select encode(case when p_full then ph.photo else ph.thumb end, 'base64')

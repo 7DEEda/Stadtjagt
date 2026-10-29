@@ -23,7 +23,8 @@ begin
     'photoCount', (select count(*) from station_photos),
     'participants', coalesce((select json_agg(to_json(x)) from (
         select p.id, p.name, p.team_id as "teamId",
-               (select t.name from teams t where t.id = p.team_id) as "teamName"
+               (select t.name from teams t where t.id = p.team_id) as "teamName",
+               (p.token is not null) as "hatHandy"
         from participants p order by p.name) x), '[]'::json),
     'stations', coalesce((select json_agg(to_json(s2)) from (
         select s.id, s.position, s.name, s.lat, s.lng, s.radius_m as "radiusM",
@@ -44,9 +45,14 @@ begin
     'caseCode', (select string_agg(s.digit::text, '' order by s.position) from stations s)
                 || ((select coalesce(sum(digit),0) from stations) % 10)::text,
     'teams', coalesce((select json_agg(to_json(y)) from (
-        select t.id, t.name, t.code, t.read_token as "readToken",
+        select t.id, t.name, t.code,
           t.leader_participant_id as "leaderId",
           (select p.name from participants p where p.id = t.leader_participant_id) as "leaderName",
+          -- Rollen und Akku 29.10.: Akku der Teamleitung, nur bis 10 min Alter (sonst null)
+          (select json_build_object('akku', p.akku, 'laedt', p.akku_laedt, 'at', p.akku_at)
+             from participants p
+             where p.id = t.leader_participant_id and p.akku is not null
+               and p.akku_at > now() - interval '10 minutes') as "leaderAkku",
           (select count(*) from participants p where p.team_id = t.id) as "memberCount",
           coalesce((select json_agg(p2.name order by p2.name)
                     from participants p2 where p2.team_id = t.id), '[]'::json) as members,

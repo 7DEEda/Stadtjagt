@@ -40,10 +40,18 @@ begin
   select count(*) into v_done from finishes;
 
   return json_build_object(
-    'team', json_build_object('id', t.id, 'name', t.name, 'code', t.code, 'readToken', t.read_token,
+    'team', json_build_object('id', t.id, 'name', t.name, 'code', t.code,
       'leaderName', (select p.name from participants p where p.id = t.leader_participant_id),
       'members', coalesce((select json_agg(p2.name order by p2.name)
                            from participants p2 where p2.team_id = t.id), '[]'::json)),
+    -- Rollen und Akku 29.10.: je Gerät Anmeldung, Verbindung und Akku (members bleibt unverändert, alte Fassungen lesen es)
+    'geraete', coalesce((select json_agg(json_build_object(
+        'name', p3.name,
+        'angemeldet', p3.token is not null,
+        'verbunden', coalesce(p3.gesehen_at > now() - interval '2 minutes', false),
+        'akku',  case when p3.akku_at > now() - interval '10 minutes' then p3.akku end,
+        'laedt', case when p3.akku_at > now() - interval '10 minutes' then p3.akku_laedt end) order by p3.name)
+      from participants p3 where p3.team_id = t.id), '[]'::json),
     'background', g.background,
     'status', g.status,
     'startedAt', g.started_at,
