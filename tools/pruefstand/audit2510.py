@@ -100,7 +100,7 @@ with sync_playwright() as pw:
         pg.close()
 
         # Review 25.10.: die Teamleitung tippt ihren Code selbst ein, danach wechselt die Spielleitung die Leitung.
-        # Dieses Handy ist kein Notweg und muss sich abmelden wie sonst auch.
+        # Dieses Handy ist kein Notweg: seit 29.10. (A7) schaltet es still aufs Mitlesen um statt sich abzumelden.
         pg = neu(b, "leitung-ohne-code")
         pg.wait_for_function("S.team.code === 'FUCHS-4821'")
         pg.evaluate("ACT['t-logout'](); render()")
@@ -111,9 +111,8 @@ with sync_playwright() as pw:
         pruef(pg.evaluate("localStorage.getItem('sj.hand')") is None, "Teamleitung tippt den eigenen Code: kein Merker sj.hand")
         pg.evaluate("window.__leitung('Jonas Keller')")
         takt(pg)
-        takt(pg)
-        pruef(pg.evaluate("S.team.code") is None, f"nach dem Leitungswechsel abgemeldet ({pg.evaluate('S.team.code')!r})")
-        pruef("leitet jetzt Team Fuchs" in pg.inner_text("#app"), "Meldung: Jonas leitet jetzt")
+        pruef(pg.evaluate("S.team.code") is None and pg.evaluate("S.view") == "public", f"nach dem Leitungswechsel liest das Handy mit ({pg.evaluate('S.team.code')!r})")
+        pruef(pg.locator("#kurz").count() == 1 and pg.inner_text("#kurz") == "Jonas leitet jetzt das Team", "Einblendung: Jonas leitet jetzt das Team")
         pg.close()
 
     if an(2):
@@ -292,10 +291,12 @@ with sync_playwright() as pw:
         pg = neu(b, "leitung-raetsel")
         pg.click("[data-act=t-tab][data-tab=team]")
         pg.click("[data-act=t-abgeben-frage]")
-        pg.select_option("#tneu", "Tobias Neumann")
+        # Tobias hat kein eigenes Handy und steht nicht im Fenster; die Ablehnung des Servers prüft der Aufruf mit gesetzter Wahl
+        pruef(pg.locator(".wahl button:has-text('Tobias')").count() == 0, "Person ohne eigenes Handy steht nicht zur Wahl")
+        pg.evaluate("S.team.wahl = 'Tobias Neumann'; render()")
         tippen(pg, "[data-act=t-abgeben]")
-        t = pg.inner_text("#app")
-        pruef("kann nicht eingeben" in t, "Meldung des Servers steht unter dem Feld")
+        t = pg.inner_text(".ueber .blatt")
+        pruef("kann nicht eingeben" in t, "Meldung des Servers steht im Fenster")
         pruef(pg.evaluate("S.team.code") == "FUCHS-4821" and pg.evaluate("S.team.state !== null"), "Handy bleibt angemeldet")
         pg.close()
         pg = neu(b, "admin-fotos-heute")

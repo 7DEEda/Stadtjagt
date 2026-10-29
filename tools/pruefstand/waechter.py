@@ -275,22 +275,22 @@ with sync_playwright() as pw:
     pruef(all(x[2] == (x[1] is None) and x[3] == (x[1] is not None) for x in r), f"Hinweis nach Versuchen 0, 1, 2: Satz je nach Laufrichtung ({r})")
     pg2.screenshot(path=str(HIER / "shots" / "waechter-schlecht.png"), full_page=True)
     pg2.click(".msg [data-act=t-abgeben-frage]"); pg2.wait_for_timeout(900)
-    pruef(pg2.locator("#tneu").is_visible() and pg2.locator("#tneu").evaluate("e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight }"), "Leitung abgeben im Hinweis: Fenster offen und im Blick")
+    pruef(pg2.locator(".ueber .blatt").is_visible() and pg2.locator(".ueber .blatt").evaluate("e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight }"), "Leitung abgeben im Hinweis: Fenster offen und im Blick")
     # Auswahl treffen, dann meldet der Wächter "schlecht" (Kompass wandert im Stillstand): Auswahl und Knopf bleiben
-    name = pg2.evaluate("[...document.querySelectorAll('#tneu option')].map(o => o.textContent)[1]")
-    pg2.select_option("#tneu", name); pg2.wait_for_timeout(100)
-    r = pg2.evaluate("""() => { window.__tneu = document.querySelector('#tneu'); let t = performance.now() + 1000, a = 63;
+    name = pg2.evaluate("[...document.querySelectorAll('.wahl button')].map(b => b.firstChild.textContent)[0]")
+    pg2.click(".wahl button >> nth=0"); pg2.wait_for_timeout(100)
+    r = pg2.evaluate("""() => { window.__tneu = document.querySelector('.blatt'); let t = performance.now() + 1000, a = 63;
       for (let i = 0; i < 200; i++) { t += 20; a = (a + 0.3) % 360;
         motionH({ accelerationIncludingGravity: { x: 0, y: 0, z: 9.8 }, rotationRate: { alpha: 0, beta: 0, gamma: 0 }, timeStamp: t });
         window.__zustellen({ alpha: a, beta: 35, gamma: 0, absolute: true, timeStamp: t }); }
       return S.gps.waechter.ergebnisse; }""")
     pg2.wait_for_timeout(300)
-    z = pg2.evaluate("[document.querySelector('#tneu').value, document.querySelector('#tabgeben').disabled, document.querySelector('#tneu') === window.__tneu]")
+    z = pg2.evaluate("[S.team.wahl, document.querySelector('#tabgeben').disabled, document.querySelector('.blatt') === window.__tneu]")
     pruef("schlecht" in r and z == [name, False, True], f"Wächter meldet schlecht: kein Neuzeichnen, Auswahl bleibt, Übergeben bleibt aktiv ({r}, {z})")
     pg2.evaluate("render()"); pg2.wait_for_timeout(100)
-    z = pg2.evaluate("[document.querySelector('#tneu').value, document.querySelector('#tabgeben').disabled]")
-    pruef(z == [name, False], f"Neuzeichnen behält die Auswahl ({z})")
-    pg2.evaluate("S.team.abgeben = false; S.team.state.team.members = [S.team.state.team.leaderName]; render()"); pg2.wait_for_timeout(200)
+    z = pg2.evaluate("[S.team.wahl, document.querySelector('#tabgeben').disabled, document.querySelector('.wahl button[aria-pressed=true]') !== null]")
+    pruef(z == [name, False, True], f"Neuzeichnen behält die Auswahl ({z})")
+    pg2.evaluate("S.team.uebergabe = null; S.team.wahl = null; S.team.state.team.members = [S.team.state.team.leaderName]; S.team.state.geraete = []; render()"); pg2.wait_for_timeout(200)
     pruef(pg2.locator(".msg [data-act=t-abgeben-frage]").count() == 0 and "Oder gebt die Leitung" not in pg2.inner_text("#app"), "allein im Team: kein Knopf, kein Satz")
     pg2.goto("http://127.0.0.1:8826/app.html?szenario=waechter-versuche-2"); pg2.wait_for_function("typeof S !== 'undefined' && S.gps.on")
     pg2.evaluate("window.__orient('gut'); window.__motion(0)"); pg2.wait_for_timeout(800)
