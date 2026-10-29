@@ -184,3 +184,16 @@ SPIEL.md (§2, §4, §6, §8), HANDOFF Nachtrag 39, Prüfstand-README. Feldprobe
 - **F5** Spielleitung: nur Vermerk oder unter 10 % auch unter „Braucht dich“?
 - **F6** Wortlaut bei Übergabe an ein nicht verbundenes Handy („Jonas leitet jetzt das Team, sobald das Handy wieder
   verbunden ist.“); darf der Mitlese-Link Akku und „verbunden“ zeigen (Vorschlag: ja, nur eigenes Team)?
+
+## Entscheidungen Friedrich (29.10.2026)
+
+- **F1:** Abmelden der Teamleitung wird gestrichen. Ausweg ist „Leitung abgeben“; Abmelden bleibt nur für den
+  Notweg-Tablet (`sj.hand`, Code von Hand). `sj.abgemeldet` entfällt für Handys mit Token (alte Werte beim Start
+  löschen).
+- **F2:** (Claude, Empfehlung) wirkt sofort im echten Spiel, nicht nur im Testmodus.
+- **F3:** (Claude, Empfehlung) je Schwelle einmal, wieder scharf nach Laden über 25 % (10-%-Schwelle über 15 %).
+- **F4:** Umschalten ab dem Auslosen (`drawn`); das Akku-Fenster erst ab `running`.
+- **F5:** Spielleitung: Vermerk „Akku 18 %“ ab 20 %, **unter 10 % (nicht ladend) zusätzlich unter „Braucht dich“**
+  (`problemVon`).
+- **F6:** Wortlaut wie vorgeschlagen. **Der Mitlese-Link ohne Anmeldung (`member_state_by_team`) zeigt keine
+  Akku- und Verbindungsdaten**: dort fehlt `geraete` (serverseitig entfernen), also auch kein Akku-Hinweis.
