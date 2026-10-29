@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Stadtjagd</title>
+<!-- Kompass wie im Kopf der Seite; ohne eigenes Icon fragt der Browser /favicon.ico ab und bekommt eine 404 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23F1F5EE' stroke='%2317302A' stroke-width='2'/%3E%3Cpolygon points='12,4.5 15.2,12 12,10.6 8.8,12' fill='%23EE5F1B'/%3E%3Cpolygon points='12,19.5 8.8,12 12,13.4 15.2,12' fill='%2317302A' opacity='.55'/%3E%3C/svg%3E">
 <script>
 // Hell oder dunkel, vom Schalter oben rechts gewählt. Ohne Wahl folgt die App dem Gerät.
 try { const t = localStorage.getItem("sj.thema"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch { /* privater Modus */ }

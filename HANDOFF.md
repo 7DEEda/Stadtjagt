@@ -2271,7 +2271,7 @@ offen ist nur, was am echten Gerät zu prüfen ist (nächster Schritt) und das
 Datum des Änderungsstopps. Event: Fr 23. bis So 25. April 2027 (Service Worker also spätestens 16.04.2027 live).
 
 **Weitere offene Punkte:** Positionen aus 4 älteren Geräte-Test-Läufen löschen
-(Frage an Friedrich offen); 404 beim ersten Prüfstand-Bild abstellen.
+(Frage an Friedrich offen). Erledigt 29.10.: die 404 beim ersten Prüfstand-Bild (fehlendes Favicon, jetzt Kompass als Daten-URL), die wackelnde Prüfung in `fernbedienung.py` Gruppe 10 (misst jetzt ab dem letzten Herzschlag); QR-Bibliothek lädt der Service Worker schon bei der Installation, die Rückblick-Karte bleibt absichtlich draußen.
 
 **Todos (25.10.2026):**
 - **Rätsel und Begehung:** Fünf Stationen haben noch Platzhalter-Rätsel. Vorschläge

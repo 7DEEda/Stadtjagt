@@ -409,10 +409,10 @@ with sync_playwright() as pw:
 
         print("Gruppe 10: Keine Show gefunden nach 6 s ohne Herzschlag")
         db.kaputt = {"rb_status_setzen"}
-        t0 = time.time()
         ok = warte(ph, "/Keine Show gefunden/.test(document.querySelector('#verbindung').textContent)", 12000)
-        dt = time.time() - t0
-        pruef(ok and dt >= 3, f"Herzschlag fehlt: Keine Show gefunden nach {dt:.1f} s")
+        # gemessen ab dem letzten angekommenen Herzschlag, nicht ab dem Abschalten: der kann schon bis zu 4 s alt sein
+        dt = time.time() - db.status_um
+        pruef(ok and dt >= 5.5, f"Herzschlag fehlt: Keine Show gefunden {dt:.1f} s nach dem letzten Herzschlag")
         pruef(ph.locator("[data-befehl=weiter]").is_disabled(), "Keine Show: Befehle gesperrt")
         db.kaputt = set()
         pruef(warte(ph, "/Show verbunden/.test(document.querySelector('#verbindung').textContent)", 8000), "Herzschlag wieder da: Show verbunden")
