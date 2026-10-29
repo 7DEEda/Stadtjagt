@@ -2268,7 +2268,7 @@ Supabase, schon der Free-Tarif trägt das Doppelte der Eventlast fehlerfrei.
 Empfehlung: bleiben, Pro für den Event-Monat; Friedrichs Entscheidung steht
 noch aus. Die Punkte zur Ausfallsicherheit sind umgesetzt (Nachtrag 35, oben);
 offen ist nur, was am echten Gerät zu prüfen ist (nächster Schritt) und das
-Datum des Änderungsstopps. Eventdatum steht im HANDOFF noch nicht.
+Datum des Änderungsstopps. Event: Fr 23. bis So 25. April 2027 (Service Worker also spätestens 16.04.2027 live).
 
 **Weitere offene Punkte:** Positionen aus 4 älteren Geräte-Test-Läufen löschen
 (Frage an Friedrich offen); 404 beim ersten Prüfstand-Bild abstellen.
