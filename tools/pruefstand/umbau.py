@@ -142,7 +142,7 @@ with sync_playwright() as pw:
     print("Tab Team")
     pg.goto(f"{BASIS}/app.html?szenario=leitung-unterwegs"); pg.wait_for_selector(".ph"); pg.click(".ftabs [data-tab=team]")
     t = pg.inner_text("#inhalt")
-    pruef("Mitlesen fürs Team" in t and "Anna Berger" in t and "Abmelden" in t, "Teamleitung: Mitlese-Link, Mitglieder, Abmelden")
+    pruef("Mitlesen fürs Team" not in t and "Anna Berger" in t and "Abmelden" not in t, "Teamleitung: kein Mitlese-Link, kein Abmelden (F1), Mitglieder")
     pg.goto(f"{BASIS}/app.html?szenario=mitglied-unterwegs"); pg.wait_for_selector(".ph"); pg.click(".ftabs [data-tab=team]")
     t = pg.inner_text("#inhalt")
     pruef("Mitlesen fürs Team" not in t and "Abmelden" not in t and "Anna Berger" in t, "Mitlesende: nur Mitglieder")
@@ -193,7 +193,7 @@ with sync_playwright() as pw:
     pruef(sel and pg.locator("#teamfeld .row.sel").count() == 1, "Zeile aufgeklappt")
     pg.wait_for_selector(".mapbadge.team.sel", timeout=10000)
     pruef(pg.locator(".mapbadge.team.sel").count() == 1, "Team auf der Karte markiert")
-    pruef(pg.locator("#teamfeld select[data-chg=a-leader]").count() == 1 and pg.locator("#teamfeld [data-act=a-mit]").count() == 1, "aufgeklappt: Leitung und Mitlese-Link")
+    pruef(pg.locator("#teamfeld select[data-chg=a-leader]").count() == 1 and pg.locator("#teamfeld [data-act=a-mit]").count() == 0, "aufgeklappt: Leitung, kein Mitlese-Link")
     pg.locator("#teamfeld").evaluate("e => e.scrollTop = 200"); pg.evaluate("render()")
     pruef(pg.evaluate("S.admin.sel") == sel and pg.locator("#teamfeld").evaluate("e => e.scrollTop") > 150, "Auswahl und Scrollen überstehen render()")
     pg.click("[data-act=a-probleme]")
@@ -264,7 +264,8 @@ with sync_playwright() as pw:
     pg.click("#inhalt [data-act=pub-hoch]")
     pruef(pg.locator(".hochhalten").count() == 1, "Leitung: Hochhalten-Fenster")
     pg.click(".hochhalten")
-    # R1: Abmelden setzt den Tab zurück
+    # R1: Abmelden setzt den Tab zurück (gibt es seit F1 nur am Notweg-Tablet mit sj.hand)
+    pg.evaluate("localStorage.setItem('sj.hand', '1'); render()")
     pg.click("[data-act=t-logout-frage]"); pg.click("[data-act=t-logout]")
     pruef(pg.evaluate("S.team.tab") == "weg", "Abmelden setzt den Tab auf Weg zurück")
     # R2: ohne Hülle ist kein Hilfe-Blatt offen

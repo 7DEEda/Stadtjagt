@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Probelauf für Nachtrag 31 (current_station sperren) gegen die echte Datenbank, ohne Spuren. Seitdem um jede neue
-Migration mit Funktionen ergänzt (zuletzt Code-Audit 25.10., 20261025090000_audit.sql).
+Migration mit Funktionen ergänzt (zuletzt Rollen und Akku 29.10., 20261029120000_rollen_akku.sql).
 
     python tools/pruefstand/rechte_db.py
 
@@ -20,7 +20,7 @@ import sql  # noqa: E402
 # Nach dem Einspielen einer Migration, die Funktionen neu anlegt, hier ergänzen (SPIEL.md §9).
 MIGRATIONEN = ["20261004090000_current_station_sperren.sql", "20261015090000_namenssuche_grenze.sql",
                "20261016090000_eingaben_wiederholen.sql", "20261017090000_rueckblick_steuerung.sql",
-               "20261025090000_audit.sql"]
+               "20261025090000_audit.sql", "20261029120000_rollen_akku.sql"]
 MIGRATION = [sql.REPO / "supabase" / "migrations" / n for n in MIGRATIONEN]
 
 # Interne Hilfsfunktionen: dürfen weder anon noch authenticated ausführen
@@ -53,6 +53,11 @@ begin
   -- submit_answer gibt es nur noch mit p_position (alte Fassung weg, sonst Mehrdeutigkeit bei PostgREST)
   if (select count(*) from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'submit_answer') <> 1 then
     raise exception 'PROBE FEHLT: submit_answer nicht genau einmal'; end if;
+  v_n := v_n + 1;
+  -- Rollen und Akku 29.10.: member_state und report_position nur noch in der neuen Fassung, member_state_by_team (F7) ist weg
+  if (select count(*) from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('member_state', 'report_position')) <> 2
+     or exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'member_state_by_team') then
+    raise exception 'PROBE FEHLT: member_state/report_position nicht genau einmal oder member_state_by_team noch da'; end if;
   v_n := v_n + 1;
   -- Nachtrag 37: die Tabelle der Fernbedienung ist für anon und authenticated gesperrt, der Weg sind die rb_*-Funktionen
   if to_regclass('public.rueckblick_steuerung') is null then raise exception 'PROBE FEHLT: Tabelle rueckblick_steuerung gibt es nicht'; end if;

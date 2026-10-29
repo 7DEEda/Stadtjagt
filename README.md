@@ -63,7 +63,7 @@ kompass-test.html              leitet auf geraete-test.html weiter
 rueckblick.js, rueckblick.css  Rückblick-Show, nur mit #/rueckblick geladen
 rueckblick-fernbedienung.html  Fernbedienung der Show fürs Handy (Migration 20261017090000)
 tools/testlaeufe.py            Läufe des Geräte-Tests nach testlaeufe/ holen
-vendor/qrcode.js               QR-Generator für den Mitlese-Link, lokal
+vendor/qrcode.js               QR-Generator für die Rückblick-Fernbedienung, lokal
 tools/sql.py                   SQL an die Datenbank schicken, ohne den SQL-Editor
 tools/schema_abzug.py          Stand der Datenbank nach supabase/schema/ abziehen, --pruefen vergleicht
 tools/pruefstand/              UI-Prüfstand: App ohne Datenbank in jedem Zustand fotografieren
@@ -79,7 +79,7 @@ supabase/seed-*.sql            Prager Stationen und Testpersonen
   Foto, dann die Ziffer. Album fürs Team, Galerie und ZIP für die Spielleitung.
 - **Verschlüsselter Stationsname:** löst sich auf, je näher das Team kommt.
   Die Kreise dafür stellt man beim Bearbeiten der Station auf einer Karte ein.
-- **Mitlese-Link als QR-Code**, Hinweis bei ungefährem Standort, Kompass als
+- Hinweis bei ungefährem Standort, Kompass als
   Zeichen mit mitdrehender Nadel, Einmessen als Fenster.
 - **Geräte-Test** (`geraete-test.html`): prüft auf einem Handy, was das Spiel
   braucht, und speichert den Lauf.

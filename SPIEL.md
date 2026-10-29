@@ -28,8 +28,8 @@ App eingeben.
 
 | Rolle | Zugang | Kann | Sieht |
 |---|---|---|---|
-| **Teilnehmende** | Link, Name bei der Anmeldung; oder Mitlese-Link des Teams | sich anmelden (nur bis zum Auslosen), Team nachschauen | eigenes Team groß mit Emoji; ab dem Start alles, was die Teamleitung sieht (Geräte-Schlüssel aus der Anmeldung oder Mitlese-Link) |
-| **Teamleitung** | `#/team`: automatisch auf dem Handy, mit dem sie sich angemeldet hat (Geräte-Schlüssel); Team-Code nur als Ausweg für die Spielleitung am Tablet | einchecken, Rätsel beantworten, Koffer-Code eingeben, Mitlese-Link teilen, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
+| **Teilnehmende** | Link, Name bei der Anmeldung | sich anmelden (nur bis zum Auslosen), Team nachschauen | eigenes Team groß mit Emoji; ab dem Start alles, was die Teamleitung sieht (Geräte-Schlüssel aus der Anmeldung) |
+| **Teamleitung** | `#/team`: automatisch auf dem Handy, mit dem sie sich angemeldet hat (Geräte-Schlüssel); Team-Code nur als Ausweg für die Spielleitung am Tablet | einchecken, Rätsel beantworten, Koffer-Code eingeben, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
 | **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, fortsetzen, freischalten, Rätsel werten, Teamleitung wählen, Stationen pflegen, Leute eintragen, löschen, Testmodus | Reiter Karte und Teams (Karte, Teamliste mit "Braucht dich", Zuletzt), Zeitachse, Codes und Mitlese-Links, Koffer-Code |
 
 Die Teamleitung wird beim Auslosen je Team zufällig bestimmt
@@ -155,6 +155,11 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
   `ok` / `unzuverlaessig`, sonst null), bei einem Wechsel des Urteils sofort.
   Die App schickt immer nur eine Meldung zur Zeit und wiederholt ohne
   `p_kompass` nur bei PGRST202 (Datenbank ohne Nachtrag 30).
+- Der Akku geht nicht mit der Position raus: er hängt am Gerät, nicht am Team-Code.
+  Jedes Handy meldet ihn über `member_state(p_token, p_akku, p_laedt)`; die
+  Teamleitung ruft das im Team-Takt zusätzlich auf (höchstens alle 30 s, sofort
+  bei Wechsel der Stufe oder des Ladens, nie mit dem Code vom Notweg-Tablet).
+  Das liefert auch auf dem iPhone „gerade offen“ (`gesehen_at`).
 
 ---
 
@@ -215,10 +220,9 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
 - Ab dem Start zeigen alle Ansichten im Kopf die Restzeit (`endsAt`, aus
   `duration_min`), rot in den letzten 15 Minuten, danach „Zeit ist um“.
 - Nachzügler: nur über die Spielleitung (Hilfe-Knöpfe auf der Anmeldeseite).
-  Zum Mitlesen bekommen sie den Mitlese-Link ihres Teams (Spielleitung: Reiter Karte und Teams, aufgeklappte Zeile; oder
-  von der Teamleitung).
-- Teamleitung: „Mitlesen fürs Team“ (Link teilen oder kopieren) und „Leitung
-  abgeben“ stehen im Reiter Team ihrer Ansicht (in den Phasen mit der alten langen Seite unten).
+  Der Mitlese-Link ohne Anmeldung ist gestrichen (F7, 29.10.2026): mitlesen kann nur, wer sich auf dem eigenen Handy angemeldet hat.
+- Teamleitung: „Leitung
+  abgeben“ steht im Reiter Team ihrer Ansicht (in den Phasen mit der alten langen Seite unten).
 
 ### 5.4 Spiel (`running`)
 - Teamleitung (`#/team`): Station, Ortshinweis, Kompass und Entfernung,
@@ -253,11 +257,10 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
 
 ## 6. Wer sieht was (Sichtbarkeit)
 
-| Daten | öffentlich (`public_state`) | Mitglied (`member_state`, `member_state_by_team`) | Teamleitung (`team_state`) | Spielleitung (`admin_state`) |
+| Daten | öffentlich (`public_state`) | Mitglied (`member_state`) | Teamleitung (`team_state`) | Spielleitung (`admin_state`) |
 |---|---|---|---|---|
 | Teams, Mitglieder, Teamleitung | ja | eigenes | eigenes | alle |
 | Team-Code | nein | **nein** | eigener | alle |
-| Mitlese-Schlüssel | nein | **nein** | eigener | alle |
 | Station, Ortshinweis, Koordinaten | nein | eigene | eigene | alle |
 | Rätsel | nein | nach Check-in | nach Check-in | alle |
 | Lösung | nein | nein | nein | alle |
@@ -286,12 +289,14 @@ mit dem Team-Code.
 - Team-Codes: Tiername plus sechs Ziffern (`FUCHS-123456`); alte vierstellige
   Codes gelten bis zum nächsten Auslosen. `team_by_code` vergleicht nur
   Buchstaben und Ziffern (`EULE 8765` = `eule-8765`).
-- Mitlesen nur mit Geräte-Token aus der eigenen Anmeldung oder mit dem
-  Mitlese-Schlüssel des Teams (`teams.read_token`, kommt nur von der
-  Teamleitung oder Spielleitung), nie über den Namen: Namen sind öffentlich,
-  und alle Teams haben dieselben Rätsel und Ziffern. Wer den Mitlese-Link
-  weitergibt, gibt Einblick ins eigene Team, nichts weiter; eingeben kann er
-  nichts.
+- Mitlesen nur mit Geräte-Token aus der eigenen Anmeldung, nie über den
+  Namen: Namen sind öffentlich, und alle Teams haben dieselben Rätsel und
+  Ziffern. Den Mitlese-Link (`teams.read_token`, `member_state_by_team`) gibt es
+  seit F7 (29.10.2026) nicht mehr: die Funktion `member_state_by_team` fällt mit
+  der Migration weg, `team_photo` kennt den Lese-Token nicht mehr, die Felder
+  `readToken` fehlen in `team_state` und `admin_state`, und die Spalte
+  `teams.read_token` wird mit der Migration neu gewürfelt (sie bleibt ohne
+  Funktion stehen).
 - Selbstanmeldung nur bis zum Auslosen, sonst bekäme ein erfundener Name
   mitten im Spiel Einblick in ein fremdes Team.
 - Supabase lädt `pg-safeupdate`: **jedes** `UPDATE`/`DELETE` braucht ein
@@ -394,8 +399,7 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
   beim Hochhalten und unterwegs mit Standort; nach der Rückkehr in die App
   (`visibilitychange`) neu, dabei lädt die Seite auch sofort nach.
 - **Stand:** kommt 30 s nichts vom Server, steht im Kopf „Stand 13:27“.
-- **Speicher im Browser:** `sj.name`, `sj.token`, `sj.mit` (Mitlese-Schlüssel
-  des Teams), `sj.code` (Teamleitung), `sj.kal` (Einmessen heute erledigt),
+- **Speicher im Browser:** `sj.name`, `sj.token`, `sj.code` (Teamleitung), `sj.kal` (Einmessen heute erledigt),
   `sj.gps` (Standort war schon freigegeben: nach Neuladen ohne Tipp wieder
   starten, den iOS-Kompass nur per Knopf), `sj.abgemeldet` (Teamleitung hat
   sich abgemeldet: nicht still per Geräte-Schlüssel wieder einloggen),
@@ -418,8 +422,8 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
 - `aktuellesZiel()`: Station, vor dem Start `PROBEZIEL` (TSE AG Berlin).
 - `START` (Hotel Mama Shelter): nur als Haus auf der Admin-Karte, nicht in
   der Datenbank.
-- Mitlese-Link: `#/mit/<schlüssel>` → `mitLinkPruefen()` speichert `sj.mit`
-  und leitet auf `#/public`; `mitlesen()` nimmt `sj.token` vor `sj.mit`.
+- Alte Mitlese-Links (`#/mit/<schlüssel>`) leitet `mitLinkPruefen()` auf `#/public` um und löscht `sj.mit`;
+  `mitlesen()` fragt `member_state` mit `sj.token`.
   `aktiverStand()` liefert `S.team.state` (Teamleitung) oder `S.mit` (Mitglied).
 - Ohne Richtung zeigt der Kompass ein Fragezeichen statt eines Pfeils.
 
@@ -453,8 +457,7 @@ Check-in, gelöst, Fehlversuche, Sperre), `finishes` (Platz), `team_positions`,
 
 Endpunkte:
 - öffentlich: `public_state`, `register_participant`, `lookup_participant`
-  (auch Namensteile, bis zu acht Vorschläge), `member_state`,
-  `member_state_by_team`
+  (auch Namensteile, bis zu acht Vorschläge), `member_state`
 - Teamleitung: `leader_code` (Team-Code über den Geräte-Schlüssel),
   `team_state`, `check_in`, `submit_answer`, `reveal_tip`, `submit_final`,
   `report_position`, `team_set_leader`
@@ -597,7 +600,7 @@ Spezifikationen in `docs/superpowers/specs/`.
   wirklich eines gemerkt ist (`sf.gemerkt`).
 - Ersetzen geht für die zuletzt gelöste Station, bis an einer späteren
   eingecheckt ist.
-- Album: `team_photo` mit Team-Code, Geräte-Schlüssel oder Mitlese-Link.
+- Album: `team_photo` mit Team-Code oder Geräte-Schlüssel.
   Spielleitung: `admin_photos`, `admin_photo`, `admin_set_selfie`,
   `admin_delete_photos`; das ZIP entsteht im Browser (`zipBauen()`).
 - Fotos liegen in `station_photos`, mit Fremdschlüssel auf `progress`:
@@ -653,14 +656,12 @@ Spezifikationen in `docs/superpowers/specs/`.
   Route gezeichnet.
 - „Freischalten“ fragt nach. Solange ein Finger aufliegt, wird nicht neu
   gezeichnet (`fingerSeit`).
-- „Link teilen“ zeigt den Mitlese-Link auch als QR-Code (`qrSvg()`,
-  `vendor/qrcode.js`).
 
 ### Neue Dateien
 
 ```
 geraete-test.html, geraete-tests.js   Geräte-Test und seine Suite (gehört nicht zum Spiel)
-vendor/qrcode.js                      QR-Generator für den Mitlese-Link (MIT)
+vendor/qrcode.js                      QR-Generator für die Rückblick-Fernbedienung (MIT)
 tools/testlaeufe.py                   Läufe des Geräte-Tests nach testlaeufe/ holen
 tools/pruefstand/geraetetest.py       Geräte-Test mit gespielten Sensoren
 tools/pruefstand/selfie.py, name.py   Selfie und verschlüsselter Name im Prüfstand
@@ -1060,7 +1061,7 @@ bleibt ohne Handy voll bedienbar (Tastatur, Presenter).
 - **Wann:** nur beim allerersten Öffnen auf einem Handy (`sj.intro` in
   `localStorage`, gesetzt schon beim Start des Intros). Nie bei der
   Spielleitung (`#/admin`) und in der Rückblick-Show; Anmeldung, Teamleitung,
-  Mitglied und Mitlese-Link bekommen es. Ohne Speicher (gesperrt) kommt es bei
+  und Mitglied bekommen es. Ohne Speicher (gesperrt) kommt es bei
   jedem Neuladen.
 - **Start:** Das Startbild steht sofort (Papier, `#app` unsichtbar dahinter),
   alle Animationen angehalten auf ihrem ersten Bild. Los geht es 0,5 s nach dem

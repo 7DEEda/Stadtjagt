@@ -28,7 +28,7 @@ zusammenpassen.
 
 ## Rechte
 
-Stand: 60 Funktionen (Trigger 2, intern 8, nur PIN 32, offen 18), 11 Tabellen, 1 Sichten.
+Stand: 59 Funktionen (Trigger 2, intern 8, nur PIN 32, offen 17), 11 Tabellen, 1 Sichten.
 
 - **offen**: `anon` darf aufrufen, die Funktion ruft `require_admin` nicht selbst auf
   (öffentlicher Zustand, Team-Funktionen mit Team-Code oder Token)
@@ -79,8 +79,7 @@ Hilfsfunktion prüft, steht als "offen".
 | `game_state_pin_pruefen()` | Trigger | ja | ja | ja |
 | `leader_code(p_token text)` | offen | ja | ja | ja |
 | `lookup_participant(p_name text)` | offen | ja | ja | ja |
-| `member_state(p_token text)` | offen | ja | ja | ja |
-| `member_state_by_team(p_read_token text)` | offen | ja | ja | ja |
+| `member_state(p_token text, p_akku integer, p_laedt boolean)` | offen | ja | ja | ja |
 | `name_abstand(a text, b text)` | intern | nein | nein | nein |
 | `norm(t text)` | intern | nein | nein | nein |
 | `participants_name_key_pruefen()` | Trigger | ja | ja | ja |
