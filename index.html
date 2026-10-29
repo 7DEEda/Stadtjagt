@@ -280,6 +280,21 @@ body.spiel main{max-width:none;padding:0}
 .ueber{position:fixed;inset:0;z-index:50;background:rgba(15,27,24,.45);display:flex;align-items:flex-end;justify-content:center;animation:ein .16s cubic-bezier(.32,.72,.4,1)}
 .blatt{width:100%;max-width:560px;background:var(--card);border-radius:14px 14px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom))}
 .blatt .hilfe{margin-top:10px}
+/* Übergabe-Fenster und Akku-Warnung (Rollen und Akku, 29.10.2026): Personen zum Antippen */
+.wahl{display:flex;flex-direction:column;gap:6px;margin:10px 0 12px}
+.wahl button{min-height:46px;border-radius:10px;border:1.5px solid var(--feld);background:var(--card);color:var(--ink);font:600 var(--fs-m) var(--body);padding:6px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;cursor:pointer}
+.wahl button[aria-pressed="true"]{border-color:var(--flag);box-shadow:0 0 0 3px color-mix(in srgb,var(--flag) 20%,transparent)}
+.wahl small{color:var(--muted);font-weight:500;font-size:var(--fs-s);white-space:nowrap}
+.wahl small.knapp{color:var(--err)}
+.blatt .akkuzeile{display:flex;align-items:center;gap:10px;margin-bottom:6px;color:var(--warn)}
+.blatt .akkuzeile.leer{color:var(--err)}
+.blatt .akkuzeile b{font:700 var(--fs-xl) var(--head);white-space:nowrap}
+.blatt .akkuzeile svg{width:30px;height:16px;flex:none}
+.blatt h2{margin-bottom:4px}
+.blatt .msg{margin-top:8px}
+/* kurze Einblendung nach einem Rollenwechsel */
+.kurz{position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));z-index:60;margin:0 auto;max-width:520px;background:var(--ink);color:var(--paper);border-radius:10px;padding:12px 14px;font:600 var(--fs-m) var(--body);text-align:center;box-shadow:0 6px 18px rgba(17,17,17,.25);animation:ein .16s cubic-bezier(.32,.72,.4,1)}
+@media (prefers-reduced-motion:reduce){.kurz{animation:none}}
 .blatt .link{min-height:44px}
 @media (prefers-reduced-motion:reduce){.ueber{animation:none}}
 .ftabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
@@ -694,6 +709,11 @@ const RPC_FOTO = new Set(["team_photo", "team_selfie", "admin_photo", "admin_pho
 const keineVerbindung = () => Object.assign(new Error("Keine Verbindung. Wartet kurz und tippt noch mal."), { netz: true });
 // Die Datenbank kennt die Funktion mit diesen Parametern nicht (älterer Nachtrag eingespielt, PostgREST PGRST202)
 const ohneFunktion = e => !!e && (e.code === "PGRST202" || /Could not find the function/i.test(e.message || ""));
+// Akku (Rollen und Akku, 29.10.2026): level 0 bis 100, null = unbekannt (iPhone: Safari gibt ihn nicht heraus)
+const AKKU = { level: null, laedt: false, bm: null };
+const AKKU_KNAPP = 20, AKKU_LEER = 10;
+// Die Datenbank kennt p_akku noch nicht (Migration fehlt): die Aufrufe laufen dann ohne
+let DB_OHNE_AKKU = false;
 // Geräte-Schlüssel wie register_participant ihn ausgibt: 64 Hex-Zeichen, hier aus 32 Zufallsbytes
 const neuerSchluessel = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), x => x.toString(16).padStart(2, "0")).join("");
 async function rpc(fn, args) {
@@ -727,7 +747,9 @@ const S = {
   view: (location.hash.replace("#/", "") || "public"),
   msg: null, busy: false,
   pub: null, myName: LS.getItem("sj.name") || null, lookup: null,
-  team: { code: LS.getItem("sj.code") || null, state: null, tab: "weg" },
+  team: { code: LS.getItem("sj.code") || null, state: null, tab: "weg",
+          // uebergabe: offenes Fenster ("abgeben" | "akku20" | "akku10"), wahl: Name der gewählten Person
+          uebergabe: null, wahl: null },
   // kompass: "unbekannt" | "wartet" | "an" | "kalibrieren" | "relativ" | "abgelehnt" | "fehlt"
   gps: { pos: null, acc: null, heading: null, gpsHeading: null, gpsHeadingAt: null, needle: 0, on: false, err: null, kompass: "unbekannt", lastSent: 0, lastSentPos: null, sentAt: null,
          // kompassAcc: Genauigkeit in Grad (nur iOS), kal: laufendes Einmessen, kalOk: Ergebnis für den Hinweis danach
@@ -814,7 +836,7 @@ const DANGER = {
     when: () => false, wort: false, neutral: true,
     title: "Teamleitung wechseln",
     lead: () => { const c = S.admin.confirm || {}; return `$NAME leitet dann Team ${c.team}.` + (c.alt ? ` ${c.alt} gibt ab dann nichts mehr ein.` : "")
-      + ` $NAME tippt auf dem eigenen Handy auf „Teamleitung“ und ist gleich drin. Das geht nur, wenn $NAME sich dort selbst angemeldet hat.`; },
+      + ` Beide Handys schalten nach dem nächsten Abruf von selbst um. Das geht nur, wenn $NAME sich dort selbst angemeldet hat.`; },
     keeps: "Nichts wird gelöscht.",
     btn: "Leitung wechseln",
     async run(c) {
@@ -1312,8 +1334,41 @@ function kompassChip() {
   if (kompassFolgt()) return `<span class="chip kchip ok" id="kchip">Kompass</span>`;
   return `<span class="chip kchip warn" id="kchip">${laufrichtung() != null ? "nach Laufrichtung" : "erst ein paar Schritte"}</span>`;
 }
+// Wem kann die Teamleitung die Leitung geben? Nur Angemeldete mit eigenem Handy (der Server lehnt andere ab),
+// verbundene zuerst. Eine ältere Datenbank liefert keine geraete: dann alle anderen aus members.
+function waehlbar(st) {
+  const g = st.geraete, leitung = st.team.leaderName;
+  if (!Array.isArray(g)) return (st.team.members || []).filter(m => m !== leitung).map(name => ({ name, verbunden: true, akku: null, laedt: false }));
+  return g.filter(x => x.name !== leitung && x.angemeldet)
+    .map(x => ({ name: x.name, verbunden: !!x.verbunden, akku: x.akku == null ? null : x.akku, laedt: !!x.laedt }))
+    .sort((a, b) => (b.verbunden - a.verbunden) || a.name.localeCompare(b.name, "de"));
+}
 // Gibt es jemanden, an den die Teamleitung (nicht ein Mitleser) die Leitung abgeben kann?
-const leitungAbgebbar = (st, lesen) => !lesen && (st.team.members || []).some(m => m !== st.team.leaderName);
+const leitungAbgebbar = (st, lesen) => !lesen && waehlbar(st).length > 0;
+// Akku-Hinweis oben im Reiter Weg/Rätsel (ab running): Handys des Teams bei 20 % oder weniger, die nicht laden.
+// Das eigene Handy zählt mit dem Wert von hier, die anderen mit dem, was der Server zuletzt von ihnen hat.
+function akkuListe(st, lesen) {
+  const eigen = AKKU.level != null && !LS.getItem("sj.hand") ? (lesen ? st.name : S.myName) : null;
+  const l = [];
+  if (eigen && AKKU.level <= AKKU_KNAPP && !AKKU.laedt) l.push({ name: eigen, akku: AKKU.level, ich: true });
+  (st.geraete || []).forEach(g => {
+    if (g.name === eigen || !g.angemeldet || !g.verbunden || g.akku == null || g.laedt || g.akku > AKKU_KNAPP) return;
+    l.push({ name: g.name, akku: g.akku });
+  });
+  return l.sort((a, b) => (b.ich ? 1 : 0) - (a.ich ? 1 : 0) || a.akku - b.akku);
+}
+function akkuHinweisHTML(st, lesen) {
+  if (st.status !== "running") return "";
+  const l = akkuListe(st, lesen);
+  if (!l.length) return "";
+  const liste = l.map(x => `${x.ich ? "dein Handy" : esc(vorname(x.name))} <span class="nw">${x.akku} %</span>`).join(", ");
+  const leitung = st.team.leaderName;
+  let text;
+  if (!lesen && l.some(x => x.ich)) text = `Gib die Leitung rechtzeitig an jemanden mit vollerem Akku ab.${leitungAbgebbar(st, lesen) ? `<button class="btn alt" data-act="t-abgeben-frage">Leitung abgeben</button>` : ""}`;
+  else if (l.some(x => x.name === leitung)) text = `Das Handy der Teamleitung geht bald aus. ${esc(vorname(leitung))} sollte die Leitung rechtzeitig abgeben.`;
+  else text = "Ladet das Handy, wenn ihr könnt.";
+  return `<div class="msg warn" id="akkuhinweis"><b>Akku knapp: ${liste}</b><br>${text}</div>`;
+}
 // Hinweis des Wächters; nach erfolglosem Einmessen ehrlicher (Mockup rollen-akku-kompass.html)
 function waechterHinweisHTML(st, lesen) {
   const g = S.gps, w = g.waechter;
@@ -1399,11 +1454,9 @@ function gpsNote() {
 // nur als Ausweg für die Spielleitung am Tablet, falls das Handy einer Leitung ausfällt.
 function viewTeam() {
   if (!S.team.code) {
-    const tok = LS.getItem("sj.token"), ab = LS.getItem("sj.abgemeldet");
+    const tok = LS.getItem("sj.token");
     const warum = !tok ? `<h2>Eingeben kann nur die Teamleitung</h2>
         <p class="muted">Und zwar auf dem Handy, mit dem sie sich angemeldet hat. Auf diesem Handy hat sich niemand angemeldet.</p>`
-      : ab ? `<h2>Du hast dich abgemeldet</h2><p class="muted">Dieses Handy gibt gerade nichts ein.</p>
-        <button class="btn" data-act="t-ohne-code" data-wait="Wird geprüft …">Wieder als Teamleitung einloggen</button>`
       : S.team.ohneNetz ? `<h2>Teamleitung wird geprüft</h2>
         <p class="muted">Gerade kommt keine Antwort. Wir fragen alle 10 Sekunden von selbst noch einmal.</p>
         <button class="btn alt" data-act="t-ohne-code" data-wait="Wird geprüft …">Noch einmal prüfen</button>`
@@ -1411,7 +1464,7 @@ function viewTeam() {
         <p class="muted">Eingeben kann nur die Teamleitung, auf ihrem eigenen Handy. Station und Rätsel siehst du auf der Anmeldeseite mit.</p>
         <button class="btn alt" data-act="t-ohne-code" data-wait="Wird geprüft …">Noch einmal prüfen</button>`;
     return brand() + `<div class="panel">${warum}${msgBox()}
-      <a class="btn ${ab ? "alt" : ""}" href="#/public">Zur Anmeldeseite</a></div>
+      <a class="btn" href="#/public">Zur Anmeldeseite</a></div>
       ${S.team.codeFeld ? `<div class="panel"><h3>Mit Team-Code eingeben</h3>
         <p class="small muted">Nur für die Spielleitung, wenn das Handy einer Teamleitung ausfällt. Den Code zeigt die Teamliste im Reiter Karte und Teams, wenn du das Team antippst.</p>
         <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="FUCHS-123456"></div>
@@ -1421,7 +1474,7 @@ function viewTeam() {
   }
   const st = S.team.state;
   if (!st) return brand() + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
-  return teamAnsicht(st, false) + (S.hoch && document.body.classList.contains("spiel") ? hochHTML(st.team.name) : "");
+  return teamAnsicht(st, false) + (S.hoch && document.body.classList.contains("spiel") ? hochHTML(st.team.name) : "") + uebergabeHTML(st);
 }
 // Umbau Weiterentwicklung: das Spiel am Handy als feste Hülle. Kopf und Tabs stehen, nur der Inhalt scrollt.
 const TAB_ICON = {
@@ -1500,7 +1553,7 @@ function spielHuelle(st, s, lesen, weg, hilfeText) {
     <span class="small muted nw">${st.solvedCount} von ${st.totalStations}</span></div>${lockHTML(st)}${routeHTML(st)}
     <p class="small muted" style="margin-top:6px">Die abgesetzte letzte Ziffer ist die Schlussziffer: die Einerstelle der Summe ${summeText(st)}.</p></div>`;
   const tab = S.team.tab || "weg";
-  const inhalt = tab === "ziffern" ? zifferTab : tab === "team" ? teamTabHTML(st, lesen) : weg;
+  const inhalt = tab === "ziffern" ? zifferTab : tab === "team" ? teamTabHTML(st, lesen) : akkuHinweisHTML(st, lesen) + weg;
   document.body.classList.add("spiel");
   return huelleHTML({ kopf: kopfHTML(st, lesen), inhalt, leiste: leisteHTML(st, s, lesen), tabs: tabsHTML(st), blatt: hilfeBlattHTML(hilfeText) });
 }
@@ -1629,19 +1682,36 @@ function teamAnsicht(st, lesen) {
   }
   return spielHuelle(st, s, lesen, out, `Stadtjagd: Hier ist ${kennung}. Wir brauchen Hilfe bei Station ${s.position}.`);
 }
-// Nur für die Teamleitung: die Leitung abgeben
+// Nur für die Teamleitung: die Leitung abgeben (das Fenster dazu: uebergabeHTML)
 function leitungHTML(st) {
   if (!leitungAbgebbar(st, false)) return "";
-  const andere = st.team.members.filter(m => m !== st.team.leaderName);
-  return (S.team.abgeben
-    ? `<div class="panel"><h3>Leitung abgeben</h3>
-        <p class="small muted">Die neue Leitung tippt auf ihrem eigenen Handy auf „Teamleitung“ und ist gleich drin. Dieses Handy gibt danach nichts mehr ein.</p>
-        <div style="margin-top:12px"><label for="tneu">Neue Teamleitung</label><select id="tneu"><option value="" selected disabled>Person wählen</option>${andere.map(m => `<option>${esc(m)}</option>`).join("")}</select></div>
-        <div class="row2"><button class="btn alt" data-act="t-abgeben-nein">Abbrechen</button><button class="btn" id="tabgeben" data-act="t-abgeben" data-wait="Wird übergeben …" disabled>Übergeben</button></div>${msgBox("abgeben")}</div>`
-    : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-abgeben-frage">Leitung abgeben</button></p>${msgBox("abgeben")}`);
+  return `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-abgeben-frage">Leitung abgeben</button></p>`;
 }
-// Abmelden ist selten gewollt: kleiner Link, dann eine Rückfrage
+// Das Übergabe-Fenster: Personen zum Antippen, mit Akku. Gleiches Blatt für "Leitung abgeben" und die Akku-Warnung bei
+// 20 % und 10 % (Mockups rollen-akku-kompass.html und akku-warnung.html). Liegt über jeder Phase, nicht nur über der Hülle.
+const AKKU_ICON = p => `<svg viewBox="0 0 30 16" aria-hidden="true"><rect x="1" y="2" width="24" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="26" y="5.5" width="2.5" height="5" rx="1" fill="currentColor"/><rect x="3" y="4" width="${Math.max(1, 20 * p / 100)}" height="8" rx="1.5" fill="currentColor"/></svg>`;
+function uebergabeHTML(st) {
+  const k = S.team.uebergabe;
+  if (!k || S.view !== "team" || !S.team.code) return "";
+  const kopf = k === "akku10" ? `<div class="akkuzeile leer">${AKKU_ICON(AKKU.level ?? 10)}<b class="nw">${AKKU.level ?? 10} %</b></div>
+      <h2 id="ueb-t">Akku fast leer</h2><p>Bald geht dieses Handy aus. Jetzt abgeben, dann spielt euer Team ohne Pause weiter.</p>`
+    : k === "akku20" ? `<div class="akkuzeile">${AKKU_ICON(AKKU.level ?? 20)}<b class="nw">${AKKU.level ?? 20} %</b></div>
+      <h2 id="ueb-t">Akku wird knapp</h2><p>Gebt die Leitung jetzt an jemanden mit vollerem Akku ab.</p>`
+    : `<h2 id="ueb-t">Leitung abgeben</h2><p>Die neue Leitung bekommt Einchecken, Antworten und Koffer auf ihr Handy, ohne etwas zu tippen.</p>`;
+  const wahl = waehlbar(st).map(g => {
+    const sub = !g.verbunden ? "Handy nicht verbunden" : g.akku == null ? "" : `Akku <span class="nw">${g.akku} %</span>${g.laedt ? ", lädt" : ""}`;
+    const knapp = g.verbunden && g.akku != null && g.akku <= AKKU_KNAPP && !g.laedt;
+    return `<button data-act="t-wahl" data-name="${esc(g.name)}" aria-pressed="${S.team.wahl === g.name}">${esc(g.name)}${sub ? `<small class="${knapp ? "knapp" : ""}">${sub}</small>` : ""}</button>`;
+  }).join("");
+  return `<div class="ueber" data-act="t-abgeben-nein"><div class="blatt" role="dialog" aria-modal="true" aria-labelledby="ueb-t">${kopf}
+    <div class="wahl" role="group" aria-label="Neue Teamleitung">${wahl}</div>${msgBox("abgeben")}
+    <div class="row2"><button class="btn alt" data-act="t-abgeben-nein">${k === "abgeben" ? "Abbrechen" : "Später"}</button>
+      <button class="btn" id="tabgeben" data-act="t-abgeben" data-wait="Wird übergeben …" ${S.team.wahl ? "" : "disabled"}>Übergeben</button></div></div></div>`;
+}
+// Abmelden gibt es nur noch am Notweg-Tablet (Team-Code von Hand, sj.hand). Auf dem Handy einer Teamleitung ist der
+// Ausweg "Leitung abgeben": die Rolle kommt vom Server (F1, 29.10.2026).
 function abmeldenHTML() {
+  if (!LS.getItem("sj.hand")) return "";
   return S.team.abmelden
     ? `<div class="panel"><p><b>Wirklich abmelden?</b> Dieses Handy gibt dann nichts mehr ein, bis du dich unter Teamleitung wieder einloggst.</p>
         <div class="row2"><button class="btn alt" data-act="t-logout-nein">Nein</button>
@@ -2024,6 +2094,10 @@ function problemVon(t, st) {
   const upd = t.position && t.position.updatedAt, alt = upd ? Date.now() - new Date(upd).getTime() : null;
   if (alt == null) return { stufe: "fehler", kurz: "kein GPS", text: `${t.name} sendet keinen Standort. Ruf die Teamleitung an; ist das Team an der Station, schalte sie frei.` };
   if (alt > GPS_ALT_MS) return { stufe: "fehler", kurz: `GPS ${ago(upd)}`, text: `Letzter Standort ${ago(upd)}. Vielleicht ist das Handy gesperrt.` };
+  // F5: unter 10 % und nicht ladend geht das Handy der Teamleitung gleich aus
+  const la = t.leaderAkku;
+  if (la && la.akku != null && !la.laedt && la.akku < AKKU_LEER) return { stufe: "warn", kurz: `Akku ${la.akku}\u00a0%`, akku: true,
+    text: `${t.leaderName || "Die Teamleitung"} hat nur noch ${la.akku}\u00a0% Akku. Ruf an, die Leitung sollte sie jetzt abgeben.` };
   // Beim 3. Fehlversuch setzt submit_answer die Fehlversuche auf 0 und sperrt bis lockedUntil (Review 15.10.2026, Befund 2)
   if (t.lockedUntil && new Date(t.lockedUntil).getTime() > Date.now()) return { stufe: "warn", kurz: `Denkpause bis ${uhrzeit(t.lockedUntil)}`,
     text: `Dreimal falsch an Station ${t.currentPosition}, Denkpause bis ${uhrzeit(t.lockedUntil)}. Klemmt das Rätsel, kannst du es als gelöst werten.` };
@@ -2042,14 +2116,15 @@ function teamZeile(t, i, st) {
   const detail = !sel ? "" : `<div class="detail">${p ? `<p class="msg ${p.stufe === "fehler" ? "err" : "warn"}">${esc(p.text)}</p>` : ""}
       <label for="lt-${t.id}">Teamleitung</label>
       <select class="sm" id="lt-${t.id}" data-chg="a-leader" data-id="${t.id}" data-ort="t:${t.id}">${!t.leaderId ? `<option value="" selected>offen</option>` : ""}
-        ${(st.participants || []).filter(x => x.teamId === t.id).map(x => `<option value="${esc(x.id)}" ${x.id === t.leaderId ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
+        ${(st.participants || []).filter(x => x.teamId === t.id).map(x => `<option value="${esc(x.id)}" ${x.id === t.leaderId ? "selected" : ""}>${esc(x.name)}${x.hatHandy === false ? " (kein eigenes Handy)" : ""}</option>`).join("")}</select>
+      ${t.leaderAkku && t.leaderAkku.akku != null ? `<p class="small">Akku der Teamleitung: <b class="nw">${t.leaderAkku.akku}\u00a0%</b>${t.leaderAkku.laedt ? ", lädt" : ""}</p>` : ""}
       <p class="small">Code <b class="nw">${esc(t.code)}</b></p>
       </div>`;
   return `<li class="row ${p ? "p-" + p.stufe : ""} ${sel ? "sel" : ""}" data-row="${t.id}">
     <div class="row-top"><button class="row-main" data-act="a-sel" data-id="${t.id}" aria-expanded="${sel}">
       <span class="tier" style="--tc:${teamColor(i)}" aria-hidden="true">${teamEmoji(t.name)}</span>
       <span class="row-txt"><span><b>${esc(t.name)}</b> <span class="small muted nw">${t.solved}/${gesamt}</span></span>
-        <span class="l2"><span class="nw">${wo}</span>${p ? ` <span class="chip ${p.stufe === "fehler" ? "err" : "warn"} nw">${esc(p.kurz)}</span>` : ""}${kompassVermerk(t, st)}</span></span></button>${knopf}</div>${msgBox("t:" + t.id)}${detail}</li>`;
+        <span class="l2"><span class="nw">${wo}</span>${p ? ` <span class="chip ${p.stufe === "fehler" ? "err" : "warn"} nw">${esc(p.kurz)}</span>` : ""}${p && p.akku ? "" : akkuVermerk(t, st)}${kompassVermerk(t, st)}</span></span></button>${knopf}</div>${msgBox("t:" + t.id)}${detail}</li>`;
 }
 function teamlisteHTML(st) {
   const alle = (st.teams || []).map((t, i) => ({ t, i, p: problemVon(t, st) }));
@@ -2218,7 +2293,7 @@ function viewAdmin() {
     const n = (st.participants || []).length, d = A.draw;
     // Nach dem Auslosen ist Starten der nächste Schritt, nicht Neu auslosen
     if (st.status === "drawn") out += `<div class="panel"><h3>Bereit zum Start</h3>
-        <p class="small muted">Die Teamleitungen sind auf ihrem eigenen Handy unter „Teamleitung“ gleich drin, einen Code braucht niemand. Die App fragt vor dem Start noch einmal nach.</p>
+        <p class="small muted">Die Teamleitungen sind auf ihrem eigenen Handy gleich drin, einen Code braucht niemand. Die App fragt vor dem Start noch einmal nach.</p>
         ${st.testMode ? `<div class="msg err">Der Testmodus ist noch an: Entfernung und Antworten werden nicht geprüft. Ausschalten im Reiter Stationen.</div>` : ""}
         <button class="btn" data-act="a-start">Spiel starten</button></div>`;
     // Den Reiter gibt es nur vor dem Start (laeuft schaltet oben auf live um); danach steht der Weg zurück im Reiter Daten löschen
@@ -2364,6 +2439,12 @@ function viewAdmin() {
 
 // Vermerk "Kompass falsch" aus der Position des Teams. Nach Laufrichtung zeigt der Pfeil nur im Testmodus; sonst folgt er
 // weiter dem Kompass, also nur der Vermerk. Er gilt nur zu einer frischen Position (jünger als 3 min); danach weiß niemand, ob er noch stimmt.
+// Akku der Teamleitung in der Teamzeile: ab 20 % und nicht ladend (F5)
+function akkuVermerk(t, st) {
+  const la = t.leaderAkku;
+  return st.status === "running" && !t.place && la && la.akku != null && !la.laedt && la.akku <= AKKU_KNAPP
+    ? ` <span class="chip warn nw" style="margin:0">Akku ${la.akku}\u00a0%</span>` : "";
+}
 function kompassVermerk(t, st) {
   const upd = t.position && t.position.updatedAt, alt = upd ? Date.now() - new Date(upd).getTime() : null;
   return st.status === "running" && !t.place && t.position && t.position.kompass === "unzuverlaessig" && alt != null && alt < 3 * 60000
@@ -2746,7 +2827,6 @@ const ACT = {
     S.lookup = r.team; S.lookupName = r.name; S.sucheOffen = false; S.msg = { type: "ok", ort: "karte", text: r.name + " ist in Team " + r.team.name + "." };
   },
   async "t-ohne-code"() {
-    LS.removeItem("sj.abgemeldet");
     if (await leitungOhneCode()) { S.msg = null; await refresh(); return false; }
     if (!S.team.ohneNetz) S.msg = { type: "err", text: S.team.ohneGrund || "Du leitest gerade kein Team." };   // Funkloch: die Meldung steht schon
   },
@@ -2756,30 +2836,31 @@ const ACT = {
     let st;
     try { st = await rpc("team_state", { p_code: code }); }
     catch (e) { S.msg = { type: "err", ort: "code", text: String(e.message).includes("Unbekannter Team-Code") ? "Diesen Team-Code gibt es nicht. Prüft die Schreibweise, etwa FUCHS-123456." : e.message }; return; }
-    LS.removeItem("sj.abgemeldet");
     S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
     // Merker nur für den Notweg: tippt die Teamleitung ihren eigenen Code, meldet leitungNochDa sie nach einem Wechsel ab
     if (S.myName && st.team.leaderName === S.myName) LS.removeItem("sj.hand"); else LS.setItem("sj.hand", "1");
   },
-  "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.setItem("sj.abgemeldet", "1"); standVergessen(); stopGps(); },
+  "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); standVergessen(); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
-  "t-abgeben-frage"() {
-    S.team.abgeben = true; S.msg = null; S.team.tab = "team";   // das Fenster steht im Tab Team
-    // Der Knopf im Kompass-Hinweis steht weit weg vom Fenster: nach dem Neuzeichnen hinscrollen
-    setTimeout(() => { const f = $("#tneu"); if (f) f.closest(".panel").scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }, 50);
+  "t-abgeben-frage"() { S.team.uebergabe = "abgeben"; S.team.wahl = null; S.msg = null; },
+  // Tipp daneben oder "Abbrechen"/"Später" schließt; ein Tipp ins Blatt selbst nicht (wie beim Hilfe-Blatt)
+  "t-abgeben-nein"(d, e) {
+    if (e && e.target.closest(".blatt") && !e.target.closest("button[data-act=t-abgeben-nein]")) return false;
+    S.team.uebergabe = null; S.team.wahl = null; S.msg = null;
   },
-  "t-abgeben-nein"() { S.team.abgeben = false; S.msg = null; },
-  // Die Rückmeldung gehört unter das Abgeben-Feld (ort "abgeben"): das steht in jeder Phase,
-  // die allgemeine Meldung nur an Station, Rätsel und Koffer
+  "t-wahl"(d) { S.team.wahl = d.name; },
+  // Die Rückmeldung gehört in das Fenster (ort "abgeben"); im Funkloch bleibt es offen mit der Meldung
   async "t-abgeben"() {
-    const name = val("tneu");
+    const name = S.team.wahl;
+    if (!name) return false;
+    const st = S.team.state, g = st ? waehlbar(st).find(x => x.name === name) : null;
     try {
       const team = (await rpc("team_set_leader", { p_code: S.team.code, p_name: name })).team;
-      // Abgegeben: dieses Handy meldet sich ab, die neue Leitung ist auf ihrem Handy gleich drin
-      S.team.code = null; S.team.state = null; S.team.abgeben = false; S.team.abmelden = false; S.team.tab = "weg";
-      LS.removeItem("sj.code"); standVergessen(); stopGps();
-      S.msg = { type: "ok", text: `${vorname(name)} leitet jetzt Team ${team ? team.name : ""} und tippt auf dem eigenen Handy auf „Teamleitung“. Station und Rätsel siehst du auf der Anmeldeseite mit.` };
+      // Abgegeben: dieses Handy liest ab jetzt mit, GPS läuft weiter; die neue Leitung schaltet nach dem nächsten Abruf um
+      const wer = vorname(name);
+      await rolleWechseln("mitglied", team || (st && st.team), g && !g.verbunden ? `${wer} leitet jetzt das Team, sobald das Handy wieder verbunden ist.` : `${wer} leitet jetzt das Team`);
+      return false;
     } catch (e) { S.msg = { type: "err", ort: "abgeben", text: e.message || "Etwas ist schiefgelaufen." }; }
   },
   "neu-laden"() { location.reload(); return false; },
@@ -2960,7 +3041,7 @@ const ACT = {
     if (A.state.status === "drawn") { A.confirm = Object.assign({ key: "redraw" }, args); S.msg = null; return; }
     A.state = await rpc("admin_draw", Object.assign({ p_pin: A.pin }, args));
     A.tracks = null; A.syncedAt = null; A.hidden = {}; A.tab = "teams";
-    S.msg = { type: "ok", text: "Ausgelost. Die Teamleitungen sind auf ihrem eigenen Handy unter „Teamleitung“ gleich drin." };
+    S.msg = { type: "ok", text: "Ausgelost. Die Teamleitungen sind auf ihrem eigenen Handy gleich drin." };
   },
   "a-start"() { S.admin.confirm = { key: "start" }; S.msg = null; },
   // Versehentlich beendet: weiter geht es ohne Verlust, Plätze und Fortschritt bleiben
@@ -3493,20 +3574,134 @@ async function maybeReport() {
   const urteil = g.waechter ? g.waechter.urteil : null;
   const neuUrteil = urteil !== g.lastSentUrteil;
   // eine Meldung zur Zeit: im Funkloch hängt eine Anfrage sonst lange, und jede neue Position stieße die nächste an
-  if (g.meldet || (!moved && !oldEnough && !neuUrteil)) return;
+  if (g.meldet || (!moved && !oldEnough && !neuUrteil && !g.akkuNeu)) return;
   g.meldet = true;
   g.lastSent = Date.now(); g.lastSentPos = { ...g.pos };
   const pos = { p_code: S.team.code, p_lat: g.pos.lat, p_lng: g.pos.lng, p_acc: g.acc };
-  // Eine Datenbank ohne Nachtrag 30 kennt p_kompass nicht (PostgREST findet die Funktion nicht, PGRST202): nur dann
-  // einmal ohne, die Position ist wichtiger als das Urteil. Bei jedem anderen Fehler (Funkloch, Server) kein zweiter Aufruf.
+  // Der Akku gehört der Teamleitung. Am Notweg-Tablet (Code von Hand, sj.hand) ist es nicht ihr Handy: kein Akku.
+  const akku = AKKU.level != null && !DB_OHNE_AKKU && !LS.getItem("sj.hand") ? { p_akku: AKKU.level, p_laedt: AKKU.laedt } : null;
+  // Eine Datenbank ohne Nachtrag 30 kennt p_kompass nicht, eine ohne die Akku-Migration p_akku nicht (PostgREST findet
+  // die Funktion nicht, PGRST202): nur dann einmal ohne, die Position ist wichtiger als Urteil und Akku. Bei jedem
+  // anderen Fehler (Funkloch, Server) kein zweiter Aufruf.
   try {
-    try { await rpc("report_position", { ...pos, p_kompass: urteil }); }
-    catch (e) { if (!ohneFunktion(e)) throw e; await rpc("report_position", pos); }
+    try {
+      try { await rpc("report_position", { ...pos, p_kompass: urteil, ...akku }); }
+      catch (e) { if (!akku || !ohneFunktion(e)) throw e; DB_OHNE_AKKU = true; await rpc("report_position", { ...pos, p_kompass: urteil }); }
+    } catch (e) { if (!ohneFunktion(e)) throw e; await rpc("report_position", pos); }
     // erst nach dem Senden: scheitert es, geht das Urteil beim nächsten Melden wieder mit
-    g.lastSentUrteil = urteil;
+    g.lastSentUrteil = urteil; if (akku) g.akkuNeu = false;
     g.sentAt = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   } catch { /* Funkloch: beim nächsten Mal erneut */ }
   finally { g.meldet = false; }
+}
+
+/* ---------- Akku lesen (Rollen und Akku, 29.10.2026) ---------- */
+// Chrome und Android geben den Stand heraus, Safari nicht: dort bleibt AKKU.level null, es gibt keine Warnung.
+// Nicht für die Spielleitung und die Rückblick-Show.
+async function akkuStarten() {
+  if (AKKU.bm || !navigator.getBattery || S.view === "admin" || imRueckblick()) return;
+  try {
+    const b = await navigator.getBattery();
+    AKKU.bm = b; akkuLesen();
+    ["levelchange", "chargingchange"].forEach(ev => b.addEventListener(ev, akkuGeaendert));
+    akkuFensterPruefen();
+  } catch { /* gesperrt: wie ein iPhone */ }
+}
+const akkuMerk = () => { try { return Object.assign({ a20: false, a10: false }, JSON.parse(LS.getItem("sj.akku") || "{}")); } catch { return { a20: false, a10: false }; } };
+// Stufe, die das Team sieht: 0 normal oder ladend, 20 knapp, 10 fast leer
+const akkuStufe = () => AKKU.level == null || AKKU.laedt ? 0 : AKKU.level <= AKKU_LEER ? 10 : AKKU.level <= AKKU_KNAPP ? 20 : 0;
+function akkuLesen() {
+  AKKU.level = Math.round(AKKU.bm.level * 100); AKKU.laedt = !!AKKU.bm.charging;
+  // wieder scharf (F3): über 25 % die 20-%-Warnung, über 15 % die 10-%-Warnung
+  const m = akkuMerk(); let neu = false;
+  if (AKKU.level > 25 && m.a20) { m.a20 = false; neu = true; }
+  if (AKKU.level > 15 && m.a10) { m.a10 = false; neu = true; }
+  if (neu) LS.setItem("sj.akku", JSON.stringify(m));
+}
+// Hält etwas die Seite besetzt? Dann öffnet sich kein Akku-Fenster und nichts wird neu gezeichnet: Hochhalten,
+// Hilfe-Blatt, Einmessen, Selfie (Kamera und Vorschau), großes Foto, offenes Fenster, laufende Aktion, Tippen.
+function akkuBelegt() {
+  const st = S.team.state;
+  return !!(S.hoch || S.team.hilfe || S.gps.kal || S.selfie || S.gross || S.team.uebergabe || S.team.abmelden || S.busy || $(".ueber") || $("#kal")
+    || (st && st.selfie && st.selfie.on && st.selfie.pending)
+    || ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName));
+}
+function akkuGeaendert() {
+  const vorher = akkuStufe();
+  akkuLesen();
+  if (vorher !== akkuStufe()) S.gps.akkuNeu = true;   // geht mit der nächsten Meldung raus
+  if (akkuFensterPruefen()) return;
+  // Der Hinweis erscheint oder verschwindet: neu zeichnen, wenn gerade nichts besetzt ist
+  if (vorher !== akkuStufe() && (S.view === "team" || S.view === "public") && !akkuBelegt()) render();
+}
+// Das Akku-Fenster: nur auf dem Handy der Teamleitung (nicht am Notweg-Tablet), nur im laufenden Spiel, nur ohne Laden,
+// nur wenn jemand übernehmen kann. Je Schwelle einmal (sj.akku); es wartet, solange etwas anderes offen ist.
+function akkuFensterPruefen() {
+  const st = S.team.state;
+  if (S.view !== "team" || !S.team.code || !st || st.status !== "running" || LS.getItem("sj.hand")) return false;
+  if (AKKU.level == null || AKKU.laedt || AKKU.level > AKKU_KNAPP || !leitungAbgebbar(st, false) || akkuBelegt()) return false;
+  const m = akkuMerk();
+  let kopf = null;
+  if (AKKU.level <= AKKU_LEER && !m.a10) { kopf = "akku10"; m.a10 = true; m.a20 = true; }
+  else if (!m.a20 && AKKU.level > AKKU_LEER) { kopf = "akku20"; m.a20 = true; }
+  if (!kopf) return false;
+  LS.setItem("sj.akku", JSON.stringify(m));
+  S.team.uebergabe = kopf; S.team.wahl = null; S.msg = null;
+  render();
+  return true;
+}
+
+/* ---------- Rolle vom Server (Rollen und Akku, 29.10.2026) ---------- */
+// Ob dieses Handy die Teamleitung ist, sagt der Server (member_state.ichLeite); eine ältere Datenbank kennt das Feld nicht
+const ichLeiteSt = st => !!st && !!st.team && (st.ichLeite != null ? !!st.ichLeite : !!st.name && st.name === st.team.leaderName);
+let kurzTimer = 0;
+// Kurze Einblendung oben ("Du leitest jetzt Team Fuchs"), verschwindet von selbst ohne Neuzeichnen
+function kurzZeigen(text) {
+  S.kurz = { text, bis: Date.now() + 4000 };
+  clearTimeout(kurzTimer);
+  kurzTimer = setTimeout(() => { S.kurz = null; const el = $("#kurz"); if (el) el.remove(); }, 4000);
+}
+const kurzHTML = () => S.kurz && S.kurz.bis > Date.now() ? `<div id="kurz" class="kurz" role="status">${esc(S.kurz.text)}</div>` : "";
+// Ansicht wechseln, ohne dass der Browser einen Verlaufseintrag anlegt oder hashchange auslöst. Abrufe der anderen
+// Ansicht, die noch unterwegs sind, verfallen (Takt-Zähler).
+function ansichtSetzen(v) {
+  history.replaceState(null, "", location.pathname + location.search + "#/" + v);
+  S.view = v; ZAEHL.team++; ZAEHL.pub++;
+}
+// rolle "leitung": dieses Handy wird Teamleitung (Code kommt vom Server, team_state wird gleich geholt).
+// rolle "mitglied": es liest ab jetzt mit; Code und gemerkter Stand der Leitung sind weg, das GPS läuft weiter.
+// Gibt true zurück, wenn gewechselt wurde.
+async function rolleWechseln(rolle, team, kurz) {
+  if (rolle === "leitung") {
+    if (!S.team.code && !await leitungOhneCode()) return false;
+    ansichtSetzen("team");
+    S.mit = null; S.msg = null; S.leitungWar = true; S.team.tab = "weg";
+    kurzZeigen(kurz || `Du leitest jetzt Team ${team ? team.name : ""}`.trim());
+    try { teamStandSetzen(await rpc("team_state", { p_code: S.team.code })); } catch { /* der Takt holt es nach */ }
+    render();
+    return true;
+  }
+  S.team.code = null; S.team.state = null; S.team.uebergabe = null; S.team.wahl = null; S.team.abmelden = false; S.team.hilfe = false; S.team.tab = "weg";
+  LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.removeItem("sj.letzter.team");   // sonst holt letzterStand() im Funkloch die Leitungsansicht zurück
+  S.leitungWar = false;
+  ansichtSetzen("public");
+  S.mit = null; S.msg = null;
+  if (kurz) kurzZeigen(kurz);
+  render();
+  refresh().catch(() => { });
+  return true;
+}
+// Nach jedem Abruf von member_state: Rollengewinn nur bei der Flanke "nicht Leitung" zu "Leitung" oder beim ersten
+// Laden, nur im Spiel (drawn, running, F4), nie am Notweg-Tablet. Kein Hin und Her, wenn jemand die Seite absichtlich
+// öffnet, während er Leitung ist (S.leitungWar bleibt dann true).
+async function rolleNachziehen() {
+  const st = S.mit;
+  if (S.view !== "public" || !LS.getItem("sj.token") || LS.getItem("sj.hand")) return false;
+  if (!ichLeiteSt(st)) { S.leitungWar = false; return false; }
+  if (S.leitungWar === true || !imSpiel(st) || Date.now() < (S.rolleNeuBis || 0)) return false;
+  const ok = await rolleWechseln("leitung", st.team);
+  if (!ok) S.rolleNeuBis = Date.now() + 30000;   // nicht bei jedem Takt neu versuchen
+  return ok;
 }
 
 /* ---------- Laden und Rendern ---------- */
@@ -3538,13 +3733,21 @@ function teamNachziehen() {
   if (!neu) S.hoch = false;
   return geaendert;
 }
+// member_state meldet nebenbei den Akku dieses Handys; die Datenbank drosselt das Schreiben selbst. Kennt sie p_akku
+// noch nicht (PGRST202), einmal ohne und ab dann gar nicht mehr.
+async function memberStateRufen(tok) {
+  const a = { p_token: tok };
+  if (AKKU.level != null && !DB_OHNE_AKKU) { a.p_akku = AKKU.level; a.p_laedt = AKKU.laedt; }
+  try { return await rpc("member_state", a); }
+  catch (e) { if (!("p_akku" in a) || !ohneFunktion(e)) throw e; DB_OHNE_AKKU = true; return rpc("member_state", { p_token: tok }); }
+}
 // Mitlesen: Stand des eigenen Teams über den Geräte-Schlüssel aus der Anmeldung (S.mit)
 async function mitlesen() {
   const tok = LS.getItem("sj.token");
   if (!tok || !S.pub || S.pub.status === "registration") { S.mit = null; return; }
   try {
     const vorher = S.mit ? phaseKey(S.mit) : null;
-    S.mit = await rpc("member_state", { p_token: tok }); namenUebernehmen(S.mit.name);
+    S.mit = await memberStateRufen(tok); namenUebernehmen(S.mit.name);
     standMerken("sj.letzter.mit", { key: tok, pub: S.pub, mit: S.mit });
     // Rätsel offen oder nächste Station: das neue Panel kurz umranden, damit es beim Mitlesen auffällt
     if (vorher && vorher !== phaseKey(S.mit)) S.mitNeuBis = Date.now() + 2500;
@@ -3680,10 +3883,11 @@ function teamStandSetzen(s) {
 // Person gerade ein Team, gibt die Datenbank den Code heraus. Sonst bleibt das Eingabefeld.
 async function leitungOhneCode() {
   const tok = LS.getItem("sj.token");
-  if (!tok || S.team.code || LS.getItem("sj.abgemeldet")) return false;
+  if (!tok || S.team.code) return false;
   try {
     const r = await rpc("leader_code", { p_token: tok });
     S.team.code = r.code; LS.setItem("sj.code", r.code); LS.removeItem("sj.hand");   // der Kopf zeigt dann Team und Code
+    S.leitungWar = true;
     S.team.ohneNetz = false; netzOk();
     return true;
   } catch (e) {
@@ -3708,9 +3912,8 @@ async function leitungNochDa(s) {
   catch (e) {
     if (!/keine Teamleitung|kein Team\b/.test(String(e.message)) && !String(e.message).includes("Unbekanntes Gerät")) return;   // Funkloch
   }
-  S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.abgeben = false;
-  LS.removeItem("sj.code"); standVergessen(); stopGps();
-  S.msg = { type: "info", text: `${vorname(s.team.leaderName)} leitet jetzt Team ${s.team.name}. Station und Rätsel siehst du auf der Anmeldeseite mit.` };
+  // Nicht mehr Teamleitung: still aufs Mitlesen umschalten (A7), GPS läuft weiter
+  await rolleWechseln("mitglied", s.team, `${vorname(s.team.leaderName)} leitet jetzt das Team`);
 }
 // Die Teamleitung zeigt im Tab Team den Zieleinlauf (im Spiel) bzw. die Rangliste (nach dem Ende), und
 // Hochhalten nimmt die Teamfarbe aus der Teamreihenfolge: dafür die öffentliche Sicht dazuholen
@@ -3739,7 +3942,7 @@ const pinWeg = () => { S.admin.pin = null; SS.removeItem("sj.pin"); kartenSicht 
 async function refresh() {
   if (imRueckblick()) return rueckblickZeigen();   // keine Abfrage, kein gpsWiederStarten(), kein wachHaltenPruefen()
   try {
-    if (S.view === "public") { S.pub = await rpc("public_state", {}); netzOk(); await nameNochDa(); teamNachziehen(); await eigenesTeam(); await mitlesen(); }
+    if (S.view === "public") { S.pub = await rpc("public_state", {}); netzOk(); await nameNochDa(); teamNachziehen(); await eigenesTeam(); await mitlesen(); await rolleNachziehen(); }
     if (S.view === "team" && !S.team.code) await leitungOhneCode();
     if (S.view === "team" && S.team.code) { const s = await rpc("team_state", { p_code: S.team.code }); netzOk(); teamStandSetzen(s); await leitungNochDa(S.team.state); await ranglisteHolen(); }
     if (S.view === "admin" && S.admin.pin) { S.admin.state = await rpc("admin_state", { p_pin: S.admin.pin }); S.admin.stateAt = Date.now(); netzOk(); }
@@ -3861,7 +4064,7 @@ function render() {
   const stand = S.view === "admin" ? S.admin.state : S.view === "team" ? S.team.state : S.pub;
   if (stand && stand.background) hintergrundSetzen(stand.background);
   // Liegt ein Dialog oder die Hochhalten-Ansicht darüber, scrollt die Seite dahinter nicht mit
-  document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross));
+  document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross || S.team.uebergabe));
   // Der Inhalt der Hülle scrollt selbst und entsteht mit jedem Neuzeichnen neu: Stand merken, im selben Tab zurücksetzen
   const inh = $("#inhalt");
   // Teamliste der Spielleitung: Scrollstand merken, sonst springt sie alle 10 s nach oben
@@ -3886,8 +4089,10 @@ function render() {
   if (tf2) {
     tf2.scrollTop = tfScroll;
   }
-  app.insertAdjacentHTML("beforeend", fotoGrossHTML() + kalFensterHTML());
-  document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross || $("#kal")));
+  app.insertAdjacentHTML("beforeend", fotoGrossHTML() + kalFensterHTML() + kurzHTML());
+  // Gibt es das Übergabe-Fenster nicht mehr (Ansicht gewechselt, Leitung weg), darf es nicht als offen gelten
+  if (S.team.uebergabe && !$(".ueber .blatt #tabgeben")) { S.team.uebergabe = null; S.team.wahl = null; }
+  document.body.classList.toggle("fest", !!(S.admin.confirm || S.hoch || S.admin.full || S.gross || S.team.uebergabe || $("#kal")));
   S.feldKontext = feldKontext();
   if (S.feldKontext === kontext) {
     Object.keys(getippt).forEach(id => { const el = document.getElementById(id); if (!el || el.disabled || getippt[id] === "") return;
@@ -3985,10 +4190,9 @@ document.addEventListener("click", async e => {
 });
 document.addEventListener("change", e => {
   if (e.target.id === "dmode") drawPreview();
-  // Übergeben erst, wenn jemand gewählt ist: sonst ginge die Leitung still an die erste Person der Liste
-  if (e.target.id === "tneu") { const b = $("#tabgeben"); if (b) b.disabled = !e.target.value; }
 });
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && S.team.uebergabe) { S.team.uebergabe = null; S.team.wahl = null; S.msg = null; render(); return; }
   if (e.key === "Escape" && S.team.hilfe) { S.team.hilfe = false; render(); return; }
   if (e.key === "Escape" && S.gross) { S.gross = null; render(); return; }
   if (e.key === "Escape" && S.gps.kal) { kalEnde(false); render(); return; }
@@ -4010,6 +4214,7 @@ document.addEventListener("keydown", e => {
 });
 window.addEventListener("hashchange", () => {
   if (!mitLinkPruefen()) S.view = location.hash.replace("#/", "") || "public";
+  akkuStarten();
   // die Show schließt, wenn man die Ansicht verlässt oder von der Probe zur echten Show (oder zurück) wechselt
   if (window.RueckblickShow && RueckblickShow.offen() && S.view !== rueckblickAnsicht) RueckblickShow.beenden();
   S.msg = null; refresh();
@@ -4059,6 +4264,7 @@ setInterval(() => {
   const offen = () => S.hoch || S.team.hilfe;
   if (S.view === "team" && S.team.code) taktAbruf("team", () => rpc("team_state", { p_code: S.team.code }), async s => {
     const netzWeg = netzOk(); teamStandSetzen(s); await leitungNochDa(s); await ranglisteHolen();
+    if (akkuFensterPruefen()) return;
     if (!offen() || !S.team.code || netzWeg) render();
   }).catch(e => { if (String(e.message).includes("Unbekannter Team-Code")) { codeUngueltig(); render(); } });
   if (S.view === "public") taktAbruf("pub", () => rpc("public_state", {}), async s => {
@@ -4067,6 +4273,7 @@ setInterval(() => {
     const neu = (await nameNochDa()) | teamNachziehen();
     await eigenesTeam();
     await mitlesen();
+    await rolleNachziehen();
     if (!offen() || neu || netzWeg) render();
   }).catch(() => { });
 }, 10000);
@@ -4168,8 +4375,10 @@ function introEnde() {
   document.body.classList.remove("intro", "intro-landet");
 }
 
+LS.removeItem("sj.abgemeldet");   // F1: Abmelden der Teamleitung gibt es nicht mehr, alte Merker löschen
 mitLinkPruefen();
 refresh();
+akkuStarten();
 introStarten();
 // Service Worker (sw.js, Ausfallsicherheit 1): die App startet auch im Funkloch oder bei einem Aussetzer von GitHub
 // Pages. Nur für die App selbst (./ oder ./index.html, nicht der Prüfstand mit app.html), nur über https oder lokal.

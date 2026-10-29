@@ -165,6 +165,33 @@
     "leitung-testmodus": { welt: "running", view: "team", ls: IM_TEAM, testMode: true, fuchs: { solved: 2 } },
     "mitglied-unterwegs": { welt: "running", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 1 } },
     "mitglied-raetsel": { welt: "running", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 1, checkedIn: true, failedAttempts: 1 } },
+    // Rollen und Akku (29.10.2026). akku: Stand dieses Handys (null = iPhone, Safari gibt ihn nicht heraus), akkus: Stand der
+    // anderen Handys [Prozent, lädt], leiterAkku: Handy der Leitung eines Teams, ohneHandy: Personen ohne eigene Anmeldung,
+    // offline: Handys, die sich seit Minuten nicht melden. Tobias Neumann hat im Prüfstand immer kein eigenes Handy.
+    "rolle-mitglied": { welt: "running", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 1 },
+      akku: { level: 80, laedt: false } },
+    "rolle-leitung": { welt: "running", view: "public", ls: { "sj.name": "Anna Berger", "sj.token": TOK("Anna Berger") }, fuchs: { solved: 1 },
+      akku: { level: 85, laedt: false } },
+    "rolle-leitung-vorstart": { welt: "drawn", view: "public", ls: { "sj.name": "Anna Berger", "sj.token": TOK("Anna Berger") }, akku: { level: 85, laedt: false } },
+    "akku-leitung": { welt: "running", view: "team", ls: { "sj.name": "Anna Berger", "sj.token": TOK("Anna Berger") }, fuchs: { solved: 1 },
+      akku: { level: 60, laedt: false }, gps: GPS_UNTERWEGS, akkus: { "Jonas Keller": [81, false], "Julia Krüger": [52, false], "Emre Demir": [70, true] },
+      offline: ["Lea Hoffmann"], steps: kompassAn },
+    "akku-leitung-15": { welt: "running", view: "team", ls: { "sj.name": "Anna Berger", "sj.token": TOK("Anna Berger") }, fuchs: { solved: 1 },
+      akku: { level: 15, laedt: false }, gps: GPS_UNTERWEGS, akkus: { "Jonas Keller": [81, false], "Julia Krüger": [52, false] }, steps: kompassAn },
+    // Notweg-Tablet: Handy eines Mitglieds (Jonas), das den Team-Code von Hand eintippt; Akku und Standort laufen trotzdem
+    "rolle-notweg": { welt: "running", view: "team", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 1 },
+      akku: { level: 50, laedt: false }, gps: GPS_UNTERWEGS, steps: kompassAn },
+    "akku-mitglied-knapp": { welt: "running", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 1 },
+      akku: { level: 18, laedt: false }, akkus: { "Julia Krüger": [15, false], "Emre Demir": [60, false] } },
+    "akku-leitung-knapp-mitglied": { welt: "running", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 1 },
+      akku: { level: 80, laedt: false }, akkus: { "Anna Berger": [14, false] } },
+    "akku-laedt": { welt: "running", view: "team", ls: { "sj.name": "Anna Berger", "sj.token": TOK("Anna Berger") }, fuchs: { solved: 1 },
+      akku: { level: 15, laedt: true }, akkus: { "Jonas Keller": [12, true] } },
+    "akku-iphone": { welt: "running", view: "team", ls: { "sj.name": "Anna Berger", "sj.token": TOK("Anna Berger") }, fuchs: { solved: 1 }, akku: null,
+      gps: GPS_UNTERWEGS, akkus: { "Jonas Keller": [81, false], "Julia Krüger": [52, false] }, steps: kompassAn },
+    "admin-akku": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, fertig: ["Adler"], settle: 3500,
+      leiterAkku: { Fuchs: [18, false], Eule: [8, false], Tiger: [12, true], Panda: [64, false] }, ohneHandy: ["Emre Demir"],
+      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=live]" }, { wait: 300 }] },
     "mitglied-beendet": { welt: "finished", view: "public", ls: { "sj.name": "Jonas Keller", "sj.token": TOK("Jonas Keller") }, fuchs: { solved: 4 } },
     // Spiel beendet, Handy ohne Namen: nur Rangliste, keine Teamsuche, keine Hilfe-Knöpfe
     "fremd-beendet": { welt: "finished", view: "public", fuchs: { solved: 4 } },
@@ -309,6 +336,32 @@
   const doneCount = () => TEAMS.filter(t => t.place).length;
   const members = t => t.members.slice();
 
+  /* ---------- Rollen und Akku (29.10.2026) ---------- */
+  // Stand je Person wie in der Datenbank: akku/laedt/at (nur bis 10 min Alter ausgegeben), verbunden = zuletzt gesehen < 2 min
+  const OHNE_HANDY = new Set(["Tobias Neumann"].concat(C.ohneHandy || [])), OFFLINE = new Set(C.offline || []);
+  const AKKUS = {};
+  Object.entries(C.akkus || {}).forEach(([n, v]) => { AKKUS[n] = { akku: v[0], laedt: !!v[1], at: NOW }; });
+  TEAMS.forEach(t => { const v = (C.leiterAkku || {})[t.name]; if (v) AKKUS[t.leaderName] = { akku: v[0], laedt: !!v[1], at: NOW }; });
+  const akkuAlt = a => !a || jetzt() - a.at > 10 * MIN;
+  const geraeteVon = t => t.members.slice().sort((a, b) => a.localeCompare(b, "de")).map(name => { const a = AKKUS[name], alt = akkuAlt(a);
+    return { name, angemeldet: !OHNE_HANDY.has(name), verbunden: !OFFLINE.has(name) && !OHNE_HANDY.has(name), akku: alt ? null : a.akku, laedt: alt ? null : a.laedt }; });
+  window.__AKKUS = AKKUS;   // Prüfungen setzen hier Stände anderer Handys: __AKKUS['Julia Krüger'] = { akku: 15, laedt: false, at: Date.now() }
+  window.__MEMBER_ARGS = []; window.__REPORT_ARGS = []; window.__AKKU = null;
+
+  /* ---------- Akku dieses Handys: navigator.getBattery wie in Chrome auf Android; ohne C.akku fehlt es wie in Safari ---------- */
+  const BM = new EventTarget();
+  // window.__akkuStart (per add_init_script): Stand beim Neuladen, wenn der Akku nicht wieder bei C.akku beginnen soll
+  const AK0 = window.__akkuStart || C.akku;
+  BM.level = AK0 ? AK0.level / 100 : 1; BM.charging = AK0 ? !!AK0.laedt : false;
+  try { Object.defineProperty(navigator, "getBattery", { configurable: true, value: AK0 ? () => Promise.resolve(BM) : undefined }); } catch (e) { console.warn(e); }
+  // __akku(level in Prozent, laedt): der Akku ändert sich, mit den Ereignissen levelchange und chargingchange
+  window.__akku = (level, laedt) => {
+    const lvl = BM.level, lad = BM.charging;
+    BM.level = level / 100; if (laedt != null) BM.charging = !!laedt;
+    if (BM.level !== lvl) BM.dispatchEvent(new Event("levelchange"));
+    if (BM.charging !== lad) BM.dispatchEvent(new Event("chargingchange"));
+  };
+
   /* ---------- Stationsname verschlüsselt (Nachtrag 26): C.geheim = [beginnt bei, klar ab] für alle Stationen ---------- */
   STATIONEN.forEach(s => { s.revealStartM = C.geheim ? C.geheim[0] : null; s.revealClearM = C.geheim ? C.geheim[1] : null; });
 
@@ -372,11 +425,14 @@
         tipAvailable: !!cur.tip && !!f.checkedIn && (WELT.testMode || f.pauses >= 1), tip: f.tipShown ? cur.tip : null } : null,
       checkedIn: !!f.checkedIn && !all, failedAttempts: f.failedAttempts, lockedUntil: iso(f.lockedUntil), pauses: f.pauses,
       allSolved: all && !selfieFeld(t, f).pending, caseHint: CASE_HINT, place, prizeCount: WELT.prizeCount, prizesLeft: Math.max(WELT.prizeCount - doneCount(), 0),
-      winnerTeamId: (TEAMS.find(x => x.place === 1) || {}).id || null, isWinner: !!place && place <= WELT.prizeCount, testMode: WELT.testMode
+      winnerTeamId: (TEAMS.find(x => x.place === 1) || {}).id || null, isWinner: !!place && place <= WELT.prizeCount, testMode: WELT.testMode,
+      geraete: window.__ALTE_DB ? undefined : geraeteVon(t)
     };
   }
   function memberState(t, name) {
-    const s = teamState(t); delete s.team.code; delete s.team.readToken; s.name = name; return s;
+    const s = teamState(t); delete s.team.code; delete s.team.readToken; s.name = name;
+    if (!window.__ALTE_DB) s.ichLeite = t.leaderName === name;
+    return s;
   }
   const teamOf = p => TEAMS.find(t => t.id === p.teamId);
   const mitTeams = () => WELT.status !== "registration";
@@ -395,7 +451,8 @@
     return { background: WELT.background, status: WELT.status, startedAt: iso(WELT.startedAt), finishedAt: iso(WELT.finishedAt),
       durationMin: WELT.durationMin, endsAt: WELT.startedAt ? iso(WELT.startedAt + WELT.durationMin * MIN) : null,
       caseHint: CASE_HINT, winnerTeamId: (TEAMS.find(x => x.place === 1) || {}).id || null, prizeCount: WELT.prizeCount, testMode: WELT.testMode,
-      participants: (C.nurEine ? PERSONEN.slice(0, 1) : PERSONEN).map(p => ({ id: p.id, name: p.name, teamId: mitTeams() ? p.teamId : null, teamName: mitTeams() ? teamOf(p).name : null })),
+      participants: (C.nurEine ? PERSONEN.slice(0, 1) : PERSONEN).map(p => ({ id: p.id, name: p.name, teamId: mitTeams() ? p.teamId : null, teamName: mitTeams() ? teamOf(p).name : null,
+        hatHandy: window.__ALTE_DB ? undefined : !OHNE_HANDY.has(p.name) })),
       stations: STATIONEN.map(s => ({ id: s.id, position: s.position, name: s.name, lat: s.lat, lng: s.lng, radiusM: s.radiusM,
         locationHint: s.locationHint, riddle: s.riddle, answer: s.answer, digit: s.digit, tip: s.tip,
         revealStartM: s.revealStartM, revealClearM: s.revealClearM, route: "echt" })),
@@ -405,6 +462,7 @@
       aktiveStationen: (WELT.testMode && C.teststation ? [TESTSTATION] : STATIONEN).map(s => ({ id: s.id, position: s.position, name: s.name, lat: s.lat, lng: s.lng, radiusM: s.radiusM })),
       caseCode: CASE_CODE, selfieOn: WELT.selfieOn, photosDeleteOn: WELT.photosDeleteOn, photoCount: fotoListe().length,
       teams: teams.map(t => ({ id: t.id, name: t.name, code: t.code, readToken: t.readToken, leaderId: t.leaderId, leaderName: t.leaderName,
+        leaderAkku: !window.__ALTE_DB && AKKUS[t.leaderName] && !akkuAlt(AKKUS[t.leaderName]) ? { akku: AKKUS[t.leaderName].akku, laedt: AKKUS[t.leaderName].laedt, at: iso(AKKUS[t.leaderName].at) } : undefined,
         memberCount: t.members.length, members: members(t), solved: t.solved,
         currentPosition: t.solved < 5 ? t.solved + 1 : null,
         lastActivity: iso(t.lastActivity),
@@ -439,9 +497,13 @@
   const RPC = {
     public_state: () => publicState(),
     team_state: a => teamState(fuchsByCode(a.p_code)),
-    member_state: a => { const p = PERSONEN.find(x => x.token === a.p_token);
+    // __ALTE_DB: Datenbank ohne die Akku-Migration, member_state kennt nur p_token (PGRST202 bei p_akku)
+    member_state: a => { window.__MEMBER_ARGS.push(a);
+      if (window.__ALTE_DB && ("p_akku" in a || "p_laedt" in a)) fehler("Could not find the function public.member_state(p_akku, p_laedt, p_token) in the schema cache");
+      const p = PERSONEN.find(x => x.token && x.token === a.p_token);
       if (!p && NEU[a.p_token]) return { name: NEU[a.p_token], team: null };   // eben angemeldet, noch ohne Team
       if (!p) fehler("Unbekanntes Gerät.");
+      if (a.p_akku != null && a.p_akku >= 0 && a.p_akku <= 100) AKKUS[p.name] = { akku: a.p_akku, laedt: !!a.p_laedt, at: jetzt() };
       return mitTeams() ? memberState(teamOf(p), p.name) : { name: p.name, team: null }; },
     lookup_participant: a => {
       const q = norm(a.p_name); if (!q) return { found: false };
@@ -525,10 +587,16 @@
       t.place = doneCount() + 1; t.finishedAt = Date.now();
       return { ok: true, won: t.place <= 3, message: "Koffer offen.", state: teamState(t) }; },
     // __ALTE_DB: Datenbank ohne Nachtrag 30, PostgREST findet keine Funktion mit p_kompass (PGRST202)
-    report_position: a => { if (window.__ALTE_DB && "p_kompass" in a) fehler("Could not find the function public.report_position(p_acc, p_code, p_kompass, p_lat, p_lng) in the schema cache");
+    report_position: a => { if (window.__ALTE_DB && ("p_kompass" in a || "p_akku" in a)) fehler("Could not find the function public.report_position(p_acc, p_code, p_kompass, p_lat, p_lng) in the schema cache");
+      window.__REPORT_ARGS.push(a);
+      // Akku der Leitung (leader_participant_id), nur wenn p_akku gültig ist
+      if (a.p_akku != null && a.p_akku >= 0 && a.p_akku <= 100) { const t = fuchsByCode(a.p_code); AKKUS[t.leaderName] = { akku: a.p_akku, laedt: !!a.p_laedt, at: jetzt() }; window.__AKKU = { akku: a.p_akku, laedt: !!a.p_laedt }; }
       window.__KOMPASS = a.p_kompass; window.__POSITION = [a.p_lat, a.p_lng]; return { ok: true }; },
     // Audit 25.10.: ein Ziel ohne Geräte-Schlüssel (hier Tobias Neumann) wird abgelehnt
-    team_set_leader: a => { if (String(a.p_name).trim() === "Tobias Neumann") fehler("Diese Person hat sich nicht selbst angemeldet und kann nicht eingeben."); return teamState(fuchsByCode(a.p_code)); },
+    team_set_leader: a => { const t = fuchsByCode(a.p_code), n = String(a.p_name).trim();
+      if (OHNE_HANDY.has(n)) fehler("Diese Person hat sich nicht selbst angemeldet und kann nicht eingeben.");
+      if (!t.members.includes(n)) fehler("Diese Person gehört nicht zum Team.");
+      window.__leitung(n); return teamState(t); },
     // Gruppenselfie (Nachtrag 25)
     team_selfie: a => { const t = fuchsByCode(a.p_code); if (C.fotoFehler) fehler("Das Foto ist zu groß.");
       FOTOS[a.p_position] = { foto: a.p_photo, thumb: a.p_thumb, at: Date.now() }; SELFIE_DA[a.p_position] = true; return teamState(t); },
