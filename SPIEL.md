@@ -30,7 +30,7 @@ App eingeben.
 |---|---|---|---|
 | **Teilnehmende** | Link, Name bei der Anmeldung | sich anmelden (nur bis zum Auslosen), Team nachschauen | eigenes Team groß mit Emoji; ab dem Start alles, was die Teamleitung sieht (Geräte-Schlüssel aus der Anmeldung) |
 | **Teamleitung** | `#/team`: automatisch auf dem Handy, mit dem sie sich angemeldet hat (Geräte-Schlüssel); Team-Code nur als Ausweg für die Spielleitung am Tablet | einchecken, Rätsel beantworten, Koffer-Code eingeben, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
-| **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, fortsetzen, freischalten, Rätsel werten, Teamleitung wählen, Stationen pflegen, Leute eintragen, löschen, Testmodus | Reiter Karte und Teams (Karte, Teamliste mit "Braucht dich", Zuletzt), Zeitachse, Codes und Mitlese-Links, Koffer-Code |
+| **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, fortsetzen, freischalten, Rätsel werten, Teamleitung wählen, Stationen pflegen, Leute eintragen, löschen, Testmodus | Reiter Karte und Teams (Karte, Teamliste mit "Braucht dich", Zuletzt), Zeitachse, Codes, Akku der Teamleitung, Koffer-Code |
 
 Die Teamleitung wird beim Auslosen je Team zufällig bestimmt
 (`teams.leader_participant_id`), und zwar unter den Personen mit Geräte-Schlüssel
@@ -42,13 +42,15 @@ Seit Nachtrag 22 meldet sich jede Person nur selbst an, auf dem eigenen Handy
 („Jemanden ohne eigenes Handy anmelden“ gibt es nicht mehr). Die Teamleitung
 tippt keinen Code: ihr Handy holt ihn über `leader_code`. Wird die Leitung
 gewechselt oder abgegeben, gibt das alte Handy sofort nichts mehr ein
-(`leitungNochDa` nach jedem Abruf). Den Team-Code braucht nur noch die
+(`leitungNochDa` nach jedem Abruf) und wechselt still in die Team-Ansicht für
+Mitglieder; das neue Handy schaltet von selbst um (§19). Den Team-Code braucht nur noch die
 Spielleitung, wenn sie am Tablet für ein Team eingibt. Dieser Notweg setzt den
 Merker `sj.hand`: `leitungNochDa` meldet das Gerät dann nicht ab, weil der Code
 nicht aus dem Geräte-Schlüssel stammt. Tippt die Teamleitung ihren eigenen Code
 (`leaderName` gleich `S.myName` im geladenen Teamstand), bleibt der Merker weg:
-wechselt die Leitung, meldet sich das Handy ab wie sonst. `leitungOhneCode`, Abmelden und
-`codeUngueltig` löschen den Merker. Team-Codes haben vier oder sechs Ziffern
+wechselt die Leitung, schaltet das Handy um wie sonst. `leitungOhneCode`, Abmelden und
+`codeUngueltig` löschen den Merker. Abmelden gibt es nur noch für den Notweg (`sj.hand`),
+die Teamleitung selbst hat dafür „Leitung abgeben“ (F1, §19). Team-Codes haben vier oder sechs Ziffern
 (Beispiel `FUCHS-123456`, siehe §7).
 
 ---
@@ -221,6 +223,8 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
   `duration_min`), rot in den letzten 15 Minuten, danach „Zeit ist um“.
 - Nachzügler: nur über die Spielleitung (Hilfe-Knöpfe auf der Anmeldeseite).
   Der Mitlese-Link ohne Anmeldung ist gestrichen (F7, 29.10.2026): mitlesen kann nur, wer sich auf dem eigenen Handy angemeldet hat.
+  Wen die Spielleitung nachträgt, der hat keinen Geräte-Schlüssel: Teamname, Leitung und Mitglieder lassen sich
+  nachschauen, die Team-Ansicht bekommt diese Person nicht.
 - Teamleitung: „Leitung
   abgeben“ steht im Reiter Team ihrer Ansicht (in den Phasen mit der alten langen Seite unten).
 
@@ -267,6 +271,7 @@ Countdown, keine Sperre), `case_hint` (Text auf dem Koffer-Bildschirm),
 | Ziffern | nein | gelöste | gelöste | alle, plus Koffer-Code |
 | Platz | ja (Rangliste) | eigener | eigener | alle |
 | Positionen, Routen | nein | nein | nein | alle |
+| Akku und „Handy offen“ je Person | nein | eigenes Team | eigenes Team | nur Teamleitung (`leaderAkku`), dazu `hatHandy` je Person |
 | Geräte-Token | nein | nein | nein | nein |
 
 Lösungen, Ziffern und Koffer-Code verlassen die Datenbank nur für die
@@ -401,8 +406,8 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
 - **Stand:** kommt 30 s nichts vom Server, steht im Kopf „Stand 13:27“.
 - **Speicher im Browser:** `sj.name`, `sj.token`, `sj.code` (Teamleitung), `sj.kal` (Einmessen heute erledigt),
   `sj.gps` (Standort war schon freigegeben: nach Neuladen ohne Tipp wieder
-  starten, den iOS-Kompass nur per Knopf), `sj.abgemeldet` (Teamleitung hat
-  sich abgemeldet: nicht still per Geräte-Schlüssel wieder einloggen),
+  starten, den iOS-Kompass nur per Knopf), `sj.akku` (Akku-Fenster heute schon
+  gezeigt, §19; das alte `sj.abgemeldet` löscht der Start),
   `sj.letzter.team`/`sj.letzter.mit` (letzter Stand ohne Netz, §15),
   `sj.url`/`sj.key` (nur ohne `config.js`) im `localStorage`; `sj.pin` im
   `sessionStorage`. Zugriff nur über `LS`/`SS`: Blockiert der Browser
@@ -449,7 +454,7 @@ mockups/                   Entwürfe (Kompass einmessen, Reihenfolge, Hintergrun
   iOS erst nach der Bewegungsfreigabe aus `startGps()`.
 
 ### Datenbank
-Tabellen: `participants` (Name, `name_key`, `team_id`, `token`), `teams`
+Tabellen: `participants` (Name, `name_key`, `team_id`, `token`, `akku`, `akku_laedt`, `akku_at`, `gesehen_at`), `teams`
 (Name, Code, Leitung), `stations` (Position, Name, Koordinaten, Radius,
 Ortshinweis, Rätsel, Lösung, Ziffer), `progress` (je Team und Station:
 Check-in, gelöst, Fehlversuche, Sperre), `finishes` (Platz), `team_positions`,
@@ -1090,3 +1095,38 @@ bleibt ohne Handy voll bedienbar (Tastatur, Presenter).
   Intro als gesehen, damit es keine andere Prüfung verdeckt; `&intro=1` in der
   Adresse zeigt es.
 
+---
+
+## 19. Rollen und Akku (Nachtrag 39, 29.10.2026)
+
+Plan mit den Entscheidungen F1 bis F7: `docs/superpowers/plans/2026-10-29-rollen-akku.md`.
+Migration `20261029120000_rollen_akku.sql`, Prüfung `tools/pruefstand/rollen_akku.py` (Port 8873) und
+`rollen_akku_db.py` (Probelauf).
+
+- **Rolle vom Server:** `member_state` liefert `ichLeite`. `rolleNachziehen()` schaltet ein Handy mit
+  Geräte-Schlüssel ab `drawn` von selbst in die Leitungsansicht, mit dem Hinweis „Du leitest jetzt Team …“.
+  Wer die Leitung verliert, wechselt über `leitungNochDa` und `rolleWechseln("mitglied", …)` in die
+  Team-Ansicht für Mitglieder; GPS läuft weiter. Das Notweg-Tablet (`sj.hand`) schaltet nie um. Beides gilt
+  im echten Spiel wie im Testmodus (F2, F4).
+- **Leitung abgeben (F1):** Fenster mit den Personen zum Antippen (`waehlbar`): nur selbst Angemeldete, Handys
+  gerade offen zuerst, dazu Akku oder „Handy gerade nicht offen“. Im Takt zieht sich nur die Liste nach
+  (`uebergabeListeNachziehen`), die Seite zeichnet sich nicht neu.
+- **Akku lesen:** `akkuStarten()` nutzt `navigator.getBattery`, nur für Teilnehmende, nie an der Spielleitung.
+  iPhone und Firefox geben nichts heraus, dort bleibt der Wert leer. Gemeldet wird mit
+  `member_state(p_token, p_akku, p_laedt)`, siehe §4.
+- **Serverseitig:** `member_state` schreibt `gesehen_at` höchstens alle 20 s, sofort bei geändertem Akku.
+  `team_state` und damit `member_state` liefern `geraete` (Name, angemeldet, `verbunden` bis 2 min nach
+  `gesehen_at`, Akku und Laden bis 10 min nach `akku_at`). Eine ältere Datenbank ohne die Parameter
+  erkennt `DB_OHNE_AKKU_BIS`: dann 5 min ohne Akku-Meldung.
+- **Hinweis im Team:** ab `running` oben im Reiter Weg/Rätsel, für verbundene Handys bei 20 % oder weniger, die
+  nicht laden (`akkuHinweisHTML`).
+- **Akku-Fenster:** nur Teamleitung, nur `running`, nur ohne Laden, nur wenn jemand übernehmen kann, nie am
+  Notweg-Tablet (`akkuFensterPruefen`). Je Schwelle (20 %, 10 %) einmal am Tag, gemerkt in `sj.akku` mit Datum;
+  wieder scharf nach Laden über 25 % (10-%-Schwelle über 15 %, F3). Wer wegen des Akkus abgibt, dessen Handy
+  schaltet danach GPS und Wake Lock ab, sonst wäre es noch schneller leer.
+- **Spielleitung (F5):** Chip „Akku N %“ in der Teamzeile ab 20 %, unter „Braucht dich“ ab 10 % (nicht ladend,
+  `problemVon`). `(kein eigenes Handy)` am Namen zeigt `hatHandy`.
+- **Mitlese-Link gestrichen (F7):** siehe §5.3 und §7.
+- **Offen (W5):** Der Server prüft bei Eingaben nur den Team-Code. Wer ihn von Hand eintippt, kann zusätzlich zur
+  Teamleitung eingeben. War schon vorher so; zu schließen wäre es, indem Eingaben an den Geräte-Schlüssel der
+  Leitung gebunden werden.

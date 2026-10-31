@@ -1187,9 +1187,10 @@ oder einen Tunnel.
 6. Am Treffpunkt: Reiter Teams, Teamgröße wählen, auslosen. Codes muss
    niemand verteilen: jede Teamleitung ist auf ihrem eigenen Handy unter
    „Teamleitung“ gleich drin. Den Teams sagen, dass der Weg aufgezeichnet wird und
-   dass die Teamleitung den Mitlese-Link in die Team-Gruppe schickt. Passt
+   dass alle Angemeldeten ihr Team auf dem eigenen Handy sehen. Passt
    eine Leitung nicht (nicht da, kein Handy), im Auswahlfeld eine andere
-   wählen. Nachzügler: eintragen, dann „Mitlese-Link“ des Teams schicken.
+   wählen. Nachzügler: eintragen und das Team nennen; sie laufen mit, sehen
+   die Team-Ansicht aber nicht (kein Geräte-Schlüssel, Mitlese-Link gibt es seit 29.10. nicht mehr).
 7. „Spiel starten“, danach die Karte offen lassen.
 8. Wenn ein Team hängt: „Freischalten“ im Reiter Teams ersetzt den Check-in, das
    Rätsel bleibt. Klemmt das Rätsel selbst: „Rätsel werten“ daneben.
@@ -1226,7 +1227,7 @@ Die Teamleitung braucht deshalb keinen Code. Nur Frontend, keine Migration.
   Abmelden.
 
 Bekannte Grenze: Nachzügler, die die Spielleitung einträgt, haben keinen
-Geräte-Schlüssel. Sie lesen über den Mitlese-Link mit, können aber nicht
+Geräte-Schlüssel. Sie lasen damals über den Mitlese-Link mit (gestrichen 29.10.2026, Nachtrag 39), können aber nicht
 Teamleitung sein (der Wechsel-Dialog sagt das).
 
 Danach, ebenfalls live: Das Hauszeichen im Hintergrund (klassisch und A,
@@ -1359,9 +1360,6 @@ Schlüssel am Ort; Frage, die das Herumgehen ums Objekt verlangt).
   nicht `2026` selbst). Vor dem Event eine lange PIN setzen (Passphrase, 12
   und mehr Zeichen, per `admin_set_pin` oder SQL, siehe README). Seit
   Nachtrag 20 lehnt die Datenbank kürzere ab.
-- **Mitlese-Link als QR:** Der Link ist da (Nachtrag 14), ein QR-Code auf dem
-  Handy der Teamleitung wäre noch bequemer als Teilen per Nachricht. Braucht
-  einen kleinen QR-Generator, lokal eingebettet.
 - **Prüfstand:** Der UI-Prüfstand liegt unter `tools/pruefstand/` (gespielte
   Datenbank `mock.js`, Fotos `shoot.py` mit Playwright, siehe README dort).
   Die PGlite-Tests der Migrationen liegen nicht im Repo; sie ließen sich bei
@@ -2188,7 +2186,27 @@ weder Prag noch das Spiel; Fuß "Blatt 2 folgt." Liegt in OneDrive `Claude\TSE\M
 (HTML, Bilder, `teamfahrt-2027.ics`, Erzeuger-Skripte in `erzeugen\`). In Outlook: HTML im Browser öffnen, alles
 kopieren, in eine neue Mail einfügen. In Outlook noch nicht getestet, noch nicht verschickt.
 
-## Stand zum Fortsetzen (16.10.2026, Rückblick v2 am 17.10.2026)
+## Rollen und Akku (Nachtrag 39, 29.10.2026, live)
+
+Migration `20261029120000_rollen_akku.sql` am 29.10. eingespielt, App auf master gepusht (`b51f64b`). Plan mit allen
+Entscheidungen: `docs/superpowers/plans/2026-10-29-rollen-akku.md`, Beschreibung SPIEL.md §19. Kurz:
+
+- Die Rolle kommt vom Server: Handys schalten ab dem Auslosen von selbst um, auch im echten Spiel.
+- Das Abmelden der Teamleitung entfällt, stattdessen „Leitung abgeben“ mit Fenster (Abmelden nur noch am Notweg-Tablet).
+- Akku: Android meldet ihn, iPhone nicht. Hinweis fürs Team ab 20 %, Übergabe-Fenster für die Leitung bei 20 % und
+  10 %, Spielleitung ab 20 % Vermerk, ab 10 % „Braucht dich“.
+- Mitlese-Link gestrichen (Friedrich, F7): Link, QR, `member_state_by_team` und `readToken` in den Antworten sind weg, die
+  alten `read_token` neu gewürfelt; auch `team_photo` nimmt sie nicht mehr. Der QR-Code der Rückblick-Fernbedienung bleibt.
+  Folge: Von der Spielleitung nachgetragene Personen sehen die Team-Ansicht nicht mehr, sie laufen im Team mit.
+- Von Claude entschieden: Nach einer Übergabe wegen Akku schaltet das alte Handy GPS und Wake Lock ab. Der Akku der
+  Teamleitung geht über den Geräte-Schlüssel, nicht über den Team-Code, damit bei einem Wechsel kein falscher Wert entsteht.
+
+Geprüft: Review (Opus) ohne kritische Befunde, W1 bis W4 und K1 bis K7 behoben; `rollen_akku_db.py` 180 Prüfungen,
+`rollen_akku.py` 163, alle Prüfstand-Skripte grün; nach dem Einspielen `rechte_db.py` 29 Prüfungen grün, Live-Seite
+geprüft. **Nicht geprüft:** echte Handys (`getBattery` auf Android, Umschalten im Hintergrund, iPhone ohne Akku).
+Offen für später: W5, siehe SPIEL.md §19.
+
+## Stand zum Fortsetzen (16.10.2026, Rückblick v2 am 17.10.2026, Rollen und Akku am 29.10.2026)
 
 **Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test
 bis Suite 21 (https://7deeda.github.io/geraetetest/). Nachtrag 34 (Code-Review
@@ -2214,11 +2232,14 @@ gibt es nur den Prüfstand (`fernbedienung.py`).
 
 **Code-Audit (Nachtrag 38, 25.10.2026):** Migration `20261025090000_audit.sql` vorbereitet,
 Probelauf grün (67 Prüfungen, nach der Nacharbeit zum Review), am 25.10. eingespielt
-(Rechteprüfung grün, `supabase/schema/` neu erzeugt). Offen: Branch `audit-fixes` nach master, dann push. Alte vierstellige Codes gelten
+(Rechteprüfung grün, `supabase/schema/` neu erzeugt), auf master und gepusht. Alte vierstellige Codes gelten
 bis zum nächsten Auslosen.
 
 **Startbild (27.10.2026):** live, siehe Abschnitt "Startbild beim ersten Öffnen"; am Handy ansehen (zum
 Wiedersehen in den Website-Daten `sj.intro` löschen oder ein privates Fenster nehmen).
+
+**Rollen und Akku (Nachtrag 39, 29.10.2026):** live, siehe gleichnamigen Abschnitt oben; auf echten Handys noch
+nicht getestet.
 
 **NÄCHSTER SCHRITT:** Rückblick-Show v2: `#/rueckblick/probe` am Beamer (Lesbarkeit
 aus der letzten Reihe, Klicker: jedes Kapitel wartet auf Weiter, F5, B, Alt-Tab,
@@ -2226,8 +2247,8 @@ Zurück im Browser fragt; dazu die Fernbedienung vom Handy, siehe Ablauf am
 Eventtag), dann mit den Daten eines Probespiels von Splash bis
 Abspann (jede Taste wie im Mockup, nach dem Laden Netz aus, ein Team mit
 GPS-Abbruch und eines, das nach dem Koffer weiterläuft). Der Rückblick kommt vor dem
-Änderungsstopp mit den geänderten Texten live. Danach Handytest der neuen Hülle (Teamleitung, Mitlese-Ansicht,
-Spielleitung auf dem Tablet), dazu der Handytest der Ausfallsicherheit
+Änderungsstopp mit den geänderten Texten live. Danach Handytest der neuen Hülle (Teamleitung, Mitglied,
+Spielleitung auf dem Tablet) samt Rollenwechsel und Akku auf Android und iPhone, dazu der Handytest der Ausfallsicherheit
 (SPIEL.md §15: Flugmodus, Neuladen, Eingabe, Version, kein Installieren-Hinweis,
 Notfallmappe am iPad als PDF) auf allen Geräten der Spielleitung, und die Probe
 des Notausgangs `tools/sw-aus.js` auf einem iPhone und einem Android-Handy.
@@ -2252,11 +2273,6 @@ späteren Läufen nicht wieder; am Testtag meldete Supabase Störungen. Antwortg
 Mobilfunk mit wechselnden IPs, Last von mehreren Standorten, Selfie-Uploads.
 Protokoll und Anleitung für einen neuen Lauf: `tools/STRESSTEST.md`. Testprojekt
 `stadtjagd-stresstest` seit 19.10. pausiert (nicht gelöscht), Vorgaben im Skript geleert.
-
-**Danach (Teil 3, Spezifikation fertig, kein Plan):** Rollen ohne Tippen
-(Teamleitung übergeben, Handy schaltet von selbst um), Akku-Warnung bei 20 %
-und 10 % mit Übergabe, Akku aller Teammitglieder, Mockups
-`mockups/rollen-akku-kompass.html`, `mockups/akku-warnung.html`.
 
 **Hosting (Entscheidung 13.10.2026):** App bleibt auf GitHub Pages, keine eigene
 Subdomain ("Luxus", nicht nötig). Kein Hetzner-Server für die App. Ob die
@@ -2287,14 +2303,10 @@ Datum des Änderungsstopps. Event: Fr 23. bis So 25. April 2027 (Service Worker 
   (https://claude.ai/artifact/SFuTkbD47PHdR61wLSdCQs, privat), Auswahl kopieren und
   an Claude geben. Korrektur zu Punkt S3: die Antwortgröße von `admin_state` ist
   gemessen (26 bis 44 KB, Stresstest oben).
-- **Schema-Abzug übernehmen:** Branch `schema-abzug` (Worktree
-  `Projects/tse/stadtjagd-schema`): `supabase/schema/` mit dem Live-Stand,
-  `tools/schema_abzug.py --pruefen`. Live stimmt mit den Migrationen überein.
 - **Live-Admin-PIN prüfen:** nicht mehr die Vorgabe `2026`, mindestens 12 Zeichen.
 - **Team-Codes härten:** Sechs Ziffern sind in der Migration `20261025090000_audit.sql` umgesetzt
   (Sicherheitsprüfung 25.10.); eine Bremse bei Fehlversuchen bleibt offen.
-- **Audit-Fixes ausliefern:** Migration ist live (25.10.); Branch `audit-fixes` nach master, dann push.
-  Vor dem Event Testpersonen entfernen (zählen zur 200er-Grenze der Selbstanmeldung).
+- **Vor dem Event:** Testpersonen entfernen (zählen zur 200er-Grenze der Selbstanmeldung).
 - **Supabase:** Token "Acces White" zurückziehen; `stadtjagd-stresstest` später löschen.
 ## Pausenstand 16.10.2026, vormittags (zum Fortsetzen)
 
