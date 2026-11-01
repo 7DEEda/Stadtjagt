@@ -192,10 +192,14 @@ textarea{min-height:64px;font-size:var(--fs-m)}
 .msg.err{background:var(--err-bg);color:var(--err)}.msg.ok{background:var(--ok-bg);color:var(--ok)}
 .msg.info{background:var(--info-bg);color:var(--ink)}
 .msg .btn{margin-top:10px}
+.msg.zeile{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.msg.zeile .btn{margin:0;width:auto;flex:none;min-height:44px;padding:0 14px}
 .link{background:none;border:0;padding:10px 4px;min-height:42px;margin-top:4px;font:600 var(--fs-s) var(--body);color:var(--muted);text-decoration:underline;cursor:pointer}
 .count{font:700 var(--fs-zahl) var(--head);line-height:1}
 ul.names{list-style:none;padding:0;margin:10px 0 0;columns:2;column-gap:14px;font-size:var(--fs-s)}
 ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line)}
+ul.names li:has(.leit){flex-direction:column;align-items:flex-start}
+ul.names .chip.leit{margin-top:3px}
 .leader{color:var(--ink);font-weight:700;border-left:3px solid var(--flag);padding-left:6px}
 .lock{display:flex;gap:6px;justify-content:center;margin:4px 0}
 .wheel{width:44px;height:58px;border-radius:8px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font:700 var(--fs-rad) var(--head)}
@@ -227,6 +231,7 @@ ul.names li{padding:3px 0;break-inside:avoid;border-bottom:1px dotted var(--line
 .names .del{min-width:42px;min-height:42px;padding:0;margin:0 0 0 6px;font-size:var(--fs-l);line-height:1}
 .fehlt{color:var(--err);font-weight:600}
 .row2{display:flex;gap:8px}.row2 .btn{flex:1}
+.ueber .row2 .btn.alt{flex:none;width:auto}
 .wahl{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 /* Kompass einmessen: Handy fährt eine liegende Acht ab */
 .acht{display:block;width:100%;max-width:260px;height:auto;margin:10px auto 0}
@@ -267,7 +272,7 @@ body.spiel main{max-width:none;padding:0}
 .ph > .kopf .tiertop{font-size:30px;line-height:1;flex:none}
 .ph > .kopf .tn{flex:1;min-width:0}
 .ph > .kopf .tn h1{font-size:var(--fs-xl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ph > .kopf .tn .sub{display:block;font-size:var(--fs-xs);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ph > .kopf .tn .sub{display:block;font-size:var(--fs-xs);color:var(--muted);overflow-wrap:anywhere}
 .ph > .kopf .hilfe-btn{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border-radius:10px;border:1.5px solid var(--feld);background:var(--card);color:var(--ink);font:700 var(--fs-m) var(--head);flex:none;cursor:pointer}
 .ph > .kopf .k2{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
 .ph > .kopf .k2 .chip.uhr{margin-left:0}
@@ -286,6 +291,9 @@ body.spiel main{max-width:none;padding:0}
 .wahl button[aria-pressed="true"]{border-color:var(--flag);box-shadow:0 0 0 3px color-mix(in srgb,var(--flag) 20%,transparent)}
 .wahl small{color:var(--muted);font-weight:500;font-size:var(--fs-s);white-space:nowrap}
 .wahl small.knapp{color:var(--err)}
+.wahl .wer{text-align:left;min-width:0}
+.wahl .wer em{display:block;font:600 var(--fs-xs) var(--body);color:var(--ok)}
+.wahl button.aus{border-color:var(--line);color:var(--muted)}
 .blatt .akkuzeile{display:flex;align-items:center;gap:10px;margin-bottom:6px;color:var(--warn)}
 .blatt .akkuzeile.leer{color:var(--err)}
 .blatt .akkuzeile b{font:700 var(--fs-xl) var(--head);white-space:nowrap}
@@ -302,7 +310,7 @@ body.spiel main{max-width:none;padding:0}
 .ftabs button svg{width:24px;height:24px}
 .ftabs button[aria-selected="true"]{color:var(--ink)}
 .ftabs button[aria-selected="true"]::before{content:"";position:absolute;top:-1px;left:30%;right:30%;height:3px;border-radius:99px;background:var(--flag)}
-.ftabs .badge{position:absolute;top:6px;left:calc(50% + 10px);min-width:22px;padding:0 5px;border-radius:99px;background:var(--paper);border:1px solid var(--line);font:700 11px/16px var(--body);color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ftabs .badge{position:absolute;top:6px;left:calc(50% + 10px);min-width:22px;padding:0 5px;border-radius:99px;background:var(--paper);border:1px solid var(--line);font:700 var(--fs-xs)/16px var(--body);color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
 /* Kopf der Spielleitung: Luft zwischen Titel, Zustands-Chips und der Meldung darunter */
 .kopfchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
@@ -315,6 +323,7 @@ body.spiel main{max-width:none;padding:0}
 .chip.uhr.knapp{background:var(--err-bg);color:var(--err);border-color:var(--err);font-weight:700}
 table{width:100%;border-collapse:collapse;font-size:var(--fs-s)}
 td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+tr.eigen td{font-weight:700;background:color-mix(in srgb,var(--flag) 12%,transparent)}
 th{font:600 var(--fs-s) var(--body);color:var(--muted)}
 .prog{height:8px;border-radius:4px;background:var(--line);min-width:80px;overflow:hidden}
 .prog span{display:block;height:100%;background:var(--flag)}
@@ -1291,7 +1300,7 @@ function ranglisteHTML(p, eigenes) {
   return `<div class="panel"><h2>${vorbei ? "Rangliste" : "Zieleinlauf"}</h2>
     ${vorbei ? "" : `<p class="small muted">Das Spiel läuft noch. Jedes Team erscheint hier, sobald es den Koffer-Code eingegeben hat.</p>`}
     <table><tr><th>Platz</th><th>Team</th><th>${vorbei ? "Stand" : "Im Ziel"}</th></tr>
-    ${(vorbei ? p.ranking || [] : ziel).map(r => `<tr ${r.teamName === eigenes ? 'style="font-weight:700"' : ""}><td style="white-space:nowrap">${r.place ? (r.place <= prizes ? platzZeichen(r.place, prizes) + " " + r.place : r.place) : "-"}</td>
+    ${(vorbei ? p.ranking || [] : ziel).map(r => `<tr ${r.teamName === eigenes ? 'class="eigen"' : ""}><td style="white-space:nowrap">${r.place ? (r.place <= prizes ? platzZeichen(r.place, prizes) + " " + r.place : r.place) : "-"}</td>
       <td>${teamEmoji(r.teamName)} ${esc(r.teamName)}${r.teamName === eigenes ? " (ihr)" : ""}</td>
       <td style="white-space:nowrap">${r.place ? (vorbei ? "im Ziel " : "") + uhrzeit(r.finishedAt) : r.solved + " / " + p.stationCount}</td></tr>`).join("")}</table></div>`;
 }
@@ -1332,19 +1341,26 @@ const kompassKlasse = () => !richtungBekannt() ? "unsicher" : kompassFolgt() ? "
 // Browser sie wieder ausgibt (hidden=""): liveUpdate() vergleicht mit outerHTML und ersetzt nur bei einer Änderung.
 function kompassChip() {
   const g = S.gps;
-  if (!g.on) return `<span class="chip kchip" id="kchip" hidden=""></span>`;
+  // "abgelehnt" sagt schon die Zeile darüber, die Plakette wäre dieselbe Auskunft ein weiteres Mal
+  if (!g.on || (g.kompass === "abgelehnt" && laufrichtung() == null)) return `<span class="chip kchip" id="kchip" hidden=""></span>`;
   if (kompassFolgt()) return `<span class="chip kchip ok" id="kchip">Kompass</span>`;
   return `<span class="chip kchip warn" id="kchip">${laufrichtung() != null ? "nach Laufrichtung" : "erst ein paar Schritte"}</span>`;
 }
 // Wem kann die Teamleitung die Leitung geben? Nur Angemeldete mit eigenem Handy (der Server lehnt andere ab),
 // verbundene zuerst. Eine ältere Datenbank liefert keine geraete: dann alle anderen aus members.
 function waehlbar(st) {
-  const g = st.geraete, leitung = st.team.leaderName;
+  const g = st.geraete, leitung = st.team.leaderName, rang = x => x.laedt ? 101 : x.akku ?? AKKU_KNAPP + .5;
   if (!Array.isArray(g)) return (st.team.members || []).filter(m => m !== leitung).map(name => ({ name, verbunden: true, akku: null, laedt: false }));
   return g.filter(x => x.name !== leitung && x.angemeldet)
     .map(x => ({ name: x.name, verbunden: !!x.verbunden, akku: x.akku == null ? null : x.akku, laedt: !!x.laedt }))
-    .sort((a, b) => (b.verbunden - a.verbunden) || a.name.localeCompare(b.name, "de"));
+    .sort((a, b) => (b.verbunden - a.verbunden) || rang(b) - rang(a) || a.name.localeCompare(b.name, "de"));
 }
+// Vorgewählt wird nur, was belegbar gut ist: offenes Handy, das lädt oder mehr als 20 % hat. Ein iPhone meldet keinen
+// Akku, es steht deshalb zwischen vollen und knappen Handys und wird nie von selbst vorgewählt.
+const besteWahl = st => {
+  const g = waehlbar(st)[0];
+  return g && g.verbunden && (g.laedt || (g.akku != null && g.akku > AKKU_KNAPP)) ? g.name : null;
+};
 // Gibt es jemanden, an den die Teamleitung (nicht ein Mitleser) die Leitung abgeben kann?
 const leitungAbgebbar = (st, lesen) => !lesen && waehlbar(st).length > 0;
 // Akku-Hinweis oben im Reiter Weg/Rätsel (ab running): Handys des Teams bei 20 % oder weniger, die nicht laden.
@@ -1365,9 +1381,12 @@ function akkuHinweisHTML(st, lesen) {
   if (!l.length) return "";
   const liste = l.map(x => `${x.ich ? "dein Handy" : esc(vorname(x.name))} <span class="nw">${x.akku} %</span>`).join(", ");
   const leitung = st.team.leaderName;
+  // Die Leitung selbst: eine Zeile mit Stand und Knopf, die Erklärung steht im Übergabe-Fenster
+  if (!lesen && l.some(x => x.ich) && leitungAbgebbar(st, lesen)) return `<div class="msg warn zeile" id="akkuhinweis">
+    <b>${l.length === 1 ? `Akku <span class="nw">${l[0].akku} %</span>` : `Akku knapp: ${liste}`}</b>
+    <button class="btn alt" data-act="t-abgeben-frage" aria-label="Leitung abgeben">Abgeben</button></div>`;
   let text;
-  if (!lesen && l.some(x => x.ich)) text = leitungAbgebbar(st, lesen) ? `Gib die Leitung rechtzeitig an jemanden mit vollerem Akku ab.<button class="btn alt" data-act="t-abgeben-frage">Leitung abgeben</button>`
-    : "Lade dein Handy, wenn du kannst.";
+  if (!lesen && l.some(x => x.ich)) text = "Lade dein Handy, wenn du kannst.";
   else if (l.some(x => x.name === leitung)) text = `Das Handy der Teamleitung geht bald aus. ${esc(vorname(leitung))} sollte die Leitung rechtzeitig abgeben.`;
   else text = l.length === 1 ? "Ladet das Handy, wenn ihr könnt." : "Ladet die Handys, wenn ihr könnt.";
   return `<div class="msg warn" id="akkuhinweis"><b>Akku knapp: ${liste}</b><br>${text}</div>`;
@@ -1499,12 +1518,13 @@ function huelleHTML(teile) {
   return `<div class="ph"><header class="kopf">${teile.kopf}</header><div class="inhalt" id="inhalt">${teile.inhalt}</div>
     <div class="leiste" id="leiste">${teile.leiste || ""}</div>${teile.tabs}${teile.blatt || ""}</div>`;
 }
+const leitungZeile = (st, lesen) => st.team.leaderName === S.myName && !lesen ? "Du leitest das Team"
+  : st.team.leaderName ? `${esc(st.team.leaderName)} leitet` : "Leitung offen";
 // Kopf der Hülle: Team und Leitung, Hilfe, Restzeit, die Ziffern klein (Antippen öffnet den Tab Ziffern)
 function kopfHTML(st, lesen) {
-  const leitung = st.team.leaderName === S.myName && !lesen ? "Du leitest das Team" : `Teamleitung: ${esc(st.team.leaderName || "offen")}`;
   return `<div class="k1">${logo()}<span class="tiertop" aria-hidden="true">${teamEmoji(st.team.name)}</span>
-      <div class="tn"><h1>Team ${esc(st.team.name)}</h1><span class="sub">${leitung}</span></div>
-      ${helpHref("") ? `<button class="hilfe-btn" data-act="t-hilfe">Hilfe</button>` : ""}${themaBtn()}</div>
+      <div class="tn"><h1>Team ${esc(st.team.name)}</h1><span class="sub">${leitungZeile(st, lesen)}</span></div>
+      ${helpHref("") || S.gps.kompass === "abgelehnt" ? `<button class="hilfe-btn" data-act="t-hilfe">Hilfe</button>` : ""}${themaBtn()}</div>
     <div class="k2">${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span>
       <button class="minilock" data-act="t-tab" data-tab="ziffern" aria-label="Eure Ziffern: ${st.solvedCount} von ${st.totalStations}. Antippen zeigt alle.">
         <span class="lbl">Ziffern</span>${lockHTML(st, true)}</button></div>
@@ -1515,7 +1535,8 @@ const testHinweis = st => st.testMode ? `<div class="msg warn" style="margin:8px
 function hilfeBlattHTML(text) {
   if (!S.team.hilfe) return "";
   return `<div class="ueber" data-act="t-hilfe-zu"><div class="blatt" role="dialog" aria-modal="true" aria-labelledby="hilfe-t">
-    <h2 id="hilfe-t">Hilfe von der Spielleitung</h2>${helpBtn(text)}<button class="link" data-act="t-hilfe-zu">Schließen</button></div></div>`;
+    <h2 id="hilfe-t">Hilfe von der Spielleitung</h2>${helpBtn(text)}
+    ${S.gps.kompass === "abgelehnt" ? `<p class="small">Fragt das Handy beim Kompass nicht mehr nach: den Browser ganz beenden und den Link neu öffnen.</p>` : ""}<button class="link" data-act="t-hilfe-zu">Schließen</button></div></div>`;
 }
 // Die eine Handlung, die gerade dran ist, steht immer unten. Mitlesende sehen dort, wer sie macht.
 function leisteHTML(st, s, lesen) {
@@ -1535,7 +1556,7 @@ function leisteHTML(st, s, lesen) {
     return `<label for="tans">Eure Antwort</label>
       <div class="reihe"><input id="tans" ${s.numeric ? 'inputmode="numeric" pattern="[0-9]*"' : ""} autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" ${pause ? "disabled" : ""}>
       <button class="btn" data-act="t-answer" data-ort="leiste" data-wait="Wird geprüft …" ${S.busy || pause ? "disabled" : ""}>Prüfen</button></div>
-      ${pause ? "" : `<p class="small muted" style="margin:6px 0 0">${st.testMode ? "Testmodus: jede Antwort zählt" : `Fehlversuche: <span class="nw">${st.failedAttempts} von 3</span>, dann 2 Minuten Pause`}</p>`}${msgBox("leiste")}`;
+      ${pause || (S.msg && S.msg.ort === "leiste" && /^Leider falsch/.test(S.msg.text)) ? "" : `<p class="small muted" style="margin:6px 0 0">${st.testMode ? "Testmodus: jede Antwort zählt" : `Fehlversuche: <span class="nw">${st.failedAttempts} von 3</span>, dann 2 Minuten Pause`}</p>`}${msgBox("leiste")}`;
   }
   const g = S.gps, hasTarget = s.lat != null && s.lng != null;
   // msgBox auch hier: nach einer Antwort ohne Standort stünde "Richtig. Station 2 gelöst" sonst nirgends
@@ -1544,7 +1565,7 @@ function leisteHTML(st, s, lesen) {
 }
 function teamTabHTML(st, lesen) {
   const mitglieder = `<div class="panel"><h3>Mitglieder <span class="small muted nw">${(st.team.members || []).length}</span></h3>
-    <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}${m === st.team.leaderName ? ' <span class="chip">Teamleitung</span>' : ""}</li>`).join("")}</ul></div>`;
+    <ul class="names">${(st.team.members || []).map(m => `<li>${esc(m)}${m === st.team.leaderName ? '<span class="chip leit">Leitung</span>' : ""}</li>`).join("")}</ul></div>`;
   return mitglieder
     + `<p style="text-align:center;margin:10px 0 0"><button class="link" data-act="pub-hoch">${teamEmoji(st.team.name)} Team-Zeichen zum Hochhalten</button></p>`
     + albumHTML(st) + (S.pub ? ranglisteHTML(S.pub, st.team.name) : "")
@@ -1570,8 +1591,7 @@ function teamAnsicht(st, lesen) {
   const ende = albumHTML(st) + (lesen ? "" : (st.status === "finished" ? "" : leitungHTML(st)) + abmeldenHTML() + nav());
   // Kopf für die Phasen ohne Hülle; die Hülle hat ihren eigenen (kopfHTML)
   const kopfAlt = `<div class="bar"><div>${logo()}</div><div style="flex:1"><h1>${teamEmoji(st.team.name)} Team ${esc(st.team.name)}</h1>
-    <div class="muted small">${lesen ? `Teamleitung: ${esc(st.team.leaderName || "offen")}`
-      : st.team.leaderName === S.myName ? "Du leitest das Team" : `Teamleitung: ${esc(st.team.leaderName || "offen")}`}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div>${themaBtn()}</div>`
+    <div class="muted small">${leitungZeile(st, lesen)}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div>${themaBtn()}</div>`
     + testHinweis(st);
   let out = "";
 
@@ -1592,14 +1612,17 @@ function teamAnsicht(st, lesen) {
   const unterwegs = !st.place && st.status === "running" && !st.allSolved && !!st.station;
   const schloss = `<div class="panel">${lockHTML(st)}${routeHTML(st)}
     <p class="small muted" style="text-align:center">${st.finalDigit != null ? "Das ist euer Koffer-Code." : `Die ${ANZ(st) + 1}. Ziffer ist die Einerstelle der Summe ${summeText(st)}.`}</p></div>`;
-  if (!unterwegs && !st.place) out += schloss;
+  if (!unterwegs && !st.place && st.status !== "finished") out += schloss;
 
   if (st.place) {
     const koffer = st.place <= st.prizeCount;
+    const rang = S.pub && (S.pub.ranking || []).find(r => r.teamName === st.team.name);
+    const zielzeit = rang && rang.finishedAt ? uhrzeit(rang.finishedAt) : "";
     // Für die Aufsicht am Koffer zählt der Platz: der steht zuerst, das Schloss darunter
     return kopfAlt + out + `<div class="panel" style="text-align:center">
       <div style="font-size:var(--fs-schild);line-height:1.1">${koffer ? platzZeichen(st.place, st.prizeCount) : "🏁"}</div>
       <h2>Platz ${st.place}</h2>
+      ${zielzeit ? `<p class="small muted">Im Ziel um ${zielzeit}</p>` : ""}
       <p>${koffer ? "Ihr habt einen Koffer gewonnen. Zeigt diesen Bildschirm der Spielleitung am Koffer."
         : "Ihr seid im Ziel. Die Koffer sind schon vergeben, euer Platz steht in der Rangliste."}</p>${msgBox()}</div>` + schloss
       // nach dem Ende auch hier die Rangliste, das eigene Team hervorgehoben
@@ -1607,7 +1630,8 @@ function teamAnsicht(st, lesen) {
       + (koffer ? helpBtn(`Stadtjagd: ${kennung} hat Platz ${st.place}.`) : "") + ende;
   }
   if (st.status === "finished") return kopfAlt + out + `<div class="panel"><h2>Das Spiel ist vorbei</h2>
-    <p>Die Spielleitung hat das Spiel beendet. ${lesen ? "Die Rangliste steht unten." : "Danke fürs Mitspielen."}</p>${msgBox()}</div>`
+    <p><b>Euer Stand: ${st.solvedCount ? `${st.solvedCount} von ${st.totalStations} Ziffern` : "keine Ziffer"}, nicht im Ziel.</b></p>
+    <p>Die Spielleitung hat das Spiel beendet. ${lesen ? "Die Rangliste steht unten." : "Danke fürs Mitspielen."}</p>${msgBox()}</div>` + schloss
     + (lesen ? "" : (S.pub ? ranglisteHTML(S.pub, st.team.name) : `<div class="panel"><p class="muted">Rangliste wird geladen …</p></div>`)) + ende;
 
   // Gruppenselfie: die gelöste Station wartet auf ihr Foto, oder die Teamleitung ersetzt gerade eines
@@ -1658,10 +1682,8 @@ function teamAnsicht(st, lesen) {
       ${g.on && ["fehlt", "relativ"].includes(g.kompass) && laufrichtung() == null ? `<div class="msg info">Dieses Handy hat keinen Kompass.
         Kein Problem: Der Pfeil richtet sich nach eurer Laufrichtung. Geht ein paar Schritte geradeaus
         und haltet das Handy dabei vor euch. Die Entfernung stimmt immer.</div>` : ""}
-      ${g.on && g.kompass === "abgelehnt" ? `<div class="msg info">Der Kompass ist nicht freigegeben.
-        Schließt diese Seite, öffnet den Link neu und tippt bei der Nachfrage auf „Erlauben“.
-        Fragt das Handy nicht mehr nach, den Browser ganz beenden und neu öffnen.
-        Bis dahin zeigt der Pfeil die Richtung aus eurer Laufrichtung, sobald ihr ein paar Schritte gegangen seid.
+      ${g.on && g.kompass === "abgelehnt" ? `<div class="msg info">Öffnet den Link neu und tippt bei der Nachfrage auf „Erlauben“.
+        Bis dahin zeigt der Pfeil eure Laufrichtung.
         <button class="btn alt" data-act="t-gps">Kompass erneut versuchen</button></div>` : ""}
       ${!g.kal ? waechterHinweisHTML(st, lesen) : ""}
       ${g.on && g.kompass === "kalibrieren" && !g.waechterGrund && !kalOk && !g.kal ? `<div class="msg info">Der Kompass ist ungenau.
@@ -1694,19 +1716,31 @@ function leitungHTML(st) {
 // 20 % und 10 % (Mockups rollen-akku-kompass.html und akku-warnung.html). Liegt über jeder Phase, nicht nur über der Hülle.
 const AKKU_ICON = p => `<svg viewBox="0 0 30 16" aria-hidden="true"><rect x="1" y="2" width="24" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="26" y="5.5" width="2.5" height="5" rx="1" fill="currentColor"/><rect x="3" y="4" width="${Math.max(1, 20 * p / 100)}" height="8" rx="1.5" fill="currentColor"/></svg>`;
 function wahlHTML(st) {
+  const beste = besteWahl(st);
   return waehlbar(st).map(g => {
     const sub = !g.verbunden ? "Handy gerade nicht offen" : g.akku == null ? "" : `Akku <span class="nw">${g.akku} %</span>${g.laedt ? ", lädt" : ""}`;
     const knapp = g.verbunden && g.akku != null && g.akku <= AKKU_KNAPP && !g.laedt;
-    return `<button data-act="t-wahl" data-name="${esc(g.name)}" aria-pressed="${S.team.wahl === g.name}">${esc(g.name)}${sub ? `<small class="${knapp ? "knapp" : ""}">${sub}</small>` : ""}</button>`;
+    return `<button class="${g.verbunden ? "" : "aus"}" data-act="t-wahl" data-name="${esc(g.name)}" aria-pressed="${S.team.wahl === g.name}"><span class="wer">${esc(g.name)}${g.name === beste ? "<em>beste Wahl</em>" : ""}</span>${sub ? `<small class="${knapp ? "knapp" : ""}">${sub}</small>` : ""}</button>`;
   }).join("");
 }
+// Der Knopf nennt, an wen übergeben wird; heißen zwei im Team gleich, mit vollem Namen
+function uebergabeKnopf(st) {
+  const w = S.team.wahl;
+  if (!w) return "Übergeben";
+  const v = vorname(w);
+  return `An ${(st.team.members || []).filter(m => vorname(m) === v).length > 1 ? w : v} übergeben`;
+}
 // Offenes Fenster, neuer Stand: nur die Liste ersetzen, das Fenster bleibt dasselbe Element (keine neue Einblendung).
-// Fällt die gewählte Person weg, ist die Wahl leer; der Fokus bleibt auf dem Knopf derselben Person.
+// Solange niemand selbst getippt hat, folgt die Wahl dem besten Handy. Fällt die gewählte Person weg, ebenso.
+// Der Fokus bleibt auf dem Knopf derselben Person.
 function uebergabeListeNachziehen(st) {
   const el = $(".ueber .wahl");
   if (!el) return;
   const namen = waehlbar(st).map(g => g.name);
-  if (S.team.wahl && !namen.includes(S.team.wahl)) { S.team.wahl = null; const b = $("#tabgeben"); if (b) b.disabled = true; }
+  if (S.team.wahl && !namen.includes(S.team.wahl)) S.team.wahlSelbst = false;
+  if (!S.team.wahlSelbst) S.team.wahl = besteWahl(st);
+  const b = $("#tabgeben");
+  if (b && !S.busy) { b.disabled = !S.team.wahl; b.textContent = uebergabeKnopf(st); }
   const fokus = document.activeElement && el.contains(document.activeElement) ? document.activeElement.dataset.name : null;
   const neu = wahlHTML(st);
   if (el.innerHTML === neu) return;
@@ -1724,7 +1758,7 @@ function uebergabeHTML(st) {
   return `<div class="ueber" data-act="t-abgeben-nein"><div class="blatt" role="dialog" aria-modal="true" aria-labelledby="ueb-t">${kopf}
     <div class="wahl" role="group" aria-label="Neue Teamleitung">${wahlHTML(st)}</div>${msgBox("abgeben")}
     <div class="row2"><button class="btn alt" data-act="t-abgeben-nein">${k === "abgeben" ? "Abbrechen" : "Später"}</button>
-      <button class="btn" id="tabgeben" data-act="t-abgeben" data-wait="Wird übergeben …" ${S.team.wahl ? "" : "disabled"}>Übergeben</button></div></div></div>`;
+      <button class="btn" id="tabgeben" data-act="t-abgeben" data-wait="Wird übergeben …" ${S.team.wahl ? "" : "disabled"}>${esc(uebergabeKnopf(st))}</button></div></div></div>`;
 }
 // Abmelden gibt es nur noch am Notweg-Tablet (Team-Code von Hand, sj.hand). Auf dem Handy einer Teamleitung ist der
 // Ausweg "Leitung abgeben": die Rolle kommt vom Server (F1, 29.10.2026).
@@ -2861,13 +2895,13 @@ const ACT = {
   "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); standVergessen(); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
-  "t-abgeben-frage"() { S.team.uebergabe = "abgeben"; S.team.wahl = null; S.msg = null; },
+  "t-abgeben-frage"() { S.team.uebergabe = "abgeben"; S.team.wahl = besteWahl(S.team.state); S.team.wahlSelbst = false; S.msg = null; },
   // Tipp daneben oder "Abbrechen"/"Später" schließt; ein Tipp ins Blatt selbst nicht (wie beim Hilfe-Blatt)
   "t-abgeben-nein"(d, e) {
     if (e && e.target.closest(".blatt") && !e.target.closest("button[data-act=t-abgeben-nein]")) return false;
     S.team.uebergabe = null; S.team.wahl = null; S.msg = null;
   },
-  "t-wahl"(d) { S.team.wahl = d.name; },
+  "t-wahl"(d) { S.team.wahl = d.name; S.team.wahlSelbst = true; },
   // Die Rückmeldung gehört in das Fenster (ort "abgeben"); im Funkloch bleibt es offen mit der Meldung
   async "t-abgeben"() {
     const name = S.team.wahl;
@@ -2920,7 +2954,7 @@ const ACT = {
     const ziffer = r.ok && pos && r.state && r.state.digits ? r.state.digits[pos - 1] : null;
     if (r.ok && r.state && r.state.selfie && r.state.selfie.pending) S.msg = null;
     else if (r.ok && ziffer != null) { S.neueZiffer = { i: pos - 1, bis: Date.now() + 8000 }; S.msg = { type: "ok", ort: "leiste", text: `Richtig. Station ${pos} gelöst, eure Ziffer: ${ziffer}.` }; }
-    else S.msg = { type: r.ok ? "ok" : "err", ort: "leiste", text: r.message };
+    else S.msg = { type: r.ok ? "ok" : "err", ort: "leiste", text: r.ok ? r.message : String(r.message).replace(/(Noch \d Versuche?)\.$/, "$1, dann 2 Minuten Pause.") };
   },
   async "t-tip"() {
     const r = await rpc("reveal_tip", { p_code: S.team.code });
@@ -3668,7 +3702,7 @@ function akkuFensterPruefen() {
   else if (!m.a20 && AKKU.level > AKKU_LEER) { kopf = "akku20"; m.a20 = true; }
   if (!kopf) return false;
   LS.setItem("sj.akku", JSON.stringify(m));
-  S.team.uebergabe = kopf; S.team.wahl = null; S.msg = null;
+  S.team.uebergabe = kopf; S.team.wahl = besteWahl(st); S.team.wahlSelbst = false; S.msg = null;
   render();
   return true;
 }

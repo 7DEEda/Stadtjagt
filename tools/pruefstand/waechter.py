@@ -277,7 +277,7 @@ with sync_playwright() as pw:
     pg2.click(".msg [data-act=t-abgeben-frage]"); pg2.wait_for_timeout(900)
     pruef(pg2.locator(".ueber .blatt").is_visible() and pg2.locator(".ueber .blatt").evaluate("e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight }"), "Leitung abgeben im Hinweis: Fenster offen und im Blick")
     # Auswahl treffen, dann meldet der Wächter "schlecht" (Kompass wandert im Stillstand): Auswahl und Knopf bleiben
-    name = pg2.evaluate("[...document.querySelectorAll('.wahl button')].map(b => b.firstChild.textContent)[0]")
+    name = pg2.evaluate("[...document.querySelectorAll('.wahl button')].map(b => b.querySelector('.wer').firstChild.textContent)[0]")
     pg2.click(".wahl button >> nth=0"); pg2.wait_for_timeout(100)
     r = pg2.evaluate("""() => { window.__tneu = document.querySelector('.blatt'); let t = performance.now() + 1000, a = 63;
       for (let i = 0; i < 200; i++) { t += 20; a = (a + 0.3) % 360;

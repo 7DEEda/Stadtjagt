@@ -2206,6 +2206,14 @@ Geprüft: Review (Opus) ohne kritische Befunde, W1 bis W4 und K1 bis K7 behoben;
 geprüft. **Nicht geprüft:** echte Handys (`getBattery` auf Android, Umschalten im Hintergrund, iPhone ohne Akku).
 Offen für später: W5, siehe SPIEL.md §19.
 
+## Handy-Durchsicht (01.11.2026)
+
+Bewertung der Handy-Ansichten nach https://github.com/jakubkrehel/skills, private Auswahlseite mit Vorher/Nachher:
+https://claude.ai/artifact/Qr9sxbnXzANLCX1226Ctwh. Friedrich hat 1 bis 7, 9 und 10 gewählt, 8 nicht. Umgesetzt sind 1 bis 7
+und 9, ohne Migration (SPIEL.md §20, Prüfung `tools/pruefstand/handy.py`). Offen: Punkt 10 (Kopfzeile), dort gibt es
+noch keine konkrete Änderung; der Link „Leitung abgeben“ im Team-Reiter (Punkt 7, später prüfen). Nicht geprüft:
+Sonne, Screenreader, iPhone-Safari.
+
 ## Stand zum Fortsetzen (16.10.2026, Rückblick v2 am 17.10.2026, Rollen und Akku am 29.10.2026)
 
 **Live:** alles bis Nachtrag 33 (Umbau Weiterentwicklung, seit 09.10.), Geräte-Test

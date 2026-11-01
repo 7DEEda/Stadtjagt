@@ -1130,3 +1130,25 @@ Migration `20261029120000_rollen_akku.sql`, Prüfung `tools/pruefstand/rollen_ak
 - **Offen (W5):** Der Server prüft bei Eingaben nur den Team-Code. Wer ihn von Hand eintippt, kann zusätzlich zur
   Teamleitung eingeben. War schon vorher so; zu schließen wäre es, indem Eingaben an den Geräte-Schlüssel der
   Leitung gebunden werden.
+
+---
+
+## 20. Handy-Durchsicht (01.11.2026)
+
+Bewertung nach den Skills von Jakub Krehel (private Auswahlseite, HANDOFF), umgesetzt Punkte 1 bis 7 und 9. Prüfung
+`tools/pruefstand/handy.py` (Port 8874).
+
+- **Übergabe-Fenster:** `waehlbar` sortiert offene Handys vor nicht offenen, dann nach Akku: ladend zuerst, dann der
+  Stand; ohne Akkustand (iPhone) zwischen vollen und knappen Handys. `besteWahl` wählt nur vor, was belegbar gut ist
+  (offen und ladend oder über 20 %), und markiert es mit „beste Wahl“. Solange niemand selbst tippt
+  (`S.team.wahlSelbst`), folgt die Vorwahl dem Stand. Der Knopf nennt die Person (`uebergabeKnopf`), bei gleichem
+  Vornamen im Team mit vollem Namen.
+- **Kopf:** `leitungZeile`: „Anna Berger leitet“, darf umbrechen.
+- **Kompass nicht freigegeben:** keine Plakette mehr, Kasten kurz. Der Satz zum Beenden des Browsers steht im
+  Hilfe-Blatt; der Hilfe-Knopf steht in diesem Zustand auch ohne Kontakt der Spielleitung im Kopf.
+- **Akku-Hinweis der Leitung:** eine Zeile mit Stand und Knopf „Abgeben“. Die Hinweise für Mitglieder bleiben Sätze.
+- **Ende:** ohne Platz steht „Euer Stand“ in der Karte, die Karte vor dem Schloss; mit Platz die Zielzeit, sobald
+  die Rangliste geladen ist. Die eigene Zeile der Rangliste trägt `tr.eigen`.
+- **Fehlversuch:** Die graue Regel entfällt, solange „Leider falsch“ in der Leiste steht. Den Zusatz „dann 2 Minuten
+  Pause“ hängt die App an (`t-answer`), die Meldung der Datenbank bleibt gleich.
+- **Team-Reiter:** Marke „Leitung“ unter dem Namen. **Reiter:** Zähler in `--fs-xs`.
