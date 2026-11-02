@@ -519,7 +519,7 @@ anon, authenticated`, am Ende `notify pgrst, 'reload schema';`.
 - Reihenfolge beim Ausliefern: erst die Datenbank, dann die App.
 
 ### Testmodus und Testdaten
-- `admin_set_test_mode` (Reiter Stationen): Check-in und Koffer-Code ohne
+- `admin_set_test_mode` (Reiter Einstellungen): Check-in und Koffer-Code ohne
   Entfernung, jede Antwort zählt, keine Denkpause; der Koffer-Code selbst wird
   weiter geprüft. Rotes „Testmodus an“ in Admin und Team-Ansicht.
   „Spiel starten“ warnt, solange er an ist (bleibt beim Testen dauerhaft an,
@@ -565,7 +565,7 @@ node -e 'const h=require("fs").readFileSync("index.html","utf8");[...h.matchAll(
 - Echte Nummer für die Hilfe-Knöpfe statt `491720000000`.
 - Live-PIN verlängern (siehe 7.); `2026` ist sie nicht mehr, hat aber nur
   4 Zeichen. Neue PINs verlangen seit Nachtrag 20 mindestens 12.
-- Hintergrund-Variante festlegen (umschaltbar im Reiter Stationen; aktiv ist
+- Hintergrund-Variante festlegen (umschaltbar im Reiter Einstellungen; aktiv ist
   A; B zeigt noch den Altstadt-Ausschnitt, Neuerzeugung siehe HANDOFF).
 - Testumgebung und Testskripte ins Repo übernehmen.
 - Probelauf draußen mit echten Handys, dabei die Punkte, die nur auf dem
@@ -1171,3 +1171,14 @@ und 4 bis 9, ohne Migration. Prüfung `tools/pruefstand/admin.py` (Port 8876, 39
 - **Am Handy (bis 600 px), Block am Ende des Stylesheets:** Die Reiter brechen in zwei Reihen um, die Teilnehmenden
   stehen einspaltig mit dem × am rechten Rand, die Zeitachse zeigt Punkte statt Stationsnummern, der Hell/Dunkel-Schalter
   steht neben dem Titel (`.akopf`, die Knöpfe darunter).
+
+---
+
+## 22. Reiter Einstellungen (03.11.2026)
+
+Punkt 3 der Spielleitung-Durchsicht (§21): Spieldauer, Koffer-Hinweis, Hintergrund und Testmodus standen im Reiter
+Stationen, obwohl sie mit Stationen nichts zu tun haben. Sie stehen jetzt in einem eigenen Reiter „Einstellungen“
+(`A.tab === "settings"`), zwischen Fotos und Daten löschen. Stationen, Teststation, Startpunkte und Notfallmappe
+bleiben im Reiter Stationen, die Selfie-Einstellung im Reiter Fotos. Der Hinweis „Ausschalten im Reiter …“ bei
+„Bereit zum Start“ nennt den neuen Reiter. Am 360-px-Handy brechen die acht Reiter vor dem Start in drei Reihen
+um, bei 390 px in zwei (im Spiel sind es sieben).

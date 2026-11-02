@@ -2206,6 +2206,12 @@ Geprüft: Review (Opus) ohne kritische Befunde, W1 bis W4 und K1 bis K7 behoben;
 geprüft. **Nicht geprüft:** echte Handys (`getBattery` auf Android, Umschalten im Hintergrund, iPhone ohne Akku).
 Offen für später: W5, siehe SPIEL.md §19.
 
+## Reiter Einstellungen (03.11.2026)
+
+Punkt 3 der Spielleitung-Durchsicht, in der Nacht als Entwurf auf dem Zweig `einstellungen-reiter` gebaut (SPIEL.md §22):
+eigener Reiter für Spieldauer, Koffer-Hinweis, Hintergrund und Testmodus. Ohne Migration. Prüfung `admin.py` und die
+angepassten Skripte bugjagd2 und kritik (Testmodus-Knopf jetzt im Reiter Einstellungen).
+
 ## Spielleitung-Durchsicht (02.11.2026)
 
 Bewertung der Spielleitung nach https://github.com/jakubkrehel/skills ohne Barrierefreiheit, private Auswahlseite:
