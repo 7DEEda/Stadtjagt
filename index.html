@@ -340,6 +340,8 @@ th{font:600 var(--fs-s) var(--body);color:var(--muted)}
 .ticker{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px}.ticker button{display:flex;gap:10px;align-items:baseline;width:100%;min-height:42px;border:0;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}.ticker time{color:var(--muted);font-variant-numeric:tabular-nums}.ticker .ok time{color:var(--ok)}.ticker .err time{color:var(--err)}
 .nw{white-space:nowrap}
 .teamfeld{margin-top:0;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding:0}
+/* Die Teamliste steht im Quelltext vor der Karte (Tablet hochkant und Handy: „Braucht dich“ zuerst); am Laptop daneben rechts */
+@media (min-width:1024px){.lv .kartefeld{grid-column:1;grid-row:1}.lv .teamfeld{grid-column:2;grid-row:1}}
 @media (max-width:1023px){.lv{grid-template-columns:minmax(0,1fr)}.lv .kartefeld #map{height:56vh}.teamfeld{position:static;max-height:none}}
 /* Teamliste der Spielleitung: im Reiter live (#teamfeld) und im Reiter Auslosen gleich */
 .teamliste{padding:0}
@@ -354,7 +356,8 @@ th{font:600 var(--fs-s) var(--body);color:var(--muted)}
 .teamliste .row.p-warn{box-shadow:inset 4px 0 0 var(--warn)}
 .teamliste .row.sel{background:color-mix(in srgb,var(--flag) 8%,var(--card))}
 .teamliste .row-top{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 8px}
-.teamliste .row-top .btn{margin:0;flex:none}
+.teamliste .row-top .btn{margin:0;flex:none;min-height:44px}
+.teamliste .row-top .btn.leise{background:none;border:0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;min-height:44px;padding:8px 6px}
 .teamliste .row-main{flex:1;min-width:0;display:flex;align-items:center;gap:12px;min-height:60px;padding:4px 8px;border:0;background:none;text-align:left;border-radius:10px;color:var(--ink);font:inherit;cursor:pointer}
 .teamliste .tier{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:21px;line-height:1;flex:none;background:color-mix(in srgb,var(--tc) 16%,var(--card));border:2px solid var(--tc)}
 .teamliste .row-txt{min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -410,6 +413,7 @@ select.sm{width:auto;max-width:100%;font-size:var(--fs-m);padding:6px 8px;margin
 .tl-key b.dot{width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--muted)}
 .btn.warn{background:var(--err-btn);color:#fff}
 .btn.warn:disabled{background:var(--line);color:var(--muted)}
+.btn.warnrand{background:transparent;color:var(--err);border:1.5px solid var(--err)}
 .panel.danger{border-color:var(--err);border-left-width:4px}
 .panel.danger h3{color:var(--err)}
 /* Nach dem Auslosen: großes Team-Zeichen, damit sich die Gruppen finden */
@@ -599,6 +603,16 @@ input[type=date]{min-height:50px}
 }
 /* Teamleitung am Tablet: breitere Spalte, Kompass und Entfernung auf Armlänge lesbar */
 @media (min-width:700px){main:not(.wide):not(.voll){max-width:600px}.compass.gross svg{width:180px;height:180px}:root{--fs-zahl:56px}}
+/* Spielleitung am Handy (Durchsicht 02.11.2026): Reiter in Reihen, Teilnehmende einspaltig, Zeitachse ohne Nummern, Schalter neben dem Titel */
+@media (max-width:600px){
+  .tabs{flex-wrap:wrap;overflow:visible;gap:0 4px}
+  .tabs button{padding:10px 7px;font-size:var(--fs-s)}
+  ul.names{columns:1}
+  .tl-bar .st{width:10px;height:10px;margin-left:-5px;top:6px;font-size:0;border-width:2px}
+  .akopf > .brand{order:-2;flex:1 1 calc(100% - 56px);min-width:0}
+  .akopf > .akt{display:contents}
+  .akopf .thema{order:-1;margin-left:0}
+}
 </style>
 </head>
 <body>
@@ -2163,8 +2177,8 @@ function teamZeile(t, i, st) {
   const p = problemVon(t, st), sel = S.admin.sel === t.id, gesamt = aktiv(st).length;
   const wo = t.place ? `im Ziel, Platz\u00a0${t.place}` : t.checkedInAt ? `an Station ${t.currentPosition}` : t.currentPosition ? `zu Station ${t.currentPosition}` : `${t.memberCount} Pers.`;
   const knopf = st.status !== "running" || t.place || !t.currentPosition ? ""
-    : !t.checkedInAt ? `<button class="btn sm alt" data-act="a-danger" data-key="unlock" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Freischalten</button>`
-      : `<button class="btn sm alt" data-act="a-danger" data-key="solve" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Rätsel werten</button>`;
+    : !t.checkedInAt ? `<button class="btn sm ${p ? "" : "leise"}" data-act="a-danger" data-key="unlock" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Freischalten</button>`
+      : `<button class="btn sm ${p ? "" : "leise"}" data-act="a-danger" data-key="solve" data-id="${t.id}" data-pos="${t.currentPosition}" data-name="${esc(t.name)}">Rätsel werten</button>`;
   const detail = !sel ? "" : `<div class="detail">${p ? `<p class="msg ${p.stufe === "fehler" ? "err" : "warn"}">${esc(p.text)}</p>` : ""}
       <label for="lt-${t.id}">Teamleitung</label>
       <select class="sm" id="lt-${t.id}" data-chg="a-leader" data-id="${t.id}" data-ort="t:${t.id}">${!t.leaderId ? `<option value="" selected>offen</option>` : ""}
@@ -2304,7 +2318,7 @@ function viewAdmin() {
   if (st.status === "running") actions += problemKnopfHTML(st) + `<button class="btn sm alt" data-act="a-finish">Spiel beenden</button>`;
   if (st.status === "finished") actions += `<button class="btn sm alt" data-act="a-rueckblick">Rückblick</button><button class="btn sm alt" data-act="a-resume" data-wait="Wird fortgesetzt …">Spiel fortsetzen</button>`;
 
-  let out = `<div class="bar"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div class="kopfchips">${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div></div><div>${actions}${themaBtn()}</div></div>${msgBox()}`;
+  let out = `<div class="bar akopf"><div class="brand" style="margin:0">${logo()}<div><h1>Spielleitung</h1><div class="kopfchips">${status}${st.testMode ? '<span class="chip test">Testmodus an</span>' : ""}${uhrHTML(st)}<span class="chip uhr knapp" id="stand" hidden></span></div></div></div><div class="akt">${actions}${themaBtn()}</div></div>${msgBox()}`;
   const missing = (st.stations || []).filter(s => s.lat == null || s.lng == null);
   if (missing.length) out += `<div class="msg err">Ohne Koordinaten kann dort niemand einchecken. Betroffen: Station ${missing.map(s => s.position).join(", ")}.</div>`;
 
@@ -2318,7 +2332,7 @@ function viewAdmin() {
   if (A.tab === "live") {
     const withPos = (st.teams || []).filter(t => t.position);
     const ohnePos = st.status === "running" ? (st.teams || []).filter(t => !t.position && !t.place) : [];
-    out += `<div class="lv"><section class="kartefeld">
+    out += `<div class="lv"><section class="teamfeld teamliste panel" id="teamfeld">${teamlisteHTML(st)}</section><section class="kartefeld">
         <div id="map" class="${A.full ? "full" : ""}"></div>
         <button class="btn sm kartezu" data-act="a-full" ${A.full ? "" : "hidden"}>Vollbild beenden</button>
         <div class="bar kartefuss"><span class="small muted"><b class="nw">${withPos.length} von ${(st.teams || []).length}</b> Teams mit Standort, alle 10 s. Gestrichelt: Strecke ohne GPS-Signal.</span>
@@ -2326,7 +2340,7 @@ function viewAdmin() {
         <div class="legend" id="legend">${(st.teams || []).map((t, i) => `<button class="tchip ${A.hidden[t.id] ? "off" : ""}" style="--c:${teamColor(i)}" data-act="a-team" data-id="${t.id}"><i></i>${teamEmoji(t.name)} ${esc(t.name)}</button>`).join("")}</div>
         ${ohnePos.length ? `<div class="ohnepos">${ohnePos.map(t => `<button class="btn sm alt" data-act="a-sel" data-id="${t.id}" data-zu="1">${teamEmoji(t.name)} ${esc(t.name)}: kein Standort</button>`).join("")}</div>` : ""}
         <div class="panel" id="zuletzt"></div>
-      </section><section class="teamfeld teamliste panel" id="teamfeld">${teamlisteHTML(st)}</section></div>`;
+      </section></div>`;
   }
   if (A.tab === "zeit") {
     out += `<div class="panel"><div class="bar"><h3>Zeitachse</h3><span class="small muted" id="tlspan"></span></div>
@@ -2345,9 +2359,8 @@ function viewAdmin() {
     const n = (st.participants || []).length, d = A.draw;
     // Nach dem Auslosen ist Starten der nächste Schritt, nicht Neu auslosen
     if (st.status === "drawn") out += `<div class="panel"><h3>Bereit zum Start</h3>
-        <p class="small muted">Die Teamleitungen sind auf ihrem eigenen Handy gleich drin, einen Code braucht niemand. Die App fragt vor dem Start noch einmal nach.</p>
-        ${st.testMode ? `<div class="msg err">Der Testmodus ist noch an: Entfernung und Antworten werden nicht geprüft. Ausschalten im Reiter Stationen.</div>` : ""}
-        <button class="btn" data-act="a-start">Spiel starten</button></div>`;
+        <p class="small muted">Die Teamleitungen sind auf ihrem eigenen Handy gleich drin, einen Code braucht niemand. Gestartet wird oben mit „Spiel starten“, die App fragt vorher noch einmal nach.</p>
+        ${st.testMode ? `<div class="msg err">Der Testmodus ist noch an: Entfernung und Antworten werden nicht geprüft. Ausschalten im Reiter Stationen.</div>` : ""}</div>`;
     // Den Reiter gibt es nur vor dem Start (laeuft schaltet oben auf live um); danach steht der Weg zurück im Reiter Daten löschen
     out += `<div class="panel"><h3>Teams auslosen</h3>
         <div style="margin-top:8px"><span class="count">${n}</span> <span class="muted">${n === 1 ? "Person angemeldet" : "Personen angemeldet"}</span></div>
@@ -2459,7 +2472,7 @@ function viewAdmin() {
       ? offen.map(k => `<div class="panel danger"><h3>${esc(typeof DANGER[k].title === "function" ? DANGER[k].title(st) : DANGER[k].title)}</h3>
           <p class="small">${esc(typeof DANGER[k].lead === "function" ? DANGER[k].lead(st) : DANGER[k].lead)}</p>
           <p class="small muted">${esc(typeof DANGER[k].keeps === "function" ? DANGER[k].keeps(st) : DANGER[k].keeps)}</p>
-          <button class="btn warn" data-act="a-danger" data-key="${k}">${esc(DANGER[k].btn)}</button></div>`).join("")
+          <button class="btn ${k === "people" ? "warn" : "warnrand"}" data-act="a-danger" data-key="${k}">${esc(DANGER[k].btn)}</button></div>`).join("")
       : `<div class="panel"><p class="muted">Erst nach dem Auslosen gibt es hier etwas zu löschen.</p></div>`;
     // Im Spiel gibt es den Reiter Auslosen nicht: dann sagen, wie es wieder geht (Review 15.10.2026, Befund 10)
     out += `<p class="small muted" style="margin-top:12px">${laeuft

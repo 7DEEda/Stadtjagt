@@ -245,7 +245,7 @@
     "admin-bereit": { welt: "drawn", view: "admin", ss: { "sj.pin": "4711" },
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=teams]" }, { wait: 300 }] },
     "admin-start-dialog": { welt: "drawn", view: "admin", ss: { "sj.pin": "4711" },
-      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=teams]" }, { wait: 300 }, { click: ".panel .btn[data-act=a-start]" }, { wait: 400 }] },
+      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=teams]" }, { wait: 300 }, { click: ".akopf [data-act=a-start]" }, { wait: 400 }] },
     "admin-vollbild": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, settle: 3500,
       steps: [{ until: ".tabs" }, { wait: 2500 }, { click: "[data-act=a-full]" }, { wait: 800 }] },
     "admin-auslosen": { welt: "registration", view: "admin", ss: { "sj.pin": "4711" },
