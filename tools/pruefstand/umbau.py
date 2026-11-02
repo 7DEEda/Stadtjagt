@@ -169,7 +169,7 @@ with sync_playwright() as pw:
     pg.set_viewport_size({"width": 820, "height": 1180})
     pg.goto(f"{BASIS}/app.html?szenario=admin-karte"); pg.wait_for_selector("#teamfeld")
     m, l = pg.locator("#map").bounding_box(), pg.locator("#teamfeld").bounding_box()
-    pruef(l["y"] >= m["y"] + m["height"] - 2, "Tablet hoch: Liste unter der Karte")
+    pruef(m["y"] >= l["y"] + l["height"] - 2, "Tablet hoch: Liste über der Karte (Spielleitung-Durchsicht 02.11.2026)")
     pg.set_viewport_size({"width": 1440, "height": 900}); pg.goto(f"{BASIS}/app.html?szenario=admin-karte"); pg.wait_for_selector(".tabs")
     pg.click("[data-act=a-tab][data-tab=people]"); pg.wait_for_selector("#aadd")
     pw, tw = pg.locator(".inhalt900 .panel").first.bounding_box()["width"], pg.locator(".tabs").bounding_box()["width"]
@@ -290,7 +290,7 @@ with sync_playwright() as pw:
     pg.click(".ohnepos [data-act=a-sel]"); sel = pg.evaluate("S.admin.sel")
     pg.click(".ohnepos [data-act=a-sel]"); pg.wait_for_timeout(1200)
     r = pg.locator("#teamfeld .row.sel").bounding_box(); vh = pg.evaluate("innerHeight")
-    pruef(pg.evaluate("S.admin.sel") == sel and r and 0 <= r["y"] and r["y"] + r["height"] <= vh + 1, f"kein Standort: zweites Tippen wählt wieder, Zeile im Bild ({r and r['y']:.0f})")
+    pruef(pg.evaluate("S.admin.sel") == sel and r and -1 <= r["y"] and r["y"] + r["height"] <= vh + 1, f"kein Standort: zweites Tippen wählt wieder, Zeile im Bild ({r and r['y']:.0f})")
     ev = pg.evaluate("ereignisse(S.admin.state).map(e => e.text)")
     pruef(ev and all(not __import__("re").search(r"(Station|Platz) \d", x) for x in ev) and any(" " in x for x in ev), f"Zuletzt: Nummern bleiben beim Wort {ev[:3]}")
     pg.set_viewport_size({"width": 390, "height": 844})

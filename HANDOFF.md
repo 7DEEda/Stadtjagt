@@ -2206,6 +2206,14 @@ Geprüft: Review (Opus) ohne kritische Befunde, W1 bis W4 und K1 bis K7 behoben;
 geprüft. **Nicht geprüft:** echte Handys (`getBattery` auf Android, Umschalten im Hintergrund, iPhone ohne Akku).
 Offen für später: W5, siehe SPIEL.md §19.
 
+## Spielleitung-Durchsicht (02.11.2026)
+
+Bewertung der Spielleitung nach https://github.com/jakubkrehel/skills ohne Barrierefreiheit, private Auswahlseite:
+https://claude.ai/artifact/Vn1WCbJQNEkEh6isuK2uAi. Friedrich hat 1, 2 und 4 bis 9 gewählt, umgesetzt ohne Migration
+(SPIEL.md §21, Prüfung `tools/pruefstand/admin.py`). Nicht gewählt: 3. Offen als Frage: Der Reiter „Stationen“ trägt
+auch Spieldauer, Koffer-Hinweis, Hintergrund und Testmodus; ein eigener Reiter „Einstellungen“ wäre möglich, ist aber
+nicht entschieden. Bekannt: Am Tablet hochkant liegt die Karte jetzt unter der Teamliste.
+
 ## Handy-Durchsicht (01.11.2026)
 
 Bewertung der Handy-Ansichten nach https://github.com/jakubkrehel/skills, private Auswahlseite mit Vorher/Nachher:

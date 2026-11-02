@@ -1152,3 +1152,22 @@ Bewertung nach den Skills von Jakub Krehel (private Auswahlseite, HANDOFF), umge
 - **Fehlversuch:** Die graue Regel entfällt, solange „Leider falsch“ in der Leiste steht. Den Zusatz „dann 2 Minuten
   Pause“ hängt die App an (`t-answer`), die Meldung der Datenbank bleibt gleich.
 - **Team-Reiter:** Marke „Leitung“ unter dem Namen. **Reiter:** Zähler in `--fs-xs`.
+
+---
+
+## 21. Spielleitung-Durchsicht (02.11.2026)
+
+Bewertung der Spielleitung nach den Skills von Jakub Krehel (private Auswahlseite, HANDOFF), umgesetzt Punkte 1, 2
+und 4 bis 9, ohne Migration. Prüfung `tools/pruefstand/admin.py` (Port 8876, 390, 768 und 1280 px).
+
+- **Karte und Teams:** `#teamfeld` steht im Quelltext vor der Karte. Unter 1024 px kommt damit „Braucht dich“ zuerst,
+  auch am Tablet hochkant; die Karte folgt darunter. Ab 1024 px setzt das Raster die Karte wieder links, die Liste
+  rechts daneben.
+- **Teamliste:** „Freischalten“ und „Rätsel werten“ sind bei Teams unter „Braucht dich“ gefüllte Knöpfe, bei allen
+  anderen ruhige Textknöpfe (`.btn.leise`, mindestens 44 px hoch).
+- **Daten löschen:** Nur „Alle Teilnehmenden löschen“ ist rot gefüllt (`.btn.warn`), die anderen haben einen roten
+  Rand (`.btn.warnrand`). Die Rückfragen bleiben gleich.
+- **„Spiel starten“** steht nur noch im Kopf; „Bereit zum Start“ sagt, dass dort gestartet wird.
+- **Am Handy (bis 600 px), Block am Ende des Stylesheets:** Die Reiter brechen in zwei Reihen um, die Teilnehmenden
+  stehen einspaltig mit dem × am rechten Rand, die Zeitachse zeigt Punkte statt Stationsnummern, der Hell/Dunkel-Schalter
+  steht neben dem Titel (`.akopf`, die Knöpfe darunter).
