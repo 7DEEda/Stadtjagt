@@ -134,7 +134,7 @@ with sync_playwright() as pw:
         pruef(leiste(pg) == WIEDER, f"Abgleich ohne Phasenwechsel: {WIEDER!r} ({leiste(pg)!r})")
         pruef(pg.evaluate("S.team.state.failedAttempts") == 1, "die falsche Antwort zählt einmal")
         tippen(pg, "[data-act=t-answer]")
-        pruef(leiste(pg) == "Leider falsch. Noch 2 Versuche.", f"nochmal getippt: wie beim ersten Mal ({leiste(pg)!r})")
+        pruef(leiste(pg) == "Leider falsch. Noch 2 Versuche, dann 2 Minuten Pause.", f"nochmal getippt: wie beim ersten Mal ({leiste(pg)!r})")
         pruef(pg.evaluate("S.team.state.failedAttempts") == 1, "dieselbe falsche Antwort zweimal zählt einmal")
         pg.close()
 
