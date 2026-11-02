@@ -29,7 +29,7 @@ App eingeben.
 | Rolle | Zugang | Kann | Sieht |
 |---|---|---|---|
 | **Teilnehmende** | Link, Name bei der Anmeldung | sich anmelden (nur bis zum Auslosen), Team nachschauen | eigenes Team groß mit Emoji; ab dem Start alles, was die Teamleitung sieht (Geräte-Schlüssel aus der Anmeldung) |
-| **Teamleitung** | `#/team`: automatisch auf dem Handy, mit dem sie sich angemeldet hat (Geräte-Schlüssel); Team-Code nur als Ausweg für die Spielleitung am Tablet | einchecken, Rätsel beantworten, Koffer-Code eingeben, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
+| **Teamleitung** | `#/team`: automatisch auf dem Handy, mit dem sie sich angemeldet hat (Geräte-Schlüssel); Team-Code nur als Ausweg für die Spielleitung am Tablet, mit Admin-PIN (§22) | einchecken, Rätsel beantworten, Koffer-Code eingeben, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
 | **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, fortsetzen, freischalten, Rätsel werten, Teamleitung wählen, Stationen pflegen, Leute eintragen, löschen, Testmodus | Reiter Karte und Teams (Karte, Teamliste mit "Braucht dich", Zuletzt), Zeitachse, Codes, Akku der Teamleitung, Koffer-Code |
 
 Die Teamleitung wird beim Auslosen je Team zufällig bestimmt
@@ -286,11 +286,14 @@ mit dem Team-Code.
   direkter Tabellenzugriff.
 - Alles läuft über `security definer`-Funktionen, `anon` hat nur
   Ausführungsrecht. Hilfsfunktionen (`norm`, `dist_m`, `team_by_code`,
-  `current_station`, `require_admin`, `answer_ok`, `aktive_route`) sind für
+  `current_station`, `require_admin`, `answer_ok`, `aktive_route`, seit W5 auch `team_eingabe`) sind für
   `anon` und `authenticated` gesperrt. Prüfen: `tools/pruefstand/rechte_db.py`
   (Nachtrag 31: Nachtrag 28 hatte `current_station` neu angelegt und die Sperre
   verloren).
 - Admin-Funktionen prüfen die PIN serverseitig (`require_admin`).
+- Eingaben fürs Team (Check-in, Antwort, Tipp, Koffer, Fotos, Leitung abgeben, Position) nimmt der Server seit W5
+  nur mit dem Geräte-Schlüssel der aktuellen Teamleitung oder mit der Admin-PIN an (`team_eingabe`, §22). Lesen
+  (`team_state`) geht weiter mit dem Team-Code.
 - Team-Codes: Tiername plus sechs Ziffern (`FUCHS-123456`); alte vierstellige
   Codes gelten bis zum nächsten Auslosen. `team_by_code` vergleicht nur
   Buchstaben und Ziffern (`EULE 8765` = `eule-8765`).
@@ -309,7 +312,7 @@ mit dem Team-Code.
 
 Bewusst akzeptiert oder offen:
 - GPS lässt sich mit Entwicklerwerkzeugen fälschen.
-- Wer einen Team-Code kennt, spielt für dieses Team.
+- Wer einen Team-Code kennt, sieht den Stand dieses Teams (`team_state`); eingeben kann er seit W5 nicht mehr.
 - Vor dem Auslosen kann jemand einen erfundenen Namen zusätzlich anmelden
   (Abhilfe: Zahl mit der Gästeliste abgleichen, steht im Admin beim Auslosen).
 - Mitglieder können Ziffern an andere Teams weitergeben (nicht technisch zu
@@ -1127,9 +1130,8 @@ Migration `20261029120000_rollen_akku.sql`, Prüfung `tools/pruefstand/rollen_ak
 - **Spielleitung (F5):** Chip „Akku N %“ in der Teamzeile ab 20 %, unter „Braucht dich“ ab 10 % (nicht ladend,
   `problemVon`). `(kein eigenes Handy)` am Namen zeigt `hatHandy`.
 - **Mitlese-Link gestrichen (F7):** siehe §5.3 und §7.
-- **Offen (W5):** Der Server prüft bei Eingaben nur den Team-Code. Wer ihn von Hand eintippt, kann zusätzlich zur
-  Teamleitung eingeben. War schon vorher so; zu schließen wäre es, indem Eingaben an den Geräte-Schlüssel der
-  Leitung gebunden werden.
+- **W5 geschlossen (03.11.2026, §22):** Eingaben gehen nur noch mit dem Geräte-Schlüssel der Leitung oder der
+  Admin-PIN; der Team-Code allein reicht nicht mehr.
 
 ---
 
@@ -1171,3 +1173,32 @@ und 4 bis 9, ohne Migration. Prüfung `tools/pruefstand/admin.py` (Port 8876, 39
 - **Am Handy (bis 600 px), Block am Ende des Stylesheets:** Die Reiter brechen in zwei Reihen um, die Teilnehmenden
   stehen einspaltig mit dem × am rechten Rand, die Zeitachse zeigt Punkte statt Stationsnummern, der Hell/Dunkel-Schalter
   steht neben dem Titel (`.akopf`, die Knöpfe darunter).
+
+---
+
+## 22. Eingaben an den Geräte-Schlüssel gebunden (W5, 03.11.2026)
+
+Migration `20261103090000_w5_eingaben_schluessel.sql`, Prüfung `tools/pruefstand/w5.py` (Port 8877) und
+`w5_eingaben_db.py` (Probelauf). Bis dahin reichte bei jeder Eingabe der Team-Code: wer ihn von Hand eintippte
+(Notweg-Feld „Spielleitung: mit Team-Code eingeben“), konnte neben der Teamleitung eingeben.
+
+- **Server:** Die acht Eingaben `check_in`, `submit_answer`, `reveal_tip`, `submit_final`, `team_selfie`,
+  `team_selfie_skip`, `team_set_leader` und `report_position` haben zwei neue Parameter `p_token` und `p_pin`
+  (Vorgabe null, die alten Fassungen sind gedroppt). Statt `team_by_code` ruft jede `team_eingabe(p_code, p_token, p_pin)`
+  (intern, nicht für anon): Team per Code, dann muss `p_token` der Geräte-Schlüssel der aktuellen Leitung sein, sonst
+  muss `p_pin` die Admin-PIN sein (`require_admin`, Meldung „Falsche PIN.“). Ohne beides: „Eingeben kann nur die
+  Teamleitung auf ihrem eigenen Handy.“ Der Schlüssel zählt zuerst. Eine Leitung ohne eigenes Handy (von der
+  Spielleitung gesetzt) gibt nur über den Notweg mit PIN ein. Lesen bleibt mit Code (`team_state`, `team_photo`).
+- **App:** `eingabeRpc(fn, args)` hängt `p_token` (`sj.token`) und `p_pin` (`S.admin.pin`, nur wenn dieser Tab die PIN
+  kennt) an. Kennt die Datenbank die Parameter nicht (PGRST202, Migration fehlt), einmal ohne; die älteren Rückfälle
+  (`p_position`, `p_kompass`) bleiben davor.
+- **Notweg:** Unter dem Team-Code steht das Feld „Admin-PIN“, solange der Tab die PIN nicht kennt. `t-login` prüft sie
+  über `admin_state` (`notwegPin`) und merkt sie wie die Anmeldung der Spielleitung in `sessionStorage` (`sj.pin`);
+  damit ist der Tab auch für `#/admin` angemeldet. Tippt die Teamleitung den eigenen Code auf dem eigenen Handy
+  (Name und Schlüssel), braucht es keine PIN. Hat ein Notweg-Tablet (`sj.hand`) die PIN verloren (Browser neu
+  gestartet), zeigt `viewTeam` statt der Ansicht „Admin-PIN fehlt“ mit PIN-Feld (`t-pin`) und Abmelden.
+- **Reihenfolge beim Einspielen:** erst die App, dann die Migration. Eine ältere App (Service Worker, nicht neu
+  geladen) sendet keinen Schlüssel und kann nach der Migration nicht mehr eingeben; „Neue Version laden“ hilft.
+  `tools/stresstest.py` ruft die Eingaben mit Code allein und braucht für einen neuen Lauf `p_pin` (nicht angepasst).
+- **Mock:** `window.__W5` prüft wie der Server (nur auf Wunsch, viele Szenarien zeigen eine Leitung mit Code ohne
+  Schlüssel), `__OHNE_W5` spielt eine Datenbank ohne die Migration, `__EINGABE_ARGS` sammelt die Argumente.

@@ -493,6 +493,9 @@
   const pin = a => { if (a.p_pin !== "4711") fehler("Falsche PIN."); };
   const fuchsByCode = code => { const t = TEAMS.find(x => x.code === String(code || "").trim().toUpperCase()); if (!t || !mitTeams()) fehler("Unbekannter Team-Code."); return t; };
 
+  // W5 (03.11.2026): die acht Eingaben, die der Server nur noch mit dem Schlüssel der Teamleitung oder der Admin-PIN annimmt
+  const EINGABEN = new Set(["check_in", "submit_answer", "reveal_tip", "submit_final", "team_selfie", "team_selfie_skip",
+    "team_set_leader", "report_position"]);
   const RPC = {
     public_state: () => publicState(),
     team_state: a => teamState(fuchsByCode(a.p_code)),
@@ -673,6 +676,19 @@
     // die Antwort kommt aber erst nach window.__freigeben()
     if (passt(window.__weg)) throw new TypeError("Prüfstand: Funkloch");
     try {
+      // W5: __EINGABE_ARGS sammelt die Argumente der Eingaben. __ALTE_DB oder __OHNE_W5: Datenbank ohne die Migration
+      // (PGRST202 bei p_token oder p_pin). __W5: prüfen wie der Server (Schlüssel der Leitung, sonst PIN, sonst abgelehnt);
+      // nur auf Wunsch, weil viele Szenarien eine Leitung mit Team-Code ohne Schlüssel zeigen (IM_TEAM)
+      if (EINGABEN.has(fn)) {
+        (window.__EINGABE_ARGS = window.__EINGABE_ARGS || []).push(Object.assign({ fn }, args));
+        if ((window.__ALTE_DB || window.__OHNE_W5) && ("p_token" in args || "p_pin" in args))
+          return antwort(404, { code: "PGRST202", message: "Could not find the function public." + fn + " in the schema cache" });
+        if (window.__W5) {
+          const t = fuchsByCode(args.p_code), l = person(t.leaderName), leitet = !!(args.p_token && l && args.p_token === l.token);
+          if (!leitet && !String(args.p_pin || "").trim()) fehler("Eingeben kann nur die Teamleitung auf ihrem eigenen Handy.");
+          if (!leitet) pin(args);
+        }
+      }
       // unbekannte Admin-Aufrufe: nichts tun, Stand zurückgeben
       const h = RPC[fn] || (fn.startsWith("admin_") ? (a => { pin(a); return adminState(); }) : null);
       if (!h) return antwort(404, { message: "Prüfstand kennt " + fn + " nicht." });

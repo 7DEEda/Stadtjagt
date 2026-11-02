@@ -732,6 +732,22 @@ const RPC_FOTO = new Set(["team_photo", "team_selfie", "admin_photo", "admin_pho
 const keineVerbindung = () => Object.assign(new Error("Keine Verbindung. Wartet kurz und tippt noch mal."), { netz: true });
 // Die Datenbank kennt die Funktion mit diesen Parametern nicht (älterer Nachtrag eingespielt, PostgREST PGRST202)
 const ohneFunktion = e => !!e && (e.code === "PGRST202" || /Could not find the function/i.test(e.message || ""));
+// W5 (03.11.2026): Eingaben fürs Team gehen mit dem Geräte-Schlüssel raus (Teamleitung auf ihrem Handy) und, wenn
+// dieser Tab die Admin-PIN kennt, mit der PIN (Notweg-Tablet der Spielleitung). Der Server nimmt den Team-Code allein
+// nicht mehr an. Eine Datenbank ohne die Migration kennt p_token und p_pin nicht (PGRST202): dann einmal ohne.
+async function eingabeRpc(fn, args) {
+  const recht = { p_token: LS.getItem("sj.token") || null, p_pin: S.admin.pin || null };
+  try { return await rpc(fn, { ...args, ...recht }); }
+  catch (e) { if (!ohneFunktion(e)) throw e; return rpc(fn, args); }
+}
+// Notweg: die Admin-PIN prüfen und für diesen Tab merken (wie die Anmeldung der Spielleitung). Gibt den Fehler zurück.
+async function notwegPin(pin) {
+  if (!pin) return "Für den Notweg bitte die Admin-PIN eingeben.";
+  try { await rpc("admin_state", { p_pin: pin }); }
+  catch (e) { return String(e.message).includes("Falsche PIN") ? "Die Admin-PIN stimmt nicht." : e.message; }
+  S.admin.pin = pin; SS.setItem("sj.pin", pin);
+  return null;
+}
 // Akku (Rollen und Akku, 29.10.2026): level 0 bis 100, null = unbekannt (iPhone: Safari gibt ihn nicht heraus)
 const AKKU = { level: null, laedt: false, bm: null };
 const AKKU_KNAPP = 20, AKKU_LEER = 10;
@@ -1502,12 +1518,20 @@ function viewTeam() {
     return brand() + `<div class="panel">${warum}${msgBox()}
       <a class="btn" href="#/public">Zur Anmeldeseite</a></div>
       ${S.team.codeFeld ? `<div class="panel"><h3>Mit Team-Code eingeben</h3>
-        <p class="small muted">Nur für die Spielleitung, wenn das Handy einer Teamleitung ausfällt. Den Code zeigt die Teamliste im Reiter Karte und Teams, wenn du das Team antippst.</p>
+        <p class="small muted">Nur für die Spielleitung, wenn das Handy einer Teamleitung ausfällt. Den Code zeigt die Teamliste im Reiter Karte und Teams, wenn du das Team antippst.${S.admin.pin ? "" : ' Eingeben geht nur mit der <span class="nw">Admin-PIN</span>.'}</p>
         <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="FUCHS-123456"></div>
+        ${S.admin.pin ? "" : `<div style="margin-top:12px"><label for="tpin">Admin-PIN</label><input id="tpin" type="password" autocomplete="off" enterkeyhint="go"></div>`}
         <button class="btn" data-act="t-login" data-wait="Wird geprüft …" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox("code")}</div>`
       : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-codefeld">Spielleitung: mit Team-Code eingeben</button></p>`}`
       + helpBtn("Stadtjagd: Ich komme als Teamleitung nicht hinein.") + nav();
   }
+  // W5: Notweg-Tablet, dessen Tab die Admin-PIN nicht mehr kennt (Browser neu gestartet): ohne PIN nimmt der Server
+  // keine Eingabe an, also erst die PIN, statt eine Ansicht zu zeigen, in der jede Eingabe scheitert
+  if (LS.getItem("sj.hand") && !S.admin.pin) return brand() + `<div class="panel"><h2>Admin-PIN fehlt</h2>
+      <p class="muted">Dieses Gerät gibt mit dem Team-Code ein (Notweg der Spielleitung). Dafür braucht es noch einmal die Admin-PIN.</p>
+      <div style="margin-top:12px"><label for="tpin">Admin-PIN</label><input id="tpin" type="password" autocomplete="off" enterkeyhint="go"></div>
+      <button class="btn" data-act="t-pin" data-wait="Wird geprüft …" ${S.busy ? "disabled" : ""}>Weiter</button>${msgBox("code")}
+      <button class="btn alt" data-act="t-logout" style="margin-top:8px">Abmelden</button></div>` + nav();
   const st = S.team.state;
   if (!st) return brand() + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
   return teamAnsicht(st, false) + (S.hoch && document.body.classList.contains("spiel") ? hochHTML(st.team.name) : "") + uebergabeHTML(st);
@@ -1856,7 +1880,7 @@ async function fotoNachreichen(s) {
     fotoNachreichZeit = Date.now();
     try {
       const b = JSON.parse(roh);
-      S.team.state = await rpc("team_selfie", { p_code: S.team.code, p_position: pos, p_photo: b.foto, p_thumb: b.thumb });
+      S.team.state = await eingabeRpc("team_selfie", { p_code: S.team.code, p_position: pos, p_photo: b.foto, p_thumb: b.thumb });
       LS.removeItem(k); render();
     } catch { /* beim nächsten Abruf wieder */ }
     return;
@@ -2901,10 +2925,14 @@ const ACT = {
     let st;
     try { st = await rpc("team_state", { p_code: code }); }
     catch (e) { S.msg = { type: "err", ort: "code", text: String(e.message).includes("Unbekannter Team-Code") ? "Diesen Team-Code gibt es nicht. Prüft die Schreibweise, etwa FUCHS-123456." : e.message }; return; }
+    // W5: wer nicht die Teamleitung dieses Handys ist, gibt nur mit der Admin-PIN ein (Notweg der Spielleitung)
+    const eigen = S.myName && st.team.leaderName === S.myName && LS.getItem("sj.token");
+    if (!eigen && !S.admin.pin) { const f = await notwegPin(val("tpin")); if (f) { S.msg = { type: "err", ort: "code", text: f }; return; } }
     S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
     // Merker nur für den Notweg: tippt die Teamleitung ihren eigenen Code, meldet leitungNochDa sie nach einem Wechsel ab
     if (S.myName && st.team.leaderName === S.myName) LS.removeItem("sj.hand"); else LS.setItem("sj.hand", "1");
   },
+  async "t-pin"() { const f = await notwegPin(val("tpin")); S.msg = f ? { type: "err", ort: "code", text: f } : null; },
   "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); standVergessen(); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
@@ -2921,7 +2949,7 @@ const ACT = {
     if (!name) return false;
     const st = S.team.state, g = st ? waehlbar(st).find(x => x.name === name) : null;
     try {
-      const team = (await rpc("team_set_leader", { p_code: S.team.code, p_name: name })).team;
+      const team = (await eingabeRpc("team_set_leader", { p_code: S.team.code, p_name: name })).team;
       // Abgegeben: dieses Handy liest ab jetzt mit, GPS läuft weiter; die neue Leitung schaltet nach dem nächsten Abruf um
       const wer = vorname(name);
       // Aus einem Akku-Fenster oder mit knappem, nicht ladendem Akku abgegeben: das Handy soll durchhalten, also kein
@@ -2945,7 +2973,7 @@ const ACT = {
   "t-kal-skip"() { kalEnde(false); },
   async "t-check"() {
     const pos = await standortFuerEingabe();
-    const r = await eingabe("t-check", () => rpc("check_in", { p_code: S.team.code, p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc }));
+    const r = await eingabe("t-check", () => eingabeRpc("check_in", { p_code: S.team.code, p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc }));
     S.team.state = r.state;
     // Zu weit weg: sagen, wie weit, und was zu tun ist
     const text = !r.ok && r.distance != null ? `Noch ${fmtDist(r.distance)} bis zur Station. Geht näher heran und tippt noch mal.` : r.message;
@@ -2959,8 +2987,8 @@ const ACT = {
     // prüft der Server eine Wiederholung nicht gegen das nächste Rätsel. Datenbank ohne die Migration: einmal ohne.
     const args = { p_code: S.team.code, p_answer: val("tans"), p_position: pos || null };
     const r = await eingabe("t-answer", async () => {
-      try { return await rpc("submit_answer", args); }
-      catch (e) { if (!ohneFunktion(e)) throw e; delete args.p_position; return rpc("submit_answer", args); }
+      try { return await eingabeRpc("submit_answer", args); }
+      catch (e) { if (!ohneFunktion(e)) throw e; delete args.p_position; return eingabeRpc("submit_answer", args); }
     });
     S.team.state = r.state;
     // Richtig: den Moment benennen, mit der Ziffer, und das neue Rad im Schloss kurz markieren
@@ -2970,13 +2998,13 @@ const ACT = {
     else S.msg = { type: r.ok ? "ok" : "err", ort: "leiste", text: r.ok ? r.message : String(r.message).replace(/(Noch \d Versuche?)\.$/, "$1, dann 2 Minuten Pause.") };
   },
   async "t-tip"() {
-    const r = await rpc("reveal_tip", { p_code: S.team.code });
+    const r = await eingabeRpc("reveal_tip", { p_code: S.team.code });
     S.team.state = r.state; S.msg = r.ok ? null : { type: "err", text: r.message };
   },
   // Den Koffer-Code gibt man am Koffer ein: die Datenbank prüft die Position wie beim Check-in
   async "t-final"() {
     const pos = await standortFuerEingabe();
-    const r = await eingabe("t-final", () => rpc("submit_final", { p_code: S.team.code, p_value: val("tfin"), p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc }));
+    const r = await eingabe("t-final", () => eingabeRpc("submit_final", { p_code: S.team.code, p_value: val("tfin"), p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc }));
     S.team.state = r.state;
     const text = r.ok ? r.message
       : r.distance != null ? `Noch ${fmtDist(r.distance)} bis zu den Koffern. Geht näher heran und tippt noch mal.`
@@ -2997,7 +3025,7 @@ const ACT = {
     const sf = S.selfie, alt = S.team.state; if (!sf) return;
     try {
       const vorher = alt.digits ? alt.digits[sf.pos - 1] : null;
-      const s = await rpc("team_selfie", { p_code: S.team.code, p_position: sf.pos, p_photo: sf.foto, p_thumb: sf.thumb });
+      const s = await eingabeRpc("team_selfie", { p_code: S.team.code, p_position: sf.pos, p_photo: sf.foto, p_thumb: sf.thumb });
       S.team.state = s; S.selfie = null; S.team.tab = "weg"; /* Meldung steht im Weg-Tab */  LS.removeItem(fotoSchluessel(s, sf.pos));
       const z = s.digits ? s.digits[sf.pos - 1] : null;
       if (vorher == null && z != null) { S.neueZiffer = { i: sf.pos - 1, bis: Date.now() + 8000 }; S.msg = { type: "ok", text: `Foto ist drin. Station ${sf.pos} gelöst, eure Ziffer: ${z}.` }; }
@@ -3014,7 +3042,7 @@ const ACT = {
     const st = S.team.state, p = st && st.selfie && st.selfie.pending, hatte = !!S.selfie;
     if (!p) { S.selfie = null; return; }
     const gemerkt = hatte && fotoMerken(st, S.selfie);
-    const s = await rpc("team_selfie_skip", { p_code: S.team.code, p_position: p.position });
+    const s = await eingabeRpc("team_selfie_skip", { p_code: S.team.code, p_position: p.position });
     S.team.state = s; S.selfie = null;
     const z = s.digits ? s.digits[p.position - 1] : null;
     if (z != null) S.neueZiffer = { i: p.position - 1, bis: Date.now() + 8000 };
@@ -3651,8 +3679,8 @@ async function maybeReport() {
   // Eine Datenbank ohne Nachtrag 30 kennt p_kompass nicht (PostgREST findet die Funktion nicht, PGRST202): nur dann
   // einmal ohne, die Position ist wichtiger als das Urteil. Bei jedem anderen Fehler (Funkloch, Server) kein zweiter Aufruf.
   try {
-    try { await rpc("report_position", { ...pos, p_kompass: urteil }); }
-    catch (e) { if (!ohneFunktion(e)) throw e; await rpc("report_position", pos); }
+    try { await eingabeRpc("report_position", { ...pos, p_kompass: urteil }); }
+    catch (e) { if (!ohneFunktion(e)) throw e; await eingabeRpc("report_position", pos); }
     // erst nach dem Senden: scheitert es, geht das Urteil beim nächsten Melden wieder mit
     g.lastSentUrteil = urteil;
     g.sentAt = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });

@@ -2204,7 +2204,21 @@ Entscheidungen: `docs/superpowers/plans/2026-10-29-rollen-akku.md`, Beschreibung
 Geprüft: Review (Opus) ohne kritische Befunde, W1 bis W4 und K1 bis K7 behoben; `rollen_akku_db.py` 180 Prüfungen,
 `rollen_akku.py` 163, alle Prüfstand-Skripte grün; nach dem Einspielen `rechte_db.py` 29 Prüfungen grün, Live-Seite
 geprüft. **Nicht geprüft:** echte Handys (`getBattery` auf Android, Umschalten im Hintergrund, iPhone ohne Akku).
-Offen für später: W5, siehe SPIEL.md §19.
+W5 ist auf dem Zweig `w5-eingaben-schluessel` geschlossen (Abschnitt „Eingaben an den Geräte-Schlüssel (W5)“).
+
+## Eingaben an den Geräte-Schlüssel (W5, 03.11.2026, Zweig `w5-eingaben-schluessel`, nicht eingespielt)
+
+Bisher nahm der Server jede Eingabe mit dem Team-Code allein an; wer ihn von Hand eintippte, konnte neben der Leitung
+eingeben. Jetzt gehen die acht Eingaben (Check-in, Antwort, Tipp, Koffer, Foto, Foto überspringen, Leitung abgeben,
+Position) nur mit dem Geräte-Schlüssel der aktuellen Leitung oder mit der Admin-PIN (Notweg am Tablet). Migration
+`20261103090000_w5_eingaben_schluessel.sql` (neue interne `team_eingabe`, je zwei Parameter `p_token`, `p_pin`),
+App `eingabeRpc`, PIN-Feld im Notweg und Seite „Admin-PIN fehlt“. Einzelheiten SPIEL.md §22.
+
+Geprüft: `w5_eingaben_db.py` (Probelauf, 139 Prüfungen), `rechte_db.py` mit der Migration, `w5.py` und die
+angepassten Prüfstand-Skripte (siehe Zweig). **Vor dem Einspielen (Friedrich):** erst App auf master und Pages, dann
+die Migration (`python tools/sql.py supabase/migrations/20261103090000_w5_eingaben_schluessel.sql`), danach
+`rechte_db.py` und `python tools/schema_abzug.py`. Ein Handy mit alter App gibt danach nichts mehr ein, bis es neu
+lädt. `tools/stresstest.py` bräuchte für einen neuen Lauf `p_pin` bei den Eingaben.
 
 ## Spielleitung-Durchsicht (02.11.2026)
 

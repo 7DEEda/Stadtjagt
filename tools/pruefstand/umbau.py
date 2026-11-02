@@ -265,7 +265,7 @@ with sync_playwright() as pw:
     pruef(pg.locator(".hochhalten").count() == 1, "Leitung: Hochhalten-Fenster")
     pg.click(".hochhalten")
     # R1: Abmelden setzt den Tab zurück (gibt es seit F1 nur am Notweg-Tablet mit sj.hand)
-    pg.evaluate("localStorage.setItem('sj.hand', '1'); render()")
+    pg.evaluate("localStorage.setItem('sj.hand', '1'); S.admin.pin = '4711'; render()")   # W5: Notweg-Tablet kennt die PIN
     pg.click("[data-act=t-logout-frage]"); pg.click("[data-act=t-logout]")
     pruef(pg.evaluate("S.team.tab") == "weg", "Abmelden setzt den Tab auf Weg zurück")
     # R2: ohne Hülle ist kein Hilfe-Blatt offen
