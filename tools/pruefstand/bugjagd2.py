@@ -267,7 +267,7 @@ with sync_playwright() as pw:
     if an(14):
         print("Fund 14: Testmodus ausschalten mit Plätzen")
         pg = neu(b, "admin-teststation", breit=True)
-        pg.click("[data-act=a-tab][data-tab=stations]"); pg.wait_for_selector("[data-act=a-test]")
+        pg.click("[data-act=a-tab][data-tab=settings]"); pg.wait_for_selector("[data-act=a-test]")
         pg.click("[data-act=a-test]"); pg.wait_for_timeout(600)
         t = pg.inner_text("[data-act=a-test] >> xpath=..")
         pruef("Im Testlauf gibt es schon Plätze" in t, f"Meldung des Servers steht beim Knopf ({t[-120:]!r})")
@@ -275,7 +275,7 @@ with sync_playwright() as pw:
         pg.close()
         # Entscheidung 04.10.2026: im laufenden Spiel mit Plätzen auch nicht einschalten (Adler hat Platz 1)
         pg = neu(b, "admin-stationen", breit=True)
-        pg.click("[data-act=a-tab][data-tab=stations]"); pg.wait_for_selector("[data-act=a-test]")
+        pg.click("[data-act=a-tab][data-tab=settings]"); pg.wait_for_selector("[data-act=a-test]")
         pg.click("[data-act=a-test]"); pg.wait_for_selector("#dlgok"); pg.click("#dlgok"); pg.wait_for_timeout(600)
         t = pg.inner_text("#app")
         pruef("Es gibt schon Plätze" in t, "Einschalten mit Plätzen: Meldung des Servers steht da")

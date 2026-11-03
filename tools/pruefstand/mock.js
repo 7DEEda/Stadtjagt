@@ -236,7 +236,7 @@
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=stations]" }, { wait: 300 }] },
     // Nachtrag 32: ohne Platz lässt sich der Testmodus im laufenden Spiel einschalten (mit Platz nicht)
     "admin-stationen-ohne-platz": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 }, fertig: [],
-      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=stations]" }, { wait: 300 }] },
+      steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=settings]" }, { wait: 300 }] },
     "admin-teilnehmende": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=people]" }, { wait: 300 }] },
     "admin-loeschen": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 1 },
