@@ -211,6 +211,10 @@
     "admin-beendet": { welt: "finished", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 4 }, selfie: {} },
     "admin-fotos-heute": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 3 }, selfie: {}, loeschDatum: "heute",
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { wait: 400 }] },
+    // Bugjagd 03.11.2026 (bugjagd3.py): Leitung startet kalt in der Team-Ansicht (Fund 1); Start mit altem Löschdatum (Fund 7)
+    "rolle-leitung-kalt": { welt: "running", view: "team", ls: { "sj.name": "Anna Berger", "sj.token": TOK("Anna Berger"), "sj.code": "FUCHS-4821" }, fuchs: { solved: 1 } },
+    "admin-start-loeschdatum": { welt: "drawn", view: "admin", ss: { "sj.pin": "4711" }, selfie: {}, loeschDatum: "heute" },
+    "admin-start-loeschdatum-spaet": { welt: "drawn", view: "admin", ss: { "sj.pin": "4711" }, selfie: {}, loeschDatum: "2099-01-01" },
     "admin-fotos-spaet": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 3 }, selfie: {}, loeschDatum: "2099-01-01",
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { wait: 400 }] },
     "admin-login": { welt: "running", view: "admin" },
@@ -607,6 +611,8 @@
     admin_photo: a => { pin(a); window.__FOTO_ROUTE = (window.__FOTO_ROUTE || []).concat([a.p_route || "echt"]); const t = TEAMS.find(x => x.id === a.p_team);
       (window.__FOTO_ARGS = window.__FOTO_ARGS || []).push({ n: t.name, p: a.p_position, full: !!a.p_full });
       if (window.__fotoFehler && window.__fotoFehler(a, t)) fehler("Foto nicht erreichbar.");
+      // bugjagd3.py: inzwischen gelöscht, die Datenbank liefert data null (Bugjagd 03.11.2026, Fund 2)
+      if (window.__fotoNull && window.__fotoNull(a, t)) return { data: null };
       return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full, C.hochfotos && (t.name.length + a.p_position) % 3 === 0) }; },
     admin_set_selfie: a => { pin(a);
       // Audit 25.10.: Löschdatum heute oder früher abgelehnt; das schon gespeicherte Datum nochmal senden geht nur beim Ausschalten

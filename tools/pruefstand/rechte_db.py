@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Probelauf für Nachtrag 31 (current_station sperren) gegen die echte Datenbank, ohne Spuren. Seitdem um jede neue
-Migration mit Funktionen ergänzt (zuletzt Rollen und Akku 29.10., 20261029120000_rollen_akku.sql).
+Migration mit Funktionen ergänzt (zuletzt Bugjagd 03.11., 20261107090000_bugjagd3.sql).
 
     python tools/pruefstand/rechte_db.py
 
@@ -20,13 +20,14 @@ import sql  # noqa: E402
 # Nach dem Einspielen einer Migration, die Funktionen neu anlegt, hier ergänzen (SPIEL.md §9).
 MIGRATIONEN = ["20261004090000_current_station_sperren.sql", "20261015090000_namenssuche_grenze.sql",
                "20261016090000_eingaben_wiederholen.sql", "20261017090000_rueckblick_steuerung.sql",
-               "20261025090000_audit.sql", "20261029120000_rollen_akku.sql"]
+               "20261025090000_audit.sql", "20261029120000_rollen_akku.sql",
+               "20261107090000_bugjagd3.sql"]
 MIGRATION = [sql.REPO / "supabase" / "migrations" / n for n in MIGRATIONEN]
 
 # Interne Hilfsfunktionen: dürfen weder anon noch authenticated ausführen
 INTERN = ["norm(text)", "dist_m(double precision,double precision,double precision,double precision)",
           "team_by_code(text)", "current_station(uuid)", "require_admin(text)", "answer_ok(text,text)",
-          "aktive_route()"]
+          "aktive_route()", "team_code_quelle()", "team_code_bremse(text)", "team_code_abgelehnt(text)"]
 
 PROBE = r"""
 do $probe$
@@ -64,6 +65,13 @@ begin
   foreach r in array array['anon', 'authenticated'] loop
     if has_table_privilege(r, 'public.rueckblick_steuerung', 'select') or has_table_privilege(r, 'public.rueckblick_steuerung', 'update') then
       raise exception 'PROBE FEHLT: % darf rueckblick_steuerung lesen oder ändern', r; end if;
+    v_n := v_n + 1;
+  end loop;
+  -- Bugjagd 03.11.: die Zähltabelle der Team-Code-Bremse ist für anon und authenticated gesperrt
+  if to_regclass('public.team_code_fehlversuche') is null then raise exception 'PROBE FEHLT: Tabelle team_code_fehlversuche gibt es nicht'; end if;
+  foreach r in array array['anon', 'authenticated'] loop
+    if has_table_privilege(r, 'public.team_code_fehlversuche', 'select') or has_table_privilege(r, 'public.team_code_fehlversuche', 'insert') then
+      raise exception 'PROBE FEHLT: % darf team_code_fehlversuche lesen oder schreiben', r; end if;
     v_n := v_n + 1;
   end loop;
   raise exception 'PROBELAUF_OK: % Prüfungen bestanden, alles zurückgenommen', v_n;

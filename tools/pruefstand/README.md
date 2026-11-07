@@ -32,6 +32,7 @@ etwa `timeout 300 python tools/pruefstand/waechter.py`.
 | `teststation.py` | Teststation und Startpunkt (Nachtrag 28 und 29) |
 | `waechter.py` | Kompass-Wächter: Logik, Anzeige, Spielleitung, Freigaben (Nachtrag 30) |
 | `bugjagd2.py` | Funde der Bugjagd vom 03.10.2026 |
+| `bugjagd3.py` | Funde der Bugjagd vom 03.11.2026 (SPIEL.md §24), Port 8878: Leitung startet kalt in der Team-Ansicht und bleibt auf der Anmeldeseite, Foto-ZIP mit gelöschten Fotos, Start-Dialog bei erreichtem Löschdatum, Geräte-Test lädt Leaflet und Schriften aus `vendor/`. Haken `__fotoNull` in `mock.js`. Probelauf `bugjagd3_db.py` (Bremse für Team-Codes, admin_start, team_selfie) |
 | `umbau.py` | Umbau Weiterentwicklung: Handy-Hülle, Reiter, Spielleitung mit Teamliste (Nachtrag 33) |
 | `review1510.py` | Befunde des Code-Reviews vom 15.10.2026 (Nachtrag 34) |
 | `lokal.py` | Leaflet und Schriften aus `vendor/`, keine Anfrage an unpkg oder Google (Nachtrag 35) |
@@ -62,5 +63,5 @@ Zugang aus `tools/sql.py`.
 `name_db.py`, `selfie_db.py`, `teststation_db.py`, `startpunkt_db.py`,
 `waechter_db.py`, `rechte_db.py` (Rechte aller internen Hilfsfunktionen),
 `bugjagd2_db.py`, `namenssuche_db.py`, `namenssuche_grenze_db.py`, `eingaben_db.py`,
-`rueckblick_steuerung_db.py` (Fernbedienung, Nachtrag 37). Mit `--ohne` zeigen `rechte_db.py`, `bugjagd2_db.py`,
+`rueckblick_steuerung_db.py` (Fernbedienung, Nachtrag 37), `bugjagd3_db.py` (Bugjagd 03.11.2026). Mit `--ohne` zeigen `rechte_db.py`, `bugjagd2_db.py`,
 `namenssuche_grenze_db.py`, `eingaben_db.py` und `rueckblick_steuerung_db.py` den Stand ohne Migration.

@@ -847,7 +847,10 @@ const DANGER = {
     when: () => false, wort: false, neutral: true,
     title: "Spiel starten",
     lead: st => `Alle Handys springen auf Station 1, die Uhr zählt ${st.durationMin ?? 180} Minuten herunter.`
-      + (st.testMode ? " Achtung: Der Testmodus ist noch an, Entfernung und Antworten werden nicht geprüft." : ""),
+      + (st.testMode ? " Achtung: Der Testmodus ist noch an, Entfernung und Antworten werden nicht geprüft." : "")
+      // Bugjagd 03.11.2026, Fund 7: ein altes Löschdatum (Probe) löscht jedes Gruppenfoto gleich nach dem Hochladen
+      + (st.selfieOn && st.photosDeleteOn && st.photosDeleteOn <= new Date().toLocaleDateString("sv")
+        ? " Achtung: Das Löschdatum der Gruppenfotos ist erreicht, Fotos werden nicht gespeichert. Vorher im Reiter Fotos ein Datum nach dem Abendessen wählen." : ""),
     keeps: "Zurück geht es nur über „Fortschritt zurücksetzen“ im Reiter Daten löschen.",
     btn: "Spiel starten",
     async run() {
@@ -3032,16 +3035,29 @@ const ACT = {
   },
   async "a-fotos-zip"() {
     const fotos = S.admin.fotos || [], dateien = [];
+    let fehlend = 0;
     const sauber = s => String(s).replace(/[^A-Za-z0-9ÄÖÜäöüß-]+/g, "-").replace(/^-|-$/g, "");
     for (const f of fotos) {
       const test = f.route === "test";
-      const b = atob(String((await rpc("admin_photo", { p_pin: S.admin.pin, p_team: f.teamId, p_position: f.position, p_full: true, p_route: f.route || "echt" })).data).replace(/\s/g, ""));
+      // Inzwischen gelöscht (zweites Tablet, Löschdatum, Zurücksetzen): admin_photo liefert data null, und
+      // atob("null") ergab bisher eine 3-Byte-Datei im Paket (Bugjagd 03.11.2026, Fund 2)
+      const r = await rpc("admin_photo", { p_pin: S.admin.pin, p_team: f.teamId, p_position: f.position, p_full: true, p_route: f.route || "echt" });
+      if (r == null || r.data == null || r.data === "") { fehlend++; continue; }
+      const b = atob(String(r.data).replace(/\s/g, ""));
       dateien.push({ name: `Team-${sauber(f.teamName)}/${test ? "Teststation" : "Station-" + f.position}-${sauber(f.stationName)}.jpg`, bytes: Uint8Array.from(b, c => c.charCodeAt(0)) });
+    }
+    if (!dateien.length) {
+      S.msg = { type: "err", ort: "zip", text: fotos.length ? "Die Fotos sind inzwischen gelöscht, es gibt nichts herunterzuladen." : "Es gibt keine Fotos zum Herunterladen." };
+      await fotosLaden();
+      return;
     }
     const a = document.createElement("a");
     a.href = URL.createObjectURL(zipBauen(dateien)); a.download = "stadtjagd-fotos.zip";
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-    S.msg = { type: "ok", ort: "zip", text: `${dateien.length} Fotos als stadtjagd-fotos.zip heruntergeladen.` };
+    if (fehlend) {
+      S.msg = { type: "err", ort: "zip", text: `${dateien.length} von ${fotos.length} Fotos als stadtjagd-fotos.zip heruntergeladen, ${fehlend} inzwischen gelöscht.` };
+      await fotosLaden();
+    } else S.msg = { type: "ok", ort: "zip", text: `${dateien.length} Fotos als stadtjagd-fotos.zip heruntergeladen.` };
   },
   async "a-test"(d) {
     // Einschalten im laufenden Spiel hebt für alle Teams Entfernungs- und Antwortprüfung auf: erst nachfragen
@@ -3989,11 +4005,14 @@ async function leitungOhneCode() {
 // Hat die Spielleitung die Leitung gewechselt oder wurde sie abgegeben, gibt dieses Handy nichts mehr ein.
 // Bisher blieb der gemerkte Code gültig und das Team hatte zwei eingebende Handys.
 // Ein von Hand getippter Code (Notweg der Spielleitung, sj.hand) gehört nicht dem Gerät: der bleibt.
+// Steht die Leitung hier fest, gilt sie als gesehen (S.leitungWar): sonst warf rolleNachziehen eine Leitung, die
+// gleich in der Team-Ansicht startete, beim ersten Tipp auf "Anmeldung" zurück (Bugjagd 03.11.2026, Fund 1).
 async function leitungNochDa(s) {
   const tok = LS.getItem("sj.token");
   if (s && s.team && S.myName && s.team.leaderName === S.myName) LS.removeItem("sj.hand");   // selbst Leitung geworden: Merker weg
-  if (!tok || LS.getItem("sj.hand") || !s || !s.team || !s.team.leaderName || s.team.leaderName === S.myName) return;
-  try { await rpc("leader_code", { p_token: tok }); return; }   // umbenannt, aber weiter Leitung
+  if (!tok || LS.getItem("sj.hand") || !s || !s.team || !s.team.leaderName) return;
+  if (s.team.leaderName === S.myName) { S.leitungWar = true; return; }
+  try { await rpc("leader_code", { p_token: tok }); S.leitungWar = true; return; }   // umbenannt, aber weiter Leitung
   catch (e) {
     if (!/keine Teamleitung|kein Team\b/.test(String(e.message)) && !String(e.message).includes("Unbekanntes Gerät")) return;   // Funkloch
   }

@@ -2206,6 +2206,19 @@ Geprüft: Review (Opus) ohne kritische Befunde, W1 bis W4 und K1 bis K7 behoben;
 geprüft. **Nicht geprüft:** echte Handys (`getBattery` auf Android, Umschalten im Hintergrund, iPhone ohne Akku).
 Offen für später: W5, siehe SPIEL.md §19.
 
+## Bugjagd 03.11.2026, behoben 07.11.2026 (Zweig `bugjagd-nov`, nicht gemerged)
+
+Sieben Funde, siehe SPIEL.md §24. **Migration `20261107090000_bugjagd3.sql` ist NICHT eingespielt.** Reihenfolge:
+`python tools/pruefstand/bugjagd3_db.py` (Probelauf, zuletzt 93 Prüfungen grün) und `rechte_db.py` (37 grün), dann
+`python tools/schema_abzug.py --pruefen`, `python tools/sql.py supabase/migrations/20261107090000_bugjagd3.sql`,
+danach `python tools/schema_abzug.py` und mitcommitten, erst dann die App pushen (der Start-Dialog-Hinweis und das
+Foto-ZIP gehen auch ohne Migration). Nach dem Einspielen einmal über die API prüfen, dass ein falscher Code die Zeile
+in `team_code_fehlversuche` hinterlässt (PostgREST schreibt bei `response.status` 400 laut Doku fest, im Probelauf
+nicht prüfbar) und dass die App weiter „Unbekannter Team-Code.“ zeigt. Der veröffentlichte Geräte-Test braucht danach
+`python tools/geraetetest_veroeffentlichen.py` (nimmt jetzt `vendor/` mit). **Zu entscheiden:** Grenze und Sperre
+der Bremse (30 je 10 Minuten und Adresse, gesperrt auch für richtige Codes), ob `admin_start` bei abgelaufenem
+Löschdatum nur warnt (so gebaut) oder ablehnt.
+
 ## Reiter Einstellungen (03.11.2026)
 
 Punkt 3 der Spielleitung-Durchsicht, in der Nacht als Entwurf auf dem Zweig `einstellungen-reiter` gebaut (SPIEL.md §22):
@@ -2327,7 +2340,8 @@ Datum des Änderungsstopps. Event: Fr 23. bis So 25. April 2027 (Service Worker 
   gemessen (26 bis 44 KB, Stresstest oben).
 - **Live-Admin-PIN prüfen:** nicht mehr die Vorgabe `2026`, mindestens 12 Zeichen.
 - **Team-Codes härten:** Sechs Ziffern sind in der Migration `20261025090000_audit.sql` umgesetzt
-  (Sicherheitsprüfung 25.10.); eine Bremse bei Fehlversuchen bleibt offen.
+  (Sicherheitsprüfung 25.10.); die Bremse bei Fehlversuchen ist gebaut (Bugjagd 03.11., Zweig `bugjagd-nov`),
+  aber noch nicht eingespielt.
 - **Vor dem Event:** Testpersonen entfernen (zählen zur 200er-Grenze der Selbstanmeldung).
 - **Supabase:** Token "Acces White" zurückziehen; `stadtjagd-stresstest` später löschen.
 ## Pausenstand 16.10.2026, vormittags (zum Fortsetzen)

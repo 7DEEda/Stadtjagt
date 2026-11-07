@@ -1182,3 +1182,56 @@ Stationen, obwohl sie mit Stationen nichts zu tun haben. Sie stehen jetzt in ein
 bleiben im Reiter Stationen, die Selfie-Einstellung im Reiter Fotos. Der Hinweis „Ausschalten im Reiter …“ bei
 „Bereit zum Start“ nennt den neuen Reiter. Am 360-px-Handy brechen die acht Reiter vor dem Start in drei Reihen
 um, bei 390 px in zwei (im Spiel sind es sieben).
+
+---
+
+## 24. Bugjagd 03.11.2026
+
+Sieben bestätigte Funde einer Multi-Agent-Bugjagd (Jury je 3 von 3, alle minor), behoben am 07.11.2026 auf dem Zweig
+`bugjagd-nov`. Migration `20261107090000_bugjagd3.sql` (Funde 3 und 7), Probelauf `tools/pruefstand/bugjagd3_db.py`,
+Oberfläche `tools/pruefstand/bugjagd3.py` (Port 8878).
+
+1. **Leitung startet kalt in der Team-Ansicht** (`rolleNachziehen`): Mit gemerktem `sj.code` lief weder `leitungOhneCode`
+   noch `rolleWechseln`, `S.leitungWar` blieb leer, und der erste Wechsel auf „Anmeldung“ holte die Leitung mit
+   „Du leitest jetzt Team …“ zurück. Jetzt setzt `leitungNochDa` `S.leitungWar = true`, sobald `team_state` die eigene
+   Leitung bestätigt (oder `leader_code` sie nach einer Umbenennung bestätigt), nur mit Geräte-Schlüssel und ohne
+   `sj.hand`. Die Flanken-Variante („nur wechseln, wenn `leitungWar === false`“) ist bewusst nicht genommen: sie
+   schaltete den gewollten Rollengewinn beim ersten Laden auf der Anmeldeseite ab.
+2. **Foto-ZIP** (`a-fotos-zip`): Ein inzwischen gelöschtes Foto (`admin_photo` liefert `data: null`) wurde über
+   `atob("null")` zur 3-Byte-Datei im Paket, die Meldung sagte trotzdem Erfolg. Jetzt wird es übersprungen und gezählt:
+   „N von M Fotos … heruntergeladen, K inzwischen gelöscht.“ (rot), danach lädt die Fotoliste neu. Sind alle weg,
+   gibt es kein Paket, nur die Meldung.
+3. **Bremse für Team-Codes** (Migration, Teil A): Ein falscher Code warf sofort eine Ausnahme; ein Zähler in derselben
+   Transaktion wäre mit zurückgerollt worden. Darum prüft jede Spielfunktion mit Team-Code (`team_state`, `check_in`,
+   `reveal_tip`, `submit_answer`, `submit_final`, `team_selfie`, `team_selfie_skip`, `team_set_leader`, `team_photo`,
+   `report_position`) zuerst `team_code_bremse(p_code)`. Die zählt falsche Codes je Quelle in `team_code_fehlversuche`
+   (Quelle: `cf-connecting-ip`, sonst erster Eintrag von `x-forwarded-for`, sonst `ohne`) und gibt den Text zurück;
+   die Funktion endet dann normal über `team_code_abgelehnt` mit `response.status` 400 und einer Antwort im Format
+   eines PostgREST-Fehlers. PostgREST schreibt dabei fest, die App sieht wie bisher „Unbekannter Team-Code.“
+   (`codeUngueltig` greift weiter). Ab 30 falschen Codes in 10 Minuten ist jeder Code aus dieser Quelle bis zum Ende
+   des Fensters gesperrt, auch ein richtiger: „Zu viele falsche Team-Codes aus diesem Netz. Bitte in N Minuten noch
+   einmal versuchen.“ Leere Codes zählen nicht, Zeilen älter als eine Stunde räumt der nächste Fehlversuch weg.
+   Rechnung: 30 Versuche je 10 Minuten und Quelle sind rund 4.300 am Tag; für die etwa 450.000 Versuche, die ein Code
+   im Mittel braucht, also gut 100 Tage je Adresse. Grenzen: Wer viele Adressen hat, kommt schneller voran; hängen
+   viele Handys hinter einer Adresse (Mobilfunk-NAT) und probiert dort jemand, sperrt das alle dahinter mit. Nach
+   einem Neu-Auslosen senden nur die Leitungen (etwa 12 bis 16 Handys) je einmal einen alten Code.
+4. **Seed der Prager Stationen** (`supabase/seed-stationen-prag.sql`): schrieb in die Sicht `stations`, die bei
+   eingeschaltetem Testmodus die Test-Route zeigt; dann überschrieb Position 1 die Teststation, 2 bis 5 trafen nichts.
+   Jetzt `update stations_alle … where route = 'echt' and position = N`, die Kontrolle liest `stations_alle` mit
+   `route = 'echt'`. Probelauf mit Testmodus an: fünf echte Stationen geändert, Teststation unberührt.
+5. **Geräte-Test, Karte** (`geraete-tests.js`): lud Leaflet von unpkg, die App nimmt es aus `vendor/`. Jetzt
+   `vendor/leaflet-1.9.4/leaflet.js`, Messschlüssel „Leaflet aus vendor in ms“. Suite-Version 22.
+6. **Geräte-Test, Schriften** (`geraete-test.html`): lud Barlow von Google Fonts. Jetzt die `@font-face`-Zeilen der App
+   (Barlow und Barlow Semi Condensed aus `vendor/fonts`), keine Anfrage an Google. Damit beide Pfade auch in der
+   neutralen Kopie tragen, nimmt `tools/geraetetest_veroeffentlichen.py` `vendor/leaflet-1.9.4/leaflet.js`, dessen
+   `LICENSE`, `vendor/fonts/OFL.txt` (alle durch die Wortprüfung) und die verwendeten woff2-Dateien mit.
+7. **Abgelaufenes Foto-Löschdatum** (Migration, Teil B): Ein altes Datum aus einer Probe blieb stehen; `admin_start`
+   startete ohne Hinweis, `team_selfie` fügte das Foto ein und `team_state` löschte es im selben Aufruf, das Handy
+   meldete „Foto ist drin“. Jetzt warnt `admin_start` (Gruppenselfie an, Löschdatum heute oder früher nach Prager
+   Zeit), der Start-Dialog nennt es schon vorher, und `team_selfie` lehnt mit „Das Löschdatum der Fotos ist erreicht …“
+   ab, ohne ein Foto anzulegen (das Team kommt über „Ohne Foto weiter“ voran). `admin_start` lehnt nicht ab: der Start
+   am Eventtag soll nicht an einem Fotodatum hängen.
+
+Die Funktionen der Migration sind die Live-Fassungen aus `supabase/schema/funktionen/` mit der Wache davor, ohne
+neue Signatur. Prüfungen: `bugjagd3_db.py` 93, `rechte_db.py` 37 (mit allen Migrationen, auch der neuen),
+`bugjagd3.py` 25 (gegen den alten Stand 16 FEHLT).

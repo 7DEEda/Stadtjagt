@@ -28,47 +28,50 @@
 --
 --  Im SQL-Editor ausführen oder mit tools/sql.py. Überschreibt die fünf
 --  Stationen, lässt Teams, Personen und Fortschritt unberührt.
+--  Schreibt in stations_alle mit route = 'echt', nicht in die Sicht
+--  stations: die zeigt bei eingeschaltetem Testmodus die Test-Route, und
+--  der Seed traf dann die Teststation (Bugjagd 03.11.2026, Fund 4).
 -- ============================================================
 
-update stations set
+update stations_alle set
   name = 'Planetarium Prag',
   lat = 50.105286, lng = 14.427406, radius_m = 50,
   location_hint = 'Ortshinweis folgt',
   riddle = 'Rätsel folgt', answer = '', digit = 3
-where position = 1;
+where route = 'echt' and position = 1;
 
-update stations set
+update stations_alle set
   name = 'Rudolfstollen',
   -- Eingang im Park unter Bäumen, GPS dort schwächer: etwas großzügiger
   lat = 50.104441, lng = 14.419553, radius_m = 60,
   location_hint = 'Ortshinweis folgt',
   riddle = 'Rätsel folgt', answer = '', digit = 7
-where position = 2;
+where route = 'echt' and position = 2;
 
-update stations set
+update stations_alle set
   name = 'Wasserturm Letná',
   lat = 50.100195, lng = 14.420089, radius_m = 50,
   location_hint = 'Ortshinweis folgt',
   riddle = 'Rätsel folgt', answer = '', digit = 1
-where position = 3;
+where route = 'echt' and position = 3;
 
-update stations set
+update stations_alle set
   name = 'Aussicht Letná, ehemalige Bergstation',
   lat = 50.095789, lng = 14.425346, radius_m = 50,
   location_hint = 'Oben an der großen Treppe, die vom Park zur Čech-Brücke hinunterführt. Hier begann 1891 eine Standseilbahn, heute ist es ein Aussichtspunkt.',
   riddle = 'Rätsel folgt', answer = '', digit = 9
-where position = 4;
+where route = 'echt' and position = 4;
 
-update stations set
+update stations_alle set
   name = 'Metronom',
   lat = 50.094775, lng = 14.415938, radius_m = 50,
   location_hint = 'Ortshinweis folgt',
   riddle = 'Rätsel folgt', answer = '', digit = 5
-where position = 5;
+where route = 'echt' and position = 5;
 
 -- Kontrolle
 select position, name, lat, lng, digit,
        case when lat is null then 'Koordinaten fehlen'
             when answer = '' then 'Rätsel fehlt'
             else 'bereit' end as stand
-from stations order by position;
+from stations_alle where route = 'echt' order by position;
