@@ -2204,20 +2204,67 @@ Entscheidungen: `docs/superpowers/plans/2026-10-29-rollen-akku.md`, Beschreibung
 Geprüft: Review (Opus) ohne kritische Befunde, W1 bis W4 und K1 bis K7 behoben; `rollen_akku_db.py` 180 Prüfungen,
 `rollen_akku.py` 163, alle Prüfstand-Skripte grün; nach dem Einspielen `rechte_db.py` 29 Prüfungen grün, Live-Seite
 geprüft. **Nicht geprüft:** echte Handys (`getBattery` auf Android, Umschalten im Hintergrund, iPhone ohne Akku).
-Offen für später: W5, siehe SPIEL.md §19.
+W5 ist auf dem Zweig `w5-eingaben-schluessel` geschlossen (Abschnitt „Eingaben an den Geräte-Schlüssel (W5)“).
 
-## Bugjagd 03.11.2026, behoben 07.11.2026 (Zweig `bugjagd-nov`, nicht gemerged)
+## Eingaben an den Geräte-Schlüssel (W5, 03.11.2026, Zweig `w5-eingaben-schluessel`, nicht eingespielt)
 
-Sieben Funde, siehe SPIEL.md §24. **Migration `20261107090000_bugjagd3.sql` ist NICHT eingespielt.** Reihenfolge:
-`python tools/pruefstand/bugjagd3_db.py` (Probelauf, zuletzt 93 Prüfungen grün) und `rechte_db.py` (37 grün), dann
-`python tools/schema_abzug.py --pruefen`, `python tools/sql.py supabase/migrations/20261107090000_bugjagd3.sql`,
-danach `python tools/schema_abzug.py` und mitcommitten, erst dann die App pushen (der Start-Dialog-Hinweis und das
-Foto-ZIP gehen auch ohne Migration). Nach dem Einspielen einmal über die API prüfen, dass ein falscher Code die Zeile
-in `team_code_fehlversuche` hinterlässt (PostgREST schreibt bei `response.status` 400 laut Doku fest, im Probelauf
-nicht prüfbar) und dass die App weiter „Unbekannter Team-Code.“ zeigt. Der veröffentlichte Geräte-Test braucht danach
-`python tools/geraetetest_veroeffentlichen.py` (nimmt jetzt `vendor/` mit). **Zu entscheiden:** Grenze und Sperre
-der Bremse (30 je 10 Minuten und Adresse, gesperrt auch für richtige Codes), ob `admin_start` bei abgelaufenem
-Löschdatum nur warnt (so gebaut) oder ablehnt.
+Bisher nahm der Server jede Eingabe mit dem Team-Code allein an; wer ihn von Hand eintippte, konnte neben der Leitung
+eingeben. Jetzt gehen die acht Eingaben (Check-in, Antwort, Tipp, Koffer, Foto, Foto überspringen, Leitung abgeben,
+Position) nur mit dem Geräte-Schlüssel der aktuellen Leitung oder mit der Admin-PIN (Notweg am Tablet). Migration
+`20261103090000_w5_eingaben_schluessel.sql` (neue interne `team_eingabe`, je zwei Parameter `p_token`, `p_pin`),
+App `eingabeRpc`, PIN-Feld im Notweg und Seite „Admin-PIN fehlt“. Einzelheiten SPIEL.md §23.
+
+Geprüft: `w5_eingaben_db.py` (Probelauf, 139 Prüfungen), `rechte_db.py` mit der Migration, `w5.py` und die
+angepassten Prüfstand-Skripte (siehe Zweig). Nach dem Merge von master (07.11.): `w5_eingaben_db.py` 139,
+`rechte_db.py` 37, `rollen_akku_db.py` 180 Prüfungen grün, `schema_abzug.py --pruefen` sauber; alle 22
+Prüfstand-Skripte im Wegwerf-Container grün bis auf drei FPS-Prüfungen in `rueckblick.py` (Container ohne GPU,
+29 bis 47 Bilder/s, 231 andere Prüfungen ok). `tools/stresstest.py` schickt bei den Eingaben jetzt den
+Geräte-Schlüssel der Leitung mit und prüft Code allein (abgewiesen) und Notweg mit PIN als Randfälle; nicht
+ausgeführt, das pausierte Testprojekt hat das Schema vor W5 (siehe `tools/STRESSTEST.md`).
+
+### Einspielen von W5 (Friedrich, in dieser Reihenfolge)
+
+1. Zweig `w5-eingaben-schluessel` auf master mergen und pushen. Die App schickt dann schon `p_token`/`p_pin` und
+   fällt bei PGRST202 von selbst auf den alten Aufruf zurück, läuft also auch ohne Migration.
+2. Pages-Lauf abwarten, Live-Seite prüfen: neue Version geladen, Teamleitung kann einchecken und antworten,
+   Notweg zeigt das Feld „Admin-PIN“.
+3. Vorher `python tools/schema_abzug.py --pruefen` (muss sauber sein), dann
+   `python tools/sql.py supabase/migrations/20261103090000_w5_eingaben_schluessel.sql`.
+4. `python tools/pruefstand/rechte_db.py` (grün) und `python tools/schema_abzug.py` (neuer Abzug), den Abzug in
+   `supabase/schema/` committen und pushen.
+
+Danach können Handys mit der alten App (Service Worker, nicht neu geladen) nichts mehr eingeben, bis sie neu laden
+(„Neue Version laden“ oder Seite neu öffnen); Lesen geht weiter. Darum nicht während eines laufenden Spiels einspielen.
+
+**Offen, Friedrich entscheidet:** der Notweg. Ohne Schlüssel gibt nur noch ein Gerät mit der Admin-PIN ein, also das
+Tablet der Spielleitung. Das gilt auch für eine Leitung ohne eigenes Handy (von der Spielleitung gesetzt): sie kann
+nur am Tablet mitspielen. Soll das so bleiben, oder braucht es einen zweiten Weg (etwa die Leitung auf ein anderes
+Handy des Teams umsetzen, das sich selbst angemeldet hat)?
+
+## Bugjagd 03.11.2026, behoben 07.11.2026 (Zweig `bugjagd-nov` mit W5, nicht gemerged)
+
+Sieben Funde und ein Nachtrag zu `norm()`, siehe SPIEL.md §24. Der Zweig enthält W5 (`w5-eingaben-schluessel`
+gemerged); die Migration `20261107090000_bugjagd3.sql` setzt auf W5 auf (Bremse in `team_eingabe`) und bricht ohne W5
+ab. **Beide Migrationen sind NICHT eingespielt.**
+
+### Einspielen (Friedrich, in dieser Reihenfolge)
+
+1. Zweig `bugjagd-nov` auf master mergen und pushen (die App zuerst; sie läuft ohne beide Migrationen, siehe W5
+   oben). Pages-Lauf abwarten, Live-Seite prüfen.
+2. W5 wie oben beschrieben einspielen (`schema_abzug.py --pruefen`, `sql.py …20261103090000_w5_eingaben_schluessel.sql`,
+   `rechte_db.py`).
+3. `python tools/pruefstand/bugjagd3_db.py` (Probelauf, zuletzt 102 Prüfungen grün; nach Schritt 2 spielt er W5
+   noch einmal davor ein, das schadet nicht), dann
+   `python tools/sql.py supabase/migrations/20261107090000_bugjagd3.sql`.
+4. `python tools/pruefstand/rechte_db.py` (zuletzt 45 grün) und `python tools/schema_abzug.py`, den Abzug committen.
+5. Einmal über die API prüfen: ein falscher Team-Code hinterlässt eine Zeile in `team_code_fehlversuche`
+   (PostgREST schreibt bei `response.status` 400 laut Doku fest, im Probelauf nicht prüfbar), die App zeigt weiter
+   „Unbekannter Team-Code.“; die Testzeile danach löschen.
+6. Den Geräte-Test neu veröffentlichen: `python tools/geraetetest_veroeffentlichen.py` (nimmt jetzt `vendor/` mit).
+
+**Zu entscheiden:** Grenze und Sperre der Bremse (30 je 10 Minuten und Adresse, gesperrt auch für richtige Codes;
+Mobilfunk-NAT kann Unbeteiligte mitsperren), ob `admin_start` bei abgelaufenem Löschdatum nur warnt (so gebaut)
+oder ablehnt.
 
 ## Reiter Einstellungen (03.11.2026)
 

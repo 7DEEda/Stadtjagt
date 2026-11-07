@@ -171,7 +171,11 @@ def pruefungen() -> str:
     a("  insert into teams (name, code, read_token) values ('Probelauf ohne Leitung', v_code2, md5(random()::text)) returning id into v_id2;")
     a("  perform report_position(v_code2, 50.1, 14.4, 5, 'ok');")
     a(chk("(select count(*) from position_log where team_id = v_id2) = 1", "6G Team ohne Leitung: Position ja, kein Fehler"))
-    a("  begin perform report_position('gibt-es-nicht', 50.1, 14.4, 5, 'ok'); v_f := v_f || '6H unbekannter Code angenommen'::text; "
+    # 6H: unbekannter Code wird abgelehnt. Bis zur Bugjagd 03.11. per Ausnahme, danach (Bremse, 20261107090000_bugjagd3.sql)
+    # ohne Ausnahme mit HTTP 400 (response.status), damit der Zähler bleibt; beides gilt als abgelehnt
+    a("  perform set_config('response.status', '', true);")
+    a("  begin perform report_position('gibt-es-nicht', 50.1, 14.4, 5, 'ok'); "
+      "if coalesce(current_setting('response.status', true), '') <> '400' then v_f := v_f || '6H unbekannter Code angenommen'::text; end if; "
       "exception when others then if sqlerrm <> 'Unbekannter Team-Code.' then v_f := v_f || ('6H falscher Text: ' || sqlerrm); end if; end;")
     a("  v_n := v_n + 1;")
 

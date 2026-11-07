@@ -89,6 +89,7 @@ with sync_playwright() as pw:
         pg = neu(b, "mitglied-auf-teamleitung")
         pg.click("[data-act=t-codefeld]")
         pg.fill("#tcode", "FUCHS-4821")
+        pg.fill("#tpin", "4711")   # W5 (03.11.): der Notweg braucht die Admin-PIN
         tippen(pg, "[data-act=t-login]")
         pruef(pg.evaluate("S.team.code") == "FUCHS-4821", "von Hand eingegeben: Code steht")
         pruef(pg.evaluate("localStorage.getItem('sj.hand')") == "1", "Mitglied tippt den Code: Merker sj.hand gesetzt")
@@ -280,6 +281,7 @@ with sync_playwright() as pw:
             pg = neu(b, "leitung-login")
             pg.click("[data-act=t-codefeld]")
             pg.fill("#tcode", code.lower())
+            pg.fill("#tpin", "4711")   # W5: Notweg mit Admin-PIN
             tippen(pg, "[data-act=t-login]")
             pruef(pg.evaluate("S.team.code") == code, f"Anmelden mit {code} (kleingeschrieben getippt)")
             pruef(pg.evaluate("S.team.state.team.code") == code, f"{code} kommt vollständig im Stand an")

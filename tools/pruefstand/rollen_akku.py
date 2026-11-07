@@ -264,6 +264,7 @@ with sync_playwright() as pw:
         pg = neu(b, "rolle-notweg")
         pg.click("[data-act=t-codefeld]")
         pg.fill("#tcode", "FUCHS-4821")
+        pg.fill("#tpin", "4711")   # W5 (03.11.): der Notweg braucht die Admin-PIN
         pg.click("[data-act=t-login]")
         pruef(warte(pg, "S.team.code === 'FUCHS-4821' && S.team.state"), "Code von Hand")
         pruef(ls(pg, "sj.hand") == "1", "Merker sj.hand gesetzt")

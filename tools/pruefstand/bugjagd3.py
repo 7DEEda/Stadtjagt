@@ -14,6 +14,7 @@ Teile:
   3  Fund 7: Start-Dialog nennt ein erreichtes Löschdatum der Gruppenfotos, ein spätes nicht
   4  Funde 5 und 6: geraete-test.html lädt Leaflet und Schriften aus vendor/, keine Anfrage an unpkg oder Google;
      der Schritt "karte" misst "Leaflet aus vendor in ms", "schrift" findet Barlow
+  5  Nachtrag norm/NFC: val() gibt NFC zurück, submit_answer bekommt NFC, mock.js rechnet wie norm() (window.__norm)
 Haken in mock.js: window.__fotoNull(a, t); Szenarien rolle-leitung-kalt, admin-start-loeschdatum(-spaet).
 Im Vordergrund mit Timeout aufrufen, etwa `timeout 240 python tools/pruefstand/bugjagd3.py`. Am Ende steht OK oder FEHLT.
 """
@@ -194,6 +195,27 @@ with sync_playwright() as pw:
         pruef(not fremd, f"keine Anfrage an Google Fonts oder unpkg ({fremd[:3]})")
         pruef(any("/vendor/fonts/barlow" in u for u in anfragen) and any("/vendor/leaflet-1.9.4/leaflet.js" in u for u in anfragen),
               "Schriften und Leaflet kamen aus vendor/")
+        pg.close()
+
+    if an(5):
+        print("5 Zerlegte Umlaute (NFD) gehen vorkomponiert raus, mock.js rechnet wie norm() (Nachtrag zweite Bugjagd)")
+        pg = neu(b, "leitung-raetsel")
+        nfd = "Brücke"
+        r = pg.evaluate("""nfd => { const i = document.createElement("input"); i.id = "bj3x"; i.value = "  " + nfd + " ";
+                            document.body.appendChild(i); const v = val("bj3x"); i.remove(); return v; }""", nfd)
+        pruef(r == "Brücke" and len(r) == 6, f"val() liefert NFC ohne Leerzeichen ({r!r})")
+        werte = pg.evaluate("[__norm('Bru\u0308cke'), __norm('Brücke'), __norm('Straße'), __norm('C\u030cech'), __norm('Jürgen-Müller 3'), __norm('Łódź')]")
+        pruef(werte == ["bruecke", "bruecke", "strasse", "cech", "juergenmueller3", "lodz"], f"mock-norm wie die Datenbank: {werte}")
+        # Eingabe im Rätsel: was ankommt, ist NFC
+        if pg.locator("#tans").count():
+            pg.fill("#tans", nfd)
+            pg.evaluate("window.__EINGABE_ARGS = []")
+            pg.click("[data-act=t-answer]")
+            pg.wait_for_timeout(800)
+            gesendet = pg.evaluate("(window.__EINGABE_ARGS || []).filter(x => x.fn === 'submit_answer').map(x => x.args ? x.args.p_answer : x.p_answer)")
+            pruef(bool(gesendet) and gesendet[-1] == "Brücke", f"submit_answer bekommt NFC ({gesendet!r})")
+        else:
+            pruef(False, "Antwortfeld #tans fehlt im Szenario leitung-raetsel")
         pg.close()
 
     for e in err:

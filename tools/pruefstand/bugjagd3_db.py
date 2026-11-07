@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Probelauf für die Migration 20261107090000_bugjagd3.sql (Bugjagd 03.11.2026, Funde 3 und 7) gegen die echte
-Datenbank, ohne Spuren.
+Probelauf für die Migration 20261107090000_bugjagd3.sql (Bugjagd 03.11.2026, Funde 3 und 7, norm mit NFC) gegen die
+echte Datenbank, ohne Spuren. Spielt vorher W5 ein (20261103090000_w5_eingaben_schluessel.sql), auf der sie aufsetzt.
 
     python tools/pruefstand/bugjagd3_db.py          mit Migration (grün)
     python tools/pruefstand/bugjagd3_db.py --ohne   Stand der Datenbank ohne Migration (rot)
@@ -28,6 +28,10 @@ Geprüft:
    B2  admin_start ohne diese Warnung bei Löschdatum morgen oder Selfie aus
    B3  team_selfie lehnt bei erreichtem Löschdatum ab und legt kein Foto an
    B4  team_selfie mit Löschdatum morgen speichert das Foto weiter
+   C1  norm: zerlegte und vorkomponierte Umlaute ergeben denselben Schlüssel (bruecke, strasse, Čech), ASCII unverändert
+   C2  answer_ok mit zerlegter Antwort; Anmeldung mit zerlegtem Namen findet die Dublette
+   C3  nach der Migration hat jede Person name_key = norm(name), außer Konflikten (Zahl steht in der OK-Zeile)
+   W5  ohne Schlüssel und PIN weiter abgewiesen, mit PIN und mit Schlüssel der Leitung offen; team_eingabe gesperrt
 """
 import pathlib
 import re
@@ -38,14 +42,15 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import sql  # noqa: E402
 from rechte_db import INTERN  # noqa: E402
 
+W5 = sql.REPO / "supabase" / "migrations" / "20261103090000_w5_eingaben_schluessel.sql"
 MIGRATION = sql.REPO / "supabase" / "migrations" / "20261107090000_bugjagd3.sql"
-NEU_INTERN = ["team_code_quelle()", "team_code_bremse(text)", "team_code_abgelehnt(text)"]
-SPIEL = ["team_state(text)", "check_in(text,double precision,double precision,double precision)",
-         "reveal_tip(text)", "submit_answer(text,text,integer)",
-         "submit_final(text,text,double precision,double precision,double precision)",
-         "team_selfie_skip(text,integer)", "team_set_leader(text,text)", "team_selfie(text,integer,text,text)",
-         "team_photo(text,text,text,integer,boolean)",
-         "report_position(text,double precision,double precision,double precision,text)", "admin_start(text)"]
+NEU_INTERN = ["team_code_quelle()", "team_code_bremse(text)", "team_code_abgelehnt(text)", "team_eingabe(text,text,text)"]
+SPIEL = ["team_state(text)", "check_in(text,double precision,double precision,double precision,text,text)",
+         "reveal_tip(text,text,text)", "submit_answer(text,text,integer,text,text)",
+         "submit_final(text,text,double precision,double precision,double precision,text,text)",
+         "team_selfie_skip(text,integer,text,text)", "team_set_leader(text,text,text,text)",
+         "team_selfie(text,integer,text,text,text,text)", "team_photo(text,text,text,integer,boolean)",
+         "report_position(text,double precision,double precision,double precision,text,text,text)", "admin_start(text)"]
 
 
 def chk(bedingung: str, text: str, ist: str = "") -> str:
@@ -126,7 +131,7 @@ def pruefungen() -> str:
     a("  perform set_config('response.status', '', true); r := team_state(v_code);")
     a(chk("r->>'message' like 'Zu viele falsche Team-Codes aus diesem Netz. Bitte in 10 Minuten%' and current_setting('response.status', true) = '400' "
           "and r->'team' is null", "A6 richtiger Code während der Sperre", "r::text"))
-    a("  r := submit_answer(v_code, 'x', 1);")
+    a("  r := submit_answer(v_code, 'x', 1, null, v_pin);")
     a(chk("r->>'message' like 'Zu viele falsche Team-Codes%'", "A6 submit_answer gesperrt", "r::text"))
     a("  update team_code_fehlversuche set seit = now() - interval '9 minutes 30 seconds' where quelle = '203.0.113.7';")
     a("  r := team_state(v_code);")
@@ -163,7 +168,7 @@ def pruefungen() -> str:
     a("  begin perform report_position('PROBE-FALSCH', 50.1, 14.4, 5, 'ok'); exception when others then v_f := v_f || ('A8 report_position wirft: ' || sqlerrm); end;")
     a(chk("current_setting('response.status', true) = '400'", "A8 report_position setzt Status 400"))
     a(chk(f"{ANZ.format(q='203.0.113.60')} = 9", "A8 neun Fehlversuche gezählt", ANZ.format(q='203.0.113.60')))
-    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok');")
+    a("  perform report_position(v_code, 50.1, 14.4, 5, 'ok', null, v_pin);")
     a(chk("exists (select 1 from team_positions where team_id = v_id)", "A8 report_position mit richtigem Code"))
 
     a("-- B1/B2: admin_start")
@@ -188,33 +193,75 @@ def pruefungen() -> str:
     a("  delete from progress where team_id = v_id;")
     a("  insert into progress (team_id, station_id, checked_in_at, solved_at) values (v_id, v_st, now(), now());")
     a("  update game_state set status = 'running', selfie_on = true, photos_delete_on = (now() at time zone 'Europe/Prague')::date where id = 1;")
-    a("  begin perform team_selfie(v_code, 1, v_jpg, v_jpg); v_f := v_f || 'B3 Foto trotz erreichtem Löschdatum angenommen'::text; "
+    a("  begin perform team_selfie(v_code, 1, v_jpg, v_jpg, null, v_pin); v_f := v_f || 'B3 Foto trotz erreichtem Löschdatum angenommen'::text; "
       "exception when others then if sqlerrm not like 'Das Löschdatum der Fotos ist erreicht%' then v_f := v_f || ('B3 falscher Text: ' || sqlerrm); end if; end;")
     a("  v_n := v_n + 1;")
     a(chk("not exists (select 1 from station_photos where team_id = v_id)", "B3 Foto angelegt"))
     a("  update game_state set photos_delete_on = (now() at time zone 'Europe/Prague')::date + 1 where id = 1;")
-    a("  r := team_selfie(v_code, 1, v_jpg, v_jpg);")
+    a("  r := team_selfie(v_code, 1, v_jpg, v_jpg, null, v_pin);")
     a(chk("exists (select 1 from station_photos where team_id = v_id) and r->'team'->>'id' = v_id::text", "B4 Foto mit Löschdatum morgen", "left(r::text, 200)"))
     a("  update game_state set photos_delete_on = null where id = 1;")
     a("  delete from station_photos where team_id = v_id;")
-    a("  r := team_selfie(v_code, 1, v_jpg, v_jpg);")
+    a("  r := team_selfie(v_code, 1, v_jpg, v_jpg, null, v_pin);")
     a(chk("exists (select 1 from station_photos where team_id = v_id)", "B4 Foto ohne Löschdatum"))
+
+    a("-- W5 bleibt: ohne Schlüssel und PIN abgewiesen, mit PIN oder Schlüssel der Leitung offen")
+    a("  perform set_config('request.headers', '{\"cf-connecting-ip\":\"203.0.113.70\"}', true);")
+    a("  begin perform reveal_tip(v_code); v_f := v_f || 'W5 Eingabe ohne Schlüssel und PIN angenommen'::text; "
+      "exception when others then if sqlerrm <> 'Eingeben kann nur die Teamleitung auf ihrem eigenen Handy.' then v_f := v_f || ('W5 falscher Text: ' || sqlerrm); end if; end;")
+    a("  v_n := v_n + 1;")
+    a(chk(f"{ANZ.format(q='203.0.113.70')} is null", "W5 richtiger Code ohne Schlüssel als Fehlversuch gezählt"))
+    a("  begin perform reveal_tip(v_code, null, 'falsch-' || md5(random()::text)); v_f := v_f || 'W5 falsche PIN angenommen'::text; "
+      "exception when others then if sqlerrm <> 'Falsche PIN.' then v_f := v_f || ('W5 falscher Text bei PIN: ' || sqlerrm); end if; end;")
+    a("  v_n := v_n + 1;")
+    a("  insert into participants (name, name_key, team_id, token) values ('Probe Leitung Bremse', norm('Probe Leitung Bremse'), v_id, v_tok) returning id into v_pa;")
+    a("  update teams set leader_participant_id = v_pa where id = v_id;")
+    a("  r := team_selfie_skip(v_code, 1, v_tok);")
+    a(chk("r->'team'->>'id' = v_id::text", "W5 Leitung mit Schlüssel gibt ein", "left(r::text, 200)"))
+    a("  perform set_config('response.status', '', true); r := team_selfie_skip('PROBE-FALSCH', 1, v_tok);")
+    a(chk(unbek, "W5 falscher Code mit Schlüssel: Meldung und Status", "r::text"))
+
+    a("-- C: norm mit NFC")
+    a("  v_nfd := 'Br' || chr(117) || chr(776) || 'cke';")   # u + kombinierendes Trema
+    a(chk("v_nfd <> 'Brücke' and norm(v_nfd) = 'bruecke' and norm('Brücke') = 'bruecke'", "C1 Brücke zerlegt und vorkomponiert", "norm(v_nfd)"))
+    a(chk("norm('Stra' || chr(223) || 'e') = 'strasse' and norm('C' || chr(780) || 'ech') = 'cech' and norm('Čech') = 'cech'", "C1 ß und Č", "norm('C' || chr(780) || 'ech')"))
+    a(chk("norm('Jürgen-Müller 3') = 'juergenmueller3' and norm('ABC def') = 'abcdef' and norm(null) = ''", "C1 bisherige Werte unverändert"))
+    a(chk("norm('O' || chr(776) || 'zil') = norm('Özil')", "C1 Großbuchstabe zerlegt", "norm('O' || chr(776) || 'zil')"))
+    a(chk("answer_ok(v_nfd, 'Brücke') and answer_ok('Brücke', v_nfd)", "C2 answer_ok mit zerlegter Antwort"))
+    a("  insert into participants (name, name_key) values ('Jürgen Probelauf', norm('Jürgen Probelauf'));")
+    a(chk("exists (select 1 from participants where name_key = norm('J' || chr(117) || chr(776) || 'rgen Probelauf'))",
+          "C2 zerlegter Name trifft die Dublette"))
+    a(chk("(select count(*) from participants where name_key is distinct from norm(name)) = v_konflikt",
+          "C3 Schlüssel nachgezogen", "(select count(*) from participants where name_key is distinct from norm(name))"))
     return "\n".join(c)
 
 
 PROBE = r"""
 do $probe$
 declare v_n int := 0; v_f text[] := '{}'; r json; r2 json; f text; rr text; i int; v_pin text; v_st uuid; v_id uuid;
+        v_pa uuid; v_tok text := 'probe-' || md5(random()::text); v_nfd text; v_neu int; v_konflikt int;
         v_code text := 'PROBE-' || upper(substr(md5(random()::text), 1, 8));
         v_jpg text := encode('\xffd8ffe000104a464946'::bytea, 'base64');
 begin
+  __W5__
+  -- Teil C: wie viele Schlüssel ändern sich, wie viele kollidieren (vor der Migration, mit der neuen Rechnung)
+  select count(*) filter (where name_key is distinct from normalize_probe), count(*) filter (where name_key is distinct from normalize_probe
+           and exists (select 1 from participants q where q.id <> x.id and q.name_key = x.normalize_probe))
+    into v_neu, v_konflikt
+    from (select p.id, p.name_key, regexp_replace(translate(replace(replace(replace(replace(lower(translate(normalize(coalesce(p.name,''), NFC),
+          'ÄÖÜÀÁÂÃÅĀĂĄÇĆČĎĐÈÉÊËĒĖĘĚÌÍÎÏĪĮĹĽŁÑŃŇÒÓÔÕØŌŐŔŘŚŠŞȘŤŢȚÙÚÛŮŪŰŲÝŸŹŻŽ',
+          'äöüàáâãåāăąçćčďđèéêëēėęěìíîïīįĺľłñńňòóôõøōőŕřśšşșťţțùúûůūűųýÿźżž')),'ä','ae'),'ö','oe'),'ü','ue'),'ß','ss'),
+          'àáâãåāăąçćčďđèéêëēėęěìíîïīįıĺľłñńňòóôõøōőŕřśšşșťţțùúûůūűųýÿźżž',
+          'aaaaaaaacccddeeeeeeeeiiiiiiilllnnnooooooorrsssstttuuuuuuuyyzzz'), '[^a-z0-9]+', '', 'g') as normalize_probe
+          from participants p) x;
   __MIGRATION__
   insert into teams (name, code, read_token) values ('Probelauf Bremse', v_code, md5(random()::text)) returning id into v_id;
+  v_pin := (select admin_pin from game_state where id = 1);
 __PRUEFUNGEN__
   if array_length(v_f, 1) > 0 then
     raise exception 'PROBE FEHLT (% von % Prüfungen): %', array_length(v_f, 1), v_n, array_to_string(v_f, ' | ');
   end if;
-  raise exception 'PROBELAUF_OK: % Prüfungen bestanden, alles zurückgenommen', v_n;
+  raise exception 'PROBELAUF_OK: % Prüfungen bestanden, alles zurückgenommen (Teil C: % Schlüssel neu, % Konflikte)', v_n, v_neu, v_konflikt;
 end $probe$;
 """
 
@@ -224,10 +271,12 @@ def liste(xs):
 
 
 def main() -> None:
+    w5 = W5.read_text(encoding="utf-8")
     migration = "" if "--ohne" in sys.argv else MIGRATION.read_text(encoding="utf-8")
-    assert "$mig$" not in migration and "$probe$" not in migration
+    assert "$mig$" not in migration + w5 and "$probe$" not in migration + w5
     probe = (PROBE.replace("__PRUEFUNGEN__", pruefungen()).replace("__INTERN__", liste(INTERN))
              .replace("__NEU_INTERN__", liste(NEU_INTERN)).replace("__SPIEL__", liste(SPIEL))
+             .replace("__W5__", f"execute $mig${w5}$mig$;")
              .replace("__MIGRATION__", f"execute $mig${migration}$mig$;" if migration.strip() else ""))
     print(f"Sende den Probelauf ({len(probe)} Zeichen) an Projekt {sql.project_ref()} ...", file=sys.stderr)
     try:
