@@ -214,7 +214,11 @@ with sync_playwright() as pw:
         pruef(pg.evaluate("Object.keys(window.__alteKarte._layers).length === 0 && window.__alteKarte._containerId === undefined"), "render(): alte Karte mit remove() abgebaut")
         # Abbau mitten in einer Zoom-Animation: deren Ende darf nicht über die abgebaute Karte fallen
         n = len(err)
-        pg.evaluate("map.setZoom(map.getZoom() + 1)"); pg.wait_for_function("map._animatingZoom === true", timeout=3000)
+        # Leaflet setzt _animatingZoom im nächsten Animationsrahmen und feuert dann "zoomanim": darauf warten statt zu pollen,
+        # das fiel unter Last im Container um (07.11.2026). Steht die Karte schon auf der höchsten Stufe, geht es eine Stufe hinaus.
+        anim = pg.evaluate("""() => new Promise(ok => { const z = map.getZoom(); map.once("zoomanim", () => ok(map._animatingZoom === true));
+          map.setZoom(z < map.getMaxZoom() ? z + 1 : z - 1, { animate: true }); setTimeout(() => ok("keine Animation"), 8000); })""")
+        pruef(anim is True, f"Zoom-Animation läuft ({anim})")
         pg.evaluate("render()"); pg.wait_for_timeout(900)
         pruef(len(err) == n, f"Abbau während Zoom-Animation ohne Seitenfehler {err[n:n + 1]}")
         pg.evaluate("window.__karte = map")
