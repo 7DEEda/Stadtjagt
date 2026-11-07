@@ -2215,10 +2215,31 @@ Position) nur mit dem Geräte-Schlüssel der aktuellen Leitung oder mit der Admi
 App `eingabeRpc`, PIN-Feld im Notweg und Seite „Admin-PIN fehlt“. Einzelheiten SPIEL.md §23.
 
 Geprüft: `w5_eingaben_db.py` (Probelauf, 139 Prüfungen), `rechte_db.py` mit der Migration, `w5.py` und die
-angepassten Prüfstand-Skripte (siehe Zweig). **Vor dem Einspielen (Friedrich):** erst App auf master und Pages, dann
-die Migration (`python tools/sql.py supabase/migrations/20261103090000_w5_eingaben_schluessel.sql`), danach
-`rechte_db.py` und `python tools/schema_abzug.py`. Ein Handy mit alter App gibt danach nichts mehr ein, bis es neu
-lädt. `tools/stresstest.py` bräuchte für einen neuen Lauf `p_pin` bei den Eingaben.
+angepassten Prüfstand-Skripte (siehe Zweig). Nach dem Merge von master (07.11.): `w5_eingaben_db.py` 139,
+`rechte_db.py` 37, `rollen_akku_db.py` 180 Prüfungen grün, `schema_abzug.py --pruefen` sauber; alle 22
+Prüfstand-Skripte im Wegwerf-Container grün bis auf drei FPS-Prüfungen in `rueckblick.py` (Container ohne GPU,
+29 bis 47 Bilder/s, 231 andere Prüfungen ok). `tools/stresstest.py` schickt bei den Eingaben jetzt den
+Geräte-Schlüssel der Leitung mit und prüft Code allein (abgewiesen) und Notweg mit PIN als Randfälle; nicht
+ausgeführt, das pausierte Testprojekt hat das Schema vor W5 (siehe `tools/STRESSTEST.md`).
+
+### Einspielen von W5 (Friedrich, in dieser Reihenfolge)
+
+1. Zweig `w5-eingaben-schluessel` auf master mergen und pushen. Die App schickt dann schon `p_token`/`p_pin` und
+   fällt bei PGRST202 von selbst auf den alten Aufruf zurück, läuft also auch ohne Migration.
+2. Pages-Lauf abwarten, Live-Seite prüfen: neue Version geladen, Teamleitung kann einchecken und antworten,
+   Notweg zeigt das Feld „Admin-PIN“.
+3. Vorher `python tools/schema_abzug.py --pruefen` (muss sauber sein), dann
+   `python tools/sql.py supabase/migrations/20261103090000_w5_eingaben_schluessel.sql`.
+4. `python tools/pruefstand/rechte_db.py` (grün) und `python tools/schema_abzug.py` (neuer Abzug), den Abzug in
+   `supabase/schema/` committen und pushen.
+
+Danach können Handys mit der alten App (Service Worker, nicht neu geladen) nichts mehr eingeben, bis sie neu laden
+(„Neue Version laden“ oder Seite neu öffnen); Lesen geht weiter. Darum nicht während eines laufenden Spiels einspielen.
+
+**Offen, Friedrich entscheidet:** der Notweg. Ohne Schlüssel gibt nur noch ein Gerät mit der Admin-PIN ein, also das
+Tablet der Spielleitung. Das gilt auch für eine Leitung ohne eigenes Handy (von der Spielleitung gesetzt): sie kann
+nur am Tablet mitspielen. Soll das so bleiben, oder braucht es einen zweiten Weg (etwa die Leitung auf ein anderes
+Handy des Teams umsetzen, das sich selbst angemeldet hat)?
 
 ## Reiter Einstellungen (03.11.2026)
 

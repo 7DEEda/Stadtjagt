@@ -60,6 +60,9 @@ PIN = "stresstest-2026"   # die Datenbank verlangt mindestens 12 Zeichen
 TEST_URL = None
 TEST_KEY = None
 TEST_REF = None
+# Eingaben, die der Server seit W5 nur mit dem Geräte-Schlüssel der Leitung (p_token) oder der Admin-PIN annimmt
+EINGABEN = {"check_in", "submit_answer", "reveal_tip", "submit_final", "team_selfie", "team_selfie_skip",
+            "team_set_leader", "report_position"}
 LIVE_REF = (re.search(r"https://([a-z0-9]+)\.supabase\.co", (REPO / "config.js").read_text(encoding="utf-8")) or [None, ""])[1]
 
 
@@ -223,8 +226,15 @@ class Lauf:
                 pass
             self.warte(self.a.takt)
 
-    def teamleitung(self, code, stationen, start):
-        v = Verbindung(self.a.url, self.a.key)
+    def teamleitung(self, code, token, stationen, start):
+        v0 = Verbindung(self.a.url, self.a.key)
+
+        class v:            # wie die App (eingabeRpc): Eingaben gehen mit dem Geräte-Schlüssel der Leitung (W5)
+            @staticmethod
+            def rpc(fn, args=None, **kw):
+                if fn in EINGABEN:
+                    args = dict(args or {}, p_token=token)
+                return v0.rpc(fn, args, **kw)
         pos = (start[0] + random.uniform(-.0003, .0003), start[1] + random.uniform(-.0003, .0003))
         tempo = random.uniform(1.0, 1.6) * self.a.zeitraffer          # m/s im Zeitraffer
         letzte_meldung = 0
@@ -265,6 +275,17 @@ class Lauf:
             rand("Check-in zu weit weg (am Start)", "check_in", {"p_code": code, "p_lat": pos[0], "p_lng": pos[1], "p_acc": 8}, "nein")
         if random.random() < .2:
             rand("Unbekannter Teamcode", "team_state", {"p_code": "XXXXXXXX"}, "fehler")
+        if random.random() < .3:            # W5: Code allein reicht nicht, der Notweg mit Admin-PIN schon
+            try:
+                v0.rpc("report_position", {"p_code": code, "p_lat": pos[0], "p_lng": pos[1], "p_acc": 8}, buchen=False, streng=False)
+                M.randfall("Eingabe nur mit Team-Code abgewiesen", False, "angenommen")
+            except RuntimeError as e:
+                M.randfall("Eingabe nur mit Team-Code abgewiesen", "Teamleitung" in str(e), str(e)[:120])
+            try:
+                v0.rpc("report_position", {"p_code": code, "p_lat": pos[0], "p_lng": pos[1], "p_acc": 8, "p_pin": PIN}, buchen=False, streng=False)
+                M.randfall("Notweg: Eingabe mit Admin-PIN", True)
+            except RuntimeError as e:
+                M.randfall("Notweg: Eingabe mit Admin-PIN", False, f"unerwartet: {e}")
 
         for i, ziel in enumerate(stationen):
             nach = (ziel["lat"], ziel["lng"])
@@ -379,6 +400,10 @@ def einrichten(a):
     if da and da[0].get("da"):
         print("Schema steht schon, Migrationen übersprungen.")
         dateien = []
+        w5 = sql(a, "select to_regprocedure('public.team_eingabe(text,text,text)') is not null as da")
+        if not (w5 and w5[0].get("da")):        # Testprojekt vom Oktober: Stand vor W5, der Lauf würde nur Fehler buchen
+            sys.exit("Das Schema im Testprojekt ist älter als W5 (team_eingabe fehlt). Die fehlenden Migrationen ab\n"
+                     "dem letzten Lauf von Hand einspielen oder ein leeres Projekt nehmen, siehe tools/STRESSTEST.md.")
     else:
         print(f"Spiele {len(dateien)} Migrationen in Projekt {a.ref} ein ...")
     for d in dateien:
@@ -475,7 +500,7 @@ def lauf(a):
     L = Lauf(a)
     L.n_teams = len(leitungen)
     leit_tok = {t for t, _ in leitungen}
-    threads = [threading.Thread(target=L.teamleitung, args=(code, stationen, start), daemon=True) for _, code in leitungen]
+    threads = [threading.Thread(target=L.teamleitung, args=(code, tok, stationen, start), daemon=True) for tok, code in leitungen]
     threads += [threading.Thread(target=L.mitlesen, args=(tok,), daemon=True) for tok in tokens if tok not in leit_tok]
     threads += [threading.Thread(target=L.spielleitung, daemon=True) for _ in range(a.spielleitungen)]
     print(f"3. Spiel: {len(threads)} Handys/Tablets, {a.dauer} min, Takt {a.takt} s, Zeitraffer {a.zeitraffer}x")

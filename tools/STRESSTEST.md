@@ -34,6 +34,14 @@ nur im Dashboard) oder:
   `TEST_KEY`, `TEST_REF`, stehen auf `None`) oder per `STRESS_URL`,
   `STRESS_KEY`, `STRESS_REF` setzen.
 - Admin-PIN im Testprojekt: `stresstest-2026` (setzt `einrichten`).
+- Seit W5 (SPIEL.md §23) schicken die Teamleitungen bei den Eingaben ihren
+  Geräte-Schlüssel mit (`p_token`), wie die App. Zwei Randfälle prüfen, dass
+  der Team-Code allein abgewiesen wird und der Notweg mit `p_pin` (die PIN
+  oben) durchgeht. Das pausierte Projekt vom Oktober hat das Schema vor W5
+  (und vor den Migrationen ab 17.10.); `einrichten` bricht dann mit einem
+  Hinweis ab. Abhilfe: ein leeres Projekt (dort laufen alle Migrationen)
+  oder die fehlenden Migrationen der Reihe nach im SQL-Editor des
+  Testprojekts einspielen.
 - Das Live-Projekt (`lwdmwklyydhcvnhpjudk`) verweigert das Skript; dort wird
   nie getestet.
 
