@@ -2228,7 +2228,9 @@ ausgeführt, das pausierte Testprojekt hat das Schema vor W5 (siehe `tools/STRES
    fällt bei PGRST202 von selbst auf den alten Aufruf zurück, läuft also auch ohne Migration.
 2. Pages-Lauf abwarten, Live-Seite prüfen: neue Version geladen, Teamleitung kann einchecken und antworten,
    Notweg zeigt das Feld „Admin-PIN“.
-3. Vorher `python tools/schema_abzug.py --pruefen` (muss sauber sein), dann
+3. Vor dem Einspielen alle Handys die App neu laden lassen („Neue Version laden“ oder Seite neu öffnen): eine alte
+   App schickt keinen Schlüssel und kann nach der Migration nichts mehr eingeben (die Ablehnung sagt dann „Wenn du die
+   Leitung bist: App neu laden.“). Vorher `python tools/schema_abzug.py --pruefen` (muss sauber sein), dann
    `python tools/sql.py supabase/migrations/20261103090000_w5_eingaben_schluessel.sql`.
 4. `python tools/pruefstand/rechte_db.py` (grün) und `python tools/schema_abzug.py` (neuer Abzug), den Abzug in
    `supabase/schema/` committen und pushen.
@@ -2240,6 +2242,31 @@ Danach können Handys mit der alten App (Service Worker, nicht neu geladen) nich
 Tablet der Spielleitung. Das gilt auch für eine Leitung ohne eigenes Handy (von der Spielleitung gesetzt): sie kann
 nur am Tablet mitspielen. Soll das so bleiben, oder braucht es einen zweiten Weg (etwa die Leitung auf ein anderes
 Handy des Teams umsetzen, das sich selbst angemeldet hat)?
+Dazu aus der Sicherheitsprüfung 07.11.: Mit der PIN ist das Tablet im selben Tab voll als Spielleitung angemeldet,
+#/admin ist offen (die PIN liegt im sessionStorage). Vorschlag des Prüfers: teamgebundener Notweg-Schlüssel
+`admin_notweg(p_pin, p_team)`, den `team_eingabe` neben dem Leitungsschlüssel annimmt. Ob die PIN im sessionStorage
+liegen darf, entscheidet Friedrich; gebaut ist nur, dass Abmelden am Notweg die PIN aus dem Tab löscht.
+
+### Sicherheitsprüfung W5 (07.11.2026, auf `bugjagd-nov`)
+
+Kleine Punkte ohne offene Entscheidung, eingearbeitet (SPIEL.md §23): Eine geänderte Admin-PIN bleibt nicht mehr am
+Notweg-Tablet hängen (`eingabeRpc` vergisst sie bei „Falsche PIN“, das Tablet zeigt „Admin-PIN fehlt“); Abmelden am
+Notweg löscht die PIN aus dem Tab; die PIN geht nur noch vom Notweg-Tablet (`sj.hand`) mit, nicht von einem
+Leitungs-Handy, das sie zufällig im Tab hat; die Ablehnung in `team_eingabe` sagt zusätzlich „Wenn du die Leitung
+bist: App neu laden.“ (in der W5-Migration und in der Kopie von `team_eingabe` in `20261107090000_bugjagd3.sql`);
+`w5_eingaben_db.py --ohne` ist ein echter Gegentest (alte Signaturen, Code allein wird angenommen). Prüfungen: `w5_eingaben_db.py` 139 grün, mit `--ohne` 9 von 9 FEHLT (Code allein angenommen), `bugjagd3_db.py` 102, `rechte_db.py` 45 (alles zurückgerollt); im Container `w5.py` 58 (neu Teil 9), `bugjagd3.py` 28, `bugjagd4.py` 54, `rollen_akku.py` 163, `audit2510.py` 52.
+
+### Rückbau von W5 (falls nötig)
+
+Die alten Fassungen stehen in `supabase/schema/funktionen/*.sql` (Live-Abzug vor W5): `check_in`, `submit_answer`,
+`reveal_tip`, `submit_final`, `team_selfie`, `team_selfie_skip`, `team_set_leader` und `report_position` daraus wieder
+einspielen, danach die neuen Signaturen (je mit `p_token text, p_pin text` am Ende) und `team_eingabe(text,text,text)`
+droppen, Rechte wie im Abzug. Die App fällt über PGRST202 von selbst auf den alten Aufruf zurück, sie muss nicht
+zurück. Ist `20261107090000_bugjagd3.sql` schon eingespielt, muss sie mit zurück, soweit sie auf `team_eingabe`
+aufsetzt (Bremse in `team_eingabe`, die acht Eingaben mit der Zeile für die Bremse, `team_selfie` mit dem
+Löschdatum); `team_state`, `team_photo`, `admin_start`, `norm` und die Bremse selbst können bleiben.
+`20261107100000_bugjagd4.sql` setzt nicht auf `team_eingabe` auf und kann bleiben. Vor dem Rückbau
+`schema_abzug.py --pruefen`, danach `rechte_db.py` und `schema_abzug.py`.
 
 ## Bugjagd 03.11.2026, behoben 07.11.2026 (Zweig `bugjagd-nov` mit W5, nicht gemerged)
 

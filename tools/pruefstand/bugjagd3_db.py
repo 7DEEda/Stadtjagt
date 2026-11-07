@@ -208,7 +208,7 @@ def pruefungen() -> str:
     a("-- W5 bleibt: ohne Schlüssel und PIN abgewiesen, mit PIN oder Schlüssel der Leitung offen")
     a("  perform set_config('request.headers', '{\"cf-connecting-ip\":\"203.0.113.70\"}', true);")
     a("  begin perform reveal_tip(v_code); v_f := v_f || 'W5 Eingabe ohne Schlüssel und PIN angenommen'::text; "
-      "exception when others then if sqlerrm <> 'Eingeben kann nur die Teamleitung auf ihrem eigenen Handy.' then v_f := v_f || ('W5 falscher Text: ' || sqlerrm); end if; end;")
+      "exception when others then if sqlerrm <> 'Eingeben kann nur die Teamleitung auf ihrem eigenen Handy. Wenn du die Leitung bist: App neu laden.' then v_f := v_f || ('W5 falscher Text: ' || sqlerrm); end if; end;")
     a("  v_n := v_n + 1;")
     a(chk(f"{ANZ.format(q='203.0.113.70')} is null", "W5 richtiger Code ohne Schlüssel als Fehlversuch gezählt"))
     a("  begin perform reveal_tip(v_code, null, 'falsch-' || md5(random()::text)); v_f := v_f || 'W5 falsche PIN angenommen'::text; "

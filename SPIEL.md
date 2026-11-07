@@ -1198,14 +1198,18 @@ Migration `20261103090000_w5_eingaben_schluessel.sql`, Prüfung `tools/pruefstan
   (Vorgabe null, die alten Fassungen sind gedroppt). Statt `team_by_code` ruft jede `team_eingabe(p_code, p_token, p_pin)`
   (intern, nicht für anon): Team per Code, dann muss `p_token` der Geräte-Schlüssel der aktuellen Leitung sein, sonst
   muss `p_pin` die Admin-PIN sein (`require_admin`, Meldung „Falsche PIN.“). Ohne beides: „Eingeben kann nur die
-  Teamleitung auf ihrem eigenen Handy.“ Der Schlüssel zählt zuerst. Eine Leitung ohne eigenes Handy (von der
+  Teamleitung auf ihrem eigenen Handy. Wenn du die Leitung bist: App neu laden.“ (der Zusatz seit der
+  Sicherheitsprüfung 07.11.: eine alte App ohne Schlüssel hilft sich so). Der Schlüssel zählt zuerst. Eine Leitung ohne eigenes Handy (von der
   Spielleitung gesetzt) gibt nur über den Notweg mit PIN ein. Lesen bleibt mit Code (`team_state`, `team_photo`).
-- **App:** `eingabeRpc(fn, args)` hängt `p_token` (`sj.token`) und `p_pin` (`S.admin.pin`, nur wenn dieser Tab die PIN
-  kennt) an. Kennt die Datenbank die Parameter nicht (PGRST202, Migration fehlt), einmal ohne; die älteren Rückfälle
+- **App:** `eingabeRpc(fn, args)` hängt `p_token` (`sj.token`) und `p_pin` an; die PIN (`S.admin.pin`) nur am
+  Notweg-Tablet (`sj.hand`), nicht von einem Leitungs-Handy, das sie zufällig im Tab hat (07.11.). Antwortet der Server
+  „Falsche PIN“ (die PIN wurde geändert), vergisst `eingabeRpc` sie (`pinWeg`) und wirft den Fehler weiter; das
+  Notweg-Tablet zeigt dann „Admin-PIN fehlt“. Kennt die Datenbank die Parameter nicht (PGRST202, Migration fehlt), einmal ohne; die älteren Rückfälle
   (`p_position`, `p_kompass`) bleiben davor.
 - **Notweg:** Unter dem Team-Code steht das Feld „Admin-PIN“, solange der Tab die PIN nicht kennt. `t-login` prüft sie
   über `admin_state` (`notwegPin`) und merkt sie wie die Anmeldung der Spielleitung in `sessionStorage` (`sj.pin`);
-  damit ist der Tab auch für `#/admin` angemeldet. Tippt die Teamleitung den eigenen Code auf dem eigenen Handy
+  damit ist der Tab auch für `#/admin` angemeldet. Abmelden am Notweg (`t-logout` mit `sj.hand`) löscht die PIN aus
+  dem Tab (07.11.). Tippt die Teamleitung den eigenen Code auf dem eigenen Handy
   (Name und Schlüssel), braucht es keine PIN. Hat ein Notweg-Tablet (`sj.hand`) die PIN verloren (Browser neu
   gestartet), zeigt `viewTeam` statt der Ansicht „Admin-PIN fehlt“ mit PIN-Feld (`t-pin`) und Abmelden.
 - **Reihenfolge beim Einspielen:** erst die App, dann die Migration. Eine ältere App (Service Worker, nicht neu

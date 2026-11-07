@@ -123,7 +123,7 @@ begin
     perform require_admin(p_pin);
     return t;
   end if;
-  raise exception 'Eingeben kann nur die Teamleitung auf ihrem eigenen Handy.' using errcode = 'P0001';
+  raise exception 'Eingeben kann nur die Teamleitung auf ihrem eigenen Handy. Wenn du die Leitung bist: App neu laden.' using errcode = 'P0001';
 end $function$;
 revoke all on function public.team_eingabe(p_code text, p_token text, p_pin text) from public, anon, authenticated;
 

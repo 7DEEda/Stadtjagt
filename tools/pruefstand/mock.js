@@ -696,7 +696,7 @@
           return antwort(404, { code: "PGRST202", message: "Could not find the function public." + fn + " in the schema cache" });
         if (window.__W5) {
           const t = fuchsByCode(args.p_code), l = person(t.leaderName), leitet = !!(args.p_token && l && args.p_token === l.token);
-          if (!leitet && !String(args.p_pin || "").trim()) fehler("Eingeben kann nur die Teamleitung auf ihrem eigenen Handy.");
+          if (!leitet && !String(args.p_pin || "").trim()) fehler("Eingeben kann nur die Teamleitung auf ihrem eigenen Handy. Wenn du die Leitung bist: App neu laden.");
           if (!leitet) pin(args);
         }
       }

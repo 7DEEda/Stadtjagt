@@ -734,13 +734,19 @@ const RPC_FOTO = new Set(["team_photo", "team_selfie", "admin_photo", "admin_pho
 const keineVerbindung = () => Object.assign(new Error("Keine Verbindung. Wartet kurz und tippt noch mal."), { netz: true });
 // Die Datenbank kennt die Funktion mit diesen Parametern nicht (älterer Nachtrag eingespielt, PostgREST PGRST202)
 const ohneFunktion = e => !!e && (e.code === "PGRST202" || /Could not find the function/i.test(e.message || ""));
-// W5 (03.11.2026): Eingaben fürs Team gehen mit dem Geräte-Schlüssel raus (Teamleitung auf ihrem Handy) und, wenn
-// dieser Tab die Admin-PIN kennt, mit der PIN (Notweg-Tablet der Spielleitung). Der Server nimmt den Team-Code allein
-// nicht mehr an. Eine Datenbank ohne die Migration kennt p_token und p_pin nicht (PGRST202): dann einmal ohne.
+// W5 (03.11.2026): Eingaben fürs Team gehen mit dem Geräte-Schlüssel raus (Teamleitung auf ihrem Handy) und, nur am
+// Notweg-Tablet (sj.hand), mit der Admin-PIN dieses Tabs. Ein Leitungs-Handy, das zufällig die PIN im Tab hat, schickt
+// sie nicht mit (Sicherheitsprüfung 07.11., H4). Der Server nimmt den Team-Code allein nicht mehr an. Eine Datenbank
+// ohne die Migration kennt p_token und p_pin nicht (PGRST202): dann einmal ohne.
 async function eingabeRpc(fn, args) {
-  const recht = { p_token: LS.getItem("sj.token") || null, p_pin: S.admin.pin || null };
+  const recht = { p_token: LS.getItem("sj.token") || null, p_pin: (LS.getItem("sj.hand") && S.admin.pin) || null };
   try { return await rpc(fn, { ...args, ...recht }); }
-  catch (e) { if (!ohneFunktion(e)) throw e; return rpc(fn, args); }
+  catch (e) {
+    // Die PIN wurde inzwischen geändert (S2): vergessen, dann zeigt viewTeam am Notweg-Tablet "Admin-PIN fehlt"
+    if (String(e.message).includes("Falsche PIN")) { pinWeg(); throw e; }
+    if (!ohneFunktion(e)) throw e;
+    return rpc(fn, args);
+  }
 }
 // Notweg: die Admin-PIN prüfen und für diesen Tab merken (wie die Anmeldung der Spielleitung). Gibt den Fehler zurück.
 async function notwegPin(pin) {
@@ -2964,7 +2970,8 @@ const ACT = {
     if (S.myName && st.team.leaderName === S.myName) LS.removeItem("sj.hand"); else LS.setItem("sj.hand", "1");
   },
   async "t-pin"() { const f = await notwegPin(val("tpin")); S.msg = f ? { type: "err", ort: "code", text: f } : null; },
-  "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); standVergessen(); stopGps(); },
+  // Abmelden gibt es nur am Notweg-Tablet: die Admin-PIN dieses Tabs geht mit (sessionStorage und S.admin.pin)
+  "t-logout"() { if (LS.getItem("sj.hand")) pinWeg(); S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); standVergessen(); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
   "t-abgeben-frage"() { S.team.uebergabe = "abgeben"; S.team.wahl = besteWahl(S.team.state); S.team.wahlSelbst = false; S.msg = null; },

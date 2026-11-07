@@ -9,7 +9,9 @@ Ohne Datenbank, gegen mock.js (Port 8877). Der Probelauf gegen die Datenbank ist
 Teile: 1 Teamleitung mit Schlüssel (alle acht Eingaben tragen p_token, keine PIN), 2 Notweg: Code von Hand braucht die
 PIN (leer, falsch, richtig), 3 Notweg mit PIN schon im Tab: kein PIN-Feld, 4 Notweg-Tablet nach Neustart des Browsers
 (Seite "Admin-PIN fehlt"), 5 Teamleitung tippt den eigenen Code: ohne PIN, 6 Datenbank ohne die Migration (PGRST202:
-einmal ohne p_token und p_pin), 7 Quelltext: keine der acht Eingaben ruft rpc() direkt, 8 Bildschirmfotos.
+einmal ohne p_token und p_pin), 7 Quelltext: keine der acht Eingaben ruft rpc() direkt, 8 Bildschirmfotos,
+9 Sicherheitsprüfung 07.11.: Leitungs-Handy mit PIN im Tab schickt sie nicht (H4), geänderte PIN am Notweg-Tablet
+führt zur Seite "Admin-PIN fehlt" (S2), Abmelden nimmt die PIN mit, Text der Ablehnung mit "App neu laden" (H1).
 Haken in mock.js: window.__W5 (prüft wie der Server), __OHNE_W5 (Datenbank ohne Migration), __EINGABE_ARGS.
 Im Vordergrund mit Timeout aufrufen, etwa `timeout 300 python tools/pruefstand/w5.py`. Am Ende steht OK oder FEHLT.
 """
@@ -44,7 +46,7 @@ NUR = {int(x) for x in sys.argv[1:] if x.isdigit()}
 an = lambda n: not NUR or n in NUR  # noqa: E731
 fehler, err = [], []
 QUELLE = (REPO / "index.html").read_text(encoding="utf-8")
-W5 = "Eingeben kann nur die Teamleitung auf ihrem eigenen Handy."
+W5 = "Eingeben kann nur die Teamleitung auf ihrem eigenen Handy. Wenn du die Leitung bist: App neu laden."
 EINGABEN = ["check_in", "submit_answer", "reveal_tip", "submit_final", "team_selfie", "team_selfie_skip",
             "team_set_leader", "report_position"]
 SHOTS = HIER / "shots"
@@ -250,6 +252,61 @@ with sync_playwright() as pw:
         notweg_oeffnen(pg)
         pg.screenshot(path=str(SHOTS / "w5-notweg.png"), full_page=True)
         pruef((SHOTS / "w5-notweg.png").exists(), "shots/w5-notweg.png")
+        pg.close()
+
+    if an(9):
+        print("9 Sicherheitsprüfung 07.11.2026 (H4, S2, Abmelden, H1)")
+        # H4: Handy der Teamleitung, das die PIN im Tab hat (etwa nach einem Blick in #/admin): keine PIN in den Eingaben
+        pg = neu(b, "leitung-ohne-code")
+        pruef(warte(pg, "S.team.code === 'FUCHS-4821' && S.team.state"), "Anna mit Schlüssel angemeldet")
+        pg.evaluate("sessionStorage.setItem('sj.pin', '4711'); S.admin.pin = '4711'; window.__EINGABE_ARGS = []")
+        raus = pg.evaluate(ALLE_JS)
+        a = args(pg)
+        pruef(a and all(x.get("p_pin") is None for x in a), "Leitungs-Handy mit PIN im Tab: keine PIN mitgeschickt")
+        pruef(all(v != W5 for v in raus.values()), f"Eingaben gehen weiter mit dem Schlüssel ({raus})")
+        pruef(pg.evaluate("S.admin.pin") == "4711", "PIN im Tab bleibt (nur nicht mitgeschickt)")
+        pg.close()
+        # S2: Notweg-Tablet, die PIN wurde inzwischen geändert
+        pg = neu(b, "mitglied-auf-teamleitung")
+        notweg_oeffnen(pg)
+        pg.fill("#tpin", "4711")
+        pg.click("[data-act=t-login]")
+        pruef(warte(pg, "S.team.code === 'FUCHS-4821' && S.team.state"), "Notweg mit PIN angemeldet")
+        pg.evaluate("window.__EINGABE_ARGS = []")
+        r = pg.evaluate("async () => { try { await eingabeRpc('reveal_tip', { p_code: S.team.code }); return 'ok'; } catch (e) { return e.message; } }")
+        pruef(r == "ok" and args(pg, "reveal_tip")[-1].get("p_pin") == "4711", "Notweg schickt die PIN (sj.hand)")
+        pg.evaluate("S.admin.pin = 'alt-geaendert'; sessionStorage.setItem('sj.pin', 'alt-geaendert')")
+        r = pg.evaluate("async () => { try { await eingabeRpc('reveal_tip', { p_code: S.team.code }); return 'ok'; } catch (e) { return e.message; } }")
+        pruef(r == "Falsche PIN.", f"geänderte PIN: Fehler kommt weiter an ({r!r})")
+        pruef(pg.evaluate("S.admin.pin") is None and pg.evaluate("sessionStorage.getItem('sj.pin')") is None, "geänderte PIN: vergessen (pinWeg)")
+        pg.evaluate("render()")
+        pruef("Admin-PIN fehlt" in pg.inner_text("#app") and pg.locator("#tpin").count() == 1, "danach Seite „Admin-PIN fehlt“")
+        pg.fill("#tpin", "4711")
+        pg.click("[data-act=t-pin]")
+        pruef(warte(pg, "document.querySelector('.ph')"), "neue PIN: Ansicht wieder da")
+        # über die Oberfläche: Tipp mit falscher PIN
+        pg.evaluate("S.admin.pin = 'alt-geaendert'")
+        pg.evaluate("ACT['t-tip']().catch(e => { S.msg = { type: 'err', text: e.message }; }).then(render)")
+        pruef(warte(pg, "!S.admin.pin && /Admin-PIN fehlt/.test(document.querySelector('#app').innerText)"), "Tipp mit alter PIN: Seite „Admin-PIN fehlt“")
+        # Abmelden nimmt die PIN mit
+        pg.fill("#tpin", "4711")
+        pg.click("[data-act=t-pin]")
+        warte(pg, "document.querySelector('.ph')")
+        pg.evaluate("ACT['t-logout'](); render()")
+        pruef(pg.evaluate("S.admin.pin") is None and pg.evaluate("sessionStorage.getItem('sj.pin')") is None
+              and pg.evaluate("localStorage.getItem('sj.hand')") is None, "Abmelden am Notweg: PIN und Merker weg")
+        pg.close()
+        # Abmelden auf dem Leitungs-Handy (ohne sj.hand) fasst eine PIN im Tab nicht an
+        pg = neu(b, "leitung-ohne-code")
+        warte(pg, "S.team.code === 'FUCHS-4821'")
+        pg.evaluate("sessionStorage.setItem('sj.pin', '4711'); S.admin.pin = '4711'; ACT['t-logout'](); render()")
+        pruef(pg.evaluate("S.admin.pin") == "4711", "Abmelden ohne sj.hand: PIN bleibt")
+        pg.close()
+        # H1: Text der Ablehnung
+        pg = neu(b, "mitglied-auf-teamleitung")
+        pg.evaluate("S.team.code = 'FUCHS-4821'; localStorage.setItem('sj.code', 'FUCHS-4821')")
+        r = pg.evaluate("async () => { try { await eingabeRpc('reveal_tip', { p_code: 'FUCHS-4821' }); return 'ok'; } catch (e) { return e.message; } }")
+        pruef(r == W5 and r.endswith("Wenn du die Leitung bist: App neu laden."), f"Ablehnung mit Hinweis aufs Neuladen ({r!r})")
         pg.close()
 
     pruef(not err, "keine Fehler auf der Seite" + (f": {err[:3]}" if err else ""))

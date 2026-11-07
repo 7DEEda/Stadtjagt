@@ -8,7 +8,9 @@
 --
 --  1. team_eingabe(p_code, p_token, p_pin): intern (nicht für anon). Team per Code wie team_by_code; dann muss
 --     p_token der Geräte-Schlüssel der aktuellen Teamleitung dieses Teams sein, oder p_pin die Admin-PIN (Notweg der
---     Spielleitung am Tablet, require_admin). Sonst Fehler "Eingeben kann nur die Teamleitung auf ihrem eigenen Handy."
+--     Spielleitung am Tablet, require_admin). Sonst Fehler
+--     "Eingeben kann nur die Teamleitung auf ihrem eigenen Handy. Wenn du die Leitung bist: App neu laden."
+--     (Zusatz aus der Sicherheitsprüfung 07.11.: eine alte App ohne Schlüssel hilft sich mit Neuladen)
 --  2. check_in, submit_answer, reveal_tip, submit_final, team_selfie, team_selfie_skip, team_set_leader,
 --     report_position: je zwei neue Parameter p_token und p_pin (Vorgabe null) am Ende; die alte Fassung wird gedroppt
 --     (sonst zwei Überladungen, PGRST203). Im Rumpf ersetzt team_eingabe(...) die Zeile team_by_code(p_code), sonst
@@ -32,7 +34,7 @@ begin
     perform require_admin(p_pin);
     return t;
   end if;
-  raise exception 'Eingeben kann nur die Teamleitung auf ihrem eigenen Handy.' using errcode = 'P0001';
+  raise exception 'Eingeben kann nur die Teamleitung auf ihrem eigenen Handy. Wenn du die Leitung bist: App neu laden.' using errcode = 'P0001';
 end $function$;
 revoke all on function public.team_eingabe(p_code text, p_token text, p_pin text) from public, anon, authenticated;
 

@@ -4,7 +4,11 @@ Probelauf für die Migration 20261103090000_w5_eingaben_schluessel.sql (W5: Eing
 Handy oder mit Admin-PIN) gegen die echte Datenbank, ohne Spuren.
 
     python tools/pruefstand/w5_eingaben_db.py          mit Migration (grün)
-    python tools/pruefstand/w5_eingaben_db.py --ohne   Stand der Datenbank ohne Migration (rot)
+    python tools/pruefstand/w5_eingaben_db.py --ohne   Gegentest ohne Migration (rot)
+
+Mit --ohne läuft nur Prüfung 1, mit den alten Signaturen (Team-Code allein), gegen den heutigen Stand der Datenbank:
+dort nimmt jede der acht Eingaben den Code allein an, also meldet der Lauf PROBE FEHLT mit "angenommen". Die übrigen
+Prüfungen brauchen die neuen Signaturen und brächen ohne Migration mit 42883 (Funktion fehlt) ab.
 
 Wie rollen_akku_db.py: EIN DO-Block spielt die Migration ein, legt erfundene Teams und Personen an, setzt das Spiel im
 Block auf running (Testmodus an, damit der Check-in ohne GPS geht), prüft und wirft am Ende absichtlich einen Fehler
@@ -40,7 +44,7 @@ NEU = ["check_in(text,double precision,double precision,double precision,text,te
        "team_selfie(text,integer,text,text,text,text)", "team_selfie_skip(text,integer,text,text)",
        "team_set_leader(text,text,text,text)",
        "report_position(text,double precision,double precision,double precision,text,text,text)"]
-W5 = "Eingeben kann nur die Teamleitung auf ihrem eigenen Handy."
+W5 = "Eingeben kann nur die Teamleitung auf ihrem eigenen Handy. Wenn du die Leitung bist: App neu laden."
 
 
 def chk(bedingung: str, text: str, ist: str = "") -> str:
@@ -74,7 +78,7 @@ def alle(tok: str, pin: str) -> list:
             f"report_position(v_code, 50.1, 14.4, 10, null, {tok}, {pin})"]
 
 
-def pruefungen() -> str:
+def pruefungen(ohne: bool = False) -> str:
     c = []
     a = c.append
 
@@ -85,6 +89,8 @@ def pruefungen() -> str:
     for i, x in enumerate(alt):
         a(abgelehnt(x, f"1{chr(65 + i)} nur Code: {x.split('(')[0]}"))
     a(chk("not exists (select 1 from team_positions where team_id = v_id)", "1I ohne Recht keine Position geschrieben"))
+    if ohne:        # Gegentest: nur die alten Aufrufe, die es ohne Migration gibt
+        return "\n".join(x for x in c if x)
 
     a("-- 2: Schlüssel der Teamleitung")
     for i, x in enumerate(alle("v_ta", "null")):
@@ -194,7 +200,7 @@ def main() -> None:
     migration = "" if "--ohne" in sys.argv else MIGRATION.read_text(encoding="utf-8")
     assert "$mig$" not in migration and "$probe$" not in migration
     liste = lambda xs: ", ".join("'" + x + "'" for x in xs)  # noqa: E731
-    probe = (PROBE.replace("__PRUEFUNGEN__", pruefungen()).replace("__INTERN__", liste(INTERN))
+    probe = (PROBE.replace("__PRUEFUNGEN__", pruefungen("--ohne" in sys.argv)).replace("__INTERN__", liste(INTERN))
              .replace("__NEU__", liste(NEU))
              .replace("__MIGRATION__", f"execute $mig${migration}$mig$;" if migration.strip() else ""))
     print(f"Sende den Probelauf ({len(probe)} Zeichen) an Projekt {sql.project_ref()} ...", file=sys.stderr)
