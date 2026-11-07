@@ -605,8 +605,8 @@ input[type=date]{min-height:50px}
 @media (min-width:700px){main:not(.wide):not(.voll){max-width:600px}.compass.gross svg{width:180px;height:180px}:root{--fs-zahl:56px}}
 /* Spielleitung am Handy (Durchsicht 02.11.2026): Reiter in Reihen, Teilnehmende einspaltig, Zeitachse ohne Nummern, Schalter neben dem Titel */
 @media (max-width:600px){
-  .tabs{flex-wrap:wrap;overflow:visible;gap:0 4px}
-  .tabs button{padding:10px 7px;font-size:var(--fs-s)}
+  .tabs{flex-wrap:wrap;overflow:visible;gap:0 2px}
+  .tabs button{padding:10px 5px;font-size:var(--fs-s)}
   ul.names{columns:1}
   .tl-bar .st{width:10px;height:10px;margin-left:-5px;top:6px;font-size:0;border-width:2px}
   .akopf > .brand{order:-2;flex:1 1 calc(100% - 56px);min-width:0}
@@ -2349,7 +2349,7 @@ function viewAdmin() {
   const laeuft = st.status === "running" || st.status === "finished";
   if (A.tab === "teams" && laeuft) A.tab = "live";   // alter gemerkter Zustand: Auslosen gibt es im Spiel nicht mehr
   const tabs = [["live", "Karte und Teams"], ["zeit", "Zeitachse"], ...(laeuft ? [] : [["teams", "Auslosen"]]),
-    ["people", "Teilnehmende"], ["stations", "Stationen"], ["fotos", "Fotos"], ["danger", "Daten löschen"]];
+    ["people", "Teilnehmende"], ["stations", "Stationen"], ["fotos", "Fotos"], ["settings", "Einstellungen"], ["danger", "Daten löschen"]];
   out += `<div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${A.tab === k}" data-act="a-tab" data-tab="${k}"${k === "danger" ? ' class="loesch"' : ""}>${l}</button>`).join("")}</div>`;
 
   const inhaltAb = out.length;
@@ -2384,7 +2384,7 @@ function viewAdmin() {
     // Nach dem Auslosen ist Starten der nächste Schritt, nicht Neu auslosen
     if (st.status === "drawn") out += `<div class="panel"><h3>Bereit zum Start</h3>
         <p class="small muted">Die Teamleitungen sind auf ihrem eigenen Handy gleich drin, einen Code braucht niemand. Gestartet wird oben mit „Spiel starten“, die App fragt vorher noch einmal nach.</p>
-        ${st.testMode ? `<div class="msg err">Der Testmodus ist noch an: Entfernung und Antworten werden nicht geprüft. Ausschalten im Reiter Stationen.</div>` : ""}</div>`;
+        ${st.testMode ? `<div class="msg err">Der Testmodus ist noch an: Entfernung und Antworten werden nicht geprüft. Ausschalten im Reiter Einstellungen.</div>` : ""}</div>`;
     // Den Reiter gibt es nur vor dem Start (laeuft schaltet oben auf live um); danach steht der Weg zurück im Reiter Daten löschen
     out += `<div class="panel"><h3>Teams auslosen</h3>
         <div style="margin-top:8px"><span class="count">${n}</span> <span class="muted">${n === 1 ? "Person angemeldet" : "Personen angemeldet"}</span></div>
@@ -2427,19 +2427,6 @@ function viewAdmin() {
     out += st.status === "registration" ? viele + liste : liste + viele;
   }
   if (A.tab === "stations") {
-    out += `<div class="panel"><h3>Spieldauer und Koffer-Hinweis</h3>
-      <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:8px">
-        <div><label for="a-dauer">Spieldauer, Minuten</label><input id="a-dauer" inputmode="numeric" value="${st.durationMin ?? 180}"></div>
-        <div class="small muted" style="align-self:end;padding-bottom:12px">Ab „Spiel starten“ zählen alle Handys herunter${st.endsAt ? `, aktuell bis ${uhrzeit(st.endsAt)}` : ""}. Das Spiel endet trotzdem erst mit „Spiel beenden“.</div></div>
-      <div style="margin-top:8px"><label for="a-koffer">Hinweis auf dem Koffer-Bildschirm</label><textarea id="a-koffer">${esc(st.caseHint || "")}</textarea></div>
-      <button class="btn sm" data-act="a-settings" data-wait="Wird gespeichert …">Speichern</button>${msgBox("settings")}</div>`;
-    out += `<div class="panel"><h3>Hintergrund</h3>
-      <p class="small muted">Gilt für alle Handys und dieses Tablet, hell und dunkel.</p>
-      <div class="wahl">${Object.entries(HINTERGRUENDE).map(([k, v]) => `<button class="btn sm ${st.background === k ? "" : "alt"}" data-act="a-bg" data-bg="${k}" aria-pressed="${st.background === k}">${v}</button>`).join("")}</div>${msgBox("bg")}</div>`;
-    out += `<div class="panel ${st.testMode ? "danger" : ""}"><h3>Testmodus</h3>
-      <p class="small muted">Check-in ohne Entfernungsprüfung, auch ohne GPS,
-      und jede Antwort zählt. Den Koffer-Code prüft die App weiter. Vor dem Event unbedingt ausschalten.</p>
-      <button class="btn ${st.testMode ? "warn" : "alt"}" data-act="a-test" data-on="${st.testMode ? "0" : "1"}" data-ort="test">${st.testMode ? "Testmodus ausschalten" : "Testmodus einschalten"}</button>${msgBox("test")}</div>`;
     const unfertig = (st.stations || []).filter(s => offen(s.locationHint) || offen(s.riddle) || offen(s.answer) || s.lat == null);
     if (unfertig.length) out += `<div class="msg err">Noch nicht fertig: Station ${unfertig.map(s => s.position).join(", ")}. Dort fehlt Ortshinweis, Rätsel, Lösung oder Standort.</div>`;
     if (st.testStation) out += `<div class="panel" id="teststation"><h3>Teststation</h3>
@@ -2453,6 +2440,21 @@ function viewAdmin() {
       <p class="small" style="border-top:1px solid var(--line);padding-top:12px">Koffer-Code: <b style="white-space:nowrap">${esc(st.caseCode || "")}</b>, gilt für alle ${st.prizeCount ?? 3} Koffer.
         Die Reihenfolge der Koffer ergibt sich aus dem Platz in der App.</p>
       <button class="btn sm alt" data-act="a-mappe">Notfallmappe</button></div>`;
+  }
+  if (A.tab === "settings") {
+    out += `<div class="panel"><h3>Spieldauer und Koffer-Hinweis</h3>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:8px">
+        <div><label for="a-dauer">Spieldauer, Minuten</label><input id="a-dauer" inputmode="numeric" value="${st.durationMin ?? 180}"></div>
+        <div class="small muted" style="align-self:end;padding-bottom:12px">Ab „Spiel starten“ zählen alle Handys herunter${st.endsAt ? `, aktuell bis ${uhrzeit(st.endsAt)}` : ""}. Das Spiel endet trotzdem erst mit „Spiel beenden“.</div></div>
+      <div style="margin-top:8px"><label for="a-koffer">Hinweis auf dem Koffer-Bildschirm</label><textarea id="a-koffer">${esc(st.caseHint || "")}</textarea></div>
+      <button class="btn sm" data-act="a-settings" data-wait="Wird gespeichert …">Speichern</button>${msgBox("settings")}</div>`;
+    out += `<div class="panel"><h3>Hintergrund</h3>
+      <p class="small muted">Gilt für alle Handys und dieses Tablet, hell und dunkel.</p>
+      <div class="wahl">${Object.entries(HINTERGRUENDE).map(([k, v]) => `<button class="btn sm ${st.background === k ? "" : "alt"}" data-act="a-bg" data-bg="${k}" aria-pressed="${st.background === k}">${v}</button>`).join("")}</div>${msgBox("bg")}</div>`;
+    out += `<div class="panel ${st.testMode ? "danger" : ""}"><h3>Testmodus</h3>
+      <p class="small muted">Check-in ohne Entfernungsprüfung, auch ohne GPS,
+      und jede Antwort zählt. Den Koffer-Code prüft die App weiter. Vor dem Event unbedingt ausschalten.</p>
+      <button class="btn ${st.testMode ? "warn" : "alt"}" data-act="a-test" data-on="${st.testMode ? "0" : "1"}" data-ort="test">${st.testMode ? "Testmodus ausschalten" : "Testmodus einschalten"}</button>${msgBox("test")}</div>`;
   }
   if (A.tab === "fotos") {
     const fotos = A.fotos || [];

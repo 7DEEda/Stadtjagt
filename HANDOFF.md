@@ -2212,13 +2212,19 @@ Bisher nahm der Server jede Eingabe mit dem Team-Code allein an; wer ihn von Han
 eingeben. Jetzt gehen die acht Eingaben (Check-in, Antwort, Tipp, Koffer, Foto, Foto überspringen, Leitung abgeben,
 Position) nur mit dem Geräte-Schlüssel der aktuellen Leitung oder mit der Admin-PIN (Notweg am Tablet). Migration
 `20261103090000_w5_eingaben_schluessel.sql` (neue interne `team_eingabe`, je zwei Parameter `p_token`, `p_pin`),
-App `eingabeRpc`, PIN-Feld im Notweg und Seite „Admin-PIN fehlt“. Einzelheiten SPIEL.md §22.
+App `eingabeRpc`, PIN-Feld im Notweg und Seite „Admin-PIN fehlt“. Einzelheiten SPIEL.md §23.
 
 Geprüft: `w5_eingaben_db.py` (Probelauf, 139 Prüfungen), `rechte_db.py` mit der Migration, `w5.py` und die
 angepassten Prüfstand-Skripte (siehe Zweig). **Vor dem Einspielen (Friedrich):** erst App auf master und Pages, dann
 die Migration (`python tools/sql.py supabase/migrations/20261103090000_w5_eingaben_schluessel.sql`), danach
 `rechte_db.py` und `python tools/schema_abzug.py`. Ein Handy mit alter App gibt danach nichts mehr ein, bis es neu
 lädt. `tools/stresstest.py` bräuchte für einen neuen Lauf `p_pin` bei den Eingaben.
+
+## Reiter Einstellungen (03.11.2026)
+
+Punkt 3 der Spielleitung-Durchsicht, in der Nacht als Entwurf auf dem Zweig `einstellungen-reiter` gebaut (SPIEL.md §22):
+eigener Reiter für Spieldauer, Koffer-Hinweis, Hintergrund und Testmodus. Ohne Migration. Prüfung `admin.py` und die
+angepassten Skripte bugjagd2 und kritik (Testmodus-Knopf jetzt im Reiter Einstellungen).
 
 ## Spielleitung-Durchsicht (02.11.2026)
 

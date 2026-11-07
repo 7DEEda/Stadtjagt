@@ -29,7 +29,7 @@ App eingeben.
 | Rolle | Zugang | Kann | Sieht |
 |---|---|---|---|
 | **Teilnehmende** | Link, Name bei der Anmeldung | sich anmelden (nur bis zum Auslosen), Team nachschauen | eigenes Team groß mit Emoji; ab dem Start alles, was die Teamleitung sieht (Geräte-Schlüssel aus der Anmeldung) |
-| **Teamleitung** | `#/team`: automatisch auf dem Handy, mit dem sie sich angemeldet hat (Geräte-Schlüssel); Team-Code nur als Ausweg für die Spielleitung am Tablet, mit Admin-PIN (§22) | einchecken, Rätsel beantworten, Koffer-Code eingeben, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
+| **Teamleitung** | `#/team`: automatisch auf dem Handy, mit dem sie sich angemeldet hat (Geräte-Schlüssel); Team-Code nur als Ausweg für die Spielleitung am Tablet, mit Admin-PIN (§23) | einchecken, Rätsel beantworten, Koffer-Code eingeben, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
 | **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, fortsetzen, freischalten, Rätsel werten, Teamleitung wählen, Stationen pflegen, Leute eintragen, löschen, Testmodus | Reiter Karte und Teams (Karte, Teamliste mit "Braucht dich", Zuletzt), Zeitachse, Codes, Akku der Teamleitung, Koffer-Code |
 
 Die Teamleitung wird beim Auslosen je Team zufällig bestimmt
@@ -292,7 +292,7 @@ mit dem Team-Code.
   verloren).
 - Admin-Funktionen prüfen die PIN serverseitig (`require_admin`).
 - Eingaben fürs Team (Check-in, Antwort, Tipp, Koffer, Fotos, Leitung abgeben, Position) nimmt der Server seit W5
-  nur mit dem Geräte-Schlüssel der aktuellen Teamleitung oder mit der Admin-PIN an (`team_eingabe`, §22). Lesen
+  nur mit dem Geräte-Schlüssel der aktuellen Teamleitung oder mit der Admin-PIN an (`team_eingabe`, §23). Lesen
   (`team_state`) geht weiter mit dem Team-Code.
 - Team-Codes: Tiername plus sechs Ziffern (`FUCHS-123456`); alte vierstellige
   Codes gelten bis zum nächsten Auslosen. `team_by_code` vergleicht nur
@@ -522,7 +522,7 @@ anon, authenticated`, am Ende `notify pgrst, 'reload schema';`.
 - Reihenfolge beim Ausliefern: erst die Datenbank, dann die App.
 
 ### Testmodus und Testdaten
-- `admin_set_test_mode` (Reiter Stationen): Check-in und Koffer-Code ohne
+- `admin_set_test_mode` (Reiter Einstellungen): Check-in und Koffer-Code ohne
   Entfernung, jede Antwort zählt, keine Denkpause; der Koffer-Code selbst wird
   weiter geprüft. Rotes „Testmodus an“ in Admin und Team-Ansicht.
   „Spiel starten“ warnt, solange er an ist (bleibt beim Testen dauerhaft an,
@@ -568,7 +568,7 @@ node -e 'const h=require("fs").readFileSync("index.html","utf8");[...h.matchAll(
 - Echte Nummer für die Hilfe-Knöpfe statt `491720000000`.
 - Live-PIN verlängern (siehe 7.); `2026` ist sie nicht mehr, hat aber nur
   4 Zeichen. Neue PINs verlangen seit Nachtrag 20 mindestens 12.
-- Hintergrund-Variante festlegen (umschaltbar im Reiter Stationen; aktiv ist
+- Hintergrund-Variante festlegen (umschaltbar im Reiter Einstellungen; aktiv ist
   A; B zeigt noch den Altstadt-Ausschnitt, Neuerzeugung siehe HANDOFF).
 - Testumgebung und Testskripte ins Repo übernehmen.
 - Probelauf draußen mit echten Handys, dabei die Punkte, die nur auf dem
@@ -1130,7 +1130,7 @@ Migration `20261029120000_rollen_akku.sql`, Prüfung `tools/pruefstand/rollen_ak
 - **Spielleitung (F5):** Chip „Akku N %“ in der Teamzeile ab 20 %, unter „Braucht dich“ ab 10 % (nicht ladend,
   `problemVon`). `(kein eigenes Handy)` am Namen zeigt `hatHandy`.
 - **Mitlese-Link gestrichen (F7):** siehe §5.3 und §7.
-- **W5 geschlossen (03.11.2026, §22):** Eingaben gehen nur noch mit dem Geräte-Schlüssel der Leitung oder der
+- **W5 geschlossen (03.11.2026, §23):** Eingaben gehen nur noch mit dem Geräte-Schlüssel der Leitung oder der
   Admin-PIN; der Team-Code allein reicht nicht mehr.
 
 ---
@@ -1176,7 +1176,18 @@ und 4 bis 9, ohne Migration. Prüfung `tools/pruefstand/admin.py` (Port 8876, 39
 
 ---
 
-## 22. Eingaben an den Geräte-Schlüssel gebunden (W5, 03.11.2026)
+## 22. Reiter Einstellungen (03.11.2026)
+
+Punkt 3 der Spielleitung-Durchsicht (§21): Spieldauer, Koffer-Hinweis, Hintergrund und Testmodus standen im Reiter
+Stationen, obwohl sie mit Stationen nichts zu tun haben. Sie stehen jetzt in einem eigenen Reiter „Einstellungen“
+(`A.tab === "settings"`), zwischen Fotos und Daten löschen. Stationen, Teststation, Startpunkte und Notfallmappe
+bleiben im Reiter Stationen, die Selfie-Einstellung im Reiter Fotos. Der Hinweis „Ausschalten im Reiter …“ bei
+„Bereit zum Start“ nennt den neuen Reiter. Am 360-px-Handy brechen die acht Reiter vor dem Start in drei Reihen
+um, bei 390 px in zwei (im Spiel sind es sieben).
+
+---
+
+## 23. Eingaben an den Geräte-Schlüssel gebunden (W5, 03.11.2026)
 
 Migration `20261103090000_w5_eingaben_schluessel.sql`, Prüfung `tools/pruefstand/w5.py` (Port 8877) und
 `w5_eingaben_db.py` (Probelauf). Bis dahin reichte bei jeder Eingabe der Team-Code: wer ihn von Hand eintippte
@@ -1199,6 +1210,7 @@ Migration `20261103090000_w5_eingaben_schluessel.sql`, Prüfung `tools/pruefstan
   gestartet), zeigt `viewTeam` statt der Ansicht „Admin-PIN fehlt“ mit PIN-Feld (`t-pin`) und Abmelden.
 - **Reihenfolge beim Einspielen:** erst die App, dann die Migration. Eine ältere App (Service Worker, nicht neu
   geladen) sendet keinen Schlüssel und kann nach der Migration nicht mehr eingeben; „Neue Version laden“ hilft.
-  `tools/stresstest.py` ruft die Eingaben mit Code allein und braucht für einen neuen Lauf `p_pin` (nicht angepasst).
+  `tools/stresstest.py` schickt bei den Eingaben den Geräte-Schlüssel der Leitung mit (`p_token`) und prüft
+  als Randfälle, dass der Code allein abgewiesen wird und der Notweg mit `p_pin` durchgeht.
 - **Mock:** `window.__W5` prüft wie der Server (nur auf Wunsch, viele Szenarien zeigen eine Leitung mit Code ohne
   Schlüssel), `__OHNE_W5` spielt eine Datenbank ohne die Migration, `__EINGABE_ARGS` sammelt die Argumente.
