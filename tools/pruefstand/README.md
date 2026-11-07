@@ -33,6 +33,7 @@ etwa `timeout 300 python tools/pruefstand/waechter.py`.
 | `waechter.py` | Kompass-Wächter: Logik, Anzeige, Spielleitung, Freigaben (Nachtrag 30) |
 | `bugjagd2.py` | Funde der Bugjagd vom 03.10.2026 |
 | `bugjagd3.py` | Funde der Bugjagd vom 03.11.2026 (SPIEL.md §24), Port 8878: Leitung startet kalt in der Team-Ansicht und bleibt auf der Anmeldeseite, Foto-ZIP mit gelöschten Fotos, Start-Dialog bei erreichtem Löschdatum, Geräte-Test lädt Leaflet und Schriften aus `vendor/`. Teil 5: `val()` gibt NFC, `mock.js`-`norm` wie die Datenbank (`window.__norm`). Haken `__fotoNull` in `mock.js`. Probelauf `bugjagd3_db.py` (spielt W5 davor ein; Bremse in `team_eingabe`, `team_state`, `team_photo`, admin_start, team_selfie, norm mit NFC) |
+| `bugjagd4.py` | Funde der Bugjagd vom 07.11.2026 (SPIEL.md §25), Port 8879: Texte zum Testmodus im laufenden Spiel, Beenden und Zurücksetzen mit frischem Status (zweites Leitungsgerät über `window.__WELT`), Ziffer-Rückfrage nur für die aktive Route, Escape im Ziffer-Dialog, später Standort-Rückruf, Koordinaten nur als Dezimalzahl, Fotos in den Rückfragen. Probelauf `bugjagd4_db.py` (admin_finish, admin_reset, admin_save_station) |
 | `umbau.py` | Umbau Weiterentwicklung: Handy-Hülle, Reiter, Spielleitung mit Teamliste (Nachtrag 33) |
 | `review1510.py` | Befunde des Code-Reviews vom 15.10.2026 (Nachtrag 34) |
 | `lokal.py` | Leaflet und Schriften aus `vendor/`, keine Anfrage an unpkg oder Google (Nachtrag 35) |
@@ -52,7 +53,7 @@ etwa `timeout 300 python tools/pruefstand/waechter.py`.
 
 Chrome 155 hängt auf dem Arbeitsrechner beim `browser.close()` nach einer Seite mit Leaflet-Karte (manchmal auch
 ohne). Die neuen Skripte drucken OK oder FEHLT vorher und enden über `abschluss.py`, das nur die eigenen
-Chrome-Prozesse beendet.
+Chrome-Prozesse beendet (seit 07.11.2026 nach Prozessbaum, nicht mehr nach Kommandozeile).
 
 ## Probeläufe gegen die echte Datenbank
 
@@ -64,5 +65,5 @@ Zugang aus `tools/sql.py`.
 `name_db.py`, `selfie_db.py`, `teststation_db.py`, `startpunkt_db.py`,
 `waechter_db.py`, `rechte_db.py` (Rechte aller internen Hilfsfunktionen),
 `bugjagd2_db.py`, `namenssuche_db.py`, `namenssuche_grenze_db.py`, `eingaben_db.py`,
-`rueckblick_steuerung_db.py` (Fernbedienung, Nachtrag 37), `w5_eingaben_db.py` (W5, 03.11.2026; mit `--ohne` rot), `bugjagd3_db.py` (Bugjagd 03.11.2026, nach W5). Mit `--ohne` zeigen `rechte_db.py`, `bugjagd2_db.py`,
+`rueckblick_steuerung_db.py` (Fernbedienung, Nachtrag 37), `w5_eingaben_db.py` (W5, 03.11.2026; mit `--ohne` rot), `bugjagd3_db.py` (Bugjagd 03.11.2026, nach W5). `bugjagd4_db.py` (Bugjagd 07.11.2026; mit `--ohne` rot). Mit `--ohne` zeigen `rechte_db.py`, `bugjagd2_db.py`,
 `namenssuche_grenze_db.py`, `eingaben_db.py` und `rueckblick_steuerung_db.py` den Stand ohne Migration.

@@ -2266,6 +2266,25 @@ ab. **Beide Migrationen sind NICHT eingespielt.**
 Mobilfunk-NAT kann Unbeteiligte mitsperren), ob `admin_start` bei abgelaufenem Löschdatum nur warnt (so gebaut)
 oder ablehnt.
 
+## Bugjagd 07.11.2026 (Zweig `bugjagd-nov`, nicht gemerged)
+
+Elf von 13 Funden behoben, siehe SPIEL.md §25. Neue Migration `20261107100000_bugjagd4.sql` (admin_finish und
+admin_reset unter Zeilensperre mit Statusprüfung, admin_save_station mit Wertebereich), **nicht eingespielt**.
+Einspielen nach Schritt 4 oben: `python tools/pruefstand/bugjagd4_db.py` (zuletzt 33 grün), dann
+`python tools/sql.py supabase/migrations/20261107100000_bugjagd4.sql`, danach `rechte_db.py` und
+`schema_abzug.py`. Die App läuft auch ohne die Migration (die Statusprüfung in `a-dlg-ok` und die Koordinatenprüfung
+im Formular sind clientseitig).
+
+**Offen, zu entscheiden (Friedrich):**
+- Fund 1, Testmodus im laufenden Spiel: Die Texte warnen jetzt. Soll der Server das Einschalten im Status running
+  sperren, solange eine Teststation existiert (oder `aktive_route()` im laufenden Spiel nicht umschalten)?
+- Fund 10, Admin-PIN: keine Fehlversuchsbremse in `require_admin`, Vorgabe '2026' in `game_state` und `init.sql`, eine
+  kurze Alt-PIN bleibt gültig (der 12-Zeichen-Trigger prüft nur Änderungen). Vor dem Event mindestens die Länge der
+  Live-PIN prüfen; Bremse und Vorgabe entscheiden.
+- Fund 13, Fernbedienung der Rückblick-Show: kommen zwei Befehle zwischen zwei Abrufen an (400 ms bis etwa 1,5 s
+  Abstand), führt die Show nur den letzten aus, das Handy meldet beide als ausgeführt. Vorschläge: Sperre am Handy bis
+  zur Bestätigung, oder rb_befehl lehnt ab, solange der vorige nicht abgeholt ist, oder eine Befehlsliste.
+
 ## Reiter Einstellungen (03.11.2026)
 
 Punkt 3 der Spielleitung-Durchsicht, in der Nacht als Entwurf auf dem Zweig `einstellungen-reiter` gebaut (SPIEL.md §22):

@@ -1282,3 +1282,64 @@ Migration). Prüfungen am 07.11. nach dem Merge von W5: `bugjagd3_db.py` 102, `w
 45 (alle Migrationen), `rollen_akku_db.py` 180; im Container `bugjagd3.py` 28 (gegen den Stand vor der Bugjagd 16
 FEHLT, gemessen vor dem Merge), `w5.py` 44, `rollen_akku.py` 163, `selfie.py` 26, `audit2510.py` 52,
 `review1510.py` 50, `admin.py` 23, `handy.py` 25.
+
+---
+
+## 25. Bugjagd 07.11.2026
+
+Zweite Multi-Agent-Bugjagd, 13 bestätigte Funde (Jury 3 von 3, Fund 11 und 13 mit 2 von 3; einer major, sonst minor).
+Behoben auf dem Zweig `bugjagd-nov` die elf ohne offene Entscheidung, Fund 1 nur im Text. Migration
+`20261107100000_bugjagd4.sql` (Funde 2, 3, 7), unabhängig von W5 und bugjagd3, läuft aber nach ihnen. Probelauf
+`tools/pruefstand/bugjagd4_db.py`, Oberfläche `tools/pruefstand/bugjagd4.py` (Port 8879).
+
+1. **Testmodus im laufenden Spiel** (major, nur Texte): Seit der Teststation (Nachtrag 28) wechseln mit dem Testmodus
+   alle Teams auf die Teststation, ein Team ist dort in Sekunden im Ziel, und danach führt nur „Fortschritt
+   zurücksetzen“ zurück (löscht den ganzen Fortschritt, die Plätze und über die Kaskade alle Fotos). Die Rückfrage
+   `DANGER.testan` sagte nur „prüft keine Entfernung“. Jetzt nennen sie und der Reiter Einstellungen (beide nur, wenn
+   es eine Teststation gibt) den Wechsel, den Rückweg und für GPS-Probleme „Freischalten“ im Reiter Karte und Teams.
+   **Offen (Friedrich):** ob der Server das Einschalten im laufenden Spiel sperrt, solange eine Teststation existiert,
+   oder `aktive_route()` im Status running nicht umschaltet. Nicht gebaut.
+2. **admin_finish ohne Statusprüfung**: Ein zweites Leitungsgerät mit offenem Beenden-Dialog machte aus einem gerade
+   zurückgesetzten oder geleerten Spiel ein beendetes („Spiel fortsetzen“ führte dann zu running ohne `started_at`).
+   Jetzt prüft `admin_finish` unter Zeilensperre (`for update`, wie `admin_draw`) und beendet nur aus running. In der App
+   holt `a-dlg-ok` vor Beenden und Zurücksetzen den frischen Stand (`admin_state`) und lehnt mit Meldung ab, wenn er
+   nicht mehr passt; der Takt zeichnet einen offenen Dialog ja nicht neu.
+3. **admin_reset aus registration**: setzte auf drawn ohne Teams, die Anmeldung war zu. Jetzt unter Zeilensperre
+   „Vor dem Auslosen gibt es nichts zurückzusetzen.“ (ein ungesperrtes Lesen sähe unter READ COMMITTED noch den
+   alten Stand, wenn `admin_clear_participants` gleichzeitig läuft).
+4. **Ziffer-Rückfrage über Routen hinweg** (`a-save`): `t.solved` zählt nur die aktive Route, die bearbeitete Station
+   konnte zur anderen gehören (Teststation hat Position 1). Jetzt fragt die App nur, wenn `alt.route` die aktive Route
+   ist; für die Teststation heißt der Dialog „Ziffer der Teststation ändern“.
+5. **Escape im Ziffer-Dialog** verwarf das Getippte im Stationsformular. Escape ruft jetzt `ACT["a-dlg-cancel"]`, wie
+   der Knopf „Abbrechen“ (`S.felderZurueck`).
+6. **Verspäteter Standort-Rückruf** (`a-here`, `a-startpkt-hier`): Die Ortung hat bis zu 15 s; inzwischen konnte das
+   Formular einer anderen Station offen sein (gleiche Ids `e-lat`/`e-lng`), ohne Formular warf der Rückruf einen
+   TypeError. Jetzt merkt sich der Aufruf `S.admin.formNr` (zählt bei jedem Öffnen eines Formulars hoch) und
+   `S.admin.edit` bzw. `S.admin.startEdit`; stimmt das bei der Ankunft nicht mehr, verwirft er den Fix.
+7. **Koordinaten**: `parseFloat` machte aus `50°05'15.0"N` still 50 (rund 10 km daneben), „N 50.0875“ wurde NaN und
+   überschrieb eine gültige Koordinate mit null, 500 ging durch. Jetzt zählt nur eine ganze Dezimalzahl (`koordZahl`,
+   Komma oder Punkt, Vorzeichen), `koordFehler` lehnt im Stationsformular Ungültiges und Werte außerhalb -90..90 bzw.
+   -180..180 mit Meldung ab; beide Felder leer bleibt erlaubt (Station ohne Standort). Der Startpunkt prüft den
+   Bereich ebenso. Server: `admin_save_station` lehnt Breite außerhalb -90..90 und Länge außerhalb -180..180 ab (auch
+   NaN und unendlich), null bleibt erlaubt.
+8. **stresstest.py einrichten** übersprang nach einem Abbruch mitten in den Migrationen alle restlichen (die Prüfung
+   sah nur `admin_state`, das schon die erste Migration anlegt). Jetzt steht jede eingespielte Migration in
+   `stresstest.migrationen` (eigenes Schema, für PostgREST unsichtbar), ein zweiter Aufruf spielt genau die fehlenden
+   ein. Ein Testprojekt von vor dieser Liste verhält sich wie bisher, mit Hinweis.
+9. **stresstest.py Randfälle**: Jeder Fehler galt als bestanden, auch 429, 502 oder ein Verbindungsabbruch, und bei 200
+   Handys griff vor der Namensprüfung die Grenze „Die Anmeldung ist voll“. Jetzt zählt nur HTTP 400 mit der passenden
+   Meldung (`fehler_passt`), beim unbekannten Team-Code auch die Sperre der Bremse. Person 000 meldet sich allein vor
+   der Spitze an, die beiden Dubletten-Fälle laufen davor. Nur Syntax geprüft, nicht gelaufen.
+10. **Admin-PIN ohne Bremse, Vorgabe '2026'**: nicht angefasst (Sicherheitsentscheidung, siehe HANDOFF).
+11. **abschluss.py** beendete jeden neuen Playwright-Chrome, auch den eines parallel laufenden Prüfskripts. Jetzt nur
+   `chrome.exe`, die von diesem Python-Prozess abstammen (Prozessbaum über `Win32_Process`). Unter Windows nur ohne
+   Chrome geprüft (Baum mit zwei Ebenen Python), im Container ist die Liste leer wie bisher.
+12. **Fotos in den Rückfragen**: „Fortschritt zurücksetzen“ und „Alle Teilnehmenden löschen“ löschen über
+   `ON DELETE CASCADE` alle Gruppenfotos, ohne es zu sagen. Jetzt nennen beide die Zahl (nur wenn es Fotos gibt) und
+   raten zum Herunterladen; die Tabelle „Was gerade gespeichert ist“ hat die Zeile „Gruppenfotos“. Bei „Neu auslosen“
+   nicht nötig: `admin_draw` geht nach dem Start nicht, vorher gibt es keine Fotos.
+13. **Fernbedienung der Rückblick-Show** (zwei Befehle zwischen zwei Abrufen, nur der letzte wirkt): nicht angefasst
+   (Entwurfsentscheidung, siehe HANDOFF).
+
+`mock.js`: `window.__WELT` (Spielstand im Speicher der Seite), damit `bugjagd4.py` ein zweites Leitungsgerät spielen
+kann. Prüfungen am 07.11.: `bugjagd4_db.py` 33 (ohne Migration 14 von 33 FEHLT), `bugjagd3_db.py` 102, `rechte_db.py` 45, `w5_eingaben_db.py` 139 (alle zurückgerollt); im Container `bugjagd4.py` 54 ok (gegen das alte `index.html` 10 FEHLT, dann Abbruch), `bugjagd3.py` 28, `bugjagd2.py` 55, `ziffer.py` 8, `teststation.py` 21, `mappe.py` 59, `admin.py` 23, `review1510.py` 50, `w5.py` 44. `tools/stresstest.py` nur Syntax, `abschluss.py` unter Windows ohne Chrome.

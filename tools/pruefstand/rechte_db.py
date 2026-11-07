@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Probelauf für Nachtrag 31 (current_station sperren) gegen die echte Datenbank, ohne Spuren. Seitdem um jede neue
-Migration mit Funktionen ergänzt (zuletzt Bugjagd 03.11. nach W5, 20261107090000_bugjagd3.sql).
+Migration mit Funktionen ergänzt (zuletzt Bugjagd 07.11., 20261107100000_bugjagd4.sql).
 
     python tools/pruefstand/rechte_db.py
 
@@ -21,7 +21,8 @@ import sql  # noqa: E402
 MIGRATIONEN = ["20261004090000_current_station_sperren.sql", "20261015090000_namenssuche_grenze.sql",
                "20261016090000_eingaben_wiederholen.sql", "20261017090000_rueckblick_steuerung.sql",
                "20261025090000_audit.sql", "20261029120000_rollen_akku.sql",
-               "20261103090000_w5_eingaben_schluessel.sql", "20261107090000_bugjagd3.sql"]
+               "20261103090000_w5_eingaben_schluessel.sql", "20261107090000_bugjagd3.sql",
+               "20261107100000_bugjagd4.sql"]
 MIGRATION = [sql.REPO / "supabase" / "migrations" / n for n in MIGRATIONEN]
 
 # Interne Hilfsfunktionen: dürfen weder anon noch authenticated ausführen

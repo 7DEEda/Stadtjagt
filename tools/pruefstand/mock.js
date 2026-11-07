@@ -261,6 +261,8 @@
 
   /* ---------- Welt aufbauen ---------- */
   const WELT = { status: C.welt, background: "klassisch", testMode: !!C.testMode, prizeCount: 3, durationMin: 180 };
+  // bugjagd4.py: ein zweites Leitungsgerät ändert den Spielstand, während hier ein Dialog offen steht
+  window.__WELT = WELT;
   const elapsed = C.welt === "finished" ? 185 : 72;   // Minuten seit dem Start
   WELT.startedAt = (C.welt === "running" || C.welt === "finished") ? NOW - elapsed * MIN : null;
   WELT.finishedAt = C.welt === "finished" ? WELT.startedAt + 182 * MIN : null;

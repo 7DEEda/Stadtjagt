@@ -859,6 +859,10 @@ const teamEmoji = name => TEAM_EMOJI[String(name || "").trim().toLowerCase()] ||
 // Zwei Hürden: erst der Dialog, dann das getippte Wort.
 const DANGER_WORD = "LÖSCHEN";
 const wordOk = v => ["löschen", "loeschen"].includes(String(v || "").trim().toLowerCase());
+// Bugjagd 07.11.2026, Fund 12: Fortschritt löschen nimmt über ON DELETE CASCADE alle Gruppenfotos mit
+const fotosWort = st => (st.photoCount || 0) === 1 ? "das Gruppenfoto" : `alle ${st.photoCount} Gruppenfotos`;
+const fotosMit = st => (st.photoCount || 0) > 0 ? ", dazu " + fotosWort(st) : "";
+const fotosVorher = st => (st.photoCount || 0) > 0 ? " Lade die Fotos vorher im Reiter Fotos herunter, wenn ihr sie behalten wollt." : "";
 const DANGER = {
   // Start: kein Löschen, aber nicht umkehrbar ohne "Fortschritt zurücksetzen", darum mit Rückfrage
   start: {
@@ -917,8 +921,8 @@ const DANGER = {
   reset: {
     when: st => st.status !== "registration",
     title: "Fortschritt zurücksetzen",
-    lead: "Check-ins, gelöste Rätsel, Ziffern, Standortdaten und Routen aller Teams werden gelöscht. Danach steht das Spiel wieder vor dem Start.",
-    keeps: "Teams, Teilnehmende und Stationen bleiben.",
+    lead: st => `Check-ins, gelöste Rätsel, Ziffern, Standortdaten und Routen aller Teams werden gelöscht${fotosMit(st)}. Danach steht das Spiel wieder vor dem Start.`,
+    keeps: st => "Teams, Teilnehmende und Stationen bleiben." + fotosVorher(st),
     btn: "Fortschritt zurücksetzen",
     async run() {
       S.admin.state = await rpc("admin_reset", { p_pin: S.admin.pin });
@@ -929,8 +933,8 @@ const DANGER = {
   people: {
     when: st => (st.participants || []).length > 0,
     title: "Alle Teilnehmenden löschen",
-    lead: st => `Alle ${(st.participants || []).length} angemeldeten Personen und alle Teams werden gelöscht, dazu Fortschritt und Standortdaten. Danach ist die Anmeldung wieder offen.`,
-    keeps: "Stationen, Rätsel, Ziffern und die PIN bleiben.",
+    lead: st => `Alle ${(st.participants || []).length} angemeldeten Personen und alle Teams werden gelöscht, dazu Fortschritt und Standortdaten${(st.photoCount || 0) > 0 ? " und " + fotosWort(st) : ""}. Danach ist die Anmeldung wieder offen.`,
+    keeps: st => "Stationen, Rätsel, Ziffern und die PIN bleiben." + fotosVorher(st),
     btn: "Alle Teilnehmenden löschen",
     async run() {
       S.admin.state = await rpc("admin_clear_participants", { p_pin: S.admin.pin });
@@ -967,10 +971,10 @@ const DANGER = {
   // der Koffer verlangt still die neue (Befund aus t4_ziffer_aenderung.mjs, 29.09.)
   ziffer: {
     when: () => false, wort: false,
-    title: () => "Ziffer von Station " + (S.admin.confirm?.pos || "") + " ändern",
+    title: () => S.admin.confirm?.route === "test" ? "Ziffer der Teststation ändern" : "Ziffer von Station " + (S.admin.confirm?.pos || "") + " ändern",
     lead: () => {
       const c = S.admin.confirm || {}, n = (c.teams || []).length;
-      return (n === 1 ? "Team " + c.teams[0] + " hat" : n + " Teams haben") + " Station " + c.pos + " schon gelöst und die Ziffer "
+      return (n === 1 ? "Team " + c.teams[0] + " hat" : n + " Teams haben") + (c.route === "test" ? " die Teststation" : " Station " + c.pos) + " schon gelöst und die Ziffer "
         + c.alt + " notiert. Nach dem Speichern verlangt der Koffer die " + c.neu + ". Sagt "
         + (n === 1 ? "dem Team" : "diesen Teams") + " die neue Ziffer, sonst scheitern sie am Koffer."
         + (n > 1 ? " Betroffen: " + c.teams.join(", ") + "." : "");
@@ -982,8 +986,14 @@ const DANGER = {
   testan: {
     when: () => false, wort: false,
     title: "Testmodus im laufenden Spiel einschalten",
-    lead: "Solange er an ist, prüft die App bei keinem Team mehr Entfernung und Antworten. Jedes Team kann überall einchecken und mit jeder Antwort weiterkommen.",
-    keeps: "Fortschritt, Ziffern und Plätze bleiben. Kommt im Testlauf ein Team ins Ziel, geht Ausschalten erst nach „Fortschritt zurücksetzen“. Gibt es schon Plätze, lehnt die App das Einschalten ab.",
+    // Bugjagd 07.11.2026, Fund 1: mit Teststation wechseln alle Teams die Route, ein Testplatz ist in Sekunden da
+    lead: st => st.testStation
+      ? "Alle Teams wechseln sofort auf die Teststation und sehen ihre echte Station nicht mehr, bis der Testmodus wieder aus ist. Dort prüft die App weder Entfernung noch Antwort: ein Team kann in wenigen Sekunden im Ziel sein und einen Platz bekommen."
+      : "Solange er an ist, prüft die App bei keinem Team mehr Entfernung und Antworten. Jedes Team kann überall einchecken und mit jeder Antwort weiterkommen.",
+    keeps: st => (st.testStation
+      ? "Der Fortschritt der echten Route bleibt gespeichert. Kommt im Testlauf ein Team ins Ziel, führt nur „Fortschritt zurücksetzen“ zurück, und das löscht den ganzen Fortschritt aller Teams, alle Plätze und alle Gruppenfotos."
+      : "Fortschritt, Ziffern und Plätze bleiben. Kommt im Testlauf ein Team ins Ziel, geht Ausschalten erst nach „Fortschritt zurücksetzen“.")
+      + " Gibt es schon Plätze, lehnt die App das Einschalten ab. Hat nur ein Team Probleme mit GPS: im Reiter Karte und Teams „Freischalten“ nehmen.",
     btn: "Testmodus einschalten",
     async run() { await ACT["a-test"]({ on: "1", bestaetigt: true }); return "Testmodus ist an."; }
   },
@@ -2081,7 +2091,17 @@ function stationZeile(s, st) {
           <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
         </div>`;
 }
-const koordZahlen = (a, b) => koordAusFeldern(a, b).map(x => parseFloat(String(x).replace(",", ".")));
+// Nur eine ganze Dezimalzahl zählt (Bugjagd 07.11.2026, Fund 7): parseFloat machte aus 50°05'15.0"N still 50
+const koordZahl = x => { const s = String(x).trim(); return /^[+-]?(\d+([.,]\d*)?|[.,]\d+)$/.test(s) ? Number(s.replace(",", ".")) : NaN; };
+const koordZahlen = (a, b) => koordAusFeldern(a, b).map(koordZahl);
+// Fehlertext für das Stationsformular oder null; beide Felder leer ist erlaubt (Station noch ohne Standort)
+function koordFehler(a, b) {
+  const roh = koordAusFeldern(a, b).map(x => String(x).trim()), [lat, lng] = roh.map(koordZahl);
+  if (!roh[0] && !roh[1]) return null;
+  if (isNaN(lat) || isNaN(lng)) return "Breite und Länge als Dezimalzahl eintragen, etwa 50.08750 und 14.42120, oder ein Paar wie 50.08750, 14.42120 ins Feld Breite einfügen. Grad, Minuten und Sekunden gehen nicht.";
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return "Die Breite muss zwischen -90 und 90 liegen, die Länge zwischen -180 und 180.";
+  return null;
+}
 function ekMitte() {
   const [lat, lng] = koordZahlen("e-lat", "e-lng");
   return isNaN(lat) || isNaN(lng) ? null : [lat, lng];
@@ -2459,6 +2479,9 @@ function viewAdmin() {
     out += `<div class="panel ${st.testMode ? "danger" : ""}"><h3>Testmodus</h3>
       <p class="small muted">Check-in ohne Entfernungsprüfung, auch ohne GPS,
       und jede Antwort zählt. Den Koffer-Code prüft die App weiter. Vor dem Event unbedingt ausschalten.</p>
+      ${st.testStation ? `<p class="small ${st.status === "running" && !st.testMode ? "" : "muted"}">Alle Teams spielen dann nur die Teststation: im laufenden Spiel
+      sehen sie ihre echte Station nicht mehr, und nach einem Platz im Testlauf führt nur „Fortschritt zurücksetzen“ zurück (löscht den ganzen Fortschritt).
+      Hat ein Team Probleme mit GPS, lieber „Freischalten“ im Reiter Karte und Teams.</p>` : ""}
       <button class="btn ${st.testMode ? "warn" : "alt"}" data-act="a-test" data-on="${st.testMode ? "0" : "1"}" data-ort="test">${st.testMode ? "Testmodus ausschalten" : "Testmodus einschalten"}</button>${msgBox("test")}</div>`;
   }
   if (A.tab === "fotos") {
@@ -2493,7 +2516,8 @@ function viewAdmin() {
       ["Teams", teams.length],
       ["Teilnehmende", people.length],
       ["Teams mit gespeicherter Position", teams.filter(t => t.position).length],
-      ["gelöste Stationen insgesamt", teams.reduce((n, t) => n + (t.solved || 0), 0)]
+      ["gelöste Stationen insgesamt", teams.reduce((n, t) => n + (t.solved || 0), 0)],
+      ["Gruppenfotos", st.photoCount || 0]
     ];
     out += `<div class="panel"><h3>Was gerade gespeichert ist</h3>
       <table>${zahlen.map(([k, v]) => `<tr><td>${k}</td><td style="text-align:right"><b>${v}</b></td></tr>`).join("")}</table>
@@ -3175,6 +3199,20 @@ const ACT = {
     const c = S.admin.confirm;
     if (!c) return false;
     if (brauchtWort(c.key) && !wordOk(val("dlgword"))) return false;
+    // Bugjagd 07.11.2026, Funde 2 und 3: ein zweites Leitungsgerät kann den Spielstand geändert haben, während dieser
+    // Dialog offen stand (der Takt zeichnet ihn nicht neu). Vor Beenden und Zurücksetzen frisch nachsehen.
+    if (c.key === "finish" || c.key === "reset") {
+      const frisch = await rpc("admin_state", { p_pin: S.admin.pin });
+      S.admin.state = frisch; S.admin.stateAt = Date.now();
+      const passt = c.key === "finish" ? frisch.status === "running" : frisch.status !== "registration";
+      if (!passt) {
+        S.admin.confirm = null;
+        S.msg = { type: "err", text: c.key === "finish"
+          ? "Nichts beendet: das Spiel läuft nicht mehr. Ein anderes Gerät hat den Spielstand inzwischen geändert."
+          : "Nichts zurückgesetzt: das Spiel steht schon vor dem Auslosen. Ein anderes Gerät hat den Spielstand inzwischen geändert." };
+        return;
+      }
+    }
     const r = await DANGER[c.key].run(c);
     S.admin.confirm = null;
     // Aktionen an einem Team melden sich in dessen Tabellenzeile, nicht oben außer Sicht
@@ -3217,19 +3255,22 @@ const ACT = {
     S.msg = null;
   },
   "a-edit"(d) {
-    S.admin.edit = d.id; S.admin.startEdit = null;
+    S.admin.edit = d.id; S.admin.startEdit = null; S.admin.formNr = (S.admin.formNr || 0) + 1;
     const s = alleStationen(S.admin.state).find(x => x.id === d.id);
     S.admin.karte = { aus: !s || s.revealStartM == null, team: null };
   },
   "a-cancel"() { S.admin.edit = null; S.admin.karte = null; },
-  "a-startpkt-edit"(d) { S.admin.startEdit = d.route; S.admin.edit = null; S.admin.karte = null; S.msg = null; },
+  "a-startpkt-edit"(d) { S.admin.startEdit = d.route; S.admin.edit = null; S.admin.karte = null; S.msg = null; S.admin.formNr = (S.admin.formNr || 0) + 1; },
   "a-startpkt-cancel"() { S.admin.startEdit = null; S.msg = null; },
   "a-startpkt-hier"() {
     const i = $("#sp-here"); if (i) i.textContent = "Suche Standort …";
+    // Die Ortung dauert bis zu 15 s: gilt nur für das Formular, das beim Tippen offen war (Bugjagd 07.11.2026, Fund 6)
+    const nr = S.admin.formNr, fuer = S.admin.startEdit, nochDa = () => S.admin.formNr === nr && S.admin.startEdit === fuer && $("#sp-lat") && $("#sp-lng");
     navigator.geolocation.getCurrentPosition(p => {
+      if (!nochDa()) return;
       $("#sp-lat").value = p.coords.latitude.toFixed(6); $("#sp-lng").value = p.coords.longitude.toFixed(6);
       const j = $("#sp-here"); if (j) j.textContent = `übernommen (±${Math.round(p.coords.accuracy)} m), jetzt speichern`;
-    }, e => { const j = $("#sp-here"); if (j) j.textContent = e.code === 1 ? "Standortzugriff abgelehnt." : "Standort nicht verfügbar."; },
+    }, e => { const j = nochDa() && $("#sp-here"); if (j) j.textContent = e.code === 1 ? "Standortzugriff abgelehnt." : "Standort nicht verfügbar."; },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
     return false;
   },
@@ -3237,6 +3278,7 @@ const ACT = {
     // ein eingefügtes Paar im Feld Breite gewinnt, auch wenn Länge noch den alten Wert hat
     const [lat, lng] = koordZahlen("sp-lat", "sp-lng");
     if (isNaN(lat) || isNaN(lng)) { S.msg = { type: "err", ort: "start", text: "Bitte Breite und Länge eintragen, oder ein Paar wie 52.47010, 13.46280 ins Feld Breite einfügen." }; return; }
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) { S.msg = { type: "err", ort: "start", text: "Die Breite muss zwischen -90 und 90 liegen, die Länge zwischen -180 und 180." }; return; }
     S.admin.state = await rpc("admin_set_start", { p_pin: S.admin.pin, p_route: d.route, p_name: val("sp-name"), p_lat: lat, p_lng: lng });
     S.admin.startEdit = null; S.msg = { type: "ok", text: "Start gespeichert." };
   },
@@ -3260,7 +3302,10 @@ const ACT = {
   },
   "a-here"() {
     const info = $("#e-here"); if (info) info.textContent = "Suche Standort …";
+    // wie a-startpkt-hier: ein später Fix landet nicht im Formular einer anderen (oder neu geöffneten) Station
+    const nr = S.admin.formNr, fuer = S.admin.edit, nochDa = () => S.admin.formNr === nr && S.admin.edit === fuer && $("#e-lat") && $("#e-lng");
     navigator.geolocation.getCurrentPosition(p => {
+      if (!nochDa()) return;
       $("#e-lat").value = p.coords.latitude.toFixed(6);
       $("#e-lng").value = p.coords.longitude.toFixed(6);
       if (ekarte && ekMitte()) { ekZeichnen(); ekarte.map.setView(ekMitte()); }
@@ -3269,11 +3314,14 @@ const ACT = {
       if (i) i.innerHTML = acc > Math.max(20, radius / 2)
         ? `<span class="fehlt">Ungenau (±${acc} m). Kurz warten und noch einmal tippen, am besten mit dem Handy statt dem Tablet.</span>`
         : `übernommen (±${acc} m), jetzt speichern`;
-    }, e => { const i = $("#e-here"); if (i) i.textContent = e.code === 1 ? "Standortzugriff abgelehnt." : "Standort nicht verfügbar."; },
+    }, e => { const i = nochDa() && $("#e-here"); if (i) i.textContent = e.code === 1 ? "Standortzugriff abgelehnt." : "Standort nicht verfügbar."; },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
     return false;
   },
   async "a-save"(d) {
+    // Ungültige Koordinaten nicht still als null speichern: das löschte einen gültigen Standort
+    const kf = koordFehler("e-lat", "e-lng");
+    if (kf) { S.msg = { type: "err", text: kf }; return; }
     const [lat, lng] = koordZahlen("e-lat", "e-lng");
     // Eine leere Ziffer würde still zur 0: lieber nachfragen
     const ziffer = val("e-digit").trim();
@@ -3290,14 +3338,16 @@ const ACT = {
     };
     // Neue Ziffer, und Teams haben die Station schon gelöst: erst nachfragen. Alle laufen dieselbe Route,
     // gelöst hat Station p also, wer mindestens p Stationen gelöst hat.
+    // t.solved zählt nur die aktive Route: eine Station der anderen Route hat niemand gelöst (Bugjagd 07.11.2026, Fund 4)
     const st = S.admin.state, alt = alleStationen(st).find(s => String(s.id) === String(d.id));
-    const geloest = alt && st.status !== "registration" && st.status !== "drawn" && alt.digit !== daten.p_digit
+    const aktivRoute = alt && (alt.route || "echt") === (st.route || "echt");
+    const geloest = alt && aktivRoute && st.status !== "registration" && st.status !== "drawn" && alt.digit !== daten.p_digit
       ? (st.teams || []).filter(t => (t.solved || 0) >= alt.position).map(t => t.name) : [];
     if (geloest.length) {
       // Der Dialog zeichnet das Formular neu: das Getippte für "Abbrechen" aufheben
       const felder = {};
       $("#app").querySelectorAll("input[id^='e-'], textarea[id^='e-']").forEach(el => { felder[el.id] = el.value; });
-      S.admin.confirm = { key: "ziffer", pos: alt.position, alt: alt.digit, neu: daten.p_digit, teams: geloest, daten, felder };
+      S.admin.confirm = { key: "ziffer", pos: alt.position, route: alt.route || "echt", alt: alt.digit, neu: daten.p_digit, teams: geloest, daten, felder };
       S.msg = null;
       return;
     }
@@ -4330,7 +4380,8 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && S.team.hilfe) { S.team.hilfe = false; render(); return; }
   if (e.key === "Escape" && S.gross) { S.gross = null; render(); return; }
   if (e.key === "Escape" && S.gps.kal) { kalEnde(false); render(); return; }
-  if (e.key === "Escape" && S.admin.confirm) { S.admin.confirm = null; render(); return; }
+  // wie "Abbrechen": das Getippte im Formular dahinter kommt zurück (Bugjagd 07.11.2026, Fund 5)
+  if (e.key === "Escape" && S.admin.confirm) { ACT["a-dlg-cancel"](); render(); return; }
   if (e.key === "Escape" && S.admin.full) { S.admin.full = false; render(); return; }
   if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
   if (e.target.id === "dlgword") { const ok = $("#dlgok"); if (ok && !ok.disabled) ok.click(); return; }

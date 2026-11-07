@@ -75,7 +75,8 @@ Alle Befehle im Repo-Ordner, im Vordergrund. `lauf` dauert etwa 17 Minuten
    Spielt alle Migrationen, die Prager Stationen, Testlösungen und die PIN
    ein. Bricht es an einer Migration ab, Datei und Fehlermeldung notieren und
    der Ursache nachgehen (frisches Projekt: fehlende Rolle, Erweiterung oder
-   eine Migration, die Daten voraussetzt). Danach kann der Token im
+   eine Migration, die Daten voraussetzt). Nach dem Beheben `einrichten` erneut aufrufen: es merkt sich
+   eingespielte Migrationen in `stresstest.migrationen` und spielt nur die fehlenden ein (seit 07.11.2026). Danach kann der Token im
    Dashboard zurückgezogen werden.
 2. **Lauf 1, Eventlast:** `python tools/stresstest.py lauf`
    (100 Handys, 12 Teams, Takt 10 s, 2 Tablets der Spielleitung).
