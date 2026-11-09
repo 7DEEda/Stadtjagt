@@ -500,6 +500,8 @@
   PERSONEN.forEach(p => { ANGEMELDET[norm(p.name)] = p.token; });
   const fehler = msg => { const e = new Error(msg); e.rpc = true; throw e; };
   const pin = a => { if (a.p_pin !== "4711") fehler("Falsche PIN."); };
+  // Notweg-Schlüssel (09.11.2026): gültige Schlüssel mit ihrem Team-Code; ein Test kann einen löschen (abgelaufen)
+  const NOTWEG = window.__NOTWEG = { n: 0, gilt: {} };
   const fuchsByCode = code => { const t = TEAMS.find(x => x.code === String(code || "").trim().toUpperCase()); if (!t || !mitTeams()) fehler("Unbekannter Team-Code."); return t; };
 
   // W5 (03.11.2026): die acht Eingaben, die der Server nur noch mit dem Schlüssel der Teamleitung oder der Admin-PIN annimmt
@@ -628,6 +630,9 @@
       WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
     admin_delete_photos: a => { pin(a); ANDERE_FOTOS.length = 0; Object.keys(FOTOS).forEach(k => delete FOTOS[k]); return adminState(); },
     admin_state: a => { pin(a); return adminState(); },
+    admin_notweg: a => { pin(a); const t = fuchsByCode(a.p_code), token = "nw-mock-" + t.code + "-" + (++NOTWEG.n);
+      NOTWEG.gilt[token] = t.code; return { token, team: t.name, giltBis: new Date(Date.now() + 12 * 3600e3).toISOString() }; },
+    notweg_ende: a => { delete NOTWEG.gilt[a.p_token]; return null; },
     // Nachtrag 32, Audit 25.10.: mit Plätzen in keinem Zustand umschalten, weder aus noch an
     admin_set_test_mode: a => { pin(a);
       if (!!a.p_on !== WELT.testMode && TEAMS.some(t => t.place))
@@ -686,6 +691,9 @@
     // __weg: nur diese Aufrufe scheitern wie im Funkloch. __halten: diese Aufrufe werden beantwortet (Stand zum Sendezeitpunkt),
     // die Antwort kommt aber erst nach window.__freigeben()
     if (passt(window.__weg)) throw new TypeError("Prüfstand: Funkloch");
+    // Datenbank ohne die Migration des Notweg-Schlüssels (__OHNE_NOTWEG), oder ganz ohne W5
+    if ((fn === "admin_notweg" || fn === "notweg_ende") && (window.__OHNE_NOTWEG || window.__OHNE_W5 || window.__ALTE_DB))
+      return antwort(404, { code: "PGRST202", message: "Could not find the function public." + fn + " in the schema cache" });
     try {
       // W5: __EINGABE_ARGS sammelt die Argumente der Eingaben. __ALTE_DB oder __OHNE_W5: Datenbank ohne die Migration
       // (PGRST202 bei p_token oder p_pin). __W5: prüfen wie der Server (Schlüssel der Leitung, sonst PIN, sonst abgelehnt);
@@ -695,8 +703,11 @@
         if ((window.__ALTE_DB || window.__OHNE_W5) && ("p_token" in args || "p_pin" in args))
           return antwort(404, { code: "PGRST202", message: "Could not find the function public." + fn + " in the schema cache" });
         if (window.__W5) {
-          const t = fuchsByCode(args.p_code), l = person(t.leaderName), leitet = !!(args.p_token && l && args.p_token === l.token);
-          if (!leitet && !String(args.p_pin || "").trim()) fehler("Eingeben kann nur die Teamleitung auf ihrem eigenen Handy. Wenn du die Leitung bist: App neu laden.");
+          const t = fuchsByCode(args.p_code), l = person(t.leaderName), leitet = !!(args.p_token && l && args.p_token === l.token)
+            || !!(args.p_token && !window.__OHNE_NOTWEG && NOTWEG.gilt[args.p_token] === t.code);
+          if (!leitet && !String(args.p_pin || "").trim()) fehler(String(args.p_token || "").startsWith("nw-")
+            ? "Der Notweg-Schlüssel gilt nicht mehr. Bitte die Admin-PIN noch einmal eingeben."
+            : "Eingeben kann nur die Teamleitung auf ihrem eigenen Handy. Wenn du die Leitung bist: App neu laden.");
           if (!leitet) pin(args);
         }
       }

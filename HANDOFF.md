@@ -2238,6 +2238,9 @@ ausgeführt, das pausierte Testprojekt hat das Schema vor W5 (siehe `tools/STRES
 Danach können Handys mit der alten App (Service Worker, nicht neu geladen) nichts mehr eingeben, bis sie neu laden
 („Neue Version laden“ oder Seite neu öffnen); Lesen geht weiter. Darum nicht während eines laufenden Spiels einspielen.
 
+**Entschieden 09.11.: teamgebundener Notweg-Schlüssel**, gebaut auf `bugjagd-nov` (Abschnitt „Notweg-Schlüssel“
+unten, SPIEL.md §26). Der Rest dieses Absatzes ist der Stand vom 03. und 07.11.
+
 **Offen, Friedrich entscheidet:** der Notweg. Ohne Schlüssel gibt nur noch ein Gerät mit der Admin-PIN ein, also das
 Tablet der Spielleitung. Das gilt auch für eine Leitung ohne eigenes Handy (von der Spielleitung gesetzt): sie kann
 nur am Tablet mitspielen. Soll das so bleiben, oder braucht es einen zweiten Weg (etwa die Leitung auf ein anderes
@@ -2283,15 +2286,31 @@ ab. **Beide Migrationen sind NICHT eingespielt.**
 3. `python tools/pruefstand/bugjagd3_db.py` (Probelauf, zuletzt 102 Prüfungen grün; nach Schritt 2 spielt er W5
    noch einmal davor ein, das schadet nicht), dann
    `python tools/sql.py supabase/migrations/20261107090000_bugjagd3.sql`.
-4. `python tools/pruefstand/rechte_db.py` (zuletzt 45 grün) und `python tools/schema_abzug.py`, den Abzug committen.
-5. Einmal über die API prüfen: ein falscher Team-Code hinterlässt eine Zeile in `team_code_fehlversuche`
+4. Notweg-Schlüssel: `python tools/pruefstand/notweg_db.py` (zuletzt 50 grün), dann
+   `python tools/sql.py supabase/migrations/20261109090000_notweg_schluessel.sql` (bricht ohne W5 und bugjagd3 ab).
+   Danach am Tablet den Notweg einmal ausprobieren: Code und PIN, eine Eingabe, `#/admin` fragt nach der PIN.
+5. `python tools/pruefstand/rechte_db.py` (zuletzt 49 grün) und `python tools/schema_abzug.py`, den Abzug committen.
+6. Einmal über die API prüfen: ein falscher Team-Code hinterlässt eine Zeile in `team_code_fehlversuche`
    (PostgREST schreibt bei `response.status` 400 laut Doku fest, im Probelauf nicht prüfbar), die App zeigt weiter
    „Unbekannter Team-Code.“; die Testzeile danach löschen.
-6. Den Geräte-Test neu veröffentlichen: `python tools/geraetetest_veroeffentlichen.py` (nimmt jetzt `vendor/` mit).
+7. Den Geräte-Test neu veröffentlichen: `python tools/geraetetest_veroeffentlichen.py` (nimmt jetzt `vendor/` mit).
 
 **Zu entscheiden:** Grenze und Sperre der Bremse (30 je 10 Minuten und Adresse, gesperrt auch für richtige Codes;
 Mobilfunk-NAT kann Unbeteiligte mitsperren), ob `admin_start` bei abgelaufenem Löschdatum nur warnt (so gebaut)
 oder ablehnt.
+
+## Notweg-Schlüssel (09.11.2026, Zweig `bugjagd-nov`, nicht gemerged)
+
+Befund S1 der W5-Sicherheitsprüfung, auf Friedrichs Ja gebaut (SPIEL.md §26): Das Notweg-Tablet tauscht die Admin-PIN
+gegen einen Schlüssel, der 12 Stunden lang nur Eingaben für ein Team erlaubt; die PIN bleibt nicht im Tab, `#/admin`
+bleibt zu. Neue Migration `20261109090000_notweg_schluessel.sql` (Tabelle `notweg_schluessel`, `admin_notweg`,
+`notweg_ende`, `team_eingabe` mit Bremse und Schlüssel), **nicht eingespielt**; Einspielen als Schritt 4 in der
+Liste oben. Ohne die Migration läuft der Notweg wie vorher mit der PIN im Tab, darum die Migration bald nach der App
+einspielen. Widerruf: Abmelden am Tablet, Ablauf nach 12 Stunden, Team löschen, oder eine neue Admin-PIN setzen
+(`admin_set_pin` löscht alle Schlüssel). Offen bleibt, ob 12 Stunden passen. Unabhängige Prüfung (Opus, 09.11.): zwei
+Klammerfehler in der App gefunden und behoben, kein Befund in der SQL-Seite; nicht umgesetzt: eine Bremse für falsche
+Admin-PINs (offener Punkt vom 07.11., gilt auch für `admin_state`), und die erste Eingabe nach Ablauf geht verloren
+(danach die Seite „Admin-PIN fehlt“).
 
 ## Bugjagd 07.11.2026 (Zweig `bugjagd-nov`, nicht gemerged)
 

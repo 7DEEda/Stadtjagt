@@ -1206,9 +1206,10 @@ Migration `20261103090000_w5_eingaben_schluessel.sql`, Prüfung `tools/pruefstan
   „Falsche PIN“ (die PIN wurde geändert), vergisst `eingabeRpc` sie (`pinWeg`) und wirft den Fehler weiter; das
   Notweg-Tablet zeigt dann „Admin-PIN fehlt“. Kennt die Datenbank die Parameter nicht (PGRST202, Migration fehlt), einmal ohne; die älteren Rückfälle
   (`p_position`, `p_kompass`) bleiben davor.
-- **Notweg:** Unter dem Team-Code steht das Feld „Admin-PIN“, solange der Tab die PIN nicht kennt. `t-login` prüft sie
-  über `admin_state` (`notwegPin`) und merkt sie wie die Anmeldung der Spielleitung in `sessionStorage` (`sj.pin`);
-  damit ist der Tab auch für `#/admin` angemeldet. Abmelden am Notweg (`t-logout` mit `sj.hand`) löscht die PIN aus
+- **Notweg:** Unter dem Team-Code steht das Feld „Admin-PIN“, solange der Tab die PIN nicht kennt. Seit 09.11.
+  tauscht `t-login` sie gegen einen Notweg-Schlüssel für dieses Team (§26). Bis dahin prüfte `t-login` sie
+  über `admin_state` (`notwegPin`) und merkte sie wie die Anmeldung der Spielleitung in `sessionStorage` (`sj.pin`);
+  damit war der Tab auch für `#/admin` angemeldet (so noch als Rückfall ohne die Migration von §26). Abmelden am Notweg (`t-logout` mit `sj.hand`) löscht die PIN aus
   dem Tab (07.11.). Tippt die Teamleitung den eigenen Code auf dem eigenen Handy
   (Name und Schlüssel), braucht es keine PIN. Hat ein Notweg-Tablet (`sj.hand`) die PIN verloren (Browser neu
   gestartet), zeigt `viewTeam` statt der Ansicht „Admin-PIN fehlt“ mit PIN-Feld (`t-pin`) und Abmelden.
@@ -1347,3 +1348,32 @@ Behoben auf dem Zweig `bugjagd-nov` die elf ohne offene Entscheidung, Fund 1 nur
 
 `mock.js`: `window.__WELT` (Spielstand im Speicher der Seite), damit `bugjagd4.py` ein zweites Leitungsgerät spielen
 kann. Prüfungen am 07.11.: `bugjagd4_db.py` 33 (ohne Migration 14 von 33 FEHLT), `bugjagd3_db.py` 102, `rechte_db.py` 45, `w5_eingaben_db.py` 139 (alle zurückgerollt); im Container `bugjagd4.py` 54 ok (gegen das alte `index.html` 10 FEHLT, dann Abbruch), `bugjagd3.py` 28, `bugjagd2.py` 55, `ziffer.py` 8, `teststation.py` 21, `mappe.py` 59, `admin.py` 23, `review1510.py` 50, `w5.py` 44. `tools/stresstest.py` nur Syntax, `abschluss.py` unter Windows ohne Chrome.
+
+---
+
+## 26. Notweg-Schlüssel (09.11.2026)
+
+Befund S1 der W5-Sicherheitsprüfung (§23): Am Notweg-Tablet lag die Admin-PIN im `sessionStorage`, der Tab war damit
+auch für `#/admin` angemeldet. Friedrich hat den Vorschlag des Prüfers angenommen: Das Tablet tauscht die PIN einmal
+gegen einen Schlüssel, der nur Eingaben für dieses eine Team erlaubt.
+
+- **Server** (Migration `20261109090000_notweg_schluessel.sql`, nach W5 und bugjagd3): Tabelle `notweg_schluessel`
+  (token, team_id, erstellt, gilt_bis; für anon gesperrt, ein gelöschtes Team nimmt seine Schlüssel mit).
+  `admin_notweg(p_pin, p_code)` prüft die PIN und den Code, räumt abgelaufene Schlüssel weg und gibt
+  `{token, team, giltBis}` zurück; der Schlüssel beginnt mit `nw-` und gilt 12 Stunden. `notweg_ende(p_token)` löscht
+  genau diesen Schlüssel. `team_eingabe` nimmt ihn als `p_token` neben dem Schlüssel der Leitung an. Ein abgelaufener,
+  gelöschter oder fremder Notweg-Schlüssel: „Der Notweg-Schlüssel gilt nicht mehr. Bitte die Admin-PIN noch einmal
+  eingeben.“ Die Admin-PIN als `p_pin` bleibt erlaubt (ältere App). `admin_set_pin` löscht alle Notweg-Schlüssel:
+  so widerruft die Spielleitung ein verlorenes Tablet (eine neue PIN setzen).
+- **App:** `notwegFreigabe(pin, code)` ersetzt `notwegPin`. `t-login` (mit der getippten PIN oder der PIN, die der Tab
+  schon kennt) und `t-pin` holen den Schlüssel und merken ihn in `localStorage` (`sj.notweg`); die PIN bleibt nicht im
+  Tab, `#/admin` fragt weiter nach ihr. Der Schlüssel übersteht einen Neustart des Browsers, die Seite „Admin-PIN
+  fehlt“ kommt erst, wenn er abgelaufen ist (`eingabeRpc` vergisst ihn bei der Meldung). `eingabeRpc` schickt am
+  Notweg-Tablet den Schlüssel als `p_token`, keine PIN. Abmelden ruft `notweg_ende`; überall, wo `sj.hand` fällt,
+  fällt auch `sj.notweg`, und ein neuer Login löscht einen alten Schlüssel (auch auf dem Server).
+- **Rückfall:** Kennt die Datenbank `admin_notweg` nicht (PGRST202, Migration fehlt), läuft der Notweg wie vorher:
+  PIN über `admin_state` prüfen, im Tab merken, als `p_pin` schicken.
+- **Prüfung:** `notweg_db.py` (50 Prüfungen, mit `--ohne` Abbruch), `rechte_db.py` mit der neuen Migration und der
+  Tabelle, `w5.py` Teile 2 bis 4 auf den Schlüssel umgestellt, Teil 9 (geänderte PIN) auf einer Datenbank ohne
+  Schlüssel, neu Teil 10 (Neustart, abgelaufen, fremdes Team, Abmelden, Rückfall, falsche PIN). Mock:
+  `admin_notweg`, `notweg_ende`, `window.__NOTWEG`, `__OHNE_NOTWEG`.

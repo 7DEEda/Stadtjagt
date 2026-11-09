@@ -22,7 +22,7 @@ MIGRATIONEN = ["20261004090000_current_station_sperren.sql", "20261015090000_nam
                "20261016090000_eingaben_wiederholen.sql", "20261017090000_rueckblick_steuerung.sql",
                "20261025090000_audit.sql", "20261029120000_rollen_akku.sql",
                "20261103090000_w5_eingaben_schluessel.sql", "20261107090000_bugjagd3.sql",
-               "20261107100000_bugjagd4.sql"]
+               "20261107100000_bugjagd4.sql", "20261109090000_notweg_schluessel.sql"]
 MIGRATION = [sql.REPO / "supabase" / "migrations" / n for n in MIGRATIONEN]
 
 # Interne Hilfsfunktionen: dürfen weder anon noch authenticated ausführen
@@ -48,7 +48,8 @@ begin
   end loop;
   -- die Spielfunktionen selbst bleiben für anon offen (jede Überladung, die es gibt)
   foreach f in array array['team_state', 'lookup_participant', 'submit_answer', 'check_in', 'register_participant', 'submit_final',
-                           'reveal_tip', 'team_selfie', 'team_selfie_skip', 'team_set_leader', 'report_position', 'rb_befehl', 'rb_poll', 'rb_status_setzen', 'rb_status_holen', 'rb_ende'] loop
+                           'reveal_tip', 'team_selfie', 'team_selfie_skip', 'team_set_leader', 'report_position', 'rb_befehl', 'rb_poll', 'rb_status_setzen', 'rb_status_holen', 'rb_ende',
+                           'admin_notweg', 'notweg_ende'] loop
     if not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = f) then
       raise exception 'PROBE FEHLT: Funktion % gibt es nicht', f; end if;
     if exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = f
@@ -84,6 +85,13 @@ begin
   foreach r in array array['anon', 'authenticated'] loop
     if has_table_privilege(r, 'public.team_code_fehlversuche', 'select') or has_table_privilege(r, 'public.team_code_fehlversuche', 'insert') then
       raise exception 'PROBE FEHLT: % darf team_code_fehlversuche lesen oder schreiben', r; end if;
+    v_n := v_n + 1;
+  end loop;
+  -- Notweg-Schlüssel 09.11.: die Tabelle ist für anon und authenticated gesperrt, der Weg sind admin_notweg und notweg_ende
+  if to_regclass('public.notweg_schluessel') is null then raise exception 'PROBE FEHLT: Tabelle notweg_schluessel gibt es nicht'; end if;
+  foreach r in array array['anon', 'authenticated'] loop
+    if has_table_privilege(r, 'public.notweg_schluessel', 'select') or has_table_privilege(r, 'public.notweg_schluessel', 'insert') then
+      raise exception 'PROBE FEHLT: % darf notweg_schluessel lesen oder schreiben', r; end if;
     v_n := v_n + 1;
   end loop;
   raise exception 'PROBELAUF_OK: % Prüfungen bestanden, alles zurückgenommen', v_n;

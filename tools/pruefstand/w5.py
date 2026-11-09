@@ -11,8 +11,14 @@ PIN (leer, falsch, richtig), 3 Notweg mit PIN schon im Tab: kein PIN-Feld, 4 Not
 (Seite "Admin-PIN fehlt"), 5 Teamleitung tippt den eigenen Code: ohne PIN, 6 Datenbank ohne die Migration (PGRST202:
 einmal ohne p_token und p_pin), 7 Quelltext: keine der acht Eingaben ruft rpc() direkt, 8 Bildschirmfotos,
 9 Sicherheitsprüfung 07.11.: Leitungs-Handy mit PIN im Tab schickt sie nicht (H4), geänderte PIN am Notweg-Tablet
-führt zur Seite "Admin-PIN fehlt" (S2), Abmelden nimmt die PIN mit, Text der Ablehnung mit "App neu laden" (H1).
-Haken in mock.js: window.__W5 (prüft wie der Server), __OHNE_W5 (Datenbank ohne Migration), __EINGABE_ARGS.
+führt zur Seite "Admin-PIN fehlt" (S2), Abmelden nimmt die PIN mit (beides auf einer Datenbank ohne Notweg-Schlüssel),
+Text der Ablehnung mit "App neu laden" (H1), 10 Notweg-Schlüssel (09.11.): Schlüssel übersteht den Neustart des
+Browsers, abgelaufener Schlüssel führt zur Seite "Admin-PIN fehlt", neues Team holt einen neuen Schlüssel, Abmelden
+löscht ihn auf dem Server, Datenbank ohne admin_notweg: PIN im Tab wie vorher.
+Seit dem Notweg-Schlüssel (09.11.) tauscht der Notweg die PIN gegen einen Schlüssel für ein Team (sj.notweg); die PIN
+bleibt nicht im Tab (Teile 2 bis 4).
+Haken in mock.js: window.__W5 (prüft wie der Server), __OHNE_W5 (Datenbank ohne Migration), __OHNE_NOTWEG (ohne
+admin_notweg), __NOTWEG (gültige Schlüssel), __EINGABE_ARGS.
 Im Vordergrund mit Timeout aufrufen, etwa `timeout 300 python tools/pruefstand/w5.py`. Am Ende steht OK oder FEHLT.
 """
 import functools
@@ -149,12 +155,16 @@ with sync_playwright() as pw:
         pg.click("[data-act=t-login]")
         pruef(warte(pg, "S.team.code === 'FUCHS-4821' && S.team.state"), "richtige PIN: angemeldet")
         pruef(pg.evaluate("localStorage.getItem('sj.hand')") == "1", "Merker sj.hand gesetzt")
-        pruef(pg.evaluate("sessionStorage.getItem('sj.pin')") == "4711" and pg.evaluate("localStorage.getItem('sj.pin')") is None,
-              "PIN nur im sessionStorage")
+        nw = pg.evaluate("localStorage.getItem('sj.notweg')")
+        pruef(bool(nw) and nw.startswith("nw-"), f"Notweg-Schlüssel gemerkt ({nw!r})")
+        pruef(pg.evaluate("sessionStorage.getItem('sj.pin')") is None and pg.evaluate("localStorage.getItem('sj.pin')") is None
+              and pg.evaluate("S.admin.pin") is None, "die PIN bleibt nicht im Tab (S1)")
         pg.evaluate("window.__EINGABE_ARGS = []")
         raus = pg.evaluate(ALLE_JS)
-        pruef(all(v != W5 and v != "Falsche PIN." for v in raus.values()), f"mit PIN gehen alle acht durch ({raus})")
-        pruef(all(x.get("p_pin") == "4711" for x in args(pg)), "jede Eingabe trägt die PIN")
+        pruef(all(v is None for v in raus.values()), f"mit dem Schlüssel gehen alle acht durch ({raus})")
+        pruef(all(x.get("p_token") == nw and x.get("p_pin") is None for x in args(pg)), "jede Eingabe trägt den Schlüssel, keine PIN")
+        pg.evaluate("location.hash = '#/admin'")
+        pruef(warte(pg, "document.querySelector('#apin')"), "#/admin im selben Tab fragt nach der PIN")
         pg.close()
 
         # Ohne PIN von Hand in die Leitungsansicht gezwungen: der Server (hier der Mock) lehnt ab
@@ -174,6 +184,10 @@ with sync_playwright() as pw:
         pruef(pg.locator("#tpin").count() == 0, "kein PIN-Feld, die PIN ist schon da")
         pg.click("[data-act=t-login]")
         pruef(warte(pg, "S.team.code === 'FUCHS-4821' && S.team.state"), "angemeldet ohne zweite PIN")
+        pruef(str(pg.evaluate("localStorage.getItem('sj.notweg')") or "").startswith("nw-"), "PIN aus dem Tab gegen den Schlüssel getauscht")
+        pg.evaluate("window.__EINGABE_ARGS = []")
+        pg.evaluate(ALLE_JS)
+        pruef(all(x.get("p_pin") is None and str(x.get("p_token")).startswith("nw-") for x in args(pg)), "Eingaben mit Schlüssel, ohne PIN")
         pg.close()
 
     if an(4):
@@ -192,7 +206,9 @@ with sync_playwright() as pw:
         pg.press("#tpin", "Enter")
         pruef(warte(pg, "document.querySelector('.ph')"), "richtige PIN (Enter): Ansicht wieder da")
         pruef(pg.evaluate("S.msg") is None, "Meldung weg")
-        pg.evaluate("S.admin.pin = null; render()")
+        pruef(str(pg.evaluate("localStorage.getItem('sj.notweg')") or "").startswith("nw-") and pg.evaluate("S.admin.pin") is None,
+              "Schlüssel statt PIN")
+        pg.evaluate("localStorage.removeItem('sj.notweg'); S.admin.pin = null; render()")
         pg.click("[data-act=t-logout]")
         pruef(pg.evaluate("S.team.code") is None and pg.evaluate("localStorage.getItem('sj.hand')") is None, "Abmelden von der PIN-Seite")
         pg.close()
@@ -266,8 +282,8 @@ with sync_playwright() as pw:
         pruef(all(v != W5 for v in raus.values()), f"Eingaben gehen weiter mit dem Schlüssel ({raus})")
         pruef(pg.evaluate("S.admin.pin") == "4711", "PIN im Tab bleibt (nur nicht mitgeschickt)")
         pg.close()
-        # S2: Notweg-Tablet, die PIN wurde inzwischen geändert
-        pg = neu(b, "mitglied-auf-teamleitung")
+        # S2: Notweg-Tablet, die PIN wurde inzwischen geändert (Datenbank ohne Notweg-Schlüssel: PIN im Tab)
+        pg = neu(b, "mitglied-auf-teamleitung", "window.__W5 = true; window.__OHNE_NOTWEG = true;")
         notweg_oeffnen(pg)
         pg.fill("#tpin", "4711")
         pg.click("[data-act=t-login]")
@@ -307,6 +323,74 @@ with sync_playwright() as pw:
         pg.evaluate("S.team.code = 'FUCHS-4821'; localStorage.setItem('sj.code', 'FUCHS-4821')")
         r = pg.evaluate("async () => { try { await eingabeRpc('reveal_tip', { p_code: 'FUCHS-4821' }); return 'ok'; } catch (e) { return e.message; } }")
         pruef(r == W5 and r.endswith("Wenn du die Leitung bist: App neu laden."), f"Ablehnung mit Hinweis aufs Neuladen ({r!r})")
+        pg.close()
+
+    if an(10):
+        print("10 Notweg-Schlüssel (09.11.2026)")
+        pg = neu(b, "mitglied-auf-teamleitung")
+        notweg_oeffnen(pg)
+        pg.fill("#tpin", "4711")
+        pg.click("[data-act=t-login]")
+        pruef(warte(pg, "S.team.code === 'FUCHS-4821' && S.team.state"), "Notweg angemeldet")
+        nw = pg.evaluate("localStorage.getItem('sj.notweg')")
+        # Neustart des Browsers: sessionStorage und S.admin weg, localStorage bleibt
+        pg.evaluate("sessionStorage.clear(); S.admin.pin = null; render()")
+        pruef(pg.locator(".ph").count() == 1 and "Admin-PIN fehlt" not in pg.inner_text("#app"), "nach Neustart: Ansicht bleibt, keine PIN nötig")
+        # Schlüssel abgelaufen (auf dem Server weg)
+        pg.evaluate(f"delete window.__NOTWEG.gilt[{nw!r}]")
+        r = pg.evaluate("async () => { try { await eingabeRpc('reveal_tip', { p_code: S.team.code }); return 'ok'; } catch (e) { return e.message; } }")
+        pruef("Notweg-Schlüssel gilt nicht mehr" in r, f"abgelaufen: Meldung ({r!r})")
+        pruef(pg.evaluate("localStorage.getItem('sj.notweg')") is None, "abgelaufener Schlüssel vergessen")
+        pg.evaluate("render()")
+        pruef("Admin-PIN fehlt" in pg.inner_text("#app") and pg.locator("#tpin").count() == 1, "danach Seite „Admin-PIN fehlt“")
+        pg.fill("#tpin", "4711")
+        pg.click("[data-act=t-pin]")
+        pruef(warte(pg, "document.querySelector('.ph')"), "PIN: neuer Schlüssel, Ansicht wieder da")
+        nw2 = pg.evaluate("localStorage.getItem('sj.notweg')")
+        pruef(bool(nw2) and nw2 != nw, "neuer Schlüssel")
+        # Schlüssel eines anderen Teams gilt hier nicht
+        pg.evaluate("window.__NOTWEG.gilt['nw-fremd'] = 'ADLER-0000'; localStorage.setItem('sj.notweg', 'nw-fremd')")
+        r = pg.evaluate("async () => { try { await eingabeRpc('reveal_tip', { p_code: S.team.code }); return 'ok'; } catch (e) { return e.message; } }")
+        pruef("Notweg-Schlüssel gilt nicht mehr" in r, f"Schlüssel eines anderen Teams abgelehnt ({r!r})")
+        pg.evaluate("render()")
+        pg.fill("#tpin", "4711")
+        pg.click("[data-act=t-pin]")
+        warte(pg, "document.querySelector('.ph')")
+        nw3 = pg.evaluate("localStorage.getItem('sj.notweg')")
+        # Abmelden löscht den Schlüssel auf dem Server
+        pg.evaluate("ACT['t-logout'](); render()")
+        pruef(warte(pg, f"!({nw3!r} in window.__NOTWEG.gilt)"), "Abmelden: Schlüssel auf dem Server gelöscht")
+        pruef(pg.evaluate("localStorage.getItem('sj.notweg')") is None and pg.evaluate("localStorage.getItem('sj.hand')") is None,
+              "Abmelden: Schlüssel und Merker im Gerät weg")
+        pg.close()
+        # Die Teamleitung tippt danach ihren eigenen Code: ein alter Schlüssel fällt weg
+        pg = neu(b, "leitung-ohne-code")
+        warte(pg, "S.team.code === 'FUCHS-4821'")
+        pg.evaluate("ACT['t-logout'](); localStorage.setItem('sj.notweg', 'nw-alt'); render()")
+        notweg_oeffnen(pg)
+        pg.click("[data-act=t-login]")
+        pruef(warte(pg, "S.team.code === 'FUCHS-4821' && S.team.state"), "Leitung mit eigenem Code angemeldet")
+        pruef(pg.evaluate("localStorage.getItem('sj.notweg')") is None, "kein Notweg-Schlüssel auf dem Leitungs-Handy")
+        pg.close()
+        # Datenbank ohne admin_notweg: wie vorher, die PIN im Tab
+        pg = neu(b, "mitglied-auf-teamleitung", "window.__W5 = true; window.__OHNE_NOTWEG = true;")
+        notweg_oeffnen(pg)
+        pg.fill("#tpin", "4711")
+        pg.click("[data-act=t-login]")
+        pruef(warte(pg, "S.team.code === 'FUCHS-4821' && S.team.state"), "ohne admin_notweg: angemeldet")
+        pruef(pg.evaluate("localStorage.getItem('sj.notweg')") is None and pg.evaluate("sessionStorage.getItem('sj.pin')") == "4711",
+              "ohne admin_notweg: PIN im Tab wie vorher")
+        pg.evaluate("window.__EINGABE_ARGS = []")
+        raus = pg.evaluate(ALLE_JS)
+        pruef(all(v is None for v in raus.values()) and all(x.get("p_pin") == "4711" for x in args(pg)), f"ohne admin_notweg: Eingaben mit PIN ({raus})")
+        pg.close()
+        # Falsche PIN beim Tausch
+        pg = neu(b, "mitglied-auf-teamleitung")
+        notweg_oeffnen(pg)
+        pg.fill("#tpin", "1234")
+        pg.click("[data-act=t-login]")
+        pruef(warte(pg, "S.msg && S.msg.text === 'Die Admin-PIN stimmt nicht.'") and pg.evaluate("localStorage.getItem('sj.notweg')") is None,
+              "falsche PIN: kein Schlüssel")
         pg.close()
 
     pruef(not err, "keine Fehler auf der Seite" + (f": {err[:3]}" if err else ""))

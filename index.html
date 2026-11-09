@@ -735,24 +735,37 @@ const keineVerbindung = () => Object.assign(new Error("Keine Verbindung. Wartet 
 // Die Datenbank kennt die Funktion mit diesen Parametern nicht (älterer Nachtrag eingespielt, PostgREST PGRST202)
 const ohneFunktion = e => !!e && (e.code === "PGRST202" || /Could not find the function/i.test(e.message || ""));
 // W5 (03.11.2026): Eingaben fürs Team gehen mit dem Geräte-Schlüssel raus (Teamleitung auf ihrem Handy) und, nur am
-// Notweg-Tablet (sj.hand), mit der Admin-PIN dieses Tabs. Ein Leitungs-Handy, das zufällig die PIN im Tab hat, schickt
-// sie nicht mit (Sicherheitsprüfung 07.11., H4). Der Server nimmt den Team-Code allein nicht mehr an. Eine Datenbank
-// ohne die Migration kennt p_token und p_pin nicht (PGRST202): dann einmal ohne.
+// Notweg-Tablet (sj.hand), mit dem Notweg-Schlüssel dieses Teams (sj.notweg, 09.11.). Nur wenn die Datenbank den
+// Notweg-Schlüssel noch nicht kennt, hat das Tablet stattdessen die PIN im Tab und schickt sie. Ein Leitungs-Handy, das
+// zufällig die PIN im Tab hat, schickt sie nicht mit (Sicherheitsprüfung 07.11., H4). Der Server nimmt den Team-Code
+// allein nicht mehr an. Eine Datenbank ohne W5 kennt p_token und p_pin nicht (PGRST202): dann einmal ohne.
 async function eingabeRpc(fn, args) {
-  const recht = { p_token: LS.getItem("sj.token") || null, p_pin: (LS.getItem("sj.hand") && S.admin.pin) || null };
+  const hand = !!LS.getItem("sj.hand"), nw = hand ? LS.getItem("sj.notweg") : null;
+  const recht = { p_token: hand ? nw : (LS.getItem("sj.token") || null), p_pin: (hand && !nw && S.admin.pin) || null };
   try { return await rpc(fn, { ...args, ...recht }); }
   catch (e) {
-    // Die PIN wurde inzwischen geändert (S2): vergessen, dann zeigt viewTeam am Notweg-Tablet "Admin-PIN fehlt"
+    // Schlüssel abgelaufen oder weg, oder die PIN wurde inzwischen geändert (S2): vergessen, dann zeigt viewTeam am
+    // Notweg-Tablet "Admin-PIN fehlt"
+    if (String(e.message).includes("Notweg-Schlüssel gilt nicht mehr")) { LS.removeItem("sj.notweg"); throw e; }
     if (String(e.message).includes("Falsche PIN")) { pinWeg(); throw e; }
     if (!ohneFunktion(e)) throw e;
     return rpc(fn, args);
   }
 }
-// Notweg: die Admin-PIN prüfen und für diesen Tab merken (wie die Anmeldung der Spielleitung). Gibt den Fehler zurück.
-async function notwegPin(pin) {
+// Notweg (09.11.2026, Befund S1): die Admin-PIN einmal gegen einen Schlüssel tauschen, der 12 Stunden lang nur
+// Eingaben für dieses eine Team erlaubt (admin_notweg, gemerkt in sj.notweg). Die PIN bleibt nicht im Tab, #/admin
+// bleibt zu. Kennt die Datenbank admin_notweg nicht (Migration fehlt): wie vorher, PIN prüfen und für diesen Tab
+// merken. Gibt den Fehler zurück.
+async function notwegFreigabe(pin, code) {
   if (!pin) return "Für den Notweg bitte die Admin-PIN eingeben.";
-  try { await rpc("admin_state", { p_pin: pin }); }
-  catch (e) { return String(e.message).includes("Falsche PIN") ? "Die Admin-PIN stimmt nicht." : e.message; }
+  const falsch = e => {
+    if (!String(e.message).includes("Falsche PIN")) return e.message;
+    if (pin === S.admin.pin) pinWeg();   // die PIN im Tab ist veraltet
+    return "Die Admin-PIN stimmt nicht.";
+  };
+  try { LS.setItem("sj.notweg", (await rpc("admin_notweg", { p_pin: pin, p_code: code })).token); return null; }
+  catch (e) { if (!ohneFunktion(e)) return falsch(e); }
+  try { await rpc("admin_state", { p_pin: pin }); } catch (e) { return falsch(e); }
   S.admin.pin = pin; SS.setItem("sj.pin", pin);
   return null;
 }
@@ -1546,10 +1559,10 @@ function viewTeam() {
       : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-codefeld">Spielleitung: mit Team-Code eingeben</button></p>`}`
       + helpBtn("Stadtjagd: Ich komme als Teamleitung nicht hinein.") + nav();
   }
-  // W5: Notweg-Tablet, dessen Tab die Admin-PIN nicht mehr kennt (Browser neu gestartet): ohne PIN nimmt der Server
+  // W5: Notweg-Tablet ohne gültigen Notweg-Schlüssel (nach 12 Stunden abgelaufen) und ohne PIN im Tab: der Server nimmt
   // keine Eingabe an, also erst die PIN, statt eine Ansicht zu zeigen, in der jede Eingabe scheitert
-  if (LS.getItem("sj.hand") && !S.admin.pin) return brand() + `<div class="panel"><h2>Admin-PIN fehlt</h2>
-      <p class="muted">Dieses Gerät gibt mit dem Team-Code ein (Notweg der Spielleitung). Dafür braucht es noch einmal die Admin-PIN.</p>
+  if (LS.getItem("sj.hand") && !LS.getItem("sj.notweg") && !S.admin.pin) return brand() + `<div class="panel"><h2>Admin-PIN fehlt</h2>
+      <p class="muted">Dieses Gerät gibt mit dem Team-Code ein (Notweg der Spielleitung). Die Freigabe gilt 12 Stunden und nur für dieses Team. Dafür braucht es noch einmal die Admin-PIN.</p>
       <div style="margin-top:12px"><label for="tpin">Admin-PIN</label><input id="tpin" type="password" autocomplete="off" enterkeyhint="go"></div>
       <button class="btn" data-act="t-pin" data-wait="Wird geprüft …" ${S.busy ? "disabled" : ""}>Weiter</button>${msgBox("code")}
       <button class="btn alt" data-act="t-logout" style="margin-top:8px">Abmelden</button></div>` + nav();
@@ -2962,16 +2975,22 @@ const ACT = {
     let st;
     try { st = await rpc("team_state", { p_code: code }); }
     catch (e) { S.msg = { type: "err", ort: "code", text: String(e.message).includes("Unbekannter Team-Code") ? "Diesen Team-Code gibt es nicht. Prüft die Schreibweise, etwa FUCHS-123456." : e.message }; return; }
-    // W5: wer nicht die Teamleitung dieses Handys ist, gibt nur mit der Admin-PIN ein (Notweg der Spielleitung)
+    // W5: wer nicht die Teamleitung dieses Handys ist, gibt nur über den Notweg ein: die Admin-PIN (getippt oder schon
+    // im Tab) gegen den Schlüssel für dieses Team tauschen. Ein alter Schlüssel gilt nur für sein Team: weg damit.
     const eigen = S.myName && st.team.leaderName === S.myName && LS.getItem("sj.token");
-    if (!eigen && !S.admin.pin) { const f = await notwegPin(val("tpin")); if (f) { S.msg = { type: "err", ort: "code", text: f }; return; } }
+    const altNw = LS.getItem("sj.notweg");
+    if (altNw) { rpc("notweg_ende", { p_token: altNw }).catch(() => { }); LS.removeItem("sj.notweg"); }
+    if (!eigen) { const f = await notwegFreigabe(S.admin.pin || val("tpin"), st.team.code); if (f) { S.msg = { type: "err", ort: "code", text: f }; return; } }
     S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
     // Merker nur für den Notweg: tippt die Teamleitung ihren eigenen Code, meldet leitungNochDa sie nach einem Wechsel ab
-    if (S.myName && st.team.leaderName === S.myName) LS.removeItem("sj.hand"); else LS.setItem("sj.hand", "1");
+    if (S.myName && st.team.leaderName === S.myName) { LS.removeItem("sj.hand"); LS.removeItem("sj.notweg"); } else LS.setItem("sj.hand", "1");
   },
-  async "t-pin"() { const f = await notwegPin(val("tpin")); S.msg = f ? { type: "err", ort: "code", text: f } : null; },
-  // Abmelden gibt es nur am Notweg-Tablet: die Admin-PIN dieses Tabs geht mit (sessionStorage und S.admin.pin)
-  "t-logout"() { if (LS.getItem("sj.hand")) pinWeg(); S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); standVergessen(); stopGps(); },
+  async "t-pin"() { const f = await notwegFreigabe(val("tpin"), S.team.code); S.msg = f ? { type: "err", ort: "code", text: f } : null; },
+  // Abmelden gibt es nur am Notweg-Tablet: der Notweg-Schlüssel wird auf dem Server gelöscht; hatte der Tab stattdessen
+  // die PIN (Datenbank ohne Notweg-Schlüssel), geht die mit (sessionStorage und S.admin.pin)
+  "t-logout"() {
+    if (LS.getItem("sj.hand")) { const nw = LS.getItem("sj.notweg"); if (nw) rpc("notweg_ende", { p_token: nw }).catch(() => { }); else pinWeg(); }
+    S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.removeItem("sj.notweg"); standVergessen(); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
   "t-abgeben-frage"() { S.team.uebergabe = "abgeben"; S.team.wahl = besteWahl(S.team.state); S.team.wahlSelbst = false; S.msg = null; },
@@ -3856,7 +3875,7 @@ async function rolleWechseln(rolle, team, kurz) {
     return true;
   }
   S.team.code = null; S.team.state = null; S.team.uebergabe = null; S.team.wahl = null; S.team.abmelden = false; S.team.hilfe = false; S.team.tab = "weg";
-  LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.removeItem("sj.letzter.team");   // sonst holt letzterStand() im Funkloch die Leitungsansicht zurück
+  LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.removeItem("sj.notweg"); LS.removeItem("sj.letzter.team");   // sonst holt letzterStand() im Funkloch die Leitungsansicht zurück
   S.leitungWar = false;
   ansichtSetzen("public");
   S.mit = null; S.msg = null;
@@ -4074,7 +4093,7 @@ async function leitungOhneCode() {
   if (!tok || S.team.code) return false;
   try {
     const r = await rpc("leader_code", { p_token: tok });
-    S.team.code = r.code; LS.setItem("sj.code", r.code); LS.removeItem("sj.hand");   // der Kopf zeigt dann Team und Code
+    S.team.code = r.code; LS.setItem("sj.code", r.code); LS.removeItem("sj.hand"); LS.removeItem("sj.notweg");   // der Kopf zeigt dann Team und Code
     S.leitungWar = true;
     S.team.ohneNetz = false; netzOk();
     return true;
@@ -4096,7 +4115,7 @@ async function leitungOhneCode() {
 // gleich in der Team-Ansicht startete, beim ersten Tipp auf "Anmeldung" zurück (Bugjagd 03.11.2026, Fund 1).
 async function leitungNochDa(s) {
   const tok = LS.getItem("sj.token");
-  if (s && s.team && S.myName && s.team.leaderName === S.myName) LS.removeItem("sj.hand");   // selbst Leitung geworden: Merker weg
+  if (s && s.team && S.myName && s.team.leaderName === S.myName) { LS.removeItem("sj.hand"); LS.removeItem("sj.notweg"); }   // selbst Leitung geworden: Merker weg
   if (!tok || LS.getItem("sj.hand") || !s || !s.team || !s.team.leaderName) return;
   if (s.team.leaderName === S.myName) { S.leitungWar = true; return; }
   try { await rpc("leader_code", { p_token: tok }); S.leitungWar = true; return; }   // umbenannt, aber weiter Leitung
@@ -4116,7 +4135,7 @@ async function ranglisteHolen() {
 // statt still das alte Team weiter zu zeigen
 function codeUngueltig() {
   S.team.code = null; S.team.state = null; S.team.abmelden = false;
-  LS.removeItem("sj.code"); LS.removeItem("sj.hand"); standVergessen(); stopGps();
+  LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.removeItem("sj.notweg"); standVergessen(); stopGps();
   // Mit Geräte-Schlüssel holt der nächste Abruf das neue Team von selbst (leitungOhneCode)
   S.msg = LS.getItem("sj.token") ? { type: "info", text: "Die Teams wurden neu ausgelost." }
     : { type: "err", ort: "code", text: "Dieser Team-Code gilt nicht mehr, vermutlich wurde neu ausgelost." };
