@@ -34,6 +34,14 @@ nur im Dashboard) oder:
   `TEST_KEY`, `TEST_REF`, stehen auf `None`) oder per `STRESS_URL`,
   `STRESS_KEY`, `STRESS_REF` setzen.
 - Admin-PIN im Testprojekt: `stresstest-2026` (setzt `einrichten`).
+- Seit W5 (SPIEL.md §23) schicken die Teamleitungen bei den Eingaben ihren
+  Geräte-Schlüssel mit (`p_token`), wie die App. Zwei Randfälle prüfen, dass
+  der Team-Code allein abgewiesen wird und der Notweg mit `p_pin` (die PIN
+  oben) durchgeht. Das pausierte Projekt vom Oktober hat das Schema vor W5
+  (und vor den Migrationen ab 17.10.); `einrichten` bricht dann mit einem
+  Hinweis ab. Abhilfe: ein leeres Projekt (dort laufen alle Migrationen)
+  oder die fehlenden Migrationen der Reihe nach im SQL-Editor des
+  Testprojekts einspielen.
 - Das Live-Projekt (`lwdmwklyydhcvnhpjudk`) verweigert das Skript; dort wird
   nie getestet.
 
@@ -67,7 +75,8 @@ Alle Befehle im Repo-Ordner, im Vordergrund. `lauf` dauert etwa 17 Minuten
    Spielt alle Migrationen, die Prager Stationen, Testlösungen und die PIN
    ein. Bricht es an einer Migration ab, Datei und Fehlermeldung notieren und
    der Ursache nachgehen (frisches Projekt: fehlende Rolle, Erweiterung oder
-   eine Migration, die Daten voraussetzt). Danach kann der Token im
+   eine Migration, die Daten voraussetzt). Nach dem Beheben `einrichten` erneut aufrufen: es merkt sich
+   eingespielte Migrationen in `stresstest.migrationen` und spielt nur die fehlenden ein (seit 07.11.2026). Danach kann der Token im
    Dashboard zurückgezogen werden.
 2. **Lauf 1, Eventlast:** `python tools/stresstest.py lauf`
    (100 Handys, 12 Teams, Takt 10 s, 2 Tablets der Spielleitung).

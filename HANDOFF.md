@@ -2204,7 +2204,132 @@ Entscheidungen: `docs/superpowers/plans/2026-10-29-rollen-akku.md`, Beschreibung
 Geprüft: Review (Opus) ohne kritische Befunde, W1 bis W4 und K1 bis K7 behoben; `rollen_akku_db.py` 180 Prüfungen,
 `rollen_akku.py` 163, alle Prüfstand-Skripte grün; nach dem Einspielen `rechte_db.py` 29 Prüfungen grün, Live-Seite
 geprüft. **Nicht geprüft:** echte Handys (`getBattery` auf Android, Umschalten im Hintergrund, iPhone ohne Akku).
-Offen für später: W5, siehe SPIEL.md §19.
+W5 ist auf dem Zweig `w5-eingaben-schluessel` geschlossen (Abschnitt „Eingaben an den Geräte-Schlüssel (W5)“).
+
+## Eingaben an den Geräte-Schlüssel (W5, 03.11.2026, Zweig `w5-eingaben-schluessel`, nicht eingespielt)
+
+Bisher nahm der Server jede Eingabe mit dem Team-Code allein an; wer ihn von Hand eintippte, konnte neben der Leitung
+eingeben. Jetzt gehen die acht Eingaben (Check-in, Antwort, Tipp, Koffer, Foto, Foto überspringen, Leitung abgeben,
+Position) nur mit dem Geräte-Schlüssel der aktuellen Leitung oder mit der Admin-PIN (Notweg am Tablet). Migration
+`20261103090000_w5_eingaben_schluessel.sql` (neue interne `team_eingabe`, je zwei Parameter `p_token`, `p_pin`),
+App `eingabeRpc`, PIN-Feld im Notweg und Seite „Admin-PIN fehlt“. Einzelheiten SPIEL.md §23.
+
+Geprüft: `w5_eingaben_db.py` (Probelauf, 139 Prüfungen), `rechte_db.py` mit der Migration, `w5.py` und die
+angepassten Prüfstand-Skripte (siehe Zweig). Nach dem Merge von master (07.11.): `w5_eingaben_db.py` 139,
+`rechte_db.py` 37, `rollen_akku_db.py` 180 Prüfungen grün, `schema_abzug.py --pruefen` sauber; alle 22
+Prüfstand-Skripte im Wegwerf-Container grün bis auf drei FPS-Prüfungen in `rueckblick.py` (Container ohne GPU,
+29 bis 47 Bilder/s, 231 andere Prüfungen ok). `tools/stresstest.py` schickt bei den Eingaben jetzt den
+Geräte-Schlüssel der Leitung mit und prüft Code allein (abgewiesen) und Notweg mit PIN als Randfälle; nicht
+ausgeführt, das pausierte Testprojekt hat das Schema vor W5 (siehe `tools/STRESSTEST.md`).
+
+### Einspielen von W5 (Friedrich, in dieser Reihenfolge)
+
+1. Zweig `w5-eingaben-schluessel` auf master mergen und pushen. Die App schickt dann schon `p_token`/`p_pin` und
+   fällt bei PGRST202 von selbst auf den alten Aufruf zurück, läuft also auch ohne Migration.
+2. Pages-Lauf abwarten, Live-Seite prüfen: neue Version geladen, Teamleitung kann einchecken und antworten,
+   Notweg zeigt das Feld „Admin-PIN“.
+3. Vor dem Einspielen alle Handys die App neu laden lassen („Neue Version laden“ oder Seite neu öffnen): eine alte
+   App schickt keinen Schlüssel und kann nach der Migration nichts mehr eingeben (die Ablehnung sagt dann „Wenn du die
+   Leitung bist: App neu laden.“). Vorher `python tools/schema_abzug.py --pruefen` (muss sauber sein), dann
+   `python tools/sql.py supabase/migrations/20261103090000_w5_eingaben_schluessel.sql`.
+4. `python tools/pruefstand/rechte_db.py` (grün) und `python tools/schema_abzug.py` (neuer Abzug), den Abzug in
+   `supabase/schema/` committen und pushen.
+
+Danach können Handys mit der alten App (Service Worker, nicht neu geladen) nichts mehr eingeben, bis sie neu laden
+(„Neue Version laden“ oder Seite neu öffnen); Lesen geht weiter. Darum nicht während eines laufenden Spiels einspielen.
+
+**Entschieden 09.11.: teamgebundener Notweg-Schlüssel**, gebaut auf `bugjagd-nov` (Abschnitt „Notweg-Schlüssel“
+unten, SPIEL.md §26). Der Rest dieses Absatzes ist der Stand vom 03. und 07.11.
+
+**Offen, Friedrich entscheidet:** der Notweg. Ohne Schlüssel gibt nur noch ein Gerät mit der Admin-PIN ein, also das
+Tablet der Spielleitung. Das gilt auch für eine Leitung ohne eigenes Handy (von der Spielleitung gesetzt): sie kann
+nur am Tablet mitspielen. Soll das so bleiben, oder braucht es einen zweiten Weg (etwa die Leitung auf ein anderes
+Handy des Teams umsetzen, das sich selbst angemeldet hat)?
+Dazu aus der Sicherheitsprüfung 07.11.: Mit der PIN ist das Tablet im selben Tab voll als Spielleitung angemeldet,
+#/admin ist offen (die PIN liegt im sessionStorage). Vorschlag des Prüfers: teamgebundener Notweg-Schlüssel
+`admin_notweg(p_pin, p_team)`, den `team_eingabe` neben dem Leitungsschlüssel annimmt. Ob die PIN im sessionStorage
+liegen darf, entscheidet Friedrich; gebaut ist nur, dass Abmelden am Notweg die PIN aus dem Tab löscht.
+
+### Sicherheitsprüfung W5 (07.11.2026, auf `bugjagd-nov`)
+
+Kleine Punkte ohne offene Entscheidung, eingearbeitet (SPIEL.md §23): Eine geänderte Admin-PIN bleibt nicht mehr am
+Notweg-Tablet hängen (`eingabeRpc` vergisst sie bei „Falsche PIN“, das Tablet zeigt „Admin-PIN fehlt“); Abmelden am
+Notweg löscht die PIN aus dem Tab; die PIN geht nur noch vom Notweg-Tablet (`sj.hand`) mit, nicht von einem
+Leitungs-Handy, das sie zufällig im Tab hat; die Ablehnung in `team_eingabe` sagt zusätzlich „Wenn du die Leitung
+bist: App neu laden.“ (in der W5-Migration und in der Kopie von `team_eingabe` in `20261107090000_bugjagd3.sql`);
+`w5_eingaben_db.py --ohne` ist ein echter Gegentest (alte Signaturen, Code allein wird angenommen). Prüfungen: `w5_eingaben_db.py` 139 grün, mit `--ohne` 9 von 9 FEHLT (Code allein angenommen), `bugjagd3_db.py` 102, `rechte_db.py` 45 (alles zurückgerollt); im Container `w5.py` 58 (neu Teil 9), `bugjagd3.py` 28, `bugjagd4.py` 54, `rollen_akku.py` 163, `audit2510.py` 52.
+
+### Rückbau von W5 (falls nötig)
+
+Die alten Fassungen stehen in `supabase/schema/funktionen/*.sql` (Live-Abzug vor W5): `check_in`, `submit_answer`,
+`reveal_tip`, `submit_final`, `team_selfie`, `team_selfie_skip`, `team_set_leader` und `report_position` daraus wieder
+einspielen, danach die neuen Signaturen (je mit `p_token text, p_pin text` am Ende) und `team_eingabe(text,text,text)`
+droppen, Rechte wie im Abzug. Die App fällt über PGRST202 von selbst auf den alten Aufruf zurück, sie muss nicht
+zurück. Ist `20261107090000_bugjagd3.sql` schon eingespielt, muss sie mit zurück, soweit sie auf `team_eingabe`
+aufsetzt (Bremse in `team_eingabe`, die acht Eingaben mit der Zeile für die Bremse, `team_selfie` mit dem
+Löschdatum); `team_state`, `team_photo`, `admin_start`, `norm` und die Bremse selbst können bleiben.
+`20261107100000_bugjagd4.sql` setzt nicht auf `team_eingabe` auf und kann bleiben. Vor dem Rückbau
+`schema_abzug.py --pruefen`, danach `rechte_db.py` und `schema_abzug.py`.
+
+## Bugjagd 03.11.2026, behoben 07.11.2026 (Zweig `bugjagd-nov` mit W5, nicht gemerged)
+
+Sieben Funde und ein Nachtrag zu `norm()`, siehe SPIEL.md §24. Der Zweig enthält W5 (`w5-eingaben-schluessel`
+gemerged); die Migration `20261107090000_bugjagd3.sql` setzt auf W5 auf (Bremse in `team_eingabe`) und bricht ohne W5
+ab. **Beide Migrationen sind NICHT eingespielt.**
+
+### Einspielen (Friedrich, in dieser Reihenfolge)
+
+1. Zweig `bugjagd-nov` auf master mergen und pushen (die App zuerst; sie läuft ohne beide Migrationen, siehe W5
+   oben). Pages-Lauf abwarten, Live-Seite prüfen.
+2. W5 wie oben beschrieben einspielen (`schema_abzug.py --pruefen`, `sql.py …20261103090000_w5_eingaben_schluessel.sql`,
+   `rechte_db.py`).
+3. `python tools/pruefstand/bugjagd3_db.py` (Probelauf, zuletzt 102 Prüfungen grün; nach Schritt 2 spielt er W5
+   noch einmal davor ein, das schadet nicht), dann
+   `python tools/sql.py supabase/migrations/20261107090000_bugjagd3.sql`.
+4. Notweg-Schlüssel: `python tools/pruefstand/notweg_db.py` (zuletzt 50 grün), dann
+   `python tools/sql.py supabase/migrations/20261109090000_notweg_schluessel.sql` (bricht ohne W5 und bugjagd3 ab).
+   Danach am Tablet den Notweg einmal ausprobieren: Code und PIN, eine Eingabe, `#/admin` fragt nach der PIN.
+5. `python tools/pruefstand/rechte_db.py` (zuletzt 49 grün) und `python tools/schema_abzug.py`, den Abzug committen.
+6. Einmal über die API prüfen: ein falscher Team-Code hinterlässt eine Zeile in `team_code_fehlversuche`
+   (PostgREST schreibt bei `response.status` 400 laut Doku fest, im Probelauf nicht prüfbar), die App zeigt weiter
+   „Unbekannter Team-Code.“; die Testzeile danach löschen.
+7. Den Geräte-Test neu veröffentlichen: `python tools/geraetetest_veroeffentlichen.py` (nimmt jetzt `vendor/` mit).
+
+**Zu entscheiden:** Grenze und Sperre der Bremse (30 je 10 Minuten und Adresse, gesperrt auch für richtige Codes;
+Mobilfunk-NAT kann Unbeteiligte mitsperren), ob `admin_start` bei abgelaufenem Löschdatum nur warnt (so gebaut)
+oder ablehnt.
+
+## Notweg-Schlüssel (09.11.2026, Zweig `bugjagd-nov`, nicht gemerged)
+
+Befund S1 der W5-Sicherheitsprüfung, auf Friedrichs Ja gebaut (SPIEL.md §26): Das Notweg-Tablet tauscht die Admin-PIN
+gegen einen Schlüssel, der 12 Stunden lang nur Eingaben für ein Team erlaubt; die PIN bleibt nicht im Tab, `#/admin`
+bleibt zu. Neue Migration `20261109090000_notweg_schluessel.sql` (Tabelle `notweg_schluessel`, `admin_notweg`,
+`notweg_ende`, `team_eingabe` mit Bremse und Schlüssel), **nicht eingespielt**; Einspielen als Schritt 4 in der
+Liste oben. Ohne die Migration läuft der Notweg wie vorher mit der PIN im Tab, darum die Migration bald nach der App
+einspielen. Widerruf: Abmelden am Tablet, Ablauf nach 12 Stunden, Team löschen, oder eine neue Admin-PIN setzen
+(`admin_set_pin` löscht alle Schlüssel). Offen bleibt, ob 12 Stunden passen. Unabhängige Prüfung (Opus, 09.11.): zwei
+Klammerfehler in der App gefunden und behoben, kein Befund in der SQL-Seite; nicht umgesetzt: eine Bremse für falsche
+Admin-PINs (offener Punkt vom 07.11., gilt auch für `admin_state`), und die erste Eingabe nach Ablauf geht verloren
+(danach die Seite „Admin-PIN fehlt“).
+
+## Bugjagd 07.11.2026 (Zweig `bugjagd-nov`, nicht gemerged)
+
+Elf von 13 Funden behoben, siehe SPIEL.md §25. Neue Migration `20261107100000_bugjagd4.sql` (admin_finish und
+admin_reset unter Zeilensperre mit Statusprüfung, admin_save_station mit Wertebereich), **nicht eingespielt**.
+Einspielen nach Schritt 4 oben: `python tools/pruefstand/bugjagd4_db.py` (zuletzt 33 grün), dann
+`python tools/sql.py supabase/migrations/20261107100000_bugjagd4.sql`, danach `rechte_db.py` und
+`schema_abzug.py`. Die App läuft auch ohne die Migration (die Statusprüfung in `a-dlg-ok` und die Koordinatenprüfung
+im Formular sind clientseitig).
+
+**Offen, zu entscheiden (Friedrich):**
+- Fund 1, Testmodus im laufenden Spiel: Die Texte warnen jetzt. Soll der Server das Einschalten im Status running
+  sperren, solange eine Teststation existiert (oder `aktive_route()` im laufenden Spiel nicht umschalten)?
+- Fund 10, Admin-PIN: keine Fehlversuchsbremse in `require_admin`, Vorgabe '2026' in `game_state` und `init.sql`, eine
+  kurze Alt-PIN bleibt gültig (der 12-Zeichen-Trigger prüft nur Änderungen). Vor dem Event mindestens die Länge der
+  Live-PIN prüfen; Bremse und Vorgabe entscheiden.
+- Fund 13, Fernbedienung der Rückblick-Show: kommen zwei Befehle zwischen zwei Abrufen an (400 ms bis etwa 1,5 s
+  Abstand), führt die Show nur den letzten aus, das Handy meldet beide als ausgeführt. Vorschläge: Sperre am Handy bis
+  zur Bestätigung, oder rb_befehl lehnt ab, solange der vorige nicht abgeholt ist, oder eine Befehlsliste.
 
 ## Reiter Einstellungen (03.11.2026)
 
@@ -2327,7 +2452,8 @@ Datum des Änderungsstopps. Event: Fr 23. bis So 25. April 2027 (Service Worker 
   gemessen (26 bis 44 KB, Stresstest oben).
 - **Live-Admin-PIN prüfen:** nicht mehr die Vorgabe `2026`, mindestens 12 Zeichen.
 - **Team-Codes härten:** Sechs Ziffern sind in der Migration `20261025090000_audit.sql` umgesetzt
-  (Sicherheitsprüfung 25.10.); eine Bremse bei Fehlversuchen bleibt offen.
+  (Sicherheitsprüfung 25.10.); die Bremse bei Fehlversuchen ist gebaut (Bugjagd 03.11., Zweig `bugjagd-nov`),
+  aber noch nicht eingespielt.
 - **Vor dem Event:** Testpersonen entfernen (zählen zur 200er-Grenze der Selbstanmeldung).
 - **Supabase:** Token "Acces White" zurückziehen; `stadtjagd-stresstest` später löschen.
 ## Pausenstand 16.10.2026, vormittags (zum Fortsetzen)

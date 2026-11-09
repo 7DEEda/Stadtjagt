@@ -692,7 +692,9 @@ const cfg = { url: (window.SJ_CONFIG && window.SJ_CONFIG.url) || "", key: (windo
 /* ---------- Grundlagen ---------- */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const val = id => ($("#" + id)?.value || "").trim();
+// NFC: zerlegte Umlaute (etwa aus einem Mac-PDF eingefügt) gehen vorkomponiert raus, wie norm() in der Datenbank sie
+// seit der Bugjagd 03.11.2026 auch selbst bildet. Namen, Antworten, Lösungen und Codes laufen alle hier durch.
+const val = id => ($("#" + id)?.value || "").trim().normalize("NFC");
 const rad = x => x * Math.PI / 180, deg = x => x * 180 / Math.PI;
 const R_E = 6371000;
 
@@ -732,6 +734,41 @@ const RPC_FOTO = new Set(["team_photo", "team_selfie", "admin_photo", "admin_pho
 const keineVerbindung = () => Object.assign(new Error("Keine Verbindung. Wartet kurz und tippt noch mal."), { netz: true });
 // Die Datenbank kennt die Funktion mit diesen Parametern nicht (älterer Nachtrag eingespielt, PostgREST PGRST202)
 const ohneFunktion = e => !!e && (e.code === "PGRST202" || /Could not find the function/i.test(e.message || ""));
+// W5 (03.11.2026): Eingaben fürs Team gehen mit dem Geräte-Schlüssel raus (Teamleitung auf ihrem Handy) und, nur am
+// Notweg-Tablet (sj.hand), mit dem Notweg-Schlüssel dieses Teams (sj.notweg, 09.11.). Nur wenn die Datenbank den
+// Notweg-Schlüssel noch nicht kennt, hat das Tablet stattdessen die PIN im Tab und schickt sie. Ein Leitungs-Handy, das
+// zufällig die PIN im Tab hat, schickt sie nicht mit (Sicherheitsprüfung 07.11., H4). Der Server nimmt den Team-Code
+// allein nicht mehr an. Eine Datenbank ohne W5 kennt p_token und p_pin nicht (PGRST202): dann einmal ohne.
+async function eingabeRpc(fn, args) {
+  const hand = !!LS.getItem("sj.hand"), nw = hand ? LS.getItem("sj.notweg") : null;
+  const recht = { p_token: hand ? nw : (LS.getItem("sj.token") || null), p_pin: (hand && !nw && S.admin.pin) || null };
+  try { return await rpc(fn, { ...args, ...recht }); }
+  catch (e) {
+    // Schlüssel abgelaufen oder weg, oder die PIN wurde inzwischen geändert (S2): vergessen, dann zeigt viewTeam am
+    // Notweg-Tablet "Admin-PIN fehlt"
+    if (String(e.message).includes("Notweg-Schlüssel gilt nicht mehr")) { LS.removeItem("sj.notweg"); throw e; }
+    if (String(e.message).includes("Falsche PIN")) { pinWeg(); throw e; }
+    if (!ohneFunktion(e)) throw e;
+    return rpc(fn, args);
+  }
+}
+// Notweg (09.11.2026, Befund S1): die Admin-PIN einmal gegen einen Schlüssel tauschen, der 12 Stunden lang nur
+// Eingaben für dieses eine Team erlaubt (admin_notweg, gemerkt in sj.notweg). Die PIN bleibt nicht im Tab, #/admin
+// bleibt zu. Kennt die Datenbank admin_notweg nicht (Migration fehlt): wie vorher, PIN prüfen und für diesen Tab
+// merken. Gibt den Fehler zurück.
+async function notwegFreigabe(pin, code) {
+  if (!pin) return "Für den Notweg bitte die Admin-PIN eingeben.";
+  const falsch = e => {
+    if (!String(e.message).includes("Falsche PIN")) return e.message;
+    if (pin === S.admin.pin) pinWeg();   // die PIN im Tab ist veraltet
+    return "Die Admin-PIN stimmt nicht.";
+  };
+  try { LS.setItem("sj.notweg", (await rpc("admin_notweg", { p_pin: pin, p_code: code })).token); return null; }
+  catch (e) { if (!ohneFunktion(e)) return falsch(e); }
+  try { await rpc("admin_state", { p_pin: pin }); } catch (e) { return falsch(e); }
+  S.admin.pin = pin; SS.setItem("sj.pin", pin);
+  return null;
+}
 // Akku (Rollen und Akku, 29.10.2026): level 0 bis 100, null = unbekannt (iPhone: Safari gibt ihn nicht heraus)
 const AKKU = { level: null, laedt: false, bm: null };
 const AKKU_KNAPP = 20, AKKU_LEER = 10;
@@ -841,13 +878,20 @@ const teamEmoji = name => TEAM_EMOJI[String(name || "").trim().toLowerCase()] ||
 // Zwei Hürden: erst der Dialog, dann das getippte Wort.
 const DANGER_WORD = "LÖSCHEN";
 const wordOk = v => ["löschen", "loeschen"].includes(String(v || "").trim().toLowerCase());
+// Bugjagd 07.11.2026, Fund 12: Fortschritt löschen nimmt über ON DELETE CASCADE alle Gruppenfotos mit
+const fotosWort = st => (st.photoCount || 0) === 1 ? "das Gruppenfoto" : `alle ${st.photoCount} Gruppenfotos`;
+const fotosMit = st => (st.photoCount || 0) > 0 ? ", dazu " + fotosWort(st) : "";
+const fotosVorher = st => (st.photoCount || 0) > 0 ? " Lade die Fotos vorher im Reiter Fotos herunter, wenn ihr sie behalten wollt." : "";
 const DANGER = {
   // Start: kein Löschen, aber nicht umkehrbar ohne "Fortschritt zurücksetzen", darum mit Rückfrage
   start: {
     when: () => false, wort: false, neutral: true,
     title: "Spiel starten",
     lead: st => `Alle Handys springen auf Station 1, die Uhr zählt ${st.durationMin ?? 180} Minuten herunter.`
-      + (st.testMode ? " Achtung: Der Testmodus ist noch an, Entfernung und Antworten werden nicht geprüft." : ""),
+      + (st.testMode ? " Achtung: Der Testmodus ist noch an, Entfernung und Antworten werden nicht geprüft." : "")
+      // Bugjagd 03.11.2026, Fund 7: ein altes Löschdatum (Probe) löscht jedes Gruppenfoto gleich nach dem Hochladen
+      + (st.selfieOn && st.photosDeleteOn && st.photosDeleteOn <= new Date().toLocaleDateString("sv")
+        ? " Achtung: Das Löschdatum der Gruppenfotos ist erreicht, Fotos werden nicht gespeichert. Vorher im Reiter Fotos ein Datum nach dem Abendessen wählen." : ""),
     keeps: "Zurück geht es nur über „Fortschritt zurücksetzen“ im Reiter Daten löschen.",
     btn: "Spiel starten",
     async run() {
@@ -896,8 +940,8 @@ const DANGER = {
   reset: {
     when: st => st.status !== "registration",
     title: "Fortschritt zurücksetzen",
-    lead: "Check-ins, gelöste Rätsel, Ziffern, Standortdaten und Routen aller Teams werden gelöscht. Danach steht das Spiel wieder vor dem Start.",
-    keeps: "Teams, Teilnehmende und Stationen bleiben.",
+    lead: st => `Check-ins, gelöste Rätsel, Ziffern, Standortdaten und Routen aller Teams werden gelöscht${fotosMit(st)}. Danach steht das Spiel wieder vor dem Start.`,
+    keeps: st => "Teams, Teilnehmende und Stationen bleiben." + fotosVorher(st),
     btn: "Fortschritt zurücksetzen",
     async run() {
       S.admin.state = await rpc("admin_reset", { p_pin: S.admin.pin });
@@ -908,8 +952,8 @@ const DANGER = {
   people: {
     when: st => (st.participants || []).length > 0,
     title: "Alle Teilnehmenden löschen",
-    lead: st => `Alle ${(st.participants || []).length} angemeldeten Personen und alle Teams werden gelöscht, dazu Fortschritt und Standortdaten. Danach ist die Anmeldung wieder offen.`,
-    keeps: "Stationen, Rätsel, Ziffern und die PIN bleiben.",
+    lead: st => `Alle ${(st.participants || []).length} angemeldeten Personen und alle Teams werden gelöscht, dazu Fortschritt und Standortdaten${(st.photoCount || 0) > 0 ? " und " + fotosWort(st) : ""}. Danach ist die Anmeldung wieder offen.`,
+    keeps: st => "Stationen, Rätsel, Ziffern und die PIN bleiben." + fotosVorher(st),
     btn: "Alle Teilnehmenden löschen",
     async run() {
       S.admin.state = await rpc("admin_clear_participants", { p_pin: S.admin.pin });
@@ -946,10 +990,10 @@ const DANGER = {
   // der Koffer verlangt still die neue (Befund aus t4_ziffer_aenderung.mjs, 29.09.)
   ziffer: {
     when: () => false, wort: false,
-    title: () => "Ziffer von Station " + (S.admin.confirm?.pos || "") + " ändern",
+    title: () => S.admin.confirm?.route === "test" ? "Ziffer der Teststation ändern" : "Ziffer von Station " + (S.admin.confirm?.pos || "") + " ändern",
     lead: () => {
       const c = S.admin.confirm || {}, n = (c.teams || []).length;
-      return (n === 1 ? "Team " + c.teams[0] + " hat" : n + " Teams haben") + " Station " + c.pos + " schon gelöst und die Ziffer "
+      return (n === 1 ? "Team " + c.teams[0] + " hat" : n + " Teams haben") + (c.route === "test" ? " die Teststation" : " Station " + c.pos) + " schon gelöst und die Ziffer "
         + c.alt + " notiert. Nach dem Speichern verlangt der Koffer die " + c.neu + ". Sagt "
         + (n === 1 ? "dem Team" : "diesen Teams") + " die neue Ziffer, sonst scheitern sie am Koffer."
         + (n > 1 ? " Betroffen: " + c.teams.join(", ") + "." : "");
@@ -961,8 +1005,14 @@ const DANGER = {
   testan: {
     when: () => false, wort: false,
     title: "Testmodus im laufenden Spiel einschalten",
-    lead: "Solange er an ist, prüft die App bei keinem Team mehr Entfernung und Antworten. Jedes Team kann überall einchecken und mit jeder Antwort weiterkommen.",
-    keeps: "Fortschritt, Ziffern und Plätze bleiben. Kommt im Testlauf ein Team ins Ziel, geht Ausschalten erst nach „Fortschritt zurücksetzen“. Gibt es schon Plätze, lehnt die App das Einschalten ab.",
+    // Bugjagd 07.11.2026, Fund 1: mit Teststation wechseln alle Teams die Route, ein Testplatz ist in Sekunden da
+    lead: st => st.testStation
+      ? "Alle Teams wechseln sofort auf die Teststation und sehen ihre echte Station nicht mehr, bis der Testmodus wieder aus ist. Dort prüft die App weder Entfernung noch Antwort: ein Team kann in wenigen Sekunden im Ziel sein und einen Platz bekommen."
+      : "Solange er an ist, prüft die App bei keinem Team mehr Entfernung und Antworten. Jedes Team kann überall einchecken und mit jeder Antwort weiterkommen.",
+    keeps: st => (st.testStation
+      ? "Der Fortschritt der echten Route bleibt gespeichert. Kommt im Testlauf ein Team ins Ziel, führt nur „Fortschritt zurücksetzen“ zurück, und das löscht den ganzen Fortschritt aller Teams, alle Plätze und alle Gruppenfotos."
+      : "Fortschritt, Ziffern und Plätze bleiben. Kommt im Testlauf ein Team ins Ziel, geht Ausschalten erst nach „Fortschritt zurücksetzen“.")
+      + " Gibt es schon Plätze, lehnt die App das Einschalten ab. Hat nur ein Team Probleme mit GPS: im Reiter Karte und Teams „Freischalten“ nehmen.",
     btn: "Testmodus einschalten",
     async run() { await ACT["a-test"]({ on: "1", bestaetigt: true }); return "Testmodus ist an."; }
   },
@@ -1502,12 +1552,20 @@ function viewTeam() {
     return brand() + `<div class="panel">${warum}${msgBox()}
       <a class="btn" href="#/public">Zur Anmeldeseite</a></div>
       ${S.team.codeFeld ? `<div class="panel"><h3>Mit Team-Code eingeben</h3>
-        <p class="small muted">Nur für die Spielleitung, wenn das Handy einer Teamleitung ausfällt. Den Code zeigt die Teamliste im Reiter Karte und Teams, wenn du das Team antippst.</p>
+        <p class="small muted">Nur für die Spielleitung, wenn das Handy einer Teamleitung ausfällt. Den Code zeigt die Teamliste im Reiter Karte und Teams, wenn du das Team antippst.${S.admin.pin ? "" : ' Eingeben geht nur mit der <span class="nw">Admin-PIN</span>.'}</p>
         <div style="margin-top:12px"><label for="tcode">Team-Code</label><input id="tcode" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="FUCHS-123456"></div>
+        ${S.admin.pin ? "" : `<div style="margin-top:12px"><label for="tpin">Admin-PIN</label><input id="tpin" type="password" autocomplete="off" enterkeyhint="go"></div>`}
         <button class="btn" data-act="t-login" data-wait="Wird geprüft …" ${S.busy ? "disabled" : ""}>Einloggen</button>${msgBox("code")}</div>`
       : `<p style="text-align:center;margin:8px 0 0"><button class="link" data-act="t-codefeld">Spielleitung: mit Team-Code eingeben</button></p>`}`
       + helpBtn("Stadtjagd: Ich komme als Teamleitung nicht hinein.") + nav();
   }
+  // W5: Notweg-Tablet ohne gültigen Notweg-Schlüssel (nach 12 Stunden abgelaufen) und ohne PIN im Tab: der Server nimmt
+  // keine Eingabe an, also erst die PIN, statt eine Ansicht zu zeigen, in der jede Eingabe scheitert
+  if (LS.getItem("sj.hand") && !LS.getItem("sj.notweg") && !S.admin.pin) return brand() + `<div class="panel"><h2>Admin-PIN fehlt</h2>
+      <p class="muted">Dieses Gerät gibt mit dem Team-Code ein (Notweg der Spielleitung). Die Freigabe gilt 12 Stunden und nur für dieses Team. Dafür braucht es noch einmal die Admin-PIN.</p>
+      <div style="margin-top:12px"><label for="tpin">Admin-PIN</label><input id="tpin" type="password" autocomplete="off" enterkeyhint="go"></div>
+      <button class="btn" data-act="t-pin" data-wait="Wird geprüft …" ${S.busy ? "disabled" : ""}>Weiter</button>${msgBox("code")}
+      <button class="btn alt" data-act="t-logout" style="margin-top:8px">Abmelden</button></div>` + nav();
   const st = S.team.state;
   if (!st) return brand() + `<div class="panel"><p>Lade …</p>${msgBox()}</div>` + nav();
   return teamAnsicht(st, false) + (S.hoch && document.body.classList.contains("spiel") ? hochHTML(st.team.name) : "") + uebergabeHTML(st);
@@ -1856,7 +1914,7 @@ async function fotoNachreichen(s) {
     fotoNachreichZeit = Date.now();
     try {
       const b = JSON.parse(roh);
-      S.team.state = await rpc("team_selfie", { p_code: S.team.code, p_position: pos, p_photo: b.foto, p_thumb: b.thumb });
+      S.team.state = await eingabeRpc("team_selfie", { p_code: S.team.code, p_position: pos, p_photo: b.foto, p_thumb: b.thumb });
       LS.removeItem(k); render();
     } catch { /* beim nächsten Abruf wieder */ }
     return;
@@ -2052,7 +2110,17 @@ function stationZeile(s, st) {
           <button class="btn sm alt" data-act="a-edit" data-id="${s.id}">Bearbeiten</button>
         </div>`;
 }
-const koordZahlen = (a, b) => koordAusFeldern(a, b).map(x => parseFloat(String(x).replace(",", ".")));
+// Nur eine ganze Dezimalzahl zählt (Bugjagd 07.11.2026, Fund 7): parseFloat machte aus 50°05'15.0"N still 50
+const koordZahl = x => { const s = String(x).trim(); return /^[+-]?(\d+([.,]\d*)?|[.,]\d+)$/.test(s) ? Number(s.replace(",", ".")) : NaN; };
+const koordZahlen = (a, b) => koordAusFeldern(a, b).map(koordZahl);
+// Fehlertext für das Stationsformular oder null; beide Felder leer ist erlaubt (Station noch ohne Standort)
+function koordFehler(a, b) {
+  const roh = koordAusFeldern(a, b).map(x => String(x).trim()), [lat, lng] = roh.map(koordZahl);
+  if (!roh[0] && !roh[1]) return null;
+  if (isNaN(lat) || isNaN(lng)) return "Breite und Länge als Dezimalzahl eintragen, etwa 50.08750 und 14.42120, oder ein Paar wie 50.08750, 14.42120 ins Feld Breite einfügen. Grad, Minuten und Sekunden gehen nicht.";
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return "Die Breite muss zwischen -90 und 90 liegen, die Länge zwischen -180 und 180.";
+  return null;
+}
 function ekMitte() {
   const [lat, lng] = koordZahlen("e-lat", "e-lng");
   return isNaN(lat) || isNaN(lng) ? null : [lat, lng];
@@ -2430,6 +2498,9 @@ function viewAdmin() {
     out += `<div class="panel ${st.testMode ? "danger" : ""}"><h3>Testmodus</h3>
       <p class="small muted">Check-in ohne Entfernungsprüfung, auch ohne GPS,
       und jede Antwort zählt. Den Koffer-Code prüft die App weiter. Vor dem Event unbedingt ausschalten.</p>
+      ${st.testStation ? `<p class="small ${st.status === "running" && !st.testMode ? "" : "muted"}">Alle Teams spielen dann nur die Teststation: im laufenden Spiel
+      sehen sie ihre echte Station nicht mehr, und nach einem Platz im Testlauf führt nur „Fortschritt zurücksetzen“ zurück (löscht den ganzen Fortschritt).
+      Hat ein Team Probleme mit GPS, lieber „Freischalten“ im Reiter Karte und Teams.</p>` : ""}
       <button class="btn ${st.testMode ? "warn" : "alt"}" data-act="a-test" data-on="${st.testMode ? "0" : "1"}" data-ort="test">${st.testMode ? "Testmodus ausschalten" : "Testmodus einschalten"}</button>${msgBox("test")}</div>`;
   }
   if (A.tab === "fotos") {
@@ -2464,7 +2535,8 @@ function viewAdmin() {
       ["Teams", teams.length],
       ["Teilnehmende", people.length],
       ["Teams mit gespeicherter Position", teams.filter(t => t.position).length],
-      ["gelöste Stationen insgesamt", teams.reduce((n, t) => n + (t.solved || 0), 0)]
+      ["gelöste Stationen insgesamt", teams.reduce((n, t) => n + (t.solved || 0), 0)],
+      ["Gruppenfotos", st.photoCount || 0]
     ];
     out += `<div class="panel"><h3>Was gerade gespeichert ist</h3>
       <table>${zahlen.map(([k, v]) => `<tr><td>${k}</td><td style="text-align:right"><b>${v}</b></td></tr>`).join("")}</table>
@@ -2903,11 +2975,22 @@ const ACT = {
     let st;
     try { st = await rpc("team_state", { p_code: code }); }
     catch (e) { S.msg = { type: "err", ort: "code", text: String(e.message).includes("Unbekannter Team-Code") ? "Diesen Team-Code gibt es nicht. Prüft die Schreibweise, etwa FUCHS-123456." : e.message }; return; }
+    // W5: wer nicht die Teamleitung dieses Handys ist, gibt nur über den Notweg ein: die Admin-PIN (getippt oder schon
+    // im Tab) gegen den Schlüssel für dieses Team tauschen. Ein alter Schlüssel gilt nur für sein Team: weg damit.
+    const eigen = S.myName && st.team.leaderName === S.myName && LS.getItem("sj.token");
+    const altNw = LS.getItem("sj.notweg");
+    if (altNw) { rpc("notweg_ende", { p_token: altNw }).catch(() => { }); LS.removeItem("sj.notweg"); }
+    if (!eigen) { const f = await notwegFreigabe(S.admin.pin || val("tpin"), st.team.code); if (f) { S.msg = { type: "err", ort: "code", text: f }; return; } }
     S.team.code = st.team.code; S.team.state = st; LS.setItem("sj.code", st.team.code); S.msg = null;
     // Merker nur für den Notweg: tippt die Teamleitung ihren eigenen Code, meldet leitungNochDa sie nach einem Wechsel ab
-    if (S.myName && st.team.leaderName === S.myName) LS.removeItem("sj.hand"); else LS.setItem("sj.hand", "1");
+    if (S.myName && st.team.leaderName === S.myName) { LS.removeItem("sj.hand"); LS.removeItem("sj.notweg"); } else LS.setItem("sj.hand", "1");
   },
-  "t-logout"() { S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); standVergessen(); stopGps(); },
+  async "t-pin"() { const f = await notwegFreigabe(val("tpin"), S.team.code); S.msg = f ? { type: "err", ort: "code", text: f } : null; },
+  // Abmelden gibt es nur am Notweg-Tablet: der Notweg-Schlüssel wird auf dem Server gelöscht; hatte der Tab stattdessen
+  // die PIN (Datenbank ohne Notweg-Schlüssel), geht die mit (sessionStorage und S.admin.pin)
+  "t-logout"() {
+    if (LS.getItem("sj.hand")) { const nw = LS.getItem("sj.notweg"); if (nw) rpc("notweg_ende", { p_token: nw }).catch(() => { }); else pinWeg(); }
+    S.team.tab = "weg"; S.team.code = null; S.team.state = null; S.team.abmelden = false; S.team.hilfe = false; LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.removeItem("sj.notweg"); standVergessen(); stopGps(); },
   "t-logout-frage"() { S.team.abmelden = true; },
   "t-logout-nein"() { S.team.abmelden = false; },
   "t-abgeben-frage"() { S.team.uebergabe = "abgeben"; S.team.wahl = besteWahl(S.team.state); S.team.wahlSelbst = false; S.msg = null; },
@@ -2923,7 +3006,7 @@ const ACT = {
     if (!name) return false;
     const st = S.team.state, g = st ? waehlbar(st).find(x => x.name === name) : null;
     try {
-      const team = (await rpc("team_set_leader", { p_code: S.team.code, p_name: name })).team;
+      const team = (await eingabeRpc("team_set_leader", { p_code: S.team.code, p_name: name })).team;
       // Abgegeben: dieses Handy liest ab jetzt mit, GPS läuft weiter; die neue Leitung schaltet nach dem nächsten Abruf um
       const wer = vorname(name);
       // Aus einem Akku-Fenster oder mit knappem, nicht ladendem Akku abgegeben: das Handy soll durchhalten, also kein
@@ -2947,7 +3030,7 @@ const ACT = {
   "t-kal-skip"() { kalEnde(false); },
   async "t-check"() {
     const pos = await standortFuerEingabe();
-    const r = await eingabe("t-check", () => rpc("check_in", { p_code: S.team.code, p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc }));
+    const r = await eingabe("t-check", () => eingabeRpc("check_in", { p_code: S.team.code, p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc }));
     S.team.state = r.state;
     // Zu weit weg: sagen, wie weit, und was zu tun ist
     const text = !r.ok && r.distance != null ? `Noch ${fmtDist(r.distance)} bis zur Station. Geht näher heran und tippt noch mal.` : r.message;
@@ -2961,8 +3044,8 @@ const ACT = {
     // prüft der Server eine Wiederholung nicht gegen das nächste Rätsel. Datenbank ohne die Migration: einmal ohne.
     const args = { p_code: S.team.code, p_answer: val("tans"), p_position: pos || null };
     const r = await eingabe("t-answer", async () => {
-      try { return await rpc("submit_answer", args); }
-      catch (e) { if (!ohneFunktion(e)) throw e; delete args.p_position; return rpc("submit_answer", args); }
+      try { return await eingabeRpc("submit_answer", args); }
+      catch (e) { if (!ohneFunktion(e)) throw e; delete args.p_position; return eingabeRpc("submit_answer", args); }
     });
     S.team.state = r.state;
     // Richtig: den Moment benennen, mit der Ziffer, und das neue Rad im Schloss kurz markieren
@@ -2972,13 +3055,13 @@ const ACT = {
     else S.msg = { type: r.ok ? "ok" : "err", ort: "leiste", text: r.ok ? r.message : String(r.message).replace(/(Noch \d Versuche?)\.$/, "$1, dann 2 Minuten Pause.") };
   },
   async "t-tip"() {
-    const r = await rpc("reveal_tip", { p_code: S.team.code });
+    const r = await eingabeRpc("reveal_tip", { p_code: S.team.code });
     S.team.state = r.state; S.msg = r.ok ? null : { type: "err", text: r.message };
   },
   // Den Koffer-Code gibt man am Koffer ein: die Datenbank prüft die Position wie beim Check-in
   async "t-final"() {
     const pos = await standortFuerEingabe();
-    const r = await eingabe("t-final", () => rpc("submit_final", { p_code: S.team.code, p_value: val("tfin"), p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc }));
+    const r = await eingabe("t-final", () => eingabeRpc("submit_final", { p_code: S.team.code, p_value: val("tfin"), p_lat: pos.lat, p_lng: pos.lng, p_acc: pos.acc }));
     S.team.state = r.state;
     const text = r.ok ? r.message
       : r.distance != null ? `Noch ${fmtDist(r.distance)} bis zu den Koffern. Geht näher heran und tippt noch mal.`
@@ -2999,7 +3082,7 @@ const ACT = {
     const sf = S.selfie, alt = S.team.state; if (!sf) return;
     try {
       const vorher = alt.digits ? alt.digits[sf.pos - 1] : null;
-      const s = await rpc("team_selfie", { p_code: S.team.code, p_position: sf.pos, p_photo: sf.foto, p_thumb: sf.thumb });
+      const s = await eingabeRpc("team_selfie", { p_code: S.team.code, p_position: sf.pos, p_photo: sf.foto, p_thumb: sf.thumb });
       S.team.state = s; S.selfie = null; S.team.tab = "weg"; /* Meldung steht im Weg-Tab */  LS.removeItem(fotoSchluessel(s, sf.pos));
       const z = s.digits ? s.digits[sf.pos - 1] : null;
       if (vorher == null && z != null) { S.neueZiffer = { i: sf.pos - 1, bis: Date.now() + 8000 }; S.msg = { type: "ok", text: `Foto ist drin. Station ${sf.pos} gelöst, eure Ziffer: ${z}.` }; }
@@ -3016,7 +3099,7 @@ const ACT = {
     const st = S.team.state, p = st && st.selfie && st.selfie.pending, hatte = !!S.selfie;
     if (!p) { S.selfie = null; return; }
     const gemerkt = hatte && fotoMerken(st, S.selfie);
-    const s = await rpc("team_selfie_skip", { p_code: S.team.code, p_position: p.position });
+    const s = await eingabeRpc("team_selfie_skip", { p_code: S.team.code, p_position: p.position });
     S.team.state = s; S.selfie = null;
     const z = s.digits ? s.digits[p.position - 1] : null;
     if (z != null) S.neueZiffer = { i: p.position - 1, bis: Date.now() + 8000 };
@@ -3032,16 +3115,29 @@ const ACT = {
   },
   async "a-fotos-zip"() {
     const fotos = S.admin.fotos || [], dateien = [];
+    let fehlend = 0;
     const sauber = s => String(s).replace(/[^A-Za-z0-9ÄÖÜäöüß-]+/g, "-").replace(/^-|-$/g, "");
     for (const f of fotos) {
       const test = f.route === "test";
-      const b = atob(String((await rpc("admin_photo", { p_pin: S.admin.pin, p_team: f.teamId, p_position: f.position, p_full: true, p_route: f.route || "echt" })).data).replace(/\s/g, ""));
+      // Inzwischen gelöscht (zweites Tablet, Löschdatum, Zurücksetzen): admin_photo liefert data null, und
+      // atob("null") ergab bisher eine 3-Byte-Datei im Paket (Bugjagd 03.11.2026, Fund 2)
+      const r = await rpc("admin_photo", { p_pin: S.admin.pin, p_team: f.teamId, p_position: f.position, p_full: true, p_route: f.route || "echt" });
+      if (r == null || r.data == null || r.data === "") { fehlend++; continue; }
+      const b = atob(String(r.data).replace(/\s/g, ""));
       dateien.push({ name: `Team-${sauber(f.teamName)}/${test ? "Teststation" : "Station-" + f.position}-${sauber(f.stationName)}.jpg`, bytes: Uint8Array.from(b, c => c.charCodeAt(0)) });
+    }
+    if (!dateien.length) {
+      S.msg = { type: "err", ort: "zip", text: fotos.length ? "Die Fotos sind inzwischen gelöscht, es gibt nichts herunterzuladen." : "Es gibt keine Fotos zum Herunterladen." };
+      await fotosLaden();
+      return;
     }
     const a = document.createElement("a");
     a.href = URL.createObjectURL(zipBauen(dateien)); a.download = "stadtjagd-fotos.zip";
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-    S.msg = { type: "ok", ort: "zip", text: `${dateien.length} Fotos als stadtjagd-fotos.zip heruntergeladen.` };
+    if (fehlend) {
+      S.msg = { type: "err", ort: "zip", text: `${dateien.length} von ${fotos.length} Fotos als stadtjagd-fotos.zip heruntergeladen, ${fehlend} inzwischen gelöscht.` };
+      await fotosLaden();
+    } else S.msg = { type: "ok", ort: "zip", text: `${dateien.length} Fotos als stadtjagd-fotos.zip heruntergeladen.` };
   },
   async "a-test"(d) {
     // Einschalten im laufenden Spiel hebt für alle Teams Entfernungs- und Antwortprüfung auf: erst nachfragen
@@ -3129,6 +3225,20 @@ const ACT = {
     const c = S.admin.confirm;
     if (!c) return false;
     if (brauchtWort(c.key) && !wordOk(val("dlgword"))) return false;
+    // Bugjagd 07.11.2026, Funde 2 und 3: ein zweites Leitungsgerät kann den Spielstand geändert haben, während dieser
+    // Dialog offen stand (der Takt zeichnet ihn nicht neu). Vor Beenden und Zurücksetzen frisch nachsehen.
+    if (c.key === "finish" || c.key === "reset") {
+      const frisch = await rpc("admin_state", { p_pin: S.admin.pin });
+      S.admin.state = frisch; S.admin.stateAt = Date.now();
+      const passt = c.key === "finish" ? frisch.status === "running" : frisch.status !== "registration";
+      if (!passt) {
+        S.admin.confirm = null;
+        S.msg = { type: "err", text: c.key === "finish"
+          ? "Nichts beendet: das Spiel läuft nicht mehr. Ein anderes Gerät hat den Spielstand inzwischen geändert."
+          : "Nichts zurückgesetzt: das Spiel steht schon vor dem Auslosen. Ein anderes Gerät hat den Spielstand inzwischen geändert." };
+        return;
+      }
+    }
     const r = await DANGER[c.key].run(c);
     S.admin.confirm = null;
     // Aktionen an einem Team melden sich in dessen Tabellenzeile, nicht oben außer Sicht
@@ -3171,19 +3281,22 @@ const ACT = {
     S.msg = null;
   },
   "a-edit"(d) {
-    S.admin.edit = d.id; S.admin.startEdit = null;
+    S.admin.edit = d.id; S.admin.startEdit = null; S.admin.formNr = (S.admin.formNr || 0) + 1;
     const s = alleStationen(S.admin.state).find(x => x.id === d.id);
     S.admin.karte = { aus: !s || s.revealStartM == null, team: null };
   },
   "a-cancel"() { S.admin.edit = null; S.admin.karte = null; },
-  "a-startpkt-edit"(d) { S.admin.startEdit = d.route; S.admin.edit = null; S.admin.karte = null; S.msg = null; },
+  "a-startpkt-edit"(d) { S.admin.startEdit = d.route; S.admin.edit = null; S.admin.karte = null; S.msg = null; S.admin.formNr = (S.admin.formNr || 0) + 1; },
   "a-startpkt-cancel"() { S.admin.startEdit = null; S.msg = null; },
   "a-startpkt-hier"() {
     const i = $("#sp-here"); if (i) i.textContent = "Suche Standort …";
+    // Die Ortung dauert bis zu 15 s: gilt nur für das Formular, das beim Tippen offen war (Bugjagd 07.11.2026, Fund 6)
+    const nr = S.admin.formNr, fuer = S.admin.startEdit, nochDa = () => S.admin.formNr === nr && S.admin.startEdit === fuer && $("#sp-lat") && $("#sp-lng");
     navigator.geolocation.getCurrentPosition(p => {
+      if (!nochDa()) return;
       $("#sp-lat").value = p.coords.latitude.toFixed(6); $("#sp-lng").value = p.coords.longitude.toFixed(6);
       const j = $("#sp-here"); if (j) j.textContent = `übernommen (±${Math.round(p.coords.accuracy)} m), jetzt speichern`;
-    }, e => { const j = $("#sp-here"); if (j) j.textContent = e.code === 1 ? "Standortzugriff abgelehnt." : "Standort nicht verfügbar."; },
+    }, e => { const j = nochDa() && $("#sp-here"); if (j) j.textContent = e.code === 1 ? "Standortzugriff abgelehnt." : "Standort nicht verfügbar."; },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
     return false;
   },
@@ -3191,6 +3304,7 @@ const ACT = {
     // ein eingefügtes Paar im Feld Breite gewinnt, auch wenn Länge noch den alten Wert hat
     const [lat, lng] = koordZahlen("sp-lat", "sp-lng");
     if (isNaN(lat) || isNaN(lng)) { S.msg = { type: "err", ort: "start", text: "Bitte Breite und Länge eintragen, oder ein Paar wie 52.47010, 13.46280 ins Feld Breite einfügen." }; return; }
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) { S.msg = { type: "err", ort: "start", text: "Die Breite muss zwischen -90 und 90 liegen, die Länge zwischen -180 und 180." }; return; }
     S.admin.state = await rpc("admin_set_start", { p_pin: S.admin.pin, p_route: d.route, p_name: val("sp-name"), p_lat: lat, p_lng: lng });
     S.admin.startEdit = null; S.msg = { type: "ok", text: "Start gespeichert." };
   },
@@ -3214,7 +3328,10 @@ const ACT = {
   },
   "a-here"() {
     const info = $("#e-here"); if (info) info.textContent = "Suche Standort …";
+    // wie a-startpkt-hier: ein später Fix landet nicht im Formular einer anderen (oder neu geöffneten) Station
+    const nr = S.admin.formNr, fuer = S.admin.edit, nochDa = () => S.admin.formNr === nr && S.admin.edit === fuer && $("#e-lat") && $("#e-lng");
     navigator.geolocation.getCurrentPosition(p => {
+      if (!nochDa()) return;
       $("#e-lat").value = p.coords.latitude.toFixed(6);
       $("#e-lng").value = p.coords.longitude.toFixed(6);
       if (ekarte && ekMitte()) { ekZeichnen(); ekarte.map.setView(ekMitte()); }
@@ -3223,11 +3340,14 @@ const ACT = {
       if (i) i.innerHTML = acc > Math.max(20, radius / 2)
         ? `<span class="fehlt">Ungenau (±${acc} m). Kurz warten und noch einmal tippen, am besten mit dem Handy statt dem Tablet.</span>`
         : `übernommen (±${acc} m), jetzt speichern`;
-    }, e => { const i = $("#e-here"); if (i) i.textContent = e.code === 1 ? "Standortzugriff abgelehnt." : "Standort nicht verfügbar."; },
+    }, e => { const i = nochDa() && $("#e-here"); if (i) i.textContent = e.code === 1 ? "Standortzugriff abgelehnt." : "Standort nicht verfügbar."; },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
     return false;
   },
   async "a-save"(d) {
+    // Ungültige Koordinaten nicht still als null speichern: das löschte einen gültigen Standort
+    const kf = koordFehler("e-lat", "e-lng");
+    if (kf) { S.msg = { type: "err", text: kf }; return; }
     const [lat, lng] = koordZahlen("e-lat", "e-lng");
     // Eine leere Ziffer würde still zur 0: lieber nachfragen
     const ziffer = val("e-digit").trim();
@@ -3244,14 +3364,16 @@ const ACT = {
     };
     // Neue Ziffer, und Teams haben die Station schon gelöst: erst nachfragen. Alle laufen dieselbe Route,
     // gelöst hat Station p also, wer mindestens p Stationen gelöst hat.
+    // t.solved zählt nur die aktive Route: eine Station der anderen Route hat niemand gelöst (Bugjagd 07.11.2026, Fund 4)
     const st = S.admin.state, alt = alleStationen(st).find(s => String(s.id) === String(d.id));
-    const geloest = alt && st.status !== "registration" && st.status !== "drawn" && alt.digit !== daten.p_digit
+    const aktivRoute = alt && (alt.route || "echt") === (st.route || "echt");
+    const geloest = alt && aktivRoute && st.status !== "registration" && st.status !== "drawn" && alt.digit !== daten.p_digit
       ? (st.teams || []).filter(t => (t.solved || 0) >= alt.position).map(t => t.name) : [];
     if (geloest.length) {
       // Der Dialog zeichnet das Formular neu: das Getippte für "Abbrechen" aufheben
       const felder = {};
       $("#app").querySelectorAll("input[id^='e-'], textarea[id^='e-']").forEach(el => { felder[el.id] = el.value; });
-      S.admin.confirm = { key: "ziffer", pos: alt.position, alt: alt.digit, neu: daten.p_digit, teams: geloest, daten, felder };
+      S.admin.confirm = { key: "ziffer", pos: alt.position, route: alt.route || "echt", alt: alt.digit, neu: daten.p_digit, teams: geloest, daten, felder };
       S.msg = null;
       return;
     }
@@ -3653,8 +3775,8 @@ async function maybeReport() {
   // Eine Datenbank ohne Nachtrag 30 kennt p_kompass nicht (PostgREST findet die Funktion nicht, PGRST202): nur dann
   // einmal ohne, die Position ist wichtiger als das Urteil. Bei jedem anderen Fehler (Funkloch, Server) kein zweiter Aufruf.
   try {
-    try { await rpc("report_position", { ...pos, p_kompass: urteil }); }
-    catch (e) { if (!ohneFunktion(e)) throw e; await rpc("report_position", pos); }
+    try { await eingabeRpc("report_position", { ...pos, p_kompass: urteil }); }
+    catch (e) { if (!ohneFunktion(e)) throw e; await eingabeRpc("report_position", pos); }
     // erst nach dem Senden: scheitert es, geht das Urteil beim nächsten Melden wieder mit
     g.lastSentUrteil = urteil;
     g.sentAt = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -3753,7 +3875,7 @@ async function rolleWechseln(rolle, team, kurz) {
     return true;
   }
   S.team.code = null; S.team.state = null; S.team.uebergabe = null; S.team.wahl = null; S.team.abmelden = false; S.team.hilfe = false; S.team.tab = "weg";
-  LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.removeItem("sj.letzter.team");   // sonst holt letzterStand() im Funkloch die Leitungsansicht zurück
+  LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.removeItem("sj.notweg"); LS.removeItem("sj.letzter.team");   // sonst holt letzterStand() im Funkloch die Leitungsansicht zurück
   S.leitungWar = false;
   ansichtSetzen("public");
   S.mit = null; S.msg = null;
@@ -3971,7 +4093,7 @@ async function leitungOhneCode() {
   if (!tok || S.team.code) return false;
   try {
     const r = await rpc("leader_code", { p_token: tok });
-    S.team.code = r.code; LS.setItem("sj.code", r.code); LS.removeItem("sj.hand");   // der Kopf zeigt dann Team und Code
+    S.team.code = r.code; LS.setItem("sj.code", r.code); LS.removeItem("sj.hand"); LS.removeItem("sj.notweg");   // der Kopf zeigt dann Team und Code
     S.leitungWar = true;
     S.team.ohneNetz = false; netzOk();
     return true;
@@ -3989,11 +4111,14 @@ async function leitungOhneCode() {
 // Hat die Spielleitung die Leitung gewechselt oder wurde sie abgegeben, gibt dieses Handy nichts mehr ein.
 // Bisher blieb der gemerkte Code gültig und das Team hatte zwei eingebende Handys.
 // Ein von Hand getippter Code (Notweg der Spielleitung, sj.hand) gehört nicht dem Gerät: der bleibt.
+// Steht die Leitung hier fest, gilt sie als gesehen (S.leitungWar): sonst warf rolleNachziehen eine Leitung, die
+// gleich in der Team-Ansicht startete, beim ersten Tipp auf "Anmeldung" zurück (Bugjagd 03.11.2026, Fund 1).
 async function leitungNochDa(s) {
   const tok = LS.getItem("sj.token");
-  if (s && s.team && S.myName && s.team.leaderName === S.myName) LS.removeItem("sj.hand");   // selbst Leitung geworden: Merker weg
-  if (!tok || LS.getItem("sj.hand") || !s || !s.team || !s.team.leaderName || s.team.leaderName === S.myName) return;
-  try { await rpc("leader_code", { p_token: tok }); return; }   // umbenannt, aber weiter Leitung
+  if (s && s.team && S.myName && s.team.leaderName === S.myName) { LS.removeItem("sj.hand"); LS.removeItem("sj.notweg"); }   // selbst Leitung geworden: Merker weg
+  if (!tok || LS.getItem("sj.hand") || !s || !s.team || !s.team.leaderName) return;
+  if (s.team.leaderName === S.myName) { S.leitungWar = true; return; }
+  try { await rpc("leader_code", { p_token: tok }); S.leitungWar = true; return; }   // umbenannt, aber weiter Leitung
   catch (e) {
     if (!/keine Teamleitung|kein Team\b/.test(String(e.message)) && !String(e.message).includes("Unbekanntes Gerät")) return;   // Funkloch
   }
@@ -4010,7 +4135,7 @@ async function ranglisteHolen() {
 // statt still das alte Team weiter zu zeigen
 function codeUngueltig() {
   S.team.code = null; S.team.state = null; S.team.abmelden = false;
-  LS.removeItem("sj.code"); LS.removeItem("sj.hand"); standVergessen(); stopGps();
+  LS.removeItem("sj.code"); LS.removeItem("sj.hand"); LS.removeItem("sj.notweg"); standVergessen(); stopGps();
   // Mit Geräte-Schlüssel holt der nächste Abruf das neue Team von selbst (leitungOhneCode)
   S.msg = LS.getItem("sj.token") ? { type: "info", text: "Die Teams wurden neu ausgelost." }
     : { type: "err", ort: "code", text: "Dieser Team-Code gilt nicht mehr, vermutlich wurde neu ausgelost." };
@@ -4281,7 +4406,8 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && S.team.hilfe) { S.team.hilfe = false; render(); return; }
   if (e.key === "Escape" && S.gross) { S.gross = null; render(); return; }
   if (e.key === "Escape" && S.gps.kal) { kalEnde(false); render(); return; }
-  if (e.key === "Escape" && S.admin.confirm) { S.admin.confirm = null; render(); return; }
+  // wie "Abbrechen": das Getippte im Formular dahinter kommt zurück (Bugjagd 07.11.2026, Fund 5)
+  if (e.key === "Escape" && S.admin.confirm) { ACT["a-dlg-cancel"](); render(); return; }
   if (e.key === "Escape" && S.admin.full) { S.admin.full = false; render(); return; }
   if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
   if (e.target.id === "dlgword") { const ok = $("#dlgok"); if (ok && !ok.disabled) ok.click(); return; }

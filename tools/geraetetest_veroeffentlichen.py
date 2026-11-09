@@ -10,6 +10,8 @@ Quelle bleibt geraete-test.html und geraete-tests.js in diesem Repo. Das Skript
   <!-- WEITERLEITUNG --> und <!-- /WEITERLEITUNG --> (der leitet die alte Adresse um),
 - schreibt eine eigene config.js nur mit Server-Adresse und öffentlichem Schlüssel
   (window.GT_CONFIG; keine Hilfe-Nummer, kein Spieltext),
+- kopiert aus vendor/ Leaflet (leaflet.js, LICENSE) und die Barlow-Schriften (woff2, OFL.txt), die der Test wie
+  die App von dort lädt (Bugjagd 03.11.2026, Funde 5 und 6),
 - prüft alle Dateien auf verräterische Wörter und bricht dann ab,
 - committet und pusht in den Arbeitsordner .geraetetest-repo/ (nicht in diesem Repo).
 """
@@ -51,6 +53,12 @@ def main() -> int:
               "Standort, Kompass, Bewegung, Kamera und mehr. Anonym, die Position wird nicht gespeichert.\n\n"
               "https://7deeda.github.io/geraetetest/\n")
     dateien = {"index.html": html, "geraete-tests.js": tests, "config.js": config, "README.md": readme, ".nojekyll": ""}
+    # Was der Test aus vendor/ lädt: Textdateien laufen durch die Wortprüfung, die Schriften gehen als Bytes mit
+    for n in ["vendor/leaflet-1.9.4/leaflet.js", "vendor/leaflet-1.9.4/LICENSE", "vendor/fonts/OFL.txt"]:
+        dateien[n] = (REPO / n).read_text(encoding="utf-8")
+    schriften = sorted(set(re.findall(r"url\((vendor/fonts/[^)]+\.woff2)\)", html)))
+    if not schriften or any(not (REPO / n).is_file() for n in schriften):
+        print("Schriften aus vendor/fonts nicht gefunden:", schriften); return 1
 
     fund = [(name, m.group(0)) for name, inhalt in dateien.items() for m in VERBOTEN.finditer(inhalt)]
     if fund:
@@ -66,7 +74,11 @@ def main() -> int:
         git("config", "user.name", "TSE Apps")
         git("config", "user.email", subprocess.run(["git", "config", "user.email"], cwd=REPO, capture_output=True, text=True).stdout.strip() or "apps@example.invalid")
     for name, inhalt in dateien.items():
+        (ZIEL / name).parent.mkdir(parents=True, exist_ok=True)
         (ZIEL / name).write_text(inhalt, encoding="utf-8", newline="\n")
+    for name in schriften:
+        (ZIEL / name).parent.mkdir(parents=True, exist_ok=True)
+        (ZIEL / name).write_bytes((REPO / name).read_bytes())
     git("add", "-A")
     if not git("status", "--porcelain").stdout.strip():
         print("Keine Änderung, nichts zu veröffentlichen."); return 0

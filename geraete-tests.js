@@ -219,15 +219,17 @@
       async lauf() {
         const mess = {}; let ok = true;
         let t = jetzt();
-        try { const r = await fetch("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", { cache: "no-store" }); if (!r.ok) throw new Error(r.status); await r.text(); mess["Leaflet von unpkg in ms"] = Math.round(jetzt() - t); }
-        catch (e) { ok = false; mess["Leaflet von unpkg"] = "lädt nicht: " + e.message; }
+        // Leaflet wie die App aus vendor/ (liegt neben der Seite, auch in der veröffentlichten Kopie), nicht von unpkg:
+        // ein gesperrtes unpkg meldete sonst einen Kartenfehler, den es in der App nicht gibt (Bugjagd 03.11.2026, Fund 5)
+        try { const r = await fetch("vendor/leaflet-1.9.4/leaflet.js", { cache: "no-store" }); if (!r.ok) throw new Error(r.status); await r.text(); mess["Leaflet aus vendor in ms"] = Math.round(jetzt() - t); }
+        catch (e) { ok = false; mess["Leaflet aus vendor"] = "lädt nicht: " + e.message; }
         t = jetzt();
         try {
           await new Promise((res, rej) => { const i = new Image(); i.onload = res; i.onerror = () => rej(new Error("Fehler")); i.src = "https://a.tile.openstreetmap.org/15/17696/11100.png"; });
           mess["OSM-Kachel in ms"] = Math.round(jetzt() - t);
         } catch { ok = false; mess["OSM-Kachel"] = "lädt nicht"; }
         if (!ok) return { art: "err", wert: "lädt nicht", mess };
-        const summe = mess["Leaflet von unpkg in ms"] + mess["OSM-Kachel in ms"];
+        const summe = mess["Leaflet aus vendor in ms"] + mess["OSM-Kachel in ms"];
         return { art: summe <= 3000 ? "ok" : "warn", wert: komma(summe / 1000) + " s", mess };
       }
     },
@@ -512,5 +514,5 @@
     }
   ];
 
-  window.GT_TESTS = { version: 21, tests };   // 21: iPad mit mobiler Kennung ist ein Tablet (04.10.2026)   // 20: Akku als eigener Schritt (02.10.2026)   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen; 13: Gyro-Achse aus den Daten; 14: Abweichung Kompass gegen Gyroskop; 15: Drehung um die Senkrechte, auch schräg; 16: Einmessen vor dem Drehen; 17: Striche nur beim Drehen, Wandern ohne Drehung; 18: keine Position mehr; 19: neutrale Abfragen und Kennungen (02.10.2026)
+  window.GT_TESTS = { version: 22, tests };   // 22: Leaflet und Schriften aus vendor/ wie die App (03.11.2026)   // 21: iPad mit mobiler Kennung ist ein Tablet (04.10.2026)   // 20: Akku als eigener Schritt (02.10.2026)   // 9: ohne "Kompass nach Pause"; 10: Kompass still liegend kein Fehler; 11: Drehen zeichnet jede Meldung auf; 12: Gyroskop und Neigung beim Drehen; 13: Gyro-Achse aus den Daten; 14: Abweichung Kompass gegen Gyroskop; 15: Drehung um die Senkrechte, auch schräg; 16: Einmessen vor dem Drehen; 17: Striche nur beim Drehen, Wandern ohne Drehung; 18: keine Position mehr; 19: neutrale Abfragen und Kennungen (02.10.2026)
 })();

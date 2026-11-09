@@ -211,6 +211,10 @@
     "admin-beendet": { welt: "finished", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 4 }, selfie: {} },
     "admin-fotos-heute": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 3 }, selfie: {}, loeschDatum: "heute",
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { wait: 400 }] },
+    // Bugjagd 03.11.2026 (bugjagd3.py): Leitung startet kalt in der Team-Ansicht (Fund 1); Start mit altem Löschdatum (Fund 7)
+    "rolle-leitung-kalt": { welt: "running", view: "team", ls: { "sj.name": "Anna Berger", "sj.token": TOK("Anna Berger"), "sj.code": "FUCHS-4821" }, fuchs: { solved: 1 } },
+    "admin-start-loeschdatum": { welt: "drawn", view: "admin", ss: { "sj.pin": "4711" }, selfie: {}, loeschDatum: "heute" },
+    "admin-start-loeschdatum-spaet": { welt: "drawn", view: "admin", ss: { "sj.pin": "4711" }, selfie: {}, loeschDatum: "2099-01-01" },
     "admin-fotos-spaet": { welt: "running", view: "admin", ss: { "sj.pin": "4711" }, fuchs: { solved: 3 }, selfie: {}, loeschDatum: "2099-01-01",
       steps: [{ until: ".tabs" }, { click: "[data-act=a-tab][data-tab=fotos]" }, { wait: 400 }] },
     "admin-login": { welt: "running", view: "admin" },
@@ -257,6 +261,8 @@
 
   /* ---------- Welt aufbauen ---------- */
   const WELT = { status: C.welt, background: "klassisch", testMode: !!C.testMode, prizeCount: 3, durationMin: 180 };
+  // bugjagd4.py: ein zweites Leitungsgerät ändert den Spielstand, während hier ein Dialog offen steht
+  window.__WELT = WELT;
   const elapsed = C.welt === "finished" ? 185 : 72;   // Minuten seit dem Start
   WELT.startedAt = (C.welt === "running" || C.welt === "finished") ? NOW - elapsed * MIN : null;
   WELT.finishedAt = C.welt === "finished" ? WELT.startedAt + 182 * MIN : null;
@@ -481,7 +487,10 @@
       teams: (mitTeams() ? TEAMS : []).map(t => ({ id: t.id, name: t.name, points: t.points, pointCount: t.points.length,
         stations: t.events.map(e => ({ position: e.position, checkedInAt: iso(e.checkedInAt), solvedAt: iso(e.solvedAt) })) })) };
   }
-  const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9ß]/g, "");
+  // wie norm() in der Datenbank (Bugjagd 03.11.2026): NFC, ä/ö/ü zu ae/oe/ue, ß zu ss, übrige Zeichen ohne Akzent, nur a-z0-9
+  const norm = s => String(s || "").normalize("NFC").toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[đ]/g, "d").replace(/[ł]/g, "l").replace(/[ø]/g, "o").replace(/[ı]/g, "i").replace(/[^a-z0-9]/g, "");
+  window.__norm = norm;   // bugjagd3.py
   // Editierabstand wie name_abstand in der Datenbank
   const lev = (a, b) => { let v = Array.from({ length: b.length + 1 }, (_, j) => j);
     for (let i = 1; i <= a.length; i++) { const n = [i]; for (let j = 1; j <= b.length; j++) n[j] = Math.min(n[j - 1] + 1, v[j] + 1, v[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); v = n; }
@@ -491,8 +500,13 @@
   PERSONEN.forEach(p => { ANGEMELDET[norm(p.name)] = p.token; });
   const fehler = msg => { const e = new Error(msg); e.rpc = true; throw e; };
   const pin = a => { if (a.p_pin !== "4711") fehler("Falsche PIN."); };
+  // Notweg-Schlüssel (09.11.2026): gültige Schlüssel mit ihrem Team-Code; ein Test kann einen löschen (abgelaufen)
+  const NOTWEG = window.__NOTWEG = { n: 0, gilt: {} };
   const fuchsByCode = code => { const t = TEAMS.find(x => x.code === String(code || "").trim().toUpperCase()); if (!t || !mitTeams()) fehler("Unbekannter Team-Code."); return t; };
 
+  // W5 (03.11.2026): die acht Eingaben, die der Server nur noch mit dem Schlüssel der Teamleitung oder der Admin-PIN annimmt
+  const EINGABEN = new Set(["check_in", "submit_answer", "reveal_tip", "submit_final", "team_selfie", "team_selfie_skip",
+    "team_set_leader", "report_position"]);
   const RPC = {
     public_state: () => publicState(),
     team_state: a => teamState(fuchsByCode(a.p_code)),
@@ -607,6 +621,8 @@
     admin_photo: a => { pin(a); window.__FOTO_ROUTE = (window.__FOTO_ROUTE || []).concat([a.p_route || "echt"]); const t = TEAMS.find(x => x.id === a.p_team);
       (window.__FOTO_ARGS = window.__FOTO_ARGS || []).push({ n: t.name, p: a.p_position, full: !!a.p_full });
       if (window.__fotoFehler && window.__fotoFehler(a, t)) fehler("Foto nicht erreichbar.");
+      // bugjagd3.py: inzwischen gelöscht, die Datenbank liefert data null (Bugjagd 03.11.2026, Fund 2)
+      if (window.__fotoNull && window.__fotoNull(a, t)) return { data: null };
       return { data: beispielFoto(t.name.length * 40 + a.p_position * 25, a.p_full, C.hochfotos && (t.name.length + a.p_position) % 3 === 0) }; },
     admin_set_selfie: a => { pin(a);
       // Audit 25.10.: Löschdatum heute oder früher abgelehnt; das schon gespeicherte Datum nochmal senden geht nur beim Ausschalten
@@ -614,6 +630,9 @@
       WELT.selfieOn = !!a.p_on; WELT.photosDeleteOn = a.p_delete_on || null; return adminState(); },
     admin_delete_photos: a => { pin(a); ANDERE_FOTOS.length = 0; Object.keys(FOTOS).forEach(k => delete FOTOS[k]); return adminState(); },
     admin_state: a => { pin(a); return adminState(); },
+    admin_notweg: a => { pin(a); const t = fuchsByCode(a.p_code), token = "nw-mock-" + t.code + "-" + (++NOTWEG.n);
+      NOTWEG.gilt[token] = t.code; return { token, team: t.name, giltBis: new Date(Date.now() + 12 * 3600e3).toISOString() }; },
+    notweg_ende: a => { delete NOTWEG.gilt[a.p_token]; return null; },
     // Nachtrag 32, Audit 25.10.: mit Plätzen in keinem Zustand umschalten, weder aus noch an
     admin_set_test_mode: a => { pin(a);
       if (!!a.p_on !== WELT.testMode && TEAMS.some(t => t.place))
@@ -672,7 +691,26 @@
     // __weg: nur diese Aufrufe scheitern wie im Funkloch. __halten: diese Aufrufe werden beantwortet (Stand zum Sendezeitpunkt),
     // die Antwort kommt aber erst nach window.__freigeben()
     if (passt(window.__weg)) throw new TypeError("Prüfstand: Funkloch");
+    // Datenbank ohne die Migration des Notweg-Schlüssels (__OHNE_NOTWEG), oder ganz ohne W5
+    if ((fn === "admin_notweg" || fn === "notweg_ende") && (window.__OHNE_NOTWEG || window.__OHNE_W5 || window.__ALTE_DB))
+      return antwort(404, { code: "PGRST202", message: "Could not find the function public." + fn + " in the schema cache" });
     try {
+      // W5: __EINGABE_ARGS sammelt die Argumente der Eingaben. __ALTE_DB oder __OHNE_W5: Datenbank ohne die Migration
+      // (PGRST202 bei p_token oder p_pin). __W5: prüfen wie der Server (Schlüssel der Leitung, sonst PIN, sonst abgelehnt);
+      // nur auf Wunsch, weil viele Szenarien eine Leitung mit Team-Code ohne Schlüssel zeigen (IM_TEAM)
+      if (EINGABEN.has(fn)) {
+        (window.__EINGABE_ARGS = window.__EINGABE_ARGS || []).push(Object.assign({ fn }, args));
+        if ((window.__ALTE_DB || window.__OHNE_W5) && ("p_token" in args || "p_pin" in args))
+          return antwort(404, { code: "PGRST202", message: "Could not find the function public." + fn + " in the schema cache" });
+        if (window.__W5) {
+          const t = fuchsByCode(args.p_code), l = person(t.leaderName), leitet = !!(args.p_token && l && args.p_token === l.token)
+            || !!(args.p_token && !window.__OHNE_NOTWEG && NOTWEG.gilt[args.p_token] === t.code);
+          if (!leitet && !String(args.p_pin || "").trim()) fehler(String(args.p_token || "").startsWith("nw-")
+            ? "Der Notweg-Schlüssel gilt nicht mehr. Bitte die Admin-PIN noch einmal eingeben."
+            : "Eingeben kann nur die Teamleitung auf ihrem eigenen Handy. Wenn du die Leitung bist: App neu laden.");
+          if (!leitet) pin(args);
+        }
+      }
       // unbekannte Admin-Aufrufe: nichts tun, Stand zurückgeben
       const h = RPC[fn] || (fn.startsWith("admin_") ? (a => { pin(a); return adminState(); }) : null);
       if (!h) return antwort(404, { message: "Prüfstand kennt " + fn + " nicht." });

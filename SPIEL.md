@@ -29,7 +29,7 @@ App eingeben.
 | Rolle | Zugang | Kann | Sieht |
 |---|---|---|---|
 | **Teilnehmende** | Link, Name bei der Anmeldung | sich anmelden (nur bis zum Auslosen), Team nachschauen | eigenes Team groß mit Emoji; ab dem Start alles, was die Teamleitung sieht (Geräte-Schlüssel aus der Anmeldung) |
-| **Teamleitung** | `#/team`: automatisch auf dem Handy, mit dem sie sich angemeldet hat (Geräte-Schlüssel); Team-Code nur als Ausweg für die Spielleitung am Tablet | einchecken, Rätsel beantworten, Koffer-Code eingeben, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
+| **Teamleitung** | `#/team`: automatisch auf dem Handy, mit dem sie sich angemeldet hat (Geräte-Schlüssel); Team-Code nur als Ausweg für die Spielleitung am Tablet, mit Admin-PIN (§23) | einchecken, Rätsel beantworten, Koffer-Code eingeben, Leitung abgeben | Station, Kompass, Rätsel, Ziffern, Platz |
 | **Spielleitung** | Admin-PIN unter `#/admin` | auslosen, starten, beenden, fortsetzen, freischalten, Rätsel werten, Teamleitung wählen, Stationen pflegen, Leute eintragen, löschen, Testmodus | Reiter Karte und Teams (Karte, Teamliste mit "Braucht dich", Zuletzt), Zeitachse, Codes, Akku der Teamleitung, Koffer-Code |
 
 Die Teamleitung wird beim Auslosen je Team zufällig bestimmt
@@ -286,11 +286,14 @@ mit dem Team-Code.
   direkter Tabellenzugriff.
 - Alles läuft über `security definer`-Funktionen, `anon` hat nur
   Ausführungsrecht. Hilfsfunktionen (`norm`, `dist_m`, `team_by_code`,
-  `current_station`, `require_admin`, `answer_ok`, `aktive_route`) sind für
+  `current_station`, `require_admin`, `answer_ok`, `aktive_route`, seit W5 auch `team_eingabe`) sind für
   `anon` und `authenticated` gesperrt. Prüfen: `tools/pruefstand/rechte_db.py`
   (Nachtrag 31: Nachtrag 28 hatte `current_station` neu angelegt und die Sperre
   verloren).
 - Admin-Funktionen prüfen die PIN serverseitig (`require_admin`).
+- Eingaben fürs Team (Check-in, Antwort, Tipp, Koffer, Fotos, Leitung abgeben, Position) nimmt der Server seit W5
+  nur mit dem Geräte-Schlüssel der aktuellen Teamleitung oder mit der Admin-PIN an (`team_eingabe`, §23). Lesen
+  (`team_state`) geht weiter mit dem Team-Code.
 - Team-Codes: Tiername plus sechs Ziffern (`FUCHS-123456`); alte vierstellige
   Codes gelten bis zum nächsten Auslosen. `team_by_code` vergleicht nur
   Buchstaben und Ziffern (`EULE 8765` = `eule-8765`).
@@ -309,7 +312,7 @@ mit dem Team-Code.
 
 Bewusst akzeptiert oder offen:
 - GPS lässt sich mit Entwicklerwerkzeugen fälschen.
-- Wer einen Team-Code kennt, spielt für dieses Team.
+- Wer einen Team-Code kennt, sieht den Stand dieses Teams (`team_state`); eingeben kann er seit W5 nicht mehr.
 - Vor dem Auslosen kann jemand einen erfundenen Namen zusätzlich anmelden
   (Abhilfe: Zahl mit der Gästeliste abgleichen, steht im Admin beim Auslosen).
 - Mitglieder können Ziffern an andere Teams weitergeben (nicht technisch zu
@@ -1127,9 +1130,8 @@ Migration `20261029120000_rollen_akku.sql`, Prüfung `tools/pruefstand/rollen_ak
 - **Spielleitung (F5):** Chip „Akku N %“ in der Teamzeile ab 20 %, unter „Braucht dich“ ab 10 % (nicht ladend,
   `problemVon`). `(kein eigenes Handy)` am Namen zeigt `hatHandy`.
 - **Mitlese-Link gestrichen (F7):** siehe §5.3 und §7.
-- **Offen (W5):** Der Server prüft bei Eingaben nur den Team-Code. Wer ihn von Hand eintippt, kann zusätzlich zur
-  Teamleitung eingeben. War schon vorher so; zu schließen wäre es, indem Eingaben an den Geräte-Schlüssel der
-  Leitung gebunden werden.
+- **W5 geschlossen (03.11.2026, §23):** Eingaben gehen nur noch mit dem Geräte-Schlüssel der Leitung oder der
+  Admin-PIN; der Team-Code allein reicht nicht mehr.
 
 ---
 
@@ -1182,3 +1184,196 @@ Stationen, obwohl sie mit Stationen nichts zu tun haben. Sie stehen jetzt in ein
 bleiben im Reiter Stationen, die Selfie-Einstellung im Reiter Fotos. Der Hinweis „Ausschalten im Reiter …“ bei
 „Bereit zum Start“ nennt den neuen Reiter. Am 360-px-Handy brechen die acht Reiter vor dem Start in drei Reihen
 um, bei 390 px in zwei (im Spiel sind es sieben).
+
+---
+
+## 23. Eingaben an den Geräte-Schlüssel gebunden (W5, 03.11.2026)
+
+Migration `20261103090000_w5_eingaben_schluessel.sql`, Prüfung `tools/pruefstand/w5.py` (Port 8877) und
+`w5_eingaben_db.py` (Probelauf). Bis dahin reichte bei jeder Eingabe der Team-Code: wer ihn von Hand eintippte
+(Notweg-Feld „Spielleitung: mit Team-Code eingeben“), konnte neben der Teamleitung eingeben.
+
+- **Server:** Die acht Eingaben `check_in`, `submit_answer`, `reveal_tip`, `submit_final`, `team_selfie`,
+  `team_selfie_skip`, `team_set_leader` und `report_position` haben zwei neue Parameter `p_token` und `p_pin`
+  (Vorgabe null, die alten Fassungen sind gedroppt). Statt `team_by_code` ruft jede `team_eingabe(p_code, p_token, p_pin)`
+  (intern, nicht für anon): Team per Code, dann muss `p_token` der Geräte-Schlüssel der aktuellen Leitung sein, sonst
+  muss `p_pin` die Admin-PIN sein (`require_admin`, Meldung „Falsche PIN.“). Ohne beides: „Eingeben kann nur die
+  Teamleitung auf ihrem eigenen Handy. Wenn du die Leitung bist: App neu laden.“ (der Zusatz seit der
+  Sicherheitsprüfung 07.11.: eine alte App ohne Schlüssel hilft sich so). Der Schlüssel zählt zuerst. Eine Leitung ohne eigenes Handy (von der
+  Spielleitung gesetzt) gibt nur über den Notweg mit PIN ein. Lesen bleibt mit Code (`team_state`, `team_photo`).
+- **App:** `eingabeRpc(fn, args)` hängt `p_token` (`sj.token`) und `p_pin` an; die PIN (`S.admin.pin`) nur am
+  Notweg-Tablet (`sj.hand`), nicht von einem Leitungs-Handy, das sie zufällig im Tab hat (07.11.). Antwortet der Server
+  „Falsche PIN“ (die PIN wurde geändert), vergisst `eingabeRpc` sie (`pinWeg`) und wirft den Fehler weiter; das
+  Notweg-Tablet zeigt dann „Admin-PIN fehlt“. Kennt die Datenbank die Parameter nicht (PGRST202, Migration fehlt), einmal ohne; die älteren Rückfälle
+  (`p_position`, `p_kompass`) bleiben davor.
+- **Notweg:** Unter dem Team-Code steht das Feld „Admin-PIN“, solange der Tab die PIN nicht kennt. Seit 09.11.
+  tauscht `t-login` sie gegen einen Notweg-Schlüssel für dieses Team (§26). Bis dahin prüfte `t-login` sie
+  über `admin_state` (`notwegPin`) und merkte sie wie die Anmeldung der Spielleitung in `sessionStorage` (`sj.pin`);
+  damit war der Tab auch für `#/admin` angemeldet (so noch als Rückfall ohne die Migration von §26). Abmelden am Notweg (`t-logout` mit `sj.hand`) löscht die PIN aus
+  dem Tab (07.11.). Tippt die Teamleitung den eigenen Code auf dem eigenen Handy
+  (Name und Schlüssel), braucht es keine PIN. Hat ein Notweg-Tablet (`sj.hand`) die PIN verloren (Browser neu
+  gestartet), zeigt `viewTeam` statt der Ansicht „Admin-PIN fehlt“ mit PIN-Feld (`t-pin`) und Abmelden.
+- **Reihenfolge beim Einspielen:** erst die App, dann die Migration. Eine ältere App (Service Worker, nicht neu
+  geladen) sendet keinen Schlüssel und kann nach der Migration nicht mehr eingeben; „Neue Version laden“ hilft.
+  `tools/stresstest.py` schickt bei den Eingaben den Geräte-Schlüssel der Leitung mit (`p_token`) und prüft
+  als Randfälle, dass der Code allein abgewiesen wird und der Notweg mit `p_pin` durchgeht.
+- **Mock:** `window.__W5` prüft wie der Server (nur auf Wunsch, viele Szenarien zeigen eine Leitung mit Code ohne
+  Schlüssel), `__OHNE_W5` spielt eine Datenbank ohne die Migration, `__EINGABE_ARGS` sammelt die Argumente.
+
+---
+
+## 24. Bugjagd 03.11.2026
+
+Sieben bestätigte Funde einer Multi-Agent-Bugjagd (Jury je 3 von 3, alle minor) und ein Nachtrag aus der zweiten
+Bugjagd (Punkt 8), behoben am 07.11.2026 auf dem Zweig `bugjagd-nov`, der W5 (§23) enthält. Migration
+`20261107090000_bugjagd3.sql` (Punkte 3, 7 und 8), läuft nach W5 und bricht ohne W5 ab. Probelauf
+`tools/pruefstand/bugjagd3_db.py` (spielt W5 davor ein), Oberfläche `tools/pruefstand/bugjagd3.py` (Port 8878).
+
+1. **Leitung startet kalt in der Team-Ansicht** (`rolleNachziehen`): Mit gemerktem `sj.code` lief weder `leitungOhneCode`
+   noch `rolleWechseln`, `S.leitungWar` blieb leer, und der erste Wechsel auf „Anmeldung“ holte die Leitung mit
+   „Du leitest jetzt Team …“ zurück. Jetzt setzt `leitungNochDa` `S.leitungWar = true`, sobald `team_state` die eigene
+   Leitung bestätigt (oder `leader_code` sie nach einer Umbenennung bestätigt), nur mit Geräte-Schlüssel und ohne
+   `sj.hand`. Die Flanken-Variante („nur wechseln, wenn `leitungWar === false`“) ist bewusst nicht genommen: sie
+   schaltete den gewollten Rollengewinn beim ersten Laden auf der Anmeldeseite ab.
+2. **Foto-ZIP** (`a-fotos-zip`): Ein inzwischen gelöschtes Foto (`admin_photo` liefert `data: null`) wurde über
+   `atob("null")` zur 3-Byte-Datei im Paket, die Meldung sagte trotzdem Erfolg. Jetzt wird es übersprungen und gezählt:
+   „N von M Fotos … heruntergeladen, K inzwischen gelöscht.“ (rot), danach lädt die Fotoliste neu. Sind alle weg,
+   gibt es kein Paket, nur die Meldung.
+3. **Bremse für Team-Codes** (Migration, Teil A): Ein falscher Code warf sofort eine Ausnahme; ein Zähler in derselben
+   Transaktion wäre mit zurückgerollt worden. Darum fragt zuerst `team_code_bremse(p_code)`. Die zählt falsche Codes
+   je Quelle in `team_code_fehlversuche` (Quelle: `cf-connecting-ip`, sonst erster Eintrag von `x-forwarded-for`,
+   sonst `ohne`) und gibt den Text zurück, statt zu werfen. Die acht Eingaben laufen seit W5 alle durch
+   `team_eingabe`; dort sitzt die Bremse vor `team_by_code`. Lehnt sie ab, gibt `team_eingabe` ein leeres Team zurück
+   und merkt den Text in `sj.code_fehler` (transaktionslokal); jede Eingabe hat dafür genau eine Zeile mehr
+   (`if t.id is null then return team_code_abgelehnt(...)`), sonst die W5-Fassung. `team_state` und `team_photo`
+   (lesen, ohne `team_eingabe`) fragen die Bremse direkt. Abgelehnt wird über `team_code_abgelehnt`: normales Ende
+   mit `response.status` 400 und einer Antwort im Format eines PostgREST-Fehlers. PostgREST schreibt dabei fest, die App sieht wie bisher „Unbekannter Team-Code.“
+   (`codeUngueltig` greift weiter). Ab 30 falschen Codes in 10 Minuten ist jeder Code aus dieser Quelle bis zum Ende
+   des Fensters gesperrt, auch ein richtiger: „Zu viele falsche Team-Codes aus diesem Netz. Bitte in N Minuten noch
+   einmal versuchen.“ Leere Codes zählen nicht, Zeilen älter als eine Stunde räumt der nächste Fehlversuch weg.
+   Rechnung: 30 Versuche je 10 Minuten und Quelle sind rund 4.300 am Tag; für die etwa 450.000 Versuche, die ein Code
+   im Mittel braucht, also gut 100 Tage je Adresse. Grenzen: Wer viele Adressen hat, kommt schneller voran; hängen
+   viele Handys hinter einer Adresse (Mobilfunk-NAT) und probiert dort jemand, sperrt das alle dahinter mit. Nach
+   einem Neu-Auslosen senden nur die Leitungen (etwa 12 bis 16 Handys) je einmal einen alten Code.
+4. **Seed der Prager Stationen** (`supabase/seed-stationen-prag.sql`): schrieb in die Sicht `stations`, die bei
+   eingeschaltetem Testmodus die Test-Route zeigt; dann überschrieb Position 1 die Teststation, 2 bis 5 trafen nichts.
+   Jetzt `update stations_alle … where route = 'echt' and position = N`, die Kontrolle liest `stations_alle` mit
+   `route = 'echt'`. Probelauf mit Testmodus an: fünf echte Stationen geändert, Teststation unberührt.
+5. **Geräte-Test, Karte** (`geraete-tests.js`): lud Leaflet von unpkg, die App nimmt es aus `vendor/`. Jetzt
+   `vendor/leaflet-1.9.4/leaflet.js`, Messschlüssel „Leaflet aus vendor in ms“. Suite-Version 22.
+6. **Geräte-Test, Schriften** (`geraete-test.html`): lud Barlow von Google Fonts. Jetzt die `@font-face`-Zeilen der App
+   (Barlow und Barlow Semi Condensed aus `vendor/fonts`), keine Anfrage an Google. Damit beide Pfade auch in der
+   neutralen Kopie tragen, nimmt `tools/geraetetest_veroeffentlichen.py` `vendor/leaflet-1.9.4/leaflet.js`, dessen
+   `LICENSE`, `vendor/fonts/OFL.txt` (alle durch die Wortprüfung) und die verwendeten woff2-Dateien mit.
+7. **Abgelaufenes Foto-Löschdatum** (Migration, Teil B): Ein altes Datum aus einer Probe blieb stehen; `admin_start`
+   startete ohne Hinweis, `team_selfie` fügte das Foto ein und `team_state` löschte es im selben Aufruf, das Handy
+   meldete „Foto ist drin“. Jetzt warnt `admin_start` (Gruppenselfie an, Löschdatum heute oder früher nach Prager
+   Zeit), der Start-Dialog nennt es schon vorher, und `team_selfie` (W5-Fassung) lehnt mit „Das Löschdatum der Fotos ist erreicht …“
+   ab, ohne ein Foto anzulegen (das Team kommt über „Ohne Foto weiter“ voran). `admin_start` lehnt nicht ab: der Start
+   am Eventtag soll nicht an einem Fotodatum hängen.
+
+8. **norm() mit zerlegten Umlauten** (Nachtrag aus der zweiten Bugjagd, Migration Teil C): `norm()` bildete nur
+   vorkomponierte Umlaute ab. Zerlegte Zeichen (NFD, etwa aus einem Mac-PDF eingefügt) ergaben „brucke“ statt
+   „bruecke“: die Antwort passte nicht, ein Name galt nicht als Dublette. Jetzt `normalize(…, NFC)` vor der bisherigen
+   Kette. Danach bekommen Personen, deren `name_key` nicht mehr `norm(name)` ist, den neuen Schlüssel, nie einen, den
+   schon jemand hat (Probelauf gegen die Live-Daten am 07.11.: 0 Schlüssel neu, 0 Konflikte). Die App schickt alles,
+   was über `val()` aus Feldern kommt (Namen, Antworten, Lösungen, Codes), als NFC. `mock.js` rechnet `norm` jetzt wie
+   die Datenbank (ä zu ae, ß zu ss), vorher blieb ß stehen und ä wurde a.
+
+Die acht Eingaben in der Migration sind die W5-Fassungen mit einer Zeile mehr, `team_state`, `team_photo`,
+`admin_start` und `norm` die Live-Fassungen aus `supabase/schema/funktionen/`; keine neue Signatur.
+`rollen_akku_db.py` 6H nimmt beides als Ablehnung: die Ausnahme (heute) und HTTP 400 ohne Ausnahme (nach dieser
+Migration). Prüfungen am 07.11. nach dem Merge von W5: `bugjagd3_db.py` 102, `w5_eingaben_db.py` 139, `rechte_db.py`
+45 (alle Migrationen), `rollen_akku_db.py` 180; im Container `bugjagd3.py` 28 (gegen den Stand vor der Bugjagd 16
+FEHLT, gemessen vor dem Merge), `w5.py` 44, `rollen_akku.py` 163, `selfie.py` 26, `audit2510.py` 52,
+`review1510.py` 50, `admin.py` 23, `handy.py` 25.
+
+---
+
+## 25. Bugjagd 07.11.2026
+
+Zweite Multi-Agent-Bugjagd, 13 bestätigte Funde (Jury 3 von 3, Fund 11 und 13 mit 2 von 3; einer major, sonst minor).
+Behoben auf dem Zweig `bugjagd-nov` die elf ohne offene Entscheidung, Fund 1 nur im Text. Migration
+`20261107100000_bugjagd4.sql` (Funde 2, 3, 7), unabhängig von W5 und bugjagd3, läuft aber nach ihnen. Probelauf
+`tools/pruefstand/bugjagd4_db.py`, Oberfläche `tools/pruefstand/bugjagd4.py` (Port 8879).
+
+1. **Testmodus im laufenden Spiel** (major, nur Texte): Seit der Teststation (Nachtrag 28) wechseln mit dem Testmodus
+   alle Teams auf die Teststation, ein Team ist dort in Sekunden im Ziel, und danach führt nur „Fortschritt
+   zurücksetzen“ zurück (löscht den ganzen Fortschritt, die Plätze und über die Kaskade alle Fotos). Die Rückfrage
+   `DANGER.testan` sagte nur „prüft keine Entfernung“. Jetzt nennen sie und der Reiter Einstellungen (beide nur, wenn
+   es eine Teststation gibt) den Wechsel, den Rückweg und für GPS-Probleme „Freischalten“ im Reiter Karte und Teams.
+   **Offen (Friedrich):** ob der Server das Einschalten im laufenden Spiel sperrt, solange eine Teststation existiert,
+   oder `aktive_route()` im Status running nicht umschaltet. Nicht gebaut.
+2. **admin_finish ohne Statusprüfung**: Ein zweites Leitungsgerät mit offenem Beenden-Dialog machte aus einem gerade
+   zurückgesetzten oder geleerten Spiel ein beendetes („Spiel fortsetzen“ führte dann zu running ohne `started_at`).
+   Jetzt prüft `admin_finish` unter Zeilensperre (`for update`, wie `admin_draw`) und beendet nur aus running. In der App
+   holt `a-dlg-ok` vor Beenden und Zurücksetzen den frischen Stand (`admin_state`) und lehnt mit Meldung ab, wenn er
+   nicht mehr passt; der Takt zeichnet einen offenen Dialog ja nicht neu.
+3. **admin_reset aus registration**: setzte auf drawn ohne Teams, die Anmeldung war zu. Jetzt unter Zeilensperre
+   „Vor dem Auslosen gibt es nichts zurückzusetzen.“ (ein ungesperrtes Lesen sähe unter READ COMMITTED noch den
+   alten Stand, wenn `admin_clear_participants` gleichzeitig läuft).
+4. **Ziffer-Rückfrage über Routen hinweg** (`a-save`): `t.solved` zählt nur die aktive Route, die bearbeitete Station
+   konnte zur anderen gehören (Teststation hat Position 1). Jetzt fragt die App nur, wenn `alt.route` die aktive Route
+   ist; für die Teststation heißt der Dialog „Ziffer der Teststation ändern“.
+5. **Escape im Ziffer-Dialog** verwarf das Getippte im Stationsformular. Escape ruft jetzt `ACT["a-dlg-cancel"]`, wie
+   der Knopf „Abbrechen“ (`S.felderZurueck`).
+6. **Verspäteter Standort-Rückruf** (`a-here`, `a-startpkt-hier`): Die Ortung hat bis zu 15 s; inzwischen konnte das
+   Formular einer anderen Station offen sein (gleiche Ids `e-lat`/`e-lng`), ohne Formular warf der Rückruf einen
+   TypeError. Jetzt merkt sich der Aufruf `S.admin.formNr` (zählt bei jedem Öffnen eines Formulars hoch) und
+   `S.admin.edit` bzw. `S.admin.startEdit`; stimmt das bei der Ankunft nicht mehr, verwirft er den Fix.
+7. **Koordinaten**: `parseFloat` machte aus `50°05'15.0"N` still 50 (rund 10 km daneben), „N 50.0875“ wurde NaN und
+   überschrieb eine gültige Koordinate mit null, 500 ging durch. Jetzt zählt nur eine ganze Dezimalzahl (`koordZahl`,
+   Komma oder Punkt, Vorzeichen), `koordFehler` lehnt im Stationsformular Ungültiges und Werte außerhalb -90..90 bzw.
+   -180..180 mit Meldung ab; beide Felder leer bleibt erlaubt (Station ohne Standort). Der Startpunkt prüft den
+   Bereich ebenso. Server: `admin_save_station` lehnt Breite außerhalb -90..90 und Länge außerhalb -180..180 ab (auch
+   NaN und unendlich), null bleibt erlaubt.
+8. **stresstest.py einrichten** übersprang nach einem Abbruch mitten in den Migrationen alle restlichen (die Prüfung
+   sah nur `admin_state`, das schon die erste Migration anlegt). Jetzt steht jede eingespielte Migration in
+   `stresstest.migrationen` (eigenes Schema, für PostgREST unsichtbar), ein zweiter Aufruf spielt genau die fehlenden
+   ein. Ein Testprojekt von vor dieser Liste verhält sich wie bisher, mit Hinweis.
+9. **stresstest.py Randfälle**: Jeder Fehler galt als bestanden, auch 429, 502 oder ein Verbindungsabbruch, und bei 200
+   Handys griff vor der Namensprüfung die Grenze „Die Anmeldung ist voll“. Jetzt zählt nur HTTP 400 mit der passenden
+   Meldung (`fehler_passt`), beim unbekannten Team-Code auch die Sperre der Bremse. Person 000 meldet sich allein vor
+   der Spitze an, die beiden Dubletten-Fälle laufen davor. Nur Syntax geprüft, nicht gelaufen.
+10. **Admin-PIN ohne Bremse, Vorgabe '2026'**: nicht angefasst (Sicherheitsentscheidung, siehe HANDOFF).
+11. **abschluss.py** beendete jeden neuen Playwright-Chrome, auch den eines parallel laufenden Prüfskripts. Jetzt nur
+   `chrome.exe`, die von diesem Python-Prozess abstammen (Prozessbaum über `Win32_Process`). Unter Windows nur ohne
+   Chrome geprüft (Baum mit zwei Ebenen Python), im Container ist die Liste leer wie bisher.
+12. **Fotos in den Rückfragen**: „Fortschritt zurücksetzen“ und „Alle Teilnehmenden löschen“ löschen über
+   `ON DELETE CASCADE` alle Gruppenfotos, ohne es zu sagen. Jetzt nennen beide die Zahl (nur wenn es Fotos gibt) und
+   raten zum Herunterladen; die Tabelle „Was gerade gespeichert ist“ hat die Zeile „Gruppenfotos“. Bei „Neu auslosen“
+   nicht nötig: `admin_draw` geht nach dem Start nicht, vorher gibt es keine Fotos.
+13. **Fernbedienung der Rückblick-Show** (zwei Befehle zwischen zwei Abrufen, nur der letzte wirkt): nicht angefasst
+   (Entwurfsentscheidung, siehe HANDOFF).
+
+`mock.js`: `window.__WELT` (Spielstand im Speicher der Seite), damit `bugjagd4.py` ein zweites Leitungsgerät spielen
+kann. Prüfungen am 07.11.: `bugjagd4_db.py` 33 (ohne Migration 14 von 33 FEHLT), `bugjagd3_db.py` 102, `rechte_db.py` 45, `w5_eingaben_db.py` 139 (alle zurückgerollt); im Container `bugjagd4.py` 54 ok (gegen das alte `index.html` 10 FEHLT, dann Abbruch), `bugjagd3.py` 28, `bugjagd2.py` 55, `ziffer.py` 8, `teststation.py` 21, `mappe.py` 59, `admin.py` 23, `review1510.py` 50, `w5.py` 44. `tools/stresstest.py` nur Syntax, `abschluss.py` unter Windows ohne Chrome.
+
+---
+
+## 26. Notweg-Schlüssel (09.11.2026)
+
+Befund S1 der W5-Sicherheitsprüfung (§23): Am Notweg-Tablet lag die Admin-PIN im `sessionStorage`, der Tab war damit
+auch für `#/admin` angemeldet. Friedrich hat den Vorschlag des Prüfers angenommen: Das Tablet tauscht die PIN einmal
+gegen einen Schlüssel, der nur Eingaben für dieses eine Team erlaubt.
+
+- **Server** (Migration `20261109090000_notweg_schluessel.sql`, nach W5 und bugjagd3): Tabelle `notweg_schluessel`
+  (token, team_id, erstellt, gilt_bis; für anon gesperrt, ein gelöschtes Team nimmt seine Schlüssel mit).
+  `admin_notweg(p_pin, p_code)` prüft die PIN und den Code, räumt abgelaufene Schlüssel weg und gibt
+  `{token, team, giltBis}` zurück; der Schlüssel beginnt mit `nw-` und gilt 12 Stunden. `notweg_ende(p_token)` löscht
+  genau diesen Schlüssel. `team_eingabe` nimmt ihn als `p_token` neben dem Schlüssel der Leitung an. Ein abgelaufener,
+  gelöschter oder fremder Notweg-Schlüssel: „Der Notweg-Schlüssel gilt nicht mehr. Bitte die Admin-PIN noch einmal
+  eingeben.“ Die Admin-PIN als `p_pin` bleibt erlaubt (ältere App). `admin_set_pin` löscht alle Notweg-Schlüssel:
+  so widerruft die Spielleitung ein verlorenes Tablet (eine neue PIN setzen).
+- **App:** `notwegFreigabe(pin, code)` ersetzt `notwegPin`. `t-login` (mit der getippten PIN oder der PIN, die der Tab
+  schon kennt) und `t-pin` holen den Schlüssel und merken ihn in `localStorage` (`sj.notweg`); die PIN bleibt nicht im
+  Tab, `#/admin` fragt weiter nach ihr. Der Schlüssel übersteht einen Neustart des Browsers, die Seite „Admin-PIN
+  fehlt“ kommt erst, wenn er abgelaufen ist (`eingabeRpc` vergisst ihn bei der Meldung). `eingabeRpc` schickt am
+  Notweg-Tablet den Schlüssel als `p_token`, keine PIN. Abmelden ruft `notweg_ende`; überall, wo `sj.hand` fällt,
+  fällt auch `sj.notweg`, und ein neuer Login löscht einen alten Schlüssel (auch auf dem Server).
+- **Rückfall:** Kennt die Datenbank `admin_notweg` nicht (PGRST202, Migration fehlt), läuft der Notweg wie vorher:
+  PIN über `admin_state` prüfen, im Tab merken, als `p_pin` schicken.
+- **Prüfung:** `notweg_db.py` (50 Prüfungen, mit `--ohne` Abbruch), `rechte_db.py` mit der neuen Migration und der
+  Tabelle, `w5.py` Teile 2 bis 4 auf den Schlüssel umgestellt, Teil 9 (geänderte PIN) auf einer Datenbank ohne
+  Schlüssel, neu Teil 10 (Neustart, abgelaufen, fremdes Team, Abmelden, Rückfall, falsche PIN). Mock:
+  `admin_notweg`, `notweg_ende`, `window.__NOTWEG`, `__OHNE_NOTWEG`.

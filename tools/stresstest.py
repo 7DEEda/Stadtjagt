@@ -60,6 +60,9 @@ PIN = "stresstest-2026"   # die Datenbank verlangt mindestens 12 Zeichen
 TEST_URL = None
 TEST_KEY = None
 TEST_REF = None
+# Eingaben, die der Server seit W5 nur mit dem Geräte-Schlüssel der Leitung (p_token) oder der Admin-PIN annimmt
+EINGABEN = {"check_in", "submit_answer", "reveal_tip", "submit_final", "team_selfie", "team_selfie_skip",
+            "team_set_leader", "report_position"}
 LIVE_REF = (re.search(r"https://([a-z0-9]+)\.supabase\.co", (REPO / "config.js").read_text(encoding="utf-8")) or [None, ""])[1]
 
 
@@ -223,8 +226,15 @@ class Lauf:
                 pass
             self.warte(self.a.takt)
 
-    def teamleitung(self, code, stationen, start):
-        v = Verbindung(self.a.url, self.a.key)
+    def teamleitung(self, code, token, stationen, start):
+        v0 = Verbindung(self.a.url, self.a.key)
+
+        class v:            # wie die App (eingabeRpc): Eingaben gehen mit dem Geräte-Schlüssel der Leitung (W5)
+            @staticmethod
+            def rpc(fn, args=None, **kw):
+                if fn in EINGABEN:
+                    args = dict(args or {}, p_token=token)
+                return v0.rpc(fn, args, **kw)
         pos = (start[0] + random.uniform(-.0003, .0003), start[1] + random.uniform(-.0003, .0003))
         tempo = random.uniform(1.0, 1.6) * self.a.zeitraffer          # m/s im Zeitraffer
         letzte_meldung = 0
@@ -237,12 +247,13 @@ class Lauf:
                 letzte_meldung = time.time()
             return st
 
-        def rand(name, fn, args, erwartet):
-            """Randfall: erwartet 'ok' (ok: true), 'nein' (ok: false) oder 'fehler' (HTTP-Fehler). Ungebucht."""
+        def rand(name, fn, args, erwartet, stuecke=()):
+            """Randfall: erwartet 'ok' (ok: true), 'nein' (ok: false) oder 'fehler' (HTTP 400 mit einem der stuecke in
+            der Meldung; ein anderer Fehler wie 429, 502 oder Verbindungsabbruch ist eine Abweichung). Ungebucht."""
             try:
                 r = v.rpc(fn, args, buchen=False, streng=False)
             except RuntimeError as e:
-                M.randfall(name, erwartet == "fehler", f"unerwartet: {e}")
+                M.randfall(name, erwartet == "fehler" and fehler_passt(e, stuecke), f"unerwartet: {e}")
                 return None
             msg = r.get("message") if isinstance(r, dict) else r
             if erwartet == "fehler":
@@ -264,7 +275,19 @@ class Lauf:
         if random.random() < .5:
             rand("Check-in zu weit weg (am Start)", "check_in", {"p_code": code, "p_lat": pos[0], "p_lng": pos[1], "p_acc": 8}, "nein")
         if random.random() < .2:
-            rand("Unbekannter Teamcode", "team_state", {"p_code": "XXXXXXXX"}, "fehler")
+            # nach 30 falschen Codes aus einer Quelle sperrt die Bremse (Bugjagd 03.11.): auch das ist eine Ablehnung
+            rand("Unbekannter Teamcode", "team_state", {"p_code": "XXXXXXXX"}, "fehler", ("Unbekannter Team-Code", "Zu viele falsche Team-Codes"))
+        if random.random() < .3:            # W5: Code allein reicht nicht, der Notweg mit Admin-PIN schon
+            try:
+                v0.rpc("report_position", {"p_code": code, "p_lat": pos[0], "p_lng": pos[1], "p_acc": 8}, buchen=False, streng=False)
+                M.randfall("Eingabe nur mit Team-Code abgewiesen", False, "angenommen")
+            except RuntimeError as e:
+                M.randfall("Eingabe nur mit Team-Code abgewiesen", "Teamleitung" in str(e), str(e)[:120])
+            try:
+                v0.rpc("report_position", {"p_code": code, "p_lat": pos[0], "p_lng": pos[1], "p_acc": 8, "p_pin": PIN}, buchen=False, streng=False)
+                M.randfall("Notweg: Eingabe mit Admin-PIN", True)
+            except RuntimeError as e:
+                M.randfall("Notweg: Eingabe mit Admin-PIN", False, f"unerwartet: {e}")
 
         for i, ziel in enumerate(stationen):
             nach = (ziel["lat"], ziel["lng"])
@@ -373,20 +396,37 @@ def sql(a, text):
 def einrichten(a):
     zugang(a, mit_admin=True)
     dateien = sorted((REPO / "supabase" / "migrations").glob("*.sql"))
-    # Wiederholbar: steht das Schema schon (admin_state gibt es), nur Stationen, Lösungen und PIN setzen.
-    # Die erste Migration beginnt mit "drop table ... cascade" und scheitert auf einem fertigen Schema.
+    # Wiederholbar: jede eingespielte Migration steht in stresstest.migrationen (eigenes Schema, für PostgREST nicht
+    # sichtbar). Ein zweiter Aufruf, etwa nach einem Abbruch mitten in den Migrationen, spielt genau die fehlenden ein
+    # (Bugjagd 07.11.2026, Fund 8; vorher übersprang er alle, sobald es admin_state gab, also schon nach der ersten).
+    # Die erste Migration beginnt mit "drop table ... cascade" und darf auf einem fertigen Schema nicht noch einmal laufen.
+    sql(a, "create schema if not exists stresstest; "
+           "create table if not exists stresstest.migrationen (name text primary key, um timestamptz not null default now()); "
+           "revoke all on schema stresstest from public, anon, authenticated;")
+    erledigt = {z["name"] for z in (sql(a, "select name from stresstest.migrationen") or [])}
     da = sql(a, "select to_regprocedure('public.admin_state(text)') is not null as da")
-    if da and da[0].get("da"):
-        print("Schema steht schon, Migrationen übersprungen.")
+    if erledigt:
+        dateien = [d for d in dateien if d.name not in erledigt]
+        print(f"{len(erledigt)} Migrationen sind schon eingespielt, {len(dateien)} fehlen noch.")
+    elif da and da[0].get("da"):
+        # Testprojekt von vor der Vermerkliste: welche Migrationen fehlen, weiß hier niemand
+        print("Schema steht schon (ohne Vermerk, welche Migrationen eingespielt sind), Migrationen übersprungen.\n"
+              "Fehlt eine Migration nach W5, die fehlenden von Hand einspielen oder ein leeres Projekt nehmen.")
         dateien = []
+        w5 = sql(a, "select to_regprocedure('public.team_eingabe(text,text,text)') is not null as da")
+        if not (w5 and w5[0].get("da")):        # Testprojekt vom Oktober: Stand vor W5, der Lauf würde nur Fehler buchen
+            sys.exit("Das Schema im Testprojekt ist älter als W5 (team_eingabe fehlt). Die fehlenden Migrationen ab\n"
+                     "dem letzten Lauf von Hand einspielen oder ein leeres Projekt nehmen, siehe tools/STRESSTEST.md.")
     else:
         print(f"Spiele {len(dateien)} Migrationen in Projekt {a.ref} ein ...")
     for d in dateien:
         try:
             sql(a, d.read_text(encoding="utf-8"))
+            assert re.fullmatch(r"[0-9A-Za-z_.-]+", d.name), d.name
+            sql(a, f"insert into stresstest.migrationen (name) values ('{d.name}') on conflict do nothing")
             print("  ok   ", d.name)
         except RuntimeError as e:
-            sys.exit(f"  FEHLER in {d.name}:\n{e}")
+            sys.exit(f"  FEHLER in {d.name}:\n{e}\nUrsache beheben, dann einrichten erneut aufrufen: es spielt ab hier weiter ein.")
     print("Stationen, Lösungen, PIN ...")
     sql(a, (REPO / "supabase" / "seed-stationen-prag.sql").read_text(encoding="utf-8"))
     # Der Seed lässt die Lösungen leer (zählt nie als richtig): für den Test eindeutige Lösungen setzen
@@ -429,30 +469,37 @@ def lauf(a):
     print(f"1. Anmeldung: {a.handys} Handys in {a.anmeldung_s} s")
     tokens, tlock = [], threading.Lock()
 
-    def anmelden(i):
-        time.sleep(random.uniform(0, a.anmeldung_s))
+    def anmelden(i, warten=True):
+        if warten:
+            time.sleep(random.uniform(0, a.anmeldung_s))
         r = Verbindung(a.url, a.key).rpc("register_participant", {"p_name": f"Stress Person {i:03d}"})
         with tlock:
             tokens.append(r["token"])
-    th = [threading.Thread(target=lambda i=i: _still(anmelden, i)) for i in range(a.handys)]
+    vr = Verbindung(a.url, a.key)
+
+    def rand(name, fn, args, *stuecke):
+        """Randfall, der einen Fehler erwartet: bestanden nur mit HTTP 400 und einem der stuecke in der Meldung
+        (Bugjagd 07.11.2026, Fund 9; vorher zählte jeder Fehler, auch 429, 502 oder ein Verbindungsabbruch)."""
+        try:
+            r = vr.rpc(fn, args, buchen=False, streng=False)
+            M.randfall(name, False, f"kein Fehler: {r}")
+        except RuntimeError as e:
+            M.randfall(name, fehler_passt(e, stuecke), f"unerwartet: {e}")
+    # Person 000 zuerst und allein: die Dubletten-Fälle laufen vor der Anmeldespitze. Bei 200 Handys griffe sonst die
+    # Grenze ("Die Anmeldung ist voll") vor der Namensprüfung, und die Fälle gälten ungeprüft als bestanden.
+    _still(anmelden, 0, False)
+    if tokens:
+        rand("Anmeldung: Name doppelt", "register_participant", {"p_name": "Stress Person 000"}, "gibt es schon")
+        rand("Anmeldung: Name doppelt (Groß/Klein, Leerzeichen)", "register_participant", {"p_name": "  stress   PERSON 000 "}, "gibt es schon")
+    th = [threading.Thread(target=lambda i=i: _still(anmelden, i)) for i in range(1, a.handys)]
     [t.start() for t in th]
     [t.join() for t in th]
     print(f"   {len(tokens)} angemeldet")
-    vr = Verbindung(a.url, a.key)
-
-    def rand(name, fn, args, erwartet_fehler=True):
-        try:
-            r = vr.rpc(fn, args, buchen=False, streng=False)
-            M.randfall(name, not erwartet_fehler, f"kein Fehler: {r}" if erwartet_fehler else "")
-        except RuntimeError as e:
-            M.randfall(name, erwartet_fehler, f"unerwartet: {e}")
     if tokens:
-        rand("Anmeldung: Name doppelt", "register_participant", {"p_name": "Stress Person 000"})
-        rand("Anmeldung: Name doppelt (Groß/Klein, Leerzeichen)", "register_participant", {"p_name": "  stress   PERSON 000 "})
-        rand("Anmeldung: Name zu kurz", "register_participant", {"p_name": "A"})
-        rand("Anmeldung: Name nur Sonderzeichen", "register_participant", {"p_name": "!!!???"})
-        rand("Anmeldung: Name zu lang", "register_participant", {"p_name": "X" * 61})
-        rand("Anmeldung: ungültiger Geräte-Schlüssel", "register_participant", {"p_name": "Stress Rand 001", "p_token": "abc"})
+        rand("Anmeldung: Name zu kurz", "register_participant", {"p_name": "A"}, "2 bis 60 Zeichen")
+        rand("Anmeldung: Name nur Sonderzeichen", "register_participant", {"p_name": "!!!???"}, "lateinischen Buchstaben")
+        rand("Anmeldung: Name zu lang", "register_participant", {"p_name": "X" * 61}, "2 bis 60 Zeichen")
+        rand("Anmeldung: ungültiger Geräte-Schlüssel", "register_participant", {"p_name": "Stress Rand 001", "p_token": "abc"}, "Geräte-Schlüssel")
         try:    # Wiederholung mit demselben Schlüssel (Antwort ging verloren): gleiche Person, kein Fehler
             r = vr.rpc("register_participant", {"p_name": "Stress Person 000", "p_token": tokens[0]}, buchen=False, streng=False)
             M.randfall("Anmeldung: Wiederholung mit eigenem Schlüssel", r.get("token") == tokens[0], r)
@@ -470,12 +517,12 @@ def lauf(a):
     v.rpc("admin_start", {"p_pin": PIN})
     print(f"   {len(leitungen)} Teamleitungen, Spiel läuft")
     for i in range(3):      # nach dem Start: die Anmeldung ist zu, die Spielleitung trägt nach
-        rand("Nachmelden nach Start wird abgelehnt", "register_participant", {"p_name": f"Stress Spät {i}"})
+        rand("Nachmelden nach Start wird abgelehnt", "register_participant", {"p_name": f"Stress Spät {i}"}, "Anmeldung ist geschlossen")
 
     L = Lauf(a)
     L.n_teams = len(leitungen)
     leit_tok = {t for t, _ in leitungen}
-    threads = [threading.Thread(target=L.teamleitung, args=(code, stationen, start), daemon=True) for _, code in leitungen]
+    threads = [threading.Thread(target=L.teamleitung, args=(code, tok, stationen, start), daemon=True) for tok, code in leitungen]
     threads += [threading.Thread(target=L.mitlesen, args=(tok,), daemon=True) for tok in tokens if tok not in leit_tok]
     threads += [threading.Thread(target=L.spielleitung, daemon=True) for _ in range(a.spielleitungen)]
     print(f"3. Spiel: {len(threads)} Handys/Tablets, {a.dauer} min, Takt {a.takt} s, Zeitraffer {a.zeitraffer}x")
@@ -526,6 +573,12 @@ def token_datei():
     """Token aus tools/stresstest.token (steht in .gitignore, kommt nie ins öffentliche Repo)."""
     f = REPO / "tools" / "stresstest.token"
     return f.read_text(encoding="utf-8").strip() if f.exists() else None
+
+
+def fehler_passt(e, stuecke):
+    """Eine Ablehnung durch eine Spielregel: HTTP 400 (P0001 oder die Bremse) und eine der erwarteten Meldungen."""
+    text = str(e)
+    return text.startswith("HTTP 400") and any(s in text for s in stuecke)
 
 
 def _still(fn, *args):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Probelauf für Nachtrag 31 (current_station sperren) gegen die echte Datenbank, ohne Spuren. Seitdem um jede neue
-Migration mit Funktionen ergänzt (zuletzt Rollen und Akku 29.10., 20261029120000_rollen_akku.sql).
+Migration mit Funktionen ergänzt (zuletzt Bugjagd 07.11., 20261107100000_bugjagd4.sql).
 
     python tools/pruefstand/rechte_db.py
 
@@ -20,13 +20,19 @@ import sql  # noqa: E402
 # Nach dem Einspielen einer Migration, die Funktionen neu anlegt, hier ergänzen (SPIEL.md §9).
 MIGRATIONEN = ["20261004090000_current_station_sperren.sql", "20261015090000_namenssuche_grenze.sql",
                "20261016090000_eingaben_wiederholen.sql", "20261017090000_rueckblick_steuerung.sql",
-               "20261025090000_audit.sql", "20261029120000_rollen_akku.sql"]
+               "20261025090000_audit.sql", "20261029120000_rollen_akku.sql",
+               "20261103090000_w5_eingaben_schluessel.sql", "20261107090000_bugjagd3.sql",
+               "20261107100000_bugjagd4.sql", "20261109090000_notweg_schluessel.sql"]
 MIGRATION = [sql.REPO / "supabase" / "migrations" / n for n in MIGRATIONEN]
 
 # Interne Hilfsfunktionen: dürfen weder anon noch authenticated ausführen
 INTERN = ["norm(text)", "dist_m(double precision,double precision,double precision,double precision)",
           "team_by_code(text)", "current_station(uuid)", "require_admin(text)", "answer_ok(text,text)",
           "aktive_route()"]
+# Seit W5 (03.11.): erst mit der Migration vorhanden, darum nicht in INTERN (das auch Probeläufe älterer Migrationen nutzen)
+INTERN_W5 = ["team_eingabe(text,text,text)"]
+# Seit der Bugjagd 03.11. (nach W5): Bremse für Team-Codes, ebenso nur mit dieser Migration vorhanden
+INTERN_BJ3 = ["team_code_quelle()", "team_code_bremse(text)", "team_code_abgelehnt(text)"]
 
 PROBE = r"""
 do $probe$
@@ -42,7 +48,8 @@ begin
   end loop;
   -- die Spielfunktionen selbst bleiben für anon offen (jede Überladung, die es gibt)
   foreach f in array array['team_state', 'lookup_participant', 'submit_answer', 'check_in', 'register_participant', 'submit_final',
-                           'rb_befehl', 'rb_poll', 'rb_status_setzen', 'rb_status_holen', 'rb_ende'] loop
+                           'reveal_tip', 'team_selfie', 'team_selfie_skip', 'team_set_leader', 'report_position', 'rb_befehl', 'rb_poll', 'rb_status_setzen', 'rb_status_holen', 'rb_ende',
+                           'admin_notweg', 'notweg_ende'] loop
     if not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = f) then
       raise exception 'PROBE FEHLT: Funktion % gibt es nicht', f; end if;
     if exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = f
@@ -59,11 +66,32 @@ begin
      or exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'member_state_by_team') then
     raise exception 'PROBE FEHLT: member_state/report_position nicht genau einmal oder member_state_by_team noch da'; end if;
   v_n := v_n + 1;
+  -- W5 03.11.: die acht Eingaben nehmen p_token und p_pin, je genau eine Fassung
+  if (select count(*) from pg_proc p where p.pronamespace = 'public'::regnamespace
+      and p.proname in ('check_in', 'submit_answer', 'reveal_tip', 'submit_final', 'team_selfie', 'team_selfie_skip',
+                        'team_set_leader', 'report_position')
+      and 'p_token' = any (p.proargnames) and 'p_pin' = any (p.proargnames)) <> 8 then
+    raise exception 'PROBE FEHLT: nicht alle acht Eingaben mit p_token und p_pin'; end if;
+  v_n := v_n + 1;
   -- Nachtrag 37: die Tabelle der Fernbedienung ist für anon und authenticated gesperrt, der Weg sind die rb_*-Funktionen
   if to_regclass('public.rueckblick_steuerung') is null then raise exception 'PROBE FEHLT: Tabelle rueckblick_steuerung gibt es nicht'; end if;
   foreach r in array array['anon', 'authenticated'] loop
     if has_table_privilege(r, 'public.rueckblick_steuerung', 'select') or has_table_privilege(r, 'public.rueckblick_steuerung', 'update') then
       raise exception 'PROBE FEHLT: % darf rueckblick_steuerung lesen oder ändern', r; end if;
+    v_n := v_n + 1;
+  end loop;
+  -- Bugjagd 03.11.: die Zähltabelle der Team-Code-Bremse ist für anon und authenticated gesperrt
+  if to_regclass('public.team_code_fehlversuche') is null then raise exception 'PROBE FEHLT: Tabelle team_code_fehlversuche gibt es nicht'; end if;
+  foreach r in array array['anon', 'authenticated'] loop
+    if has_table_privilege(r, 'public.team_code_fehlversuche', 'select') or has_table_privilege(r, 'public.team_code_fehlversuche', 'insert') then
+      raise exception 'PROBE FEHLT: % darf team_code_fehlversuche lesen oder schreiben', r; end if;
+    v_n := v_n + 1;
+  end loop;
+  -- Notweg-Schlüssel 09.11.: die Tabelle ist für anon und authenticated gesperrt, der Weg sind admin_notweg und notweg_ende
+  if to_regclass('public.notweg_schluessel') is null then raise exception 'PROBE FEHLT: Tabelle notweg_schluessel gibt es nicht'; end if;
+  foreach r in array array['anon', 'authenticated'] loop
+    if has_table_privilege(r, 'public.notweg_schluessel', 'select') or has_table_privilege(r, 'public.notweg_schluessel', 'insert') then
+      raise exception 'PROBE FEHLT: % darf notweg_schluessel lesen oder schreiben', r; end if;
     v_n := v_n + 1;
   end loop;
   raise exception 'PROBELAUF_OK: % Prüfungen bestanden, alles zurückgenommen', v_n;
@@ -75,7 +103,7 @@ def main() -> None:
     # ohne Argument mit Migration; "--ohne" zeigt den Stand der Datenbank ohne Migration (rot)
     migration = "" if "--ohne" in sys.argv else "\n".join(m.read_text(encoding="utf-8") for m in MIGRATION)
     assert "$mig$" not in migration and "$probe$" not in migration
-    intern = ", ".join("'" + f + "'" for f in INTERN)
+    intern = ", ".join("'" + f + "'" for f in INTERN + ([] if "--ohne" in sys.argv else INTERN_W5 + INTERN_BJ3))
     probe = PROBE.replace("__INTERN__", intern).replace(
         "execute $mig$__MIGRATION__$mig$;", f"execute $mig${migration}$mig$;" if migration.strip() else "")
     print(f"Sende den Probelauf ({len(probe)} Zeichen) an Projekt {sql.project_ref()} ...", file=sys.stderr)

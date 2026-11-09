@@ -32,6 +32,8 @@ etwa `timeout 300 python tools/pruefstand/waechter.py`.
 | `teststation.py` | Teststation und Startpunkt (Nachtrag 28 und 29) |
 | `waechter.py` | Kompass-Wächter: Logik, Anzeige, Spielleitung, Freigaben (Nachtrag 30) |
 | `bugjagd2.py` | Funde der Bugjagd vom 03.10.2026 |
+| `bugjagd3.py` | Funde der Bugjagd vom 03.11.2026 (SPIEL.md §24), Port 8878: Leitung startet kalt in der Team-Ansicht und bleibt auf der Anmeldeseite, Foto-ZIP mit gelöschten Fotos, Start-Dialog bei erreichtem Löschdatum, Geräte-Test lädt Leaflet und Schriften aus `vendor/`. Teil 5: `val()` gibt NFC, `mock.js`-`norm` wie die Datenbank (`window.__norm`). Haken `__fotoNull` in `mock.js`. Probelauf `bugjagd3_db.py` (spielt W5 davor ein; Bremse in `team_eingabe`, `team_state`, `team_photo`, admin_start, team_selfie, norm mit NFC) |
+| `bugjagd4.py` | Funde der Bugjagd vom 07.11.2026 (SPIEL.md §25), Port 8879: Texte zum Testmodus im laufenden Spiel, Beenden und Zurücksetzen mit frischem Status (zweites Leitungsgerät über `window.__WELT`), Ziffer-Rückfrage nur für die aktive Route, Escape im Ziffer-Dialog, später Standort-Rückruf, Koordinaten nur als Dezimalzahl, Fotos in den Rückfragen. Probelauf `bugjagd4_db.py` (admin_finish, admin_reset, admin_save_station) |
 | `umbau.py` | Umbau Weiterentwicklung: Handy-Hülle, Reiter, Spielleitung mit Teamliste (Nachtrag 33) |
 | `review1510.py` | Befunde des Code-Reviews vom 15.10.2026 (Nachtrag 34) |
 | `lokal.py` | Leaflet und Schriften aus `vendor/`, keine Anfrage an unpkg oder Google (Nachtrag 35) |
@@ -46,11 +48,12 @@ etwa `timeout 300 python tools/pruefstand/waechter.py`.
 | `audit2510.py` | Code-Audit vom 25.10.2026, Teile 1 bis 11 (App und Rückblick). Neue Haken in `mock.js`: `__halten`/`__freigeben`, `__weg`, `__serverJetzt`, `__leitung(name)`. Probelauf `audit2510_db.py` (Migration `20261025090000_audit.sql`); dazu `python tools/test_sql_bremse.py` |
 | `admin.py` | Spielleitung-Durchsicht (02.11.2026), Port 8876, 390/768/1280 px: Liste vor der Karte, Knöpfe der Teamliste, Reiter, Löschknöpfe, Teilnehmende, Zeitachse, Kopf, ein Startknopf |
 | `handy.py` | Handy-Durchsicht (01.11.2026), Port 8874, 360 px: Übergabe-Fenster, Leitung im Kopf, Kompass-Hinweis, Akku-Zeile, Ende, Fehlversuch, Marke, Zähler |
+| `w5.py` | W5 (03.11.2026), Port 8877: Eingaben mit Schlüssel der Leitung, Notweg mit Admin-PIN (leer, falsch, richtig, schon im Tab), Seite „Admin-PIN fehlt“ nach Neustart, eigener Code ohne PIN, Datenbank ohne Migration (PGRST202), keine Eingabe ruft `rpc()` direkt; seit 09.11. Notweg-Schlüssel statt PIN im Tab (Teil 10). Haken in `mock.js`: `__W5`, `__OHNE_W5`, `__OHNE_NOTWEG`, `__NOTWEG`, `__EINGABE_ARGS`. Probeläufe: `w5_eingaben_db.py`, `notweg_db.py` |
 | `rollen_akku.py` | Rollen und Akku (29.10.2026), Port 8873: Rolle vom Server mit stillem Wechsel in beide Richtungen (ab `drawn`), Übergabe-Fenster mit Personen und Akku, Spielleitung nimmt die Leitung weg, Notweg-Tablet `sj.hand`, Abmelden und `sj.abgemeldet` (F1), Akku-Fenster bei 20 % und 10 % je einmal, Akku-Hinweis, Spielleitung (Vermerk ab 20 %, unter 10 % unter „Braucht dich“), Meldungen mit Akku, alte Datenbank (PGRST202), iPhone ohne Akku, Texte. Haken in `mock.js`: `__akku(level, laedt)`, `__akkuStart`, `__AKKUS`, `__MEMBER_ARGS`, `__REPORT_ARGS`, `__AKKU`; Szenarien `rolle-*`, `akku-*`, `admin-akku`. Probelauf gegen die Datenbank: `rollen_akku_db.py` |
 
 Chrome 155 hängt auf dem Arbeitsrechner beim `browser.close()` nach einer Seite mit Leaflet-Karte (manchmal auch
 ohne). Die neuen Skripte drucken OK oder FEHLT vorher und enden über `abschluss.py`, das nur die eigenen
-Chrome-Prozesse beendet.
+Chrome-Prozesse beendet (seit 07.11.2026 nach Prozessbaum, nicht mehr nach Kommandozeile).
 
 ## Probeläufe gegen die echte Datenbank
 
@@ -62,5 +65,5 @@ Zugang aus `tools/sql.py`.
 `name_db.py`, `selfie_db.py`, `teststation_db.py`, `startpunkt_db.py`,
 `waechter_db.py`, `rechte_db.py` (Rechte aller internen Hilfsfunktionen),
 `bugjagd2_db.py`, `namenssuche_db.py`, `namenssuche_grenze_db.py`, `eingaben_db.py`,
-`rueckblick_steuerung_db.py` (Fernbedienung, Nachtrag 37). Mit `--ohne` zeigen `rechte_db.py`, `bugjagd2_db.py`,
+`rueckblick_steuerung_db.py` (Fernbedienung, Nachtrag 37), `w5_eingaben_db.py` (W5, 03.11.2026; mit `--ohne` rot), `bugjagd3_db.py` (Bugjagd 03.11.2026, nach W5). `bugjagd4_db.py` (Bugjagd 07.11.2026; mit `--ohne` rot). `notweg_db.py` (Notweg-Schlüssel 09.11.2026, nach W5 und bugjagd3; mit `--ohne` Abbruch). Mit `--ohne` zeigen `rechte_db.py`, `bugjagd2_db.py`,
 `namenssuche_grenze_db.py`, `eingaben_db.py` und `rueckblick_steuerung_db.py` den Stand ohne Migration.
