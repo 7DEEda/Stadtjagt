@@ -7,8 +7,13 @@ CREATE OR REPLACE FUNCTION public.admin_reset(p_pin text)
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
+declare v_status text;
 begin
   perform require_admin(p_pin);
+  select status into v_status from game_state where id = 1 for update;
+  if v_status = 'registration' then
+    raise exception 'Vor dem Auslosen gibt es nichts zurückzusetzen.' using errcode='P0001';
+  end if;
   delete from progress where true;
   delete from finishes where true;
   delete from team_positions where true;

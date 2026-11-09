@@ -9,7 +9,7 @@ AS $function$
   select regexp_replace(
     translate(
       replace(replace(replace(replace(
-        lower(translate(coalesce(t,''),
+        lower(translate(normalize(coalesce(t,''), NFC),
           'ÄÖÜÀÁÂÃÅĀĂĄÇĆČĎĐÈÉÊËĒĖĘĚÌÍÎÏĪĮĹĽŁÑŃŇÒÓÔÕØŌŐŔŘŚŠŞȘŤŢȚÙÚÛŮŪŰŲÝŸŹŻŽ',
           'äöüàáâãåāăąçćčďđèéêëēėęěìíîïīįĺľłñńňòóôõøōőŕřśšşșťţțùúûůūűųýÿźżž')),
         'ä','ae'),'ö','oe'),'ü','ue'),'ß','ss'),

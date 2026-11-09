@@ -2299,6 +2299,15 @@ ab. **Beide Migrationen sind NICHT eingespielt.**
 Mobilfunk-NAT kann Unbeteiligte mitsperren), ob `admin_start` bei abgelaufenem Löschdatum nur warnt (so gebaut)
 oder ablehnt.
 
+## Eingespielt am 09.11.2026
+
+Auf master gemerged und live (`8f17b5a`), danach die vier Migrationen in dieser Reihenfolge eingespielt, jeweils
+nach grünem Probelauf: W5 (139), bugjagd3 (102), Notweg-Schlüssel (50), bugjagd4 (33). Danach `rechte_db.py` 49
+grün, Schema-Abzug neu (65 Funktionen, 13 Tabellen). Zum Zeitpunkt lief kein Spiel (Anmeldung, keine Personen).
+Über die echte API geprüft: ein falscher Team-Code antwortet mit HTTP 400 und „Unbekannter Team-Code.“, die Zeile in
+`team_code_fehlversuche` bleibt stehen (festgeschrieben); die Testzeile ist gelöscht. Nicht geprüft: Notweg und
+Eingaben auf echten Geräten. Die Abschnitte unten beschreiben den Stand vor dem Einspielen.
+
 ## Notweg-Schlüssel (09.11.2026, Zweig `bugjagd-nov`, nicht gemerged)
 
 Befund S1 der W5-Sicherheitsprüfung, auf Friedrichs Ja gebaut (SPIEL.md §26): Das Notweg-Tablet tauscht die Admin-PIN

@@ -13,6 +13,7 @@ begin
     raise exception 'Die neue PIN braucht mindestens 12 Zeichen, am besten eine Passphrase.' using errcode='P0001';
   end if;
   update game_state set admin_pin = btrim(p_new) where id = 1;
+  delete from notweg_schluessel;   -- neue PIN: jedes Notweg-Tablet braucht eine neue Freigabe
   return admin_state(btrim(p_new));
 end $function$;
 revoke all on function public.admin_set_pin(p_pin text, p_new text) from public, anon, authenticated;

@@ -28,7 +28,7 @@ zusammenpassen.
 
 ## Rechte
 
-Stand: 59 Funktionen (Trigger 2, intern 8, nur PIN 32, offen 17), 11 Tabellen, 1 Sichten.
+Stand: 65 Funktionen (Trigger 2, intern 12, nur PIN 33, offen 18), 13 Tabellen, 1 Sichten.
 
 - **offen**: `anon` darf aufrufen, die Funktion ruft `require_admin` nicht selbst auf
   (öffentlicher Zustand, Team-Funktionen mit Team-Code oder Token)
@@ -51,6 +51,7 @@ Hilfsfunktion prüft, steht als "offen".
 | `admin_delete_test_participants(p_pin text)` | nur PIN | ja | ja | ja |
 | `admin_draw(p_pin text, p_teams integer, p_size integer)` | nur PIN | ja | ja | ja |
 | `admin_finish(p_pin text)` | nur PIN | ja | ja | ja |
+| `admin_notweg(p_pin text, p_code text)` | nur PIN | ja | ja | ja |
 | `admin_photo(p_pin text, p_team uuid, p_position integer, p_full boolean, p_route text)` | nur PIN | ja | ja | ja |
 | `admin_photos(p_pin text)` | nur PIN | ja | ja | ja |
 | `admin_rename_participant(p_pin text, p_id uuid, p_name text)` | nur PIN | ja | ja | ja |
@@ -71,7 +72,7 @@ Hilfsfunktion prüft, steht als "offen".
 | `admin_unlock_station(p_pin text, p_team uuid, p_position integer)` | nur PIN | ja | ja | ja |
 | `aktive_route()` | intern | nein | nein | nein |
 | `answer_ok(p_answer text, p_solutions text)` | intern | nein | nein | nein |
-| `check_in(p_code text, p_lat double precision, p_lng double precision, p_acc double precision)` | offen | ja | ja | ja |
+| `check_in(p_code text, p_lat double precision, p_lng double precision, p_acc double precision, p_token text, p_pin text)` | offen | ja | ja | ja |
 | `current_station(p_team uuid)` | intern | nein | nein | nein |
 | `device_test_echo(p_data text)` | offen | ja | ja | ja |
 | `device_test_save(p_key text, p_payload jsonb)` | offen | ja | ja | ja |
@@ -82,6 +83,7 @@ Hilfsfunktion prüft, steht als "offen".
 | `member_state(p_token text, p_akku integer, p_laedt boolean)` | offen | ja | ja | ja |
 | `name_abstand(a text, b text)` | intern | nein | nein | nein |
 | `norm(t text)` | intern | nein | nein | nein |
+| `notweg_ende(p_token text)` | offen | ja | ja | ja |
 | `participants_name_key_pruefen()` | Trigger | ja | ja | ja |
 | `public_state()` | offen | ja | ja | ja |
 | `rb_befehl(p_pin text, p_befehl text)` | nur PIN | nein | ja | ja |
@@ -90,14 +92,18 @@ Hilfsfunktion prüft, steht als "offen".
 | `rb_status_holen(p_pin text)` | nur PIN | nein | ja | ja |
 | `rb_status_setzen(p_pin text, p_status jsonb)` | nur PIN | nein | ja | ja |
 | `register_participant(p_name text, p_token text)` | offen | ja | ja | ja |
-| `report_position(p_code text, p_lat double precision, p_lng double precision, p_acc double precision, p_kompass text)` | offen | ja | ja | ja |
+| `report_position(p_code text, p_lat double precision, p_lng double precision, p_acc double precision, p_kompass text, p_token text, p_pin text)` | offen | ja | ja | ja |
 | `require_admin(p_pin text)` | intern | nein | nein | nein |
-| `reveal_tip(p_code text)` | offen | ja | ja | ja |
-| `submit_answer(p_code text, p_answer text, p_position integer)` | offen | ja | ja | ja |
-| `submit_final(p_code text, p_value text, p_lat double precision, p_lng double precision, p_acc double precision)` | offen | ja | ja | ja |
+| `reveal_tip(p_code text, p_token text, p_pin text)` | offen | ja | ja | ja |
+| `submit_answer(p_code text, p_answer text, p_position integer, p_token text, p_pin text)` | offen | ja | ja | ja |
+| `submit_final(p_code text, p_value text, p_lat double precision, p_lng double precision, p_acc double precision, p_token text, p_pin text)` | offen | ja | ja | ja |
 | `team_by_code(p_code text)` | intern | nein | nein | nein |
+| `team_code_abgelehnt(p_text text)` | intern | nein | nein | nein |
+| `team_code_bremse(p_code text)` | intern | nein | nein | nein |
+| `team_code_quelle()` | intern | nein | nein | nein |
+| `team_eingabe(p_code text, p_token text, p_pin text)` | intern | nein | nein | nein |
 | `team_photo(p_code text, p_token text, p_read_token text, p_position integer, p_full boolean)` | offen | ja | ja | ja |
-| `team_selfie(p_code text, p_position integer, p_photo text, p_thumb text)` | offen | ja | ja | ja |
-| `team_selfie_skip(p_code text, p_position integer)` | offen | ja | ja | ja |
-| `team_set_leader(p_code text, p_name text)` | offen | ja | ja | ja |
+| `team_selfie(p_code text, p_position integer, p_photo text, p_thumb text, p_token text, p_pin text)` | offen | ja | ja | ja |
+| `team_selfie_skip(p_code text, p_position integer, p_token text, p_pin text)` | offen | ja | ja | ja |
+| `team_set_leader(p_code text, p_name text, p_token text, p_pin text)` | offen | ja | ja | ja |
 | `team_state(p_code text)` | offen | ja | ja | ja |

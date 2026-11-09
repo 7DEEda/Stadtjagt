@@ -8,6 +8,7 @@ CREATE OR REPLACE FUNCTION public.admin_start(p_pin text)
  SET search_path TO 'public'
 AS $function$
 declare v_missing text; g game_state; v_warn text[] := array[]::text[];
+        v_heute date := (now() at time zone 'Europe/Prague')::date;
 begin
   perform require_admin(p_pin);
   select * into g from game_state where id = 1;
@@ -22,6 +23,11 @@ begin
     from stations where lat is null or lng is null;
   if g.test_mode then
     v_warn := array_append(v_warn, 'Der Testmodus ist an: Entfernung und Antworten werden nicht geprüft. Vor dem Event ausschalten.');
+  end if;
+  -- Fund 7: ein altes Löschdatum (etwa aus einer Probe) löscht jedes Gruppenfoto gleich nach dem Hochladen
+  if g.selfie_on and g.photos_delete_on is not null and g.photos_delete_on <= v_heute then
+    v_warn := array_append(v_warn, 'Das Löschdatum der Gruppenfotos (' || to_char(g.photos_delete_on, 'DD.MM.YYYY')
+      || ') ist erreicht: Fotos werden nicht gespeichert. Im Reiter Fotos ein Datum nach dem Abendessen wählen.');
   end if;
   if v_missing is not null then
     v_warn := array_append(v_warn, 'Station(en) ' || v_missing || ' haben keine Koordinaten.');

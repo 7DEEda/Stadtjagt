@@ -1,7 +1,7 @@
 -- Erzeugt von tools/schema_abzug.py aus der Live-Datenbank. Nicht von Hand ändern.
 
 -- Ausführen: public=ja, anon=ja, authenticated=ja
-CREATE OR REPLACE FUNCTION public.reveal_tip(p_code text)
+CREATE OR REPLACE FUNCTION public.reveal_tip(p_code text, p_token text DEFAULT NULL::text, p_pin text DEFAULT NULL::text)
  RETURNS json
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -9,7 +9,8 @@ CREATE OR REPLACE FUNCTION public.reveal_tip(p_code text)
 AS $function$
 declare t teams; g game_state; cur stations; row_p progress;
 begin
-  t := team_by_code(p_code);
+  t := team_eingabe(p_code, p_token, p_pin);
+  if t.id is null then return team_code_abgelehnt(current_setting('sj.code_fehler', true)); end if;   -- Bremse (Bugjagd 03.11.)
   select * into g from game_state where id = 1;
   if g.status <> 'running' then
     return json_build_object('ok', false, 'message', 'Das Spiel läuft gerade nicht.', 'state', team_state(p_code));
@@ -28,5 +29,5 @@ begin
   update progress set tip_at = coalesce(tip_at, now()) where team_id = t.id and station_id = cur.id;
   return json_build_object('ok', true, 'message', 'Tipp aufgedeckt.', 'state', team_state(p_code));
 end $function$;
-revoke all on function public.reveal_tip(p_code text) from public, anon, authenticated;
-grant execute on function public.reveal_tip(p_code text) to public, anon, authenticated;
+revoke all on function public.reveal_tip(p_code text, p_token text, p_pin text) from public, anon, authenticated;
+grant execute on function public.reveal_tip(p_code text, p_token text, p_pin text) to public, anon, authenticated;

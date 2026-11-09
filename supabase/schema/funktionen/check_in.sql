@@ -1,7 +1,7 @@
 -- Erzeugt von tools/schema_abzug.py aus der Live-Datenbank. Nicht von Hand ändern.
 
 -- Ausführen: public=ja, anon=ja, authenticated=ja
-CREATE OR REPLACE FUNCTION public.check_in(p_code text, p_lat double precision, p_lng double precision, p_acc double precision)
+CREATE OR REPLACE FUNCTION public.check_in(p_code text, p_lat double precision, p_lng double precision, p_acc double precision, p_token text DEFAULT NULL::text, p_pin text DEFAULT NULL::text)
  RETURNS json
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -9,7 +9,8 @@ CREATE OR REPLACE FUNCTION public.check_in(p_code text, p_lat double precision, 
 AS $function$
 declare t teams; g game_state; cur stations; d double precision; tol double precision;
 begin
-  t := team_by_code(p_code);
+  t := team_eingabe(p_code, p_token, p_pin);
+  if t.id is null then return team_code_abgelehnt(current_setting('sj.code_fehler', true)); end if;   -- Bremse (Bugjagd 03.11.)
   select * into g from game_state where id = 1;
   if g.status <> 'running' then
     return json_build_object('ok', false, 'message', 'Das Spiel läuft gerade nicht.', 'state', team_state(p_code));
@@ -52,5 +53,5 @@ begin
                     else 'Angekommen. Das Rätsel ist frei.' end,
     'state', team_state(p_code));
 end $function$;
-revoke all on function public.check_in(p_code text, p_lat double precision, p_lng double precision, p_acc double precision) from public, anon, authenticated;
-grant execute on function public.check_in(p_code text, p_lat double precision, p_lng double precision, p_acc double precision) to public, anon, authenticated;
+revoke all on function public.check_in(p_code text, p_lat double precision, p_lng double precision, p_acc double precision, p_token text, p_pin text) from public, anon, authenticated;
+grant execute on function public.check_in(p_code text, p_lat double precision, p_lng double precision, p_acc double precision, p_token text, p_pin text) to public, anon, authenticated;

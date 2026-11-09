@@ -7,9 +7,11 @@ CREATE OR REPLACE FUNCTION public.team_photo(p_code text, p_token text, p_read_t
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare v_team uuid;
+declare v_bremse text; v_team uuid;
 begin
   if coalesce(p_code, '') <> '' then
+    v_bremse := team_code_bremse(p_code);
+    if v_bremse is not null then return team_code_abgelehnt(v_bremse); end if;
     v_team := (team_by_code(p_code)).id;
   elsif coalesce(p_token, '') <> '' then
     select team_id into v_team from participants where token = p_token;

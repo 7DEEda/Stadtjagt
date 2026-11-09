@@ -1,7 +1,7 @@
 -- Erzeugt von tools/schema_abzug.py aus der Live-Datenbank. Nicht von Hand ändern.
 
 -- Ausführen: public=ja, anon=ja, authenticated=ja
-CREATE OR REPLACE FUNCTION public.team_set_leader(p_code text, p_name text)
+CREATE OR REPLACE FUNCTION public.team_set_leader(p_code text, p_name text, p_token text DEFAULT NULL::text, p_pin text DEFAULT NULL::text)
  RETURNS json
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -9,7 +9,8 @@ CREATE OR REPLACE FUNCTION public.team_set_leader(p_code text, p_name text)
 AS $function$
 declare t teams; v_id uuid; v_token text;
 begin
-  t := team_by_code(p_code);
+  t := team_eingabe(p_code, p_token, p_pin);
+  if t.id is null then return team_code_abgelehnt(current_setting('sj.code_fehler', true)); end if;   -- Bremse (Bugjagd 03.11.)
   select id, token into v_id, v_token from participants where team_id = t.id and name_key = norm(p_name);
   if v_id is null then
     raise exception 'Diese Person ist nicht in eurem Team.' using errcode='P0001';
@@ -22,5 +23,5 @@ begin
   update teams set leader_participant_id = v_id where id = t.id;
   return team_state(p_code);
 end $function$;
-revoke all on function public.team_set_leader(p_code text, p_name text) from public, anon, authenticated;
-grant execute on function public.team_set_leader(p_code text, p_name text) to public, anon, authenticated;
+revoke all on function public.team_set_leader(p_code text, p_name text, p_token text, p_pin text) from public, anon, authenticated;
+grant execute on function public.team_set_leader(p_code text, p_name text, p_token text, p_pin text) to public, anon, authenticated;

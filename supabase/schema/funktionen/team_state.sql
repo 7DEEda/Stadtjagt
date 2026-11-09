@@ -7,10 +7,12 @@ CREATE OR REPLACE FUNCTION public.team_state(p_code text)
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare t teams; g game_state; cur stations; row_p progress;
+declare v_bremse text; t teams; g game_state; cur stations; row_p progress;
         v_total int; v_solved int; v_sum int; v_all boolean; v_place int; v_done int;
         v_pend stations; v_ersetzbar int;
 begin
+  v_bremse := team_code_bremse(p_code);
+  if v_bremse is not null then return team_code_abgelehnt(v_bremse); end if;
   t := team_by_code(p_code);
   select * into g from game_state where id = 1;
   -- Nachtrag 25: fällige Fotos verschwinden beim nächsten Abruf

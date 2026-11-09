@@ -1,7 +1,7 @@
 -- Erzeugt von tools/schema_abzug.py aus der Live-Datenbank. Nicht von Hand ändern.
 
 -- Ausführen: public=ja, anon=ja, authenticated=ja
-CREATE OR REPLACE FUNCTION public.submit_final(p_code text, p_value text, p_lat double precision DEFAULT NULL::double precision, p_lng double precision DEFAULT NULL::double precision, p_acc double precision DEFAULT NULL::double precision)
+CREATE OR REPLACE FUNCTION public.submit_final(p_code text, p_value text, p_lat double precision DEFAULT NULL::double precision, p_lng double precision DEFAULT NULL::double precision, p_acc double precision DEFAULT NULL::double precision, p_token text DEFAULT NULL::text, p_pin text DEFAULT NULL::text)
  RETURNS json
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -10,7 +10,8 @@ AS $function$
 declare t teams; g game_state; v_total int; v_solved int; v_expected text; v_place int;
         ziel stations; d double precision; tol double precision;
 begin
-  t := team_by_code(p_code);
+  t := team_eingabe(p_code, p_token, p_pin);
+  if t.id is null then return team_code_abgelehnt(current_setting('sj.code_fehler', true)); end if;   -- Bremse (Bugjagd 03.11.)
   select place into v_place from finishes where team_id = t.id;
 
   if v_place is null then
@@ -71,5 +72,5 @@ begin
                     else 'Richtig, aber die Koffer sind vergeben. Ihr seid auf Platz ' || v_place || '.' end,
     'state', team_state(p_code));
 end $function$;
-revoke all on function public.submit_final(p_code text, p_value text, p_lat double precision, p_lng double precision, p_acc double precision) from public, anon, authenticated;
-grant execute on function public.submit_final(p_code text, p_value text, p_lat double precision, p_lng double precision, p_acc double precision) to public, anon, authenticated;
+revoke all on function public.submit_final(p_code text, p_value text, p_lat double precision, p_lng double precision, p_acc double precision, p_token text, p_pin text) from public, anon, authenticated;
+grant execute on function public.submit_final(p_code text, p_value text, p_lat double precision, p_lng double precision, p_acc double precision, p_token text, p_pin text) to public, anon, authenticated;

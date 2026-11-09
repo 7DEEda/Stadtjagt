@@ -1,7 +1,7 @@
 -- Erzeugt von tools/schema_abzug.py aus der Live-Datenbank. Nicht von Hand ändern.
 
 -- Ausführen: public=ja, anon=ja, authenticated=ja
-CREATE OR REPLACE FUNCTION public.team_selfie(p_code text, p_position integer, p_photo text, p_thumb text)
+CREATE OR REPLACE FUNCTION public.team_selfie(p_code text, p_position integer, p_photo text, p_thumb text, p_token text DEFAULT NULL::text, p_pin text DEFAULT NULL::text)
  RETURNS json
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -9,9 +9,14 @@ CREATE OR REPLACE FUNCTION public.team_selfie(p_code text, p_position integer, p
 AS $function$
 declare t teams; s stations; pr progress; v_photo bytea; v_thumb bytea;
 begin
-  t := team_by_code(p_code);
+  t := team_eingabe(p_code, p_token, p_pin);
+  if t.id is null then return team_code_abgelehnt(current_setting('sj.code_fehler', true)); end if;   -- Bremse (Bugjagd 03.11.)
   if not (select selfie_on from game_state where id = 1) then
     raise exception 'Gruppenfotos sind ausgeschaltet.' using errcode='P0001';
+  end if;
+  -- Fund 7: sonst fügte der Aufruf das Foto ein und team_state löschte es gleich wieder (photos_delete_on <= current_date)
+  if (select photos_delete_on from game_state where id = 1) <= (now() at time zone 'Europe/Prague')::date then
+    raise exception 'Das Löschdatum der Fotos ist erreicht, das Foto würde sofort gelöscht. Die Spielleitung kann im Reiter Fotos ein späteres Datum wählen; bis dahin ohne Foto weiter.' using errcode='P0001';
   end if;
   select * into s from stations where position = p_position;
   if not found then raise exception 'Diese Station gibt es nicht.' using errcode='P0001'; end if;
@@ -44,5 +49,5 @@ begin
   update progress set selfie_at = coalesce(selfie_at, now()) where team_id = t.id and station_id = s.id;
   return team_state(p_code);
 end $function$;
-revoke all on function public.team_selfie(p_code text, p_position integer, p_photo text, p_thumb text) from public, anon, authenticated;
-grant execute on function public.team_selfie(p_code text, p_position integer, p_photo text, p_thumb text) to public, anon, authenticated;
+revoke all on function public.team_selfie(p_code text, p_position integer, p_photo text, p_thumb text, p_token text, p_pin text) from public, anon, authenticated;
+grant execute on function public.team_selfie(p_code text, p_position integer, p_photo text, p_thumb text, p_token text, p_pin text) to public, anon, authenticated;

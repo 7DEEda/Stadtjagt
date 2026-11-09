@@ -9,6 +9,9 @@ CREATE OR REPLACE FUNCTION public.admin_save_station(p_pin text, p_id uuid, p_na
 AS $function$
 begin
   perform require_admin(p_pin);
+  if (p_lat is not null and not (p_lat between -90 and 90)) or (p_lng is not null and not (p_lng between -180 and 180)) then
+    raise exception 'Die Breite muss zwischen -90 und 90 liegen, die Länge zwischen -180 und 180.' using errcode='P0001';
+  end if;
   if (p_reveal_start is null) <> (p_reveal_clear is null) then
     raise exception 'Für das Entschlüsseln braucht es beide Entfernungen oder keine.' using errcode='P0001';
   end if;
